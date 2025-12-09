@@ -31,7 +31,64 @@ bun src/index.ts
 - `src/index.ts` - Bun HTTP server with routes for Invoices, Outgoing/Incoming Messages
 - `src/aidbox.ts` - Reusable Aidbox client with `aidboxFetch`, `getResources`, `putResource`
 - `src/migrate.ts` - Custom resource StructureDefinitions (OutgoingBarMessage, IncomingHL7v2Message)
+- `src/bar/` - BAR message generation from FHIR resources
+- `src/hl7v2/` - HL7v2 message representation, builders, and formatter
 - `docker-compose.yaml` - Aidbox and PostgreSQL setup
+
+## HL7v2 Module (`src/hl7v2/`)
+
+Type-safe HL7v2 message handling with fluent builders.
+
+- `types.ts` - Core types: `HL7v2Message`, `HL7v2Segment`, `FieldValue`
+- `fields.ts` - Generated fluent builders (MSHBuilder, PIDBuilder, etc.) and getters
+- `format.ts` - Serializes messages to pipe-delimited wire format
+- `codegen.ts` - Generates builders from HL7v2 schema definitions
+
+```ts
+import { MSHBuilder, PIDBuilder } from "./src/hl7v2/fields";
+import { formatMessage } from "./src/hl7v2/format";
+
+const message = [
+  new MSHBuilder()
+    .set9_1_messageCode("ADT")
+    .set9_2_triggerEvent("A01")
+    .build(),
+  new PIDBuilder()
+    .set3_1_idNumber("12345")
+    .set5_1_1_surname("Smith")
+    .set5_2_givenName("John")
+    .build(),
+];
+
+console.log(formatMessage(message));
+```
+
+## BAR Message Generator (`src/bar/`)
+
+Generates HL7v2 BAR messages from FHIR resources.
+
+- `types.ts` - FHIR resource types (Patient, Account, Coverage, etc.)
+- `generator.ts` - `generateBarMessage()` pure function
+- `index.ts` - Module exports
+
+```ts
+import { generateBarMessage } from "./src/bar";
+import { formatMessage } from "./src/hl7v2/format";
+
+const barMessage = generateBarMessage({
+  patient,           // FHIR Patient
+  account,           // FHIR Account (provides PID-18 account number)
+  encounter,         // FHIR Encounter -> PV1
+  coverages,         // FHIR Coverage[] -> IN1 segments
+  guarantor,         // RelatedPerson or Patient -> GT1
+  conditions,        // FHIR Condition[] -> DG1 segments
+  procedures,        // FHIR Procedure[] -> PR1 segments
+  messageControlId: "MSG001",
+  triggerEvent: "P01",  // P01=Add, P05=Update, P06=End
+});
+
+console.log(formatMessage(barMessage));
+```
 
 ## Custom FHIR Resources
 
