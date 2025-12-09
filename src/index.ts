@@ -3,6 +3,7 @@ import { aidboxFetch, getResources } from "./aidbox";
 import { processNextMessage } from "./bar/sender-service";
 import { processNextInvoice } from "./bar/invoice-builder-service";
 import { wrapWithMLP, VT, FS, CR } from "./mlp/mlp-server";
+import { highlightHL7Message, getHighlightStyles } from "./hl7v2/highlight";
 
 interface Patient {
   id: string;
@@ -80,6 +81,7 @@ function renderLayout(title: string, nav: string, content: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>${getHighlightStyles()}</style>
 </head>
 <body class="bg-gray-100 min-h-screen">
   ${nav}
@@ -226,21 +228,6 @@ function renderInvoicesPage(invoices: Invoice[], patients: Patient[], statusFilt
   return renderLayout("Invoices", renderNav("invoices"), content);
 }
 
-function formatHL7Message(hl7: string | undefined): string {
-  if (!hl7) return '<span class="text-gray-400">No HL7v2 message</span>';
-
-  const lines = hl7.split('\r').filter(line => line.trim());
-  return lines.map(line => {
-    // Highlight delimiters: | ^ ~ \ &
-    const highlighted = line
-      .replace(/\|/g, '<span class="text-blue-600 font-bold">|</span>')
-      .replace(/\^/g, '<span class="text-purple-600 font-bold">^</span>')
-      .replace(/~/g, '<span class="text-green-600 font-bold">~</span>')
-      .replace(/\\/g, '<span class="text-orange-600 font-bold">\\</span>')
-      .replace(/&/g, '<span class="text-red-600 font-bold">&</span>');
-    return highlighted;
-  }).join('\n');
-}
 
 interface MessageListItem {
   id: string;
@@ -270,7 +257,7 @@ function renderMessageList(items: MessageListItem[]): string {
           </div>
         </summary>
         <div class="px-4 pb-4">
-          <div class="p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${formatHL7Message(item.hl7Message)}</div>
+          <div class="p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${highlightHL7Message(item.hl7Message)}</div>
         </div>
       </details>
     </li>

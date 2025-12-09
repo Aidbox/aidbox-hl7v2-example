@@ -53,7 +53,10 @@ src/
     ├── types.ts          # HL7v2 message types
     ├── fields.ts         # Generated segment builders (MSH, PID, PV1, etc.)
     ├── format.ts         # Serializes messages to pipe-delimited format
+    ├── highlight.ts      # HL7v2 syntax highlighter with schema metadata tooltips
     └── codegen.ts        # Generates builders from HL7v2 schema
+
+hl7v2/schema/             # HL7v2 schema definitions (segments, fields, dataTypes)
 
 fhir/                     # FHIR resource definitions (loaded by migrate.ts)
 scripts/
@@ -92,6 +95,17 @@ Stores received HL7v2 messages.
 - **Invoices:** View all invoices, filter by status, create new invoices, build BAR messages from drafts
 - **Outgoing Messages:** View BAR messages with HL7v2 syntax highlighting, filter by status, send pending messages
 - **Incoming Messages:** View received HL7v2 messages, filter by status
+
+### HL7v2 Message Highlighting
+
+The UI displays HL7v2 messages with rich syntax highlighting and tooltips:
+
+- **Field tooltips** - Hover over any field to see its ID, name, data type, and required status
+- **Component tooltips** - Nested components (e.g., `XPN.1: Family Name`) show their metadata
+- **Color-coded delimiters** - Pipe `|` (blue), caret `^` (purple), tilde `~` (green), ampersand `&` (red)
+- **Required indicators** - Fields marked with `[R]` are required per HL7v2 spec
+
+Metadata is sourced from the HL7v2 schema in `hl7v2/schema/`.
 
 ## HL7v2 Module
 
