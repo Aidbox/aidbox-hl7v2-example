@@ -163,17 +163,17 @@ const buildPID = (input: BarMessageInput) => (pid: PIDBuilder) => {
     .set1_setIdPid("1")
     .set3_1_idNumber(getIdentifierValue(patient.identifier))
     .set3_5_identifierTypeCode("MR")
-    .set5_1_1_surname(name?.family ?? "")
-    .set5_2_givenName(name?.given?.[0] ?? "")
-    .set5_3_secondAndFurtherGivenNamesOrInitialsThereof(name?.given?.[1] ?? "")
+    .set5_1_1_surname(name?.family)
+    .set5_2_givenName(name?.given?.[0])
+    .set5_3_secondAndFurtherGivenNamesOrInitialsThereof(name?.given?.[1])
     .set7_dateTimeOfBirth(formatHL7Date(patient.birthDate))
     .set8_administrativeSex(mapGender(patient.gender))
-    .set11_1_1_streetOrMailingAddress(address?.line?.[0] ?? "")
-    .set11_3_city(address?.city ?? "")
-    .set11_4_stateOrProvince(address?.state ?? "")
-    .set11_5_zipOrPostalCode(address?.postalCode ?? "")
-    .set11_6_country(address?.country ?? "")
-    .set13_1_telephoneNumber(phone?.value ?? "")
+    .set11_1_1_streetOrMailingAddress(address?.line?.[0])
+    .set11_3_city(address?.city)
+    .set11_4_stateOrProvince(address?.state)
+    .set11_5_zipOrPostalCode(address?.postalCode)
+    .set11_6_country(address?.country)
+    .set13_1_telephoneNumber(phone?.value)
     .set18_1_idNumber(getIdentifierValue(account.identifier));
 };
 
@@ -183,7 +183,7 @@ const buildPV1 = (encounter: Encounter) => (pv1: PV1Builder) => {
   return pv1
     .set1_setIdPv1("1")
     .set2_patientClass(mapPatientClass(encounter.class))
-    .set3_1_pointOfCare(location?.location?.display ?? "")
+    .set3_1_pointOfCare(location?.location?.display)
     .set19_1_idNumber(getIdentifierValue(encounter.identifier))
     .set44_admitDateTime(formatHL7Date(encounter.period?.start))
     .set45_dischargeDateTime(formatHL7Date(encounter.period?.end));
@@ -200,21 +200,21 @@ const buildGT1 = (guarantor: RelatedPerson | Patient, setId: number) => (gt1: GT
   return gt1
     .set1_setIdGt1(String(setId))
     .set2_1_idNumber(getIdentifierValue(guarantor.identifier))
-    .set3_1_1_surname(name?.family ?? "")
-    .set3_2_givenName(name?.given?.[0] ?? "")
-    .set5_1_1_streetOrMailingAddress(address?.line?.[0] ?? "")
-    .set5_3_city(address?.city ?? "")
-    .set5_4_stateOrProvince(address?.state ?? "")
-    .set5_5_zipOrPostalCode(address?.postalCode ?? "")
-    .set5_6_country(address?.country ?? "")
-    .set6_1_telephoneNumber(phone?.value ?? "")
+    .set3_1_1_surname(name?.family)
+    .set3_2_givenName(name?.given?.[0])
+    .set5_1_1_streetOrMailingAddress(address?.line?.[0])
+    .set5_3_city(address?.city)
+    .set5_4_stateOrProvince(address?.state)
+    .set5_5_zipOrPostalCode(address?.postalCode)
+    .set5_6_country(address?.country)
+    .set6_1_telephoneNumber(phone?.value)
     .set10_guarantorType(guarantorType);
 };
 
 const buildIN1 = (coverage: Coverage, setId: number, payorOrg?: Organization) => (in1: IN1Builder) => {
   const planCode = getCode(coverage.type);
-  const payorId = payorOrg?.identifier?.[0]?.value ?? coverage.payor?.[0]?.reference ?? "";
-  const payorName = payorOrg?.name ?? coverage.payor?.[0]?.display ?? "";
+  const payorId = payorOrg?.identifier?.[0]?.value ?? coverage.payor?.[0]?.reference;
+  const payorName = payorOrg?.name ?? coverage.payor?.[0]?.display;
   const groupClass = coverage.class?.find(c => c.type?.coding?.[0]?.code === "group");
   const relationship = getCode(coverage.relationship);
 
@@ -224,13 +224,13 @@ const buildIN1 = (coverage: Coverage, setId: number, payorOrg?: Organization) =>
     .set2_2_text(planCode.display)
     .set3_1_idNumber(payorId)
     .set4_1_organizationName(payorName)
-    .set8_groupNumber(groupClass?.value ?? "")
-    .set9_1_organizationName(groupClass?.name ?? "")
+    .set8_groupNumber(groupClass?.value)
+    .set9_1_organizationName(groupClass?.name)
     .set12_planEffectiveDate(formatHL7Date(coverage.period?.start))
     .set13_planExpirationDate(formatHL7Date(coverage.period?.end))
     .set17_1_identifier(relationship.code)
     .set17_2_text(relationship.display)
-    .set36_policyNumber(coverage.subscriberId ?? "");
+    .set36_policyNumber(coverage.subscriberId);
 };
 
 const buildDG1 = (condition: Condition, setId: number) => (dg1: DG1Builder) => {

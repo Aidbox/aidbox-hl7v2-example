@@ -248,8 +248,8 @@ class HL7v2CodeGen {
 
       // Field-level method: set5_patientName
       this.output.push(`  /** ${field.field} - ${fieldDef.longName} */`);
-      this.output.push(`  set${fieldNum}_${fieldName}(value: FieldValue): this {`);
-      this.output.push(`    this.seg.fields[${fieldNum}] = value;`);
+      this.output.push(`  set${fieldNum}_${fieldName}(value: FieldValue | null | undefined): this {`);
+      this.output.push(`    if (value != null) this.seg.fields[${fieldNum}] = value;`);
       this.output.push(`    return this;`);
       this.output.push(`  }`);
       this.output.push(``);
@@ -289,8 +289,8 @@ class HL7v2CodeGen {
       // Method name: set5_1_familyName or set5_1_1_surname for deeper nesting
       const methodName = `set${fieldNum}_${path.join("_")}_${compName}`;
 
-      this.output.push(`  ${methodName}(value: string): this {`);
-      this.output.push(`    setComponent(this.seg.fields, ${fieldNum}, value, ${path.join(", ")});`);
+      this.output.push(`  ${methodName}(value: string | null | undefined): this {`);
+      this.output.push(`    if (value != null) setComponent(this.seg.fields, ${fieldNum}, value, ${path.join(", ")});`);
       this.output.push(`    return this;`);
       this.output.push(`  }`);
       this.output.push(``);
