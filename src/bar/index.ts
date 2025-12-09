@@ -41,3 +41,9 @@ export {
   processNextMessage,
 } from "./sender-service";
 export type { OutgoingBarMessage, IncomingHL7v2Message } from "./sender-service";
+export {
+  createInvoiceBarBuilderService,
+  pollDraftInvoice,
+  buildBarFromInvoice,
+  processNextInvoice,
+} from "./invoice-builder-service";

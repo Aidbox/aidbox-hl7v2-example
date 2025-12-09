@@ -61,6 +61,19 @@ const outgoingBarMessageSD = {
   },
 };
 
+const outgoingBarMessageStatusSP = {
+  resourceType: "SearchParameter",
+  id: "OutgoingBarMessage-status",
+  url: "http://example.org/SearchParameter/OutgoingBarMessage-status",
+  name: "status",
+  status: "active",
+  description: "Search OutgoingBarMessage by status",
+  code: "status",
+  base: ["OutgoingBarMessage"],
+  type: "string",
+  expression: "OutgoingBarMessage.status",
+};
+
 const incomingHL7v2MessageSD = {
   resourceType: "StructureDefinition",
   id: "IncomingHL7v2Message",
@@ -120,6 +133,10 @@ const incomingHL7v2MessageSD = {
 async function migrate() {
   console.log("Creating OutgoingBarMessage StructureDefinition...");
   await putResource("StructureDefinition", "OutgoingBarMessage", outgoingBarMessageSD);
+  console.log("  Done.");
+
+  console.log("Creating OutgoingBarMessage status SearchParameter...");
+  await putResource("SearchParameter", "OutgoingBarMessage-status", outgoingBarMessageStatusSP);
   console.log("  Done.");
 
   console.log("Creating IncomingHL7v2Message StructureDefinition...");

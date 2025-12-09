@@ -102,6 +102,21 @@ const barMessage = generateBarMessage({
 console.log(formatMessage(barMessage));
 ```
 
+## Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
+
+Polls Aidbox for draft Invoices and generates BAR messages.
+
+- Polls every minute for Invoice with `status=draft`, sorted by `_lastUpdated` (oldest first)
+- Fetches related resources: Patient, Account, Coverage, Encounter, Condition, Procedure
+- Generates BAR message using `generateBarMessage()`
+- Creates OutgoingBarMessage with `status=pending`
+- Updates Invoice status to "issued" via PATCH
+
+```sh
+# Run as standalone service
+bun src/bar/invoice-builder-service.ts
+```
+
 ## BAR Message Sender Service (`src/bar/sender-service.ts`)
 
 Polls Aidbox for pending OutgoingBarMessage resources and sends them as IncomingHL7v2Message.
@@ -113,19 +128,6 @@ Polls Aidbox for pending OutgoingBarMessage resources and sends them as Incoming
 ```sh
 # Run as standalone service
 bun src/bar/sender-service.ts
-```
-
-```ts
-import { createBarMessageSenderService } from "./src/bar";
-
-const service = createBarMessageSenderService({
-  pollIntervalMs: 60000,  // default: 1 minute
-  onError: (error) => console.error(error),
-  onIdle: () => console.log("No pending messages"),
-});
-
-service.start();
-// service.stop();
 ```
 
 ## Custom FHIR Resources
