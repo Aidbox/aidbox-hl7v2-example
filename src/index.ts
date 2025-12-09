@@ -1,6 +1,8 @@
+import * as net from "node:net";
 import { aidboxFetch, getResources } from "./aidbox";
 import { processNextMessage } from "./bar/sender-service";
 import { processNextInvoice } from "./bar/invoice-builder-service";
+import { wrapWithMLP, VT, FS, CR } from "./mlp/mlp-server";
 
 interface Patient {
   id: string;
@@ -43,13 +45,14 @@ const getOutgoingMessages = (status?: string) =>
 const getIncomingMessages = (status?: string) =>
   getResources<IncomingHL7v2Message>("IncomingHL7v2Message", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
 
-type NavTab = "invoices" | "outgoing" | "incoming";
+type NavTab = "invoices" | "outgoing" | "incoming" | "mlp-client";
 
 function renderNav(active: NavTab): string {
   const tabs: Array<{ id: NavTab; href: string; label: string }> = [
     { id: "invoices", href: "/invoices", label: "Invoices" },
     { id: "outgoing", href: "/outgoing-messages", label: "Outgoing Messages" },
     { id: "incoming", href: "/incoming-messages", label: "Incoming Messages" },
+    { id: "mlp-client", href: "/mlp-client", label: "MLP Test Client" },
   ];
 
   return `
@@ -376,6 +379,142 @@ function renderOutgoingMessagesPage(messages: OutgoingBarMessage[], patients: Pa
   return renderLayout("Outgoing Messages", renderNav("outgoing"), content);
 }
 
+interface MLPClientState {
+  host: string;
+  port: number;
+  message: string;
+  response?: string;
+  error?: string;
+  sent?: boolean;
+}
+
+function renderMLPClientPage(state: MLPClientState = { host: "localhost", port: 2575, message: "" }): string {
+  const sampleMessages = [
+    {
+      name: "ADT^A01 (Admit)",
+      message: `MSH|^~\\&|SENDING_APP|SENDING_FAC|RECEIVING_APP|RECEIVING_FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ADT^A01|MSG${Date.now()}|P|2.4\rEVN|A01|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rPID|1||12345^^^HOSPITAL^MR||Smith^John^A||19800101|M|||123 Main St^^Anytown^CA^12345||555-555-5555\rPV1|1|I|ICU^101^A|E|||12345^Jones^Mary^A|||MED||||1|||12345^Jones^Mary^A|IN||||||||||||||||||||||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}`,
+    },
+    {
+      name: "ADT^A08 (Update)",
+      message: `MSH|^~\\&|SENDING_APP|SENDING_FAC|RECEIVING_APP|RECEIVING_FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ADT^A08|MSG${Date.now()}|P|2.4\rEVN|A08|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rPID|1||12345^^^HOSPITAL^MR||Smith^John^A||19800101|M|||456 New St^^Newtown^CA^54321||555-555-1234`,
+    },
+    {
+      name: "BAR^P01 (Add Account)",
+      message: `MSH|^~\\&|BILLING|HOSPITAL|RECEIVER|FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||BAR^P01|MSG${Date.now()}|P|2.5\rEVN|P01|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rPID|1||MRN12345||Doe^Jane^M||19850315|F\rPV1|1|O|CLINIC^201||||||12345^Smith^Robert|||||||||||ACCT001`,
+    },
+    {
+      name: "ORM^O01 (Order)",
+      message: `MSH|^~\\&|ORDER_SYS|HOSPITAL|LAB|LAB_FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORM^O01|MSG${Date.now()}|P|2.4\rPID|1||PAT001^^^HOSP^MR||Johnson^Mary||19900520|F\rORC|NW|ORD001||||||||||12345^Doctor^Test\rOBR|1|ORD001||CBC^Complete Blood Count^L|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}`,
+    },
+  ];
+
+  const content = `
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-3xl font-bold text-gray-800">MLP Test Client</h1>
+      <div class="text-sm text-gray-500">
+        Send HL7v2 messages via MLP protocol
+      </div>
+    </div>
+
+    ${state.error ? `
+      <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div class="flex items-center gap-2 text-red-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span class="font-medium">Error</span>
+        </div>
+        <p class="mt-1 text-sm text-red-700">${state.error}</p>
+      </div>
+    ` : ""}
+
+    ${state.sent && state.response ? `
+      <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div class="flex items-center gap-2 text-green-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span class="font-medium">Message Sent Successfully</span>
+        </div>
+        <div class="mt-2">
+          <p class="text-sm font-medium text-green-800 mb-1">ACK Response:</p>
+          <pre class="p-2 bg-white rounded text-xs font-mono overflow-x-auto">${state.response.replace(/\r/g, "\n")}</pre>
+        </div>
+      </div>
+    ` : ""}
+
+    <div class="grid grid-cols-3 gap-6">
+      <div class="col-span-2">
+        <form method="POST" action="/mlp-client" class="bg-white rounded-lg shadow p-6 space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">MLP Server Host</label>
+              <input type="text" name="host" value="${state.host}" required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="localhost">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Port</label>
+              <input type="number" name="port" value="${state.port}" required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="2575">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">HL7v2 Message</label>
+            <textarea name="message" rows="12" required
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="MSH|^~\\&|...">${state.message}</textarea>
+            <p class="mt-1 text-xs text-gray-500">Use \\r for segment separators or paste multi-line message</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+              </svg>
+              Send via MLP
+            </button>
+            <button type="reset" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">
+              Clear
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div>
+        <div class="bg-white rounded-lg shadow p-6">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">Sample Messages</h2>
+          <div class="space-y-2">
+            ${sampleMessages.map((sample, i) => `
+              <button type="button" onclick="document.querySelector('textarea[name=message]').value = decodeURIComponent('${encodeURIComponent(sample.message)}')"
+                class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors">
+                ${sample.name}
+              </button>
+            `).join("")}
+          </div>
+        </div>
+
+        <div class="mt-4 bg-blue-50 rounded-lg shadow p-6">
+          <h2 class="text-lg font-semibold text-blue-800 mb-2">MLP Protocol Info</h2>
+          <div class="text-sm text-blue-700 space-y-2">
+            <p><strong>Start Block:</strong> VT (0x0B)</p>
+            <p><strong>End Block:</strong> FS + CR (0x1C 0x0D)</p>
+            <p><strong>Default Port:</strong> 2575</p>
+          </div>
+        </div>
+
+        <div class="mt-4 bg-yellow-50 rounded-lg shadow p-6">
+          <h2 class="text-lg font-semibold text-yellow-800 mb-2">Start MLP Server</h2>
+          <pre class="text-xs font-mono bg-white p-2 rounded overflow-x-auto">bun run mlp</pre>
+        </div>
+      </div>
+    </div>`;
+
+  return renderLayout("MLP Test Client", renderNav("mlp-client"), content);
+}
+
 function renderIncomingMessagesPage(messages: IncomingHL7v2Message[], statusFilter?: string): string {
   const listItems: MessageListItem[] = messages.map(msg => ({
     id: msg.id,
@@ -549,7 +688,82 @@ Bun.serve({
         });
       },
     },
+    "/mlp-client": {
+      GET: () => {
+        return new Response(renderMLPClientPage(), {
+          headers: { "Content-Type": "text/html" },
+        });
+      },
+      POST: async (req) => {
+        const formData = await req.formData();
+        const host = (formData.get("host") as string) || "localhost";
+        const port = parseInt((formData.get("port") as string) || "2575", 10);
+        const rawMessage = (formData.get("message") as string) || "";
+
+        // Normalize line endings to \r (HL7v2 standard)
+        const message = rawMessage.replace(/\r\n/g, "\r").replace(/\n/g, "\r");
+
+        const state: MLPClientState = { host, port, message: rawMessage };
+
+        try {
+          const response = await sendMLPMessage(host, port, message);
+          state.response = response;
+          state.sent = true;
+        } catch (error) {
+          state.error = error instanceof Error ? error.message : "Unknown error";
+        }
+
+        return new Response(renderMLPClientPage(state), {
+          headers: { "Content-Type": "text/html" },
+        });
+      },
+    },
   },
 });
+
+/**
+ * Send HL7v2 message via MLP protocol and wait for ACK
+ */
+async function sendMLPMessage(host: string, port: number, message: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const client = net.createConnection({ host, port }, () => {
+      client.write(wrapWithMLP(message));
+    });
+
+    const timeout = setTimeout(() => {
+      client.destroy();
+      reject(new Error("Connection timeout (10s)"));
+    }, 10000);
+
+    let buffer = Buffer.alloc(0);
+
+    client.on("data", (data) => {
+      buffer = Buffer.concat([buffer, data]);
+
+      // Look for MLP framing
+      const startIndex = buffer.indexOf(VT);
+      if (startIndex === -1) return;
+
+      for (let i = startIndex + 1; i < buffer.length - 1; i++) {
+        if (buffer[i] === FS && buffer[i + 1] === CR) {
+          const response = buffer.subarray(startIndex + 1, i).toString("utf-8");
+          clearTimeout(timeout);
+          client.end();
+          resolve(response);
+          return;
+        }
+      }
+    });
+
+    client.on("error", (err) => {
+      clearTimeout(timeout);
+      reject(new Error(`Connection failed: ${err.message}`));
+    });
+
+    client.on("close", () => {
+      clearTimeout(timeout);
+    });
+  });
+}
 
 console.log("Server running at http://localhost:3000");

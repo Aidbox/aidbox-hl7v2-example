@@ -39,11 +39,12 @@ bun scripts/load-test-data.ts
 
 ## Project Structure
 
-- `src/index.ts` - Bun HTTP server with routes for Invoices, Outgoing/Incoming Messages
+- `src/index.ts` - Bun HTTP server with routes for Invoices, Outgoing/Incoming Messages, MLP Client
 - `src/aidbox.ts` - Reusable Aidbox client with `aidboxFetch`, `getResources`, `putResource`
 - `src/migrate.ts` - Custom resource StructureDefinitions (OutgoingBarMessage, IncomingHL7v2Message)
 - `src/bar/` - BAR message generation from FHIR resources
 - `src/hl7v2/` - HL7v2 message representation, builders, and formatter
+- `src/mlp/` - MLP (Minimum Layer Protocol) TCP server for receiving HL7v2 messages
 - `docker-compose.yaml` - Aidbox and PostgreSQL setup
 
 ## HL7v2 Module (`src/hl7v2/`)
@@ -129,6 +130,44 @@ Polls Aidbox for pending OutgoingBarMessage resources and sends them as Incoming
 # Run as standalone service
 bun src/bar/sender-service.ts
 ```
+
+## MLP Server (`src/mlp/`)
+
+TCP server implementing the Minimum Layer Protocol (MLP) for receiving HL7v2 messages over TCP/IP.
+
+- `mlp-server.ts` - MLP TCP server with message parsing and ACK generation
+- `index.ts` - Module exports
+
+**MLP Protocol:**
+- Start Block: `0x0B` (VT - Vertical Tab)
+- End Block: `0x1C 0x0D` (FS + CR)
+- Default Port: 2575
+
+**Features:**
+- Accepts HL7v2 messages wrapped in MLP framing
+- Stores messages as `IncomingHL7v2Message` resources in Aidbox
+- Sends HL7v2 ACK responses (AA/AE/AR)
+- Handles multiple concurrent connections
+- Supports fragmented TCP delivery
+
+```sh
+# Start MLP server (default port 2575)
+bun run mlp
+
+# With custom port
+MLP_PORT=3001 bun run mlp
+
+# Test with sample client
+bun run test-mlp
+```
+
+**Web UI MLP Test Client:**
+
+The web UI includes an MLP Test Client at `/mlp-client` for sending test messages:
+- Configure host and port
+- Select from sample messages (ADT^A01, ADT^A08, BAR^P01, ORM^O01)
+- View ACK responses
+- Messages are stored in Aidbox and visible in Incoming Messages
 
 ## Custom FHIR Resources
 

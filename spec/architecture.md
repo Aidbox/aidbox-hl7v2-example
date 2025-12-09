@@ -19,9 +19,13 @@ flowchart TB
     subgraph "Background Services"
         Builder[Invoice BAR Builder]
         Sender[BAR Message Sender]
+        MLP[MLP Server :2575]
     end
 
+    External[External HL7v2 Systems] -->|MLP/TCP| MLP
+    MLP -->|store messages| Aidbox
     UI <-->|FHIR REST API| Aidbox
+    UI -->|send test messages| MLP
     Builder -->|poll & update| Aidbox
     Sender -->|poll & update| Aidbox
 ```
@@ -81,6 +85,8 @@ Bun HTTP server serving server-rendered HTML pages with Tailwind CSS.
 | `/outgoing-messages` | GET | List BAR messages with status filter |
 | `/outgoing-messages` | POST | Create outgoing message |
 | `/incoming-messages` | GET | List received messages with status filter |
+| `/mlp-client` | GET | MLP test client UI |
+| `/mlp-client` | POST | Send HL7v2 message via MLP |
 | `/build-bar` | POST | Trigger BAR generation for draft invoices |
 | `/send-messages` | POST | Trigger sending of pending messages |
 
@@ -103,6 +109,43 @@ Background service that delivers queued BAR messages.
 1. Poll for oldest `OutgoingBarMessage` with `status=pending`
 2. POST as `IncomingHL7v2Message` (simulates external delivery)
 3. Update `OutgoingBarMessage` to `status=sent`
+
+### MLP Server (`src/mlp/mlp-server.ts`)
+
+TCP server implementing the Minimum Layer Protocol (MLP) for receiving HL7v2 messages from external systems.
+
+**Configuration:**
+- Port: 2575 (default, configurable via `MLP_PORT` env var)
+- Protocol: TCP with MLP framing
+
+**MLP Protocol Framing:**
+```
+┌────────┬─────────────────┬────────┬────────┐
+│  VT    │   HL7v2 Message │   FS   │   CR   │
+│ (0x0B) │                 │ (0x1C) │ (0x0D) │
+└────────┴─────────────────┴────────┴────────┘
+```
+
+**Process:**
+1. Accept TCP connection from external system
+2. Parse MLP-framed HL7v2 message (handle fragmented TCP delivery)
+3. Extract message type from MSH-9 field
+4. Create `IncomingHL7v2Message` resource in Aidbox
+5. Generate and send HL7v2 ACK response (AA/AE/AR)
+
+**Features:**
+- Handles multiple concurrent connections
+- Buffers fragmented TCP packets
+- Generates proper HL7v2 ACK messages with original message control ID
+- Swaps sending/receiving application in ACK
+
+### MLP Test Client (Web UI)
+
+The Web UI includes an MLP Test Client at `/mlp-client` for testing:
+- Configure target MLP server host and port
+- Select from sample messages (ADT^A01, ADT^A08, BAR^P01, ORM^O01)
+- Send custom HL7v2 messages
+- View ACK responses
 
 ## Pull Architecture
 
@@ -219,6 +262,50 @@ The system generates HL7v2 BAR (Billing/Accounts Receivable) messages from FHIR 
 - `P01` - Add patient account
 - `P05` - Update account
 - `P06` - End account
+
+## MLP Message Flow
+
+### External System to Aidbox
+
+```mermaid
+sequenceDiagram
+    participant External as External HL7v2 System
+    participant MLP as MLP Server
+    participant Aidbox
+
+    External->>MLP: TCP Connect
+    External->>MLP: VT + HL7v2 Message + FS + CR
+
+    MLP->>MLP: Parse MLP framing
+    MLP->>MLP: Extract message type (MSH-9)
+    MLP->>Aidbox: POST /IncomingHL7v2Message
+    Aidbox-->>MLP: 201 Created
+
+    MLP->>MLP: Generate ACK (AA)
+    MLP->>External: VT + ACK + FS + CR
+
+    External->>MLP: TCP Close
+```
+
+### Web UI Test Client
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as Web UI
+    participant MLP as MLP Server
+    participant Aidbox
+
+    User->>UI: Enter HL7v2 message
+    User->>UI: Click "Send via MLP"
+
+    UI->>MLP: TCP Connect + MLP-framed message
+    MLP->>Aidbox: POST /IncomingHL7v2Message
+    MLP->>UI: MLP-framed ACK
+    UI->>UI: Parse ACK response
+
+    UI->>User: Display ACK (success/error)
+```
 
 
 
