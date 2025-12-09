@@ -1,0 +1,224 @@
+# Architecture
+
+## Overview
+
+This system implements a **pull-based architecture** for HL7v2 BAR message generation and delivery using Aidbox as the central FHIR server. Services poll Aidbox for work rather than receiving push notifications, providing resilience and simplicity.
+
+```mermaid
+flowchart TB
+    subgraph Infrastructure
+        PG[(PostgreSQL)]
+        Aidbox[Aidbox FHIR Server]
+        PG <--> Aidbox
+    end
+
+    subgraph "Web UI (port 3000)"
+        UI[Bun HTTP Server]
+    end
+
+    subgraph "Background Services"
+        Builder[Invoice BAR Builder]
+        Sender[BAR Message Sender]
+    end
+
+    UI <-->|FHIR REST API| Aidbox
+    Builder -->|poll & update| Aidbox
+    Sender -->|poll & update| Aidbox
+```
+
+## Components
+
+### Aidbox FHIR Server
+
+[Aidbox](https://www.health-samurai.io/aidbox) is a FHIR R4 compliant server that serves as the central data store and API layer.
+
+**Configuration:**
+- Image: `healthsamurai/aidboxone:edge`
+- Port: 8080
+- Database: PostgreSQL 18
+- FHIR Version: R4 (`hl7.fhir.r4.core#4.0.1`)
+
+**Standard FHIR Resources:**
+- `Patient` - Patient demographics
+- `Invoice` - Billing invoices (status: draft → issued)
+- `Coverage` - Insurance coverage information
+- `Encounter` - Patient visits
+- `Condition` - Diagnoses (→ DG1 segments)
+- `Procedure` - Medical procedures (→ PR1 segments)
+- `Organization` - Insurance companies, facilities
+- `RelatedPerson` - Guarantors
+
+**Custom Resources (defined via StructureDefinition):**
+- `OutgoingBarMessage` - Queued BAR messages (status: pending → sent)
+- `IncomingHL7v2Message` - Received HL7v2 messages (status: received → processed)
+
+### Aidbox Client (`src/aidbox.ts`)
+
+Thin HTTP client for Aidbox FHIR API with Basic authentication.
+
+```typescript
+// Environment variables (with defaults)
+AIDBOX_URL=http://localhost:8080
+AIDBOX_CLIENT_ID=root
+AIDBOX_CLIENT_SECRET=Vbro4upIT1
+
+// Exported functions
+aidboxFetch<T>(path, options)  // Raw FHIR API call
+getResources<T>(type, params)  // Search with Bundle unwrapping
+putResource<T>(type, id, res)  // Create/update resource
+```
+
+### Web UI (`src/index.ts`)
+
+Bun HTTP server serving server-rendered HTML pages with Tailwind CSS.
+
+**Routes:**
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/` | GET | Redirect to invoices |
+| `/invoices` | GET | List invoices with status filter |
+| `/invoices` | POST | Create new invoice |
+| `/outgoing-messages` | GET | List BAR messages with status filter |
+| `/outgoing-messages` | POST | Create outgoing message |
+| `/incoming-messages` | GET | List received messages with status filter |
+| `/build-bar` | POST | Trigger BAR generation for draft invoices |
+| `/send-messages` | POST | Trigger sending of pending messages |
+
+### Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
+
+Background service that transforms FHIR resources into HL7v2 BAR messages.
+
+**Process:**
+1. Poll for oldest `Invoice` with `status=draft`
+2. Fetch related resources (Patient, Coverage, Encounter, Condition, Procedure)
+3. Generate HL7v2 BAR message using segment builders
+4. Create `OutgoingBarMessage` with `status=pending`
+5. Update `Invoice` to `status=issued`
+
+### BAR Message Sender Service (`src/bar/sender-service.ts`)
+
+Background service that delivers queued BAR messages.
+
+**Process:**
+1. Poll for oldest `OutgoingBarMessage` with `status=pending`
+2. POST as `IncomingHL7v2Message` (simulates external delivery)
+3. Update `OutgoingBarMessage` to `status=sent`
+
+## Pull Architecture
+
+Both background services use a **pull-based polling pattern** rather than push notifications:
+
+```mermaid
+flowchart LR
+    subgraph "Pull Pattern"
+        Service[Service] -->|1. Poll for work| Aidbox[(Aidbox)]
+        Aidbox -->|2. Return item or empty| Service
+        Service -->|3. Process & update status| Aidbox
+    end
+```
+
+**Benefits:**
+- **Resilience** - Services can restart without losing work; unprocessed items remain in queue
+- **Simplicity** - No webhook configuration, message queues, or event infrastructure needed
+- **Scalability** - Multiple service instances can poll concurrently (first-to-claim wins)
+- **Observability** - Work queue is visible as FHIR resources with status
+
+**Polling Logic:**
+- Poll interval: 60 seconds (configurable)
+- On success: Poll immediately for next item (drain queue quickly)
+- On empty: Wait for poll interval
+- On error: Wait for poll interval, then retry
+
+```mermaid
+stateDiagram-v2
+    [*] --> Polling
+    Polling --> Processing: Item found
+    Polling --> Waiting: No items
+    Processing --> Polling: Success (immediate)
+    Processing --> Waiting: Error
+    Waiting --> Polling: After interval
+```
+
+## Data Flow
+
+### Invoice to BAR Message
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as Web UI
+    participant Aidbox
+    participant Builder as Invoice BAR Builder
+    participant Sender as BAR Message Sender
+
+    User->>UI: Create Invoice (draft)
+    UI->>Aidbox: POST /Invoice
+
+    Note over Builder: Polling loop
+    Builder->>Aidbox: GET /Invoice?status=draft&_sort=_lastUpdated&_count=1
+    Aidbox-->>Builder: Invoice
+
+    Builder->>Aidbox: GET /Patient/{id}
+    Builder->>Aidbox: GET /Coverage?beneficiary=Patient/{id}
+    Builder->>Aidbox: GET /Encounter?patient=Patient/{id}
+    Builder->>Aidbox: GET /Condition?patient=Patient/{id}
+    Builder->>Aidbox: GET /Procedure?patient=Patient/{id}
+
+    Builder->>Builder: Generate HL7v2 BAR message
+    Builder->>Aidbox: POST /OutgoingBarMessage (status=pending)
+    Builder->>Aidbox: PATCH /Invoice (status=issued)
+
+    Note over Sender: Polling loop
+    Sender->>Aidbox: GET /OutgoingBarMessage?status=pending&_count=1
+    Aidbox-->>Sender: OutgoingBarMessage
+
+    Sender->>Aidbox: POST /IncomingHL7v2Message
+    Sender->>Aidbox: PUT /OutgoingBarMessage (status=sent)
+```
+
+### Resource Status Transitions
+
+```mermaid
+stateDiagram-v2
+    state Invoice {
+        [*] --> draft: Created
+        draft --> issued: BAR Builder
+        issued --> balanced: Payment
+        issued --> cancelled: Void
+    }
+
+    state OutgoingBarMessage {
+        [*] --> pending: Created by Builder
+        pending --> sent: Sender delivers
+        pending --> error: Delivery failed
+    }
+
+    state IncomingHL7v2Message {
+        [*] --> received: Message arrives
+        received --> processed: Handler processes
+        received --> error: Processing failed
+    }
+```
+
+## HL7v2 Message Generation
+
+The system generates HL7v2 BAR (Billing/Accounts Receivable) messages from FHIR resources:
+
+| FHIR Resource | HL7v2 Segment | Purpose |
+|---------------|---------------|---------|
+| - | MSH | Message header |
+| - | EVN | Event type (P01/P05/P06) |
+| Patient | PID | Patient identification |
+| Encounter | PV1 | Patient visit |
+| Coverage | IN1 | Insurance |
+| Condition | DG1 | Diagnosis |
+| Procedure | PR1 | Procedures |
+| RelatedPerson/Patient | GT1 | Guarantor |
+
+**Trigger Events:**
+- `P01` - Add patient account
+- `P05` - Update account
+- `P06` - End account
+
+
+
