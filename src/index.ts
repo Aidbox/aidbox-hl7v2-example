@@ -29,15 +29,19 @@ interface OutgoingBarMessage {
 interface IncomingHL7v2Message {
   id: string;
   type: string;
+  status?: string;
   date?: string;
   patient?: { reference: string };
   message: string;
+  meta?: { lastUpdated?: string };
 }
 
-const getInvoices = () => getResources<Invoice>("Invoice");
+const getInvoices = (status?: string) =>
+  getResources<Invoice>("Invoice", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
 const getOutgoingMessages = (status?: string) =>
   getResources<OutgoingBarMessage>("OutgoingBarMessage", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
-const getIncomingMessages = () => getResources<IncomingHL7v2Message>("IncomingHL7v2Message");
+const getIncomingMessages = (status?: string) =>
+  getResources<IncomingHL7v2Message>("IncomingHL7v2Message", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
 
 type NavTab = "invoices" | "outgoing" | "incoming";
 
@@ -83,7 +87,7 @@ function renderLayout(title: string, nav: string, content: string): string {
 </html>`;
 }
 
-function renderInvoicesPage(invoices: Invoice[], patients: Patient[]): string {
+function renderInvoicesPage(invoices: Invoice[], patients: Patient[], statusFilter?: string): string {
   const rows = invoices
     .map(
       (inv) => `
@@ -95,7 +99,11 @@ function renderInvoicesPage(invoices: Invoice[], patients: Patient[]): string {
               ? "bg-green-100 text-green-800"
               : inv.status === "draft"
                 ? "bg-yellow-100 text-yellow-800"
-                : "bg-gray-100 text-gray-800"
+                : inv.status === "balanced"
+                  ? "bg-blue-100 text-blue-800"
+                  : inv.status === "cancelled"
+                    ? "bg-red-100 text-red-800"
+                    : "bg-gray-100 text-gray-800"
           }">${inv.status}</span>
         </td>
         <td class="py-3 px-4 text-sm text-gray-600">${inv.subject?.reference || "-"}</td>
@@ -106,6 +114,7 @@ function renderInvoicesPage(invoices: Invoice[], patients: Patient[]): string {
     .join("");
 
   const draftCount = invoices.filter((inv) => inv.status === "draft").length;
+  const invoiceStatuses = ["draft", "issued", "balanced", "cancelled"];
 
   const content = `
     <div class="flex items-center justify-between mb-6">
@@ -126,6 +135,17 @@ function renderInvoicesPage(invoices: Invoice[], patients: Patient[]): string {
           Add Invoice
         </button>
       </div>
+    </div>
+
+    <div class="mb-4 flex gap-2">
+      <a href="/invoices" class="px-3 py-1.5 rounded-lg text-sm font-medium ${!statusFilter ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
+        All
+      </a>
+      ${invoiceStatuses.map((s) => `
+        <a href="/invoices?status=${s}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
+          ${s.charAt(0).toUpperCase() + s.slice(1)}
+        </a>
+      `).join("")}
     </div>
 
     <div id="add-invoice-form" class="hidden mb-6 bg-white rounded-lg shadow p-6">
@@ -203,39 +223,77 @@ function renderInvoicesPage(invoices: Invoice[], patients: Patient[]): string {
   return renderLayout("Invoices", renderNav("invoices"), content);
 }
 
+function formatHL7Message(hl7: string | undefined): string {
+  if (!hl7) return '<span class="text-gray-400">No HL7v2 message</span>';
+
+  const lines = hl7.split('\r').filter(line => line.trim());
+  return lines.map(line => {
+    // Highlight delimiters: | ^ ~ \ &
+    const highlighted = line
+      .replace(/\|/g, '<span class="text-blue-600 font-bold">|</span>')
+      .replace(/\^/g, '<span class="text-purple-600 font-bold">^</span>')
+      .replace(/~/g, '<span class="text-green-600 font-bold">~</span>')
+      .replace(/\\/g, '<span class="text-orange-600 font-bold">\\</span>')
+      .replace(/&/g, '<span class="text-red-600 font-bold">&</span>');
+    return highlighted;
+  }).join('\n');
+}
+
+interface MessageListItem {
+  id: string;
+  statusBadge: { text: string; class: string };
+  meta: string[];
+  hl7Message: string | undefined;
+}
+
+function renderMessageList(items: MessageListItem[]): string {
+  if (items.length === 0) {
+    return '<li class="bg-white rounded-lg shadow p-8 text-center text-gray-500">No messages found</li>';
+  }
+
+  return items.map(item => `
+    <li class="bg-white rounded-lg shadow">
+      <details class="group">
+        <summary class="cursor-pointer list-none p-4 flex items-center justify-between hover:bg-gray-50 rounded-lg">
+          <div class="flex items-center gap-3">
+            <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <span class="font-mono text-sm font-medium">${item.id}</span>
+            <span class="px-2 py-1 rounded-full text-xs font-medium ${item.statusBadge.class}">${item.statusBadge.text}</span>
+          </div>
+          <div class="flex items-center gap-4 text-sm text-gray-500">
+            ${item.meta.map(m => `<span>${m}</span>`).join('')}
+          </div>
+        </summary>
+        <div class="px-4 pb-4">
+          <div class="p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${formatHL7Message(item.hl7Message)}</div>
+        </div>
+      </details>
+    </li>
+  `).join('');
+}
+
 function renderOutgoingMessagesPage(messages: OutgoingBarMessage[], patients: Patient[], invoices: Invoice[], statusFilter?: string): string {
-  const rows = messages
-    .map(
-      (msg) => `
-      <tr class="border-b border-gray-200">
-        <td class="py-3 px-4">
-          <details class="group">
-            <summary class="cursor-pointer list-none flex items-center gap-2">
-              <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-              </svg>
-              <span class="font-mono text-sm">${msg.id}</span>
-            </summary>
-            <div class="mt-3 ml-6 p-3 bg-gray-50 rounded font-mono text-xs text-gray-600 overflow-x-auto whitespace-pre">${msg.hl7v2 || "No HL7v2 message"}</div>
-          </details>
-        </td>
-        <td class="py-3 px-4">
-          <span class="px-2 py-1 rounded-full text-xs font-medium ${
-            msg.status === "sent"
-              ? "bg-green-100 text-green-800"
-              : msg.status === "pending"
-                ? "bg-yellow-100 text-yellow-800"
-                : msg.status === "error"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-gray-100 text-gray-800"
-          }">${msg.status}</span>
-        </td>
-        <td class="py-3 px-4 text-sm text-gray-600">${msg.patient?.reference || "-"}</td>
-        <td class="py-3 px-4 text-sm text-gray-600">${msg.invoice?.reference || "-"}</td>
-        <td class="py-3 px-4 text-sm text-gray-600">${msg.meta?.lastUpdated ? new Date(msg.meta.lastUpdated).toLocaleString() : "-"}</td>
-      </tr>`
-    )
-    .join("");
+  const listItems: MessageListItem[] = messages.map(msg => ({
+    id: msg.id,
+    statusBadge: {
+      text: msg.status,
+      class: msg.status === "sent"
+        ? "bg-green-100 text-green-800"
+        : msg.status === "pending"
+          ? "bg-yellow-100 text-yellow-800"
+          : msg.status === "error"
+            ? "bg-red-100 text-red-800"
+            : "bg-gray-100 text-gray-800"
+    },
+    meta: [
+      msg.patient?.reference?.replace("Patient/", "") || "-",
+      msg.invoice?.reference?.replace("Invoice/", "") || "-",
+      msg.meta?.lastUpdated ? new Date(msg.meta.lastUpdated).toLocaleString() : "-"
+    ],
+    hl7Message: msg.hl7v2
+  }));
 
   const pendingCount = messages.filter((m) => m.status === "pending").length;
 
@@ -310,69 +368,52 @@ function renderOutgoingMessagesPage(messages: OutgoingBarMessage[], patients: Pa
       </form>
     </div>
 
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <table class="w-full">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">ID / HL7v2</th>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Patient</th>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Invoice</th>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows || '<tr><td colspan="5" class="py-8 text-center text-gray-500">No messages found</td></tr>'}
-        </tbody>
-      </table>
-    </div>
+    <ul class="space-y-2">
+      ${renderMessageList(listItems)}
+    </ul>
     <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
 
   return renderLayout("Outgoing Messages", renderNav("outgoing"), content);
 }
 
-function renderIncomingMessagesPage(messages: IncomingHL7v2Message[]): string {
-  const rows = messages
-    .map(
-      (msg) => `
-      <tr class="border-b border-gray-200">
-        <td class="py-3 px-4">
-          <details class="group">
-            <summary class="cursor-pointer list-none flex items-center gap-2">
-              <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-              </svg>
-              <span class="font-mono text-sm">${msg.id}</span>
-            </summary>
-            <div class="mt-3 ml-6 p-3 bg-gray-50 rounded font-mono text-xs text-gray-600 overflow-x-auto whitespace-pre">${msg.message}</div>
-          </details>
-        </td>
-        <td class="py-3 px-4">
-          <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">${msg.type}</span>
-        </td>
-        <td class="py-3 px-4 text-sm text-gray-600">${msg.date || "-"}</td>
-        <td class="py-3 px-4 text-sm text-gray-600">${msg.patient?.reference || "-"}</td>
-      </tr>`
-    )
-    .join("");
+function renderIncomingMessagesPage(messages: IncomingHL7v2Message[], statusFilter?: string): string {
+  const listItems: MessageListItem[] = messages.map(msg => ({
+    id: msg.id,
+    statusBadge: {
+      text: msg.status || "received",
+      class: msg.status === "processed"
+        ? "bg-green-100 text-green-800"
+        : msg.status === "error"
+          ? "bg-red-100 text-red-800"
+          : "bg-blue-100 text-blue-800"
+    },
+    meta: [
+      msg.type,
+      msg.patient?.reference?.replace("Patient/", "") || "-",
+      msg.meta?.lastUpdated ? new Date(msg.meta.lastUpdated).toLocaleString() : "-"
+    ],
+    hl7Message: msg.message
+  }));
+
+  const statuses = ["received", "processed", "error"];
 
   const content = `
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Incoming Messages</h1>
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <table class="w-full">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">ID / Message</th>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Patient</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows || '<tr><td colspan="4" class="py-8 text-center text-gray-500">No messages found</td></tr>'}
-        </tbody>
-      </table>
+
+    <div class="mb-4 flex gap-2">
+      <a href="/incoming-messages" class="px-3 py-1.5 rounded-lg text-sm font-medium ${!statusFilter ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
+        All
+      </a>
+      ${statuses.map(s => `
+        <a href="/incoming-messages?status=${s}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
+          ${s.charAt(0).toUpperCase() + s.slice(1)}
+        </a>
+      `).join("")}
     </div>
+
+    <ul class="space-y-2">
+      ${renderMessageList(listItems)}
+    </ul>
     <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
 
   return renderLayout("Incoming Messages", renderNav("incoming"), content);
@@ -381,16 +422,20 @@ function renderIncomingMessagesPage(messages: IncomingHL7v2Message[]): string {
 Bun.serve({
   port: 3000,
   routes: {
-    "/": async () => {
-      const [invoices, patients] = await Promise.all([getInvoices(), getPatients()]);
-      return new Response(renderInvoicesPage(invoices, patients), {
+    "/": async (req) => {
+      const url = new URL(req.url);
+      const statusFilter = url.searchParams.get("status") || undefined;
+      const [invoices, patients] = await Promise.all([getInvoices(statusFilter), getPatients()]);
+      return new Response(renderInvoicesPage(invoices, patients, statusFilter), {
         headers: { "Content-Type": "text/html" },
       });
     },
     "/invoices": {
-      GET: async () => {
-        const [invoices, patients] = await Promise.all([getInvoices(), getPatients()]);
-        return new Response(renderInvoicesPage(invoices, patients), {
+      GET: async (req) => {
+        const url = new URL(req.url);
+        const statusFilter = url.searchParams.get("status") || undefined;
+        const [invoices, patients] = await Promise.all([getInvoices(statusFilter), getPatients()]);
+        return new Response(renderInvoicesPage(invoices, patients, statusFilter), {
           headers: { "Content-Type": "text/html" },
         });
       },
@@ -469,9 +514,11 @@ Bun.serve({
         });
       },
     },
-    "/incoming-messages": async () => {
-      const messages = await getIncomingMessages();
-      return new Response(renderIncomingMessagesPage(messages), {
+    "/incoming-messages": async (req) => {
+      const url = new URL(req.url);
+      const statusFilter = url.searchParams.get("status") || undefined;
+      const messages = await getIncomingMessages(statusFilter);
+      return new Response(renderIncomingMessagesPage(messages, statusFilter), {
         headers: { "Content-Type": "text/html" },
       });
     },

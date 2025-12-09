@@ -74,6 +74,32 @@ const outgoingBarMessageStatusSP = {
   expression: "OutgoingBarMessage.status",
 };
 
+const incomingHL7v2MessageTypeSP = {
+  resourceType: "SearchParameter",
+  id: "IncomingHL7v2Message-type",
+  url: "http://example.org/SearchParameter/IncomingHL7v2Message-type",
+  name: "type",
+  status: "active",
+  description: "Search IncomingHL7v2Message by type",
+  code: "type",
+  base: ["IncomingHL7v2Message"],
+  type: "string",
+  expression: "IncomingHL7v2Message.type",
+};
+
+const incomingHL7v2MessageStatusSP = {
+  resourceType: "SearchParameter",
+  id: "IncomingHL7v2Message-status",
+  url: "http://example.org/SearchParameter/IncomingHL7v2Message-status",
+  name: "status",
+  status: "active",
+  description: "Search IncomingHL7v2Message by status",
+  code: "status",
+  base: ["IncomingHL7v2Message"],
+  type: "string",
+  expression: "IncomingHL7v2Message.status",
+};
+
 const incomingHL7v2MessageSD = {
   resourceType: "StructureDefinition",
   id: "IncomingHL7v2Message",
@@ -126,6 +152,13 @@ const incomingHL7v2MessageSD = {
         max: "1",
         type: [{ code: "string" }],
       },
+      {
+        id: "IncomingHL7v2Message.status",
+        path: "IncomingHL7v2Message.status",
+        min: 0,
+        max: "1",
+        type: [{ code: "string" }],
+      },
     ],
   },
 };
@@ -141,6 +174,14 @@ async function migrate() {
 
   console.log("Creating IncomingHL7v2Message StructureDefinition...");
   await putResource("StructureDefinition", "IncomingHL7v2Message", incomingHL7v2MessageSD);
+  console.log("  Done.");
+
+  console.log("Creating IncomingHL7v2Message type SearchParameter...");
+  await putResource("SearchParameter", "IncomingHL7v2Message-type", incomingHL7v2MessageTypeSP);
+  console.log("  Done.");
+
+  console.log("Creating IncomingHL7v2Message status SearchParameter...");
+  await putResource("SearchParameter", "IncomingHL7v2Message-status", incomingHL7v2MessageStatusSP);
   console.log("  Done.");
 
   console.log("\nMigration complete.");
