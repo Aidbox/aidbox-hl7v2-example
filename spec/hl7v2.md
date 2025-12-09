@@ -121,113 +121,117 @@ bun src/hl7v2/codegen.ts BAR_P01 --messages > src/hl7v2/messages.ts
 
 ### Segment Builders
 
-Fluent API for building individual segments:
+Fluent API for building segments. Fields use callbacks for complex/repeating types:
 
 ```ts
-import { MSHBuilder, PIDBuilder } from "./hl7v2/fields";
-
-const msh = new MSHBuilder()
-  .set9_1_messageCode("BAR")
-  .set9_2_triggerEvent("P01")
-  .set10_messageControlId("MSG001")
-  .build();
+import { PIDBuilder } from "./hl7v2/fields";
 
 const pid = new PIDBuilder()
-  .set3_1_idNumber("12345")
-  .set5_1_1_surname("Smith")
-  .set5_2_givenName("John")
+  // Primitive field (maxOccurs: 1) - direct value
+  .set1_setIdPid("1")
+  .set8_administrativeSex("M")
+
+  // Complex field (maxOccurs: 1) - callback with datatype builder
+  .set9(msg => msg
+    .set1_messageCode("BAR")
+    .set2_triggerEvent("P01"))
+
+  // Repeating field (maxOccurs: unbounded) - set first value
+  .set3(cx => cx
+    .set1_idNumber("12345")
+    .set5_identifierTypeCode("MR"))
+
+  // Repeating field - add additional values
+  .add3(cx => cx
+    .set1_idNumber("67890")
+    .set5_identifierTypeCode("SSN"))
+
+  // Complex field with nested components (PID.5 = XPN, XPN.1 = FN)
+  .set5(xpn => xpn
+    .set1_surname("Smith")      // XPN.1.1 (FN.1 = surname)
+    .set2_givenName("John"))    // XPN.2
+
   .build();
+```
+
+### Field Access Patterns
+
+| Schema | Method | Example |
+|--------|--------|---------|
+| `maxOccurs: 1`, primitive | `setN_name(value)` | `set8_administrativeSex("M")` |
+| `maxOccurs: 1`, complex | `setN(cb)` | `set9(msg => msg.set1_messageCode("BAR"))` |
+| `maxOccurs: unbounded` | `setN(cb)` / `addN(cb)` | `set3(cx => ...)`, `add3(cx => ...)` |
+
+### DataType Builders
+
+Each complex datatype (CX, XPN, MSG, etc.) gets its own builder:
+
+```ts
+// CXBuilder - Composite ID with Check Digit
+cx.set1_idNumber("12345")
+  .set4_assigningAuthority("Hospital")
+  .set5_identifierTypeCode("MR")
+
+// XPNBuilder - Extended Person Name
+// XPN.1 is FN (Family Name) which has subcomponents, but we flatten common paths
+xpn.set1_surname("Smith")       // sets XPN.1.1 (FN.1)
+   .set2_givenName("John")      // sets XPN.2
+   .set3_middleName("Robert")   // sets XPN.3
+
+// MSGBuilder - Message Type
+msg.set1_messageCode("BAR")
+   .set2_triggerEvent("P01")
+   .set3_messageStructure("BAR_P01")
 ```
 
 ### Nullable Setters
 
-All setter methods accept `string | null | undefined`. When null/undefined is passed, the setter is a no-op (value is not set). This allows passing nullable values directly without fallbacks:
+All setter methods accept `string | null | undefined`. When null/undefined is passed, the setter is a no-op:
 
 ```ts
-// Clean - pass nullable values directly
-pid.set5_1_1_surname(patient.name?.family)
-   .set5_2_givenName(patient.name?.given?.[0])
-   .set11_3_city(patient.address?.city);
-
-// No need for fallbacks like:
-// .set5_1_1_surname(patient.name?.family ?? "")
+// Pass nullable values directly - no fallbacks needed
+pid.set5(xpn => xpn
+    .set1_surname(patient.name?.family)
+    .set2_givenName(patient.name?.given?.[0]))
 ```
 
 **Why all setters accept null:**
-- **Segment fields**: Some have `minOccurs: "1"` (required), some `minOccurs: "0"` (optional)
 - **Data type components**: All have `minOccurs: "0"` in schema (all optional)
-- **Validation**: Required segments are validated at message build time, not field level
-- **Formatter**: Empty/null values are ignored during serialization anyway
-
-This design prioritizes developer ergonomics - pass values as-is from nullable sources without defensive coding.
+- **Validation**: Required segments validated at message build time
+- **Formatter**: Empty/null values ignored during serialization
 
 ### Message Builders
 
-Type-safe builders enforce message structure from schema. Methods accept either:
-1. A pre-built `HL7v2Segment`
-2. A segment builder instance (e.g., `MSHBuilder`)
-3. A callback function that receives the builder for inline configuration
+Type-safe builders enforce message structure from schema:
 
 ```ts
-import { BAR_P01Builder, BAR_P01_VISIT } from "./hl7v2/messages";
+import { BAR_P01Builder } from "./hl7v2/messages";
 
-// Callback API - configure builder inline (recommended)
 const message = new BAR_P01Builder()
   .msh(msh => msh
-    .set9_1_messageCode("BAR")
-    .set9_2_triggerEvent("P01")
+    .set3_sendingApplication("FHIR_APP")
+    .set9(msg => msg
+      .set1_messageCode("BAR")
+      .set2_triggerEvent("P01"))
     .set10_messageControlId("MSG001"))
   .evn(evn => evn
     .set1_eventTypeCode("P01")
     .set2_recordedDateTime("20231201120000"))
   .pid(pid => pid
-    .set3_1_idNumber("12345")
-    .set5_1_1_surname("Smith")
-    .set5_2_givenName("John"))
-  .addVISIT(visit)
-  .build();
-
-// Also accepts pre-built segments or builders
-const mshSegment = new MSHBuilder()
-  .set9_1_messageCode("BAR")
-  .build();
-
-const message2 = new BAR_P01Builder()
-  .msh(mshSegment)           // pre-built segment
-  .evn(new EVNBuilder())     // builder instance
-  .pid(pid => pid...)        // callback
-  .build();
-```
-
-VISIT groups also have builders with callback support:
-
-```ts
-import { BAR_P01Builder, BAR_P01_VISITBuilder } from "./hl7v2/messages";
-
-// Full callback-based API
-new BAR_P01Builder()
-  .msh(msh => msh
-    .set9_1_messageCode("BAR")
-    .set9_2_triggerEvent("P01"))
-  .evn(evn => evn.set1_eventTypeCode("P01"))
-  .pid(pid => pid.set3_1_idNumber("12345"))
+    .set3(cx => cx
+      .set1_idNumber("12345")
+      .set5_identifierTypeCode("MR"))
+    .set5(xpn => xpn
+      .set1_surname("Smith")
+      .set2_givenName("John")))
   .addVISIT(visit => visit
     .pv1(pv1 => pv1.set2_patientClass("I"))
-    .addDG1(dg1 => dg1.set3_1_identifier("J20.9"))
+    .addDG1(dg1 => dg1
+      .set3(ce => ce
+        .set1_identifier("J20.9")
+        .set3_nameOfCodingSystem("ICD10")))
     .addINSURANCE(ins => ins
       .in1(in1 => in1.set1_setIdIn1("1"))))
-  .build();
-
-// Or use plain objects (backward compatible)
-const visit: BAR_P01_VISIT = {
-  pv1: new PV1Builder().set2_patientClass("I").build(),
-  dg1: [new DG1Builder().set3_1_identifier("J20.9").build()],
-};
-new BAR_P01Builder()
-  .msh(mshSegment)
-  .evn(evnSegment)
-  .pid(pidSegment)
-  .addVISIT(visit)
   .build();
 ```
 
@@ -236,18 +240,21 @@ new BAR_P01Builder()
 ```ts
 // Curried functions capture context, return callbacks for builders
 const buildMSH = (input: BarMessageInput) => (msh: MSHBuilder) => msh
-  .set9_1_messageCode("BAR")
-  .set9_2_triggerEvent(input.triggerEvent)
+  .set3_sendingApplication(input.sendingApplication)
+  .set9(msg => msg
+    .set1_messageCode("BAR")
+    .set2_triggerEvent(input.triggerEvent))
   .set10_messageControlId(input.messageControlId);
 
 const buildPID = (input: BarMessageInput) => (pid: PIDBuilder) => {
   const name = input.patient.name?.[0];
   const address = input.patient.address?.[0];
   return pid
-    .set3_1_idNumber(input.patient.identifier?.[0]?.value)
-    .set5_1_1_surname(name?.family)
-    .set5_2_givenName(name?.given?.[0])
-    .set11_3_city(address?.city);
+    .set3(cx => cx.set1_idNumber(input.patient.identifier?.[0]?.value))
+    .set5(xpn => xpn
+      .set1_surname(name?.family)
+      .set2_givenName(name?.given?.[0]))
+    .set11(xad => xad.set3_city(address?.city));
 };
 
 const buildVisit = (input: BarMessageInput) => (visit: BAR_P01_VISITBuilder) => {
@@ -256,7 +263,7 @@ const buildVisit = (input: BarMessageInput) => (visit: BAR_P01_VISITBuilder) => 
   return visit;
 };
 
-// Usage - curried functions called with input, return callbacks
+// Usage
 export function generateBarMessage(input: BarMessageInput): HL7v2Message {
   return new BAR_P01Builder()
     .msh(buildMSH(input))
@@ -264,26 +271,6 @@ export function generateBarMessage(input: BarMessageInput): HL7v2Message {
     .pid(buildPID(input))
     .addVISIT(buildVisit(input))
     .build();
-}
-```
-
-**Generated interfaces and builders:**
-
-```ts
-interface BAR_P01_VISIT {
-  pv1?: HL7v2Segment;
-  dg1?: HL7v2Segment[];
-  procedure?: BAR_P01_PROCEDURE[];
-  gt1?: HL7v2Segment[];
-  insurance?: BAR_P01_INSURANCE[];
-}
-
-class BAR_P01_VISITBuilder {
-  pv1(segment: HL7v2Segment | PV1Builder | ((b: PV1Builder) => PV1Builder)): this;
-  addDG1(segment: HL7v2Segment | DG1Builder | ((b: DG1Builder) => DG1Builder)): this;
-  addPROCEDURE(group: BAR_P01_PROCEDURE | BAR_P01_PROCEDUREBuilder | ((b: BAR_P01_PROCEDUREBuilder) => BAR_P01_PROCEDUREBuilder)): this;
-  // ...
-  build(): BAR_P01_VISIT;
 }
 ```
 
