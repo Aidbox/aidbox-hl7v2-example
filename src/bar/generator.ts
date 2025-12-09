@@ -1,20 +1,10 @@
 /**
  * BAR Message Generator
  * Generates BAR^P01/P05/P06 messages from FHIR resources
- *
- * Based on spec/fhir-to-bar.md mapping:
- * - MSH: Message routing metadata
- * - EVN: Account event (start/update/end)
- * - PID: Patient (+ Account.identifier for PID-18)
- * - PV1/PV2: Encounter (visit context)
- * - GT1: Account.guarantor or RelatedPerson
- * - IN1/IN2/IN3: Coverage (+ Organization as payor)
- * - DG1: Condition (diagnoses)
- * - PR1: Procedure
  */
 
-import type { HL7v2Message, HL7v2Segment } from "../hl7v2/types";
-import {
+import type { HL7v2Message } from "../hl7v2/types";
+import type {
   MSHBuilder,
   EVNBuilder,
   PIDBuilder,
@@ -24,10 +14,12 @@ import {
   DG1Builder,
   PR1Builder,
 } from "../hl7v2/fields";
+import {
+  BAR_P01Builder,
+  type BAR_P01_VISITBuilder,
+} from "../hl7v2/messages";
 import type {
   BarMessageInput,
-  Patient,
-  Account,
   Encounter,
   Coverage,
   RelatedPerson,
@@ -37,88 +29,58 @@ import type {
   Address,
   Organization,
   CodeableConcept,
+  Patient,
 } from "./types";
 
-/**
- * Format date string to HL7v2 timestamp format (YYYYMMDD or YYYYMMDDHHmmss)
- */
+// ============================================================================
+// Helper functions
+// ============================================================================
+
 function formatHL7Date(dateStr: string | undefined): string {
   if (!dateStr) return "";
-  // Remove dashes and colons, handle ISO format
   return dateStr.replace(/[-:T]/g, "").replace(/\.\d+Z?$/, "").substring(0, 14);
 }
 
-/**
- * Get current timestamp in HL7v2 format
- */
 function nowHL7(): string {
   return formatHL7Date(new Date().toISOString());
 }
 
-/**
- * Map FHIR gender to HL7v2 sex (Table 0001)
- */
 function mapGender(gender: string | undefined): string {
   switch (gender) {
-    case "male":
-      return "M";
-    case "female":
-      return "F";
-    case "other":
-      return "O";
-    case "unknown":
-      return "U";
-    default:
-      return "";
+    case "male": return "M";
+    case "female": return "F";
+    case "other": return "O";
+    case "unknown": return "U";
+    default: return "";
   }
 }
 
-/**
- * Map FHIR encounter class to HL7v2 patient class (Table 0004)
- */
 function mapPatientClass(encounterClass: { code?: string } | undefined): string {
   if (!encounterClass?.code) return "";
   switch (encounterClass.code) {
     case "IMP":
     case "ACUTE":
-    case "NONAC":
-      return "I"; // Inpatient
+    case "NONAC": return "I";
     case "AMB":
-    case "OBSENC":
-      return "O"; // Outpatient
-    case "EMER":
-      return "E"; // Emergency
-    case "PRENC":
-      return "P"; // Preadmit
-    default:
-      return encounterClass.code;
+    case "OBSENC": return "O";
+    case "EMER": return "E";
+    case "PRENC": return "P";
+    default: return encounterClass.code;
   }
 }
 
-/**
- * Get first identifier value from array
- */
 function getIdentifierValue(identifiers: { value?: string }[] | undefined): string {
   return identifiers?.[0]?.value ?? "";
 }
 
-/**
- * Get the first HumanName from array
- */
 function getFirstName(names: HumanName[] | undefined): HumanName | undefined {
   return names?.[0];
 }
 
-/**
- * Get the first Address from array
- */
 function getFirstAddress(addresses: Address[] | undefined): Address | undefined {
   return addresses?.[0];
 }
 
-/**
- * Get code from CodeableConcept
- */
 function getCode(concept: CodeableConcept | undefined): { code: string; display: string; system: string } {
   const coding = concept?.coding?.[0];
   return {
@@ -128,9 +90,6 @@ function getCode(concept: CodeableConcept | undefined): { code: string; display:
   };
 }
 
-/**
- * Map FHIR coding system to HL7v2 coding system name
- */
 function mapCodingSystem(system: string | undefined): string {
   if (!system) return "";
   if (system.includes("icd-10")) return "ICD10";
@@ -141,470 +100,299 @@ function mapCodingSystem(system: string | undefined): string {
   return system;
 }
 
-/**
- * Map FHIR relationship code to HL7v2 guarantor type (Table 0063)
- */
 function mapGuarantorRelationship(relationship: CodeableConcept | undefined): string {
   const code = relationship?.coding?.[0]?.code;
-  if (!code) return "SE"; // Default to self
+  if (!code) return "SE";
   switch (code.toUpperCase()) {
-    case "SELF":
-      return "SE";
+    case "SELF": return "SE";
     case "SPOUSE":
-    case "SPS":
-      return "SP";
+    case "SPS": return "SP";
     case "PARENT":
     case "PRN":
     case "MTH":
-    case "FTH":
-      return "PA";
+    case "FTH": return "PA";
     case "CHILD":
-    case "CHD":
-      return "CH";
+    case "CHD": return "CH";
     case "SIBLING":
-    case "SIB":
-      return "SB";
-    case "GUARD":
-      return "GD";
-    default:
-      return "OT"; // Other
+    case "SIB": return "SB";
+    case "GUARD": return "GD";
+    default: return "OT";
   }
 }
 
-/**
- * Build MSH segment
- */
-function buildMSH(input: BarMessageInput): HL7v2Segment {
-  const timestamp = nowHL7();
-  return new MSHBuilder()
+// ============================================================================
+// BarMessageBuilder - fluent builder with FHIR context
+// ============================================================================
+
+export class BarMessageBuilder {
+  private input: BarMessageInput;
+
+  constructor(input: BarMessageInput) {
+    this.input = input;
+  }
+
+  // Segment builders that use this.input
+
+  private buildMSH = (msh: MSHBuilder) => msh
     .set1_fieldSeparator("|")
     .set2_encodingCharacters("^~\\&")
-    .set3_sendingApplication(input.sendingApplication ?? "FHIR_APP")
-    .set4_sendingFacility(input.sendingFacility ?? "FHIR_FAC")
-    .set5_receivingApplication(input.receivingApplication ?? "BILLING_APP")
-    .set6_receivingFacility(input.receivingFacility ?? "BILLING_FAC")
-    .set7_dateTimeOfMessage(timestamp)
+    .set3_sendingApplication(this.input.sendingApplication ?? "FHIR_APP")
+    .set4_sendingFacility(this.input.sendingFacility ?? "FHIR_FAC")
+    .set5_receivingApplication(this.input.receivingApplication ?? "BILLING_APP")
+    .set6_receivingFacility(this.input.receivingFacility ?? "BILLING_FAC")
+    .set7_dateTimeOfMessage(nowHL7())
     .set9_1_messageCode("BAR")
-    .set9_2_triggerEvent(input.triggerEvent)
-    .set9_3_messageStructure(`BAR_${input.triggerEvent}`)
-    .set10_messageControlId(input.messageControlId)
+    .set9_2_triggerEvent(this.input.triggerEvent)
+    .set9_3_messageStructure(`BAR_${this.input.triggerEvent}`)
+    .set10_messageControlId(this.input.messageControlId)
     .set11_1_processingId("P")
-    .set12_1_versionId("2.5.1")
-    .build();
+    .set12_1_versionId("2.5.1");
+
+  private buildEVN = (evn: EVNBuilder) => {
+    const account = this.input.account;
+    let eventDateTime: string;
+
+    if (this.input.triggerEvent === "P01") {
+      eventDateTime = formatHL7Date(account.servicePeriod?.start) || nowHL7();
+    } else if (this.input.triggerEvent === "P06") {
+      eventDateTime = formatHL7Date(account.servicePeriod?.end) || nowHL7();
+    } else {
+      eventDateTime = nowHL7();
+    }
+
+    return evn
+      .set1_eventTypeCode(this.input.triggerEvent)
+      .set2_recordedDateTime(eventDateTime)
+      .set6_eventOccurred(eventDateTime);
+  };
+
+  private buildPID = (pid: PIDBuilder) => {
+    const { patient, account } = this.input;
+    const name = getFirstName(patient.name);
+    const address = getFirstAddress(patient.address);
+    const phone = patient.telecom?.find(t => t.system === "phone");
+    const patientId = getIdentifierValue(patient.identifier);
+    const accountId = getIdentifierValue(account.identifier);
+
+    pid.set1_setIdPid("1");
+
+    if (patientId) {
+      pid.set3_1_idNumber(patientId).set3_5_identifierTypeCode("MR");
+    }
+    if (name) {
+      if (name.family) pid.set5_1_1_surname(name.family);
+      if (name.given?.[0]) pid.set5_2_givenName(name.given[0]);
+      if (name.given?.[1]) pid.set5_3_secondAndFurtherGivenNamesOrInitialsThereof(name.given[1]);
+    }
+    if (patient.birthDate) {
+      pid.set7_dateTimeOfBirth(formatHL7Date(patient.birthDate));
+    }
+    if (patient.gender) {
+      pid.set8_administrativeSex(mapGender(patient.gender));
+    }
+    if (address) {
+      if (address.line?.[0]) pid.set11_1_1_streetOrMailingAddress(address.line[0]);
+      if (address.city) pid.set11_3_city(address.city);
+      if (address.state) pid.set11_4_stateOrProvince(address.state);
+      if (address.postalCode) pid.set11_5_zipOrPostalCode(address.postalCode);
+      if (address.country) pid.set11_6_country(address.country);
+    }
+    if (phone?.value) {
+      pid.set13_1_telephoneNumber(phone.value);
+    }
+    if (accountId) {
+      pid.set18_1_idNumber(accountId);
+    }
+
+    return pid;
+  };
+
+  private buildPV1(encounter: Encounter) {
+    return (pv1: PV1Builder) => {
+      const location = encounter.location?.[0];
+      const visitId = getIdentifierValue(encounter.identifier);
+
+      pv1.set1_setIdPv1("1").set2_patientClass(mapPatientClass(encounter.class));
+
+      if (location?.location?.display) {
+        pv1.set3_1_pointOfCare(location.location.display);
+      }
+      if (visitId) {
+        pv1.set19_1_idNumber(visitId);
+      }
+      if (encounter.period?.start) {
+        pv1.set44_admitDateTime(formatHL7Date(encounter.period.start));
+      }
+      if (encounter.period?.end) {
+        pv1.set45_dischargeDateTime(formatHL7Date(encounter.period.end));
+      }
+
+      return pv1;
+    };
+  }
+
+  private buildGT1(guarantor: RelatedPerson | Patient, setId: number) {
+    return (gt1: GT1Builder) => {
+      const name = getFirstName(guarantor.name);
+      const address = getFirstAddress(guarantor.address);
+      const phone = guarantor.telecom?.find(t => t.system === "phone");
+      const guarantorId = getIdentifierValue(guarantor.identifier);
+
+      gt1.set1_setIdGt1(String(setId));
+
+      if (guarantorId) gt1.set2_1_idNumber(guarantorId);
+      if (name) {
+        if (name.family) gt1.set3_1_1_surname(name.family);
+        if (name.given?.[0]) gt1.set3_2_givenName(name.given[0]);
+      }
+      if (address) {
+        if (address.line?.[0]) gt1.set5_1_1_streetOrMailingAddress(address.line[0]);
+        if (address.city) gt1.set5_3_city(address.city);
+        if (address.state) gt1.set5_4_stateOrProvince(address.state);
+        if (address.postalCode) gt1.set5_5_zipOrPostalCode(address.postalCode);
+        if (address.country) gt1.set5_6_country(address.country);
+      }
+      if (phone?.value) gt1.set6_1_telephoneNumber(phone.value);
+
+      if (guarantor.resourceType === "Patient") {
+        gt1.set10_guarantorType("SE");
+      } else {
+        const relationship = (guarantor as RelatedPerson).relationship?.[0];
+        gt1.set10_guarantorType(mapGuarantorRelationship(relationship));
+      }
+
+      return gt1;
+    };
+  }
+
+  private buildIN1(coverage: Coverage, setId: number, payorOrg?: Organization) {
+    return (in1: IN1Builder) => {
+      const planCode = getCode(coverage.type);
+      const payorId = payorOrg?.identifier?.[0]?.value ?? coverage.payor?.[0]?.reference;
+      const groupClass = coverage.class?.find(c => c.type?.coding?.[0]?.code === "group");
+      const relationship = getCode(coverage.relationship);
+
+      in1.set1_setIdIn1(String(setId));
+
+      if (planCode.code) {
+        in1.set2_1_identifier(planCode.code);
+        if (planCode.display) in1.set2_2_text(planCode.display);
+      }
+      if (payorId) in1.set3_1_idNumber(payorId);
+      if (payorOrg?.name) {
+        in1.set4_1_organizationName(payorOrg.name);
+      } else if (coverage.payor?.[0]?.display) {
+        in1.set4_1_organizationName(coverage.payor[0].display);
+      }
+      if (groupClass?.value) in1.set8_groupNumber(groupClass.value);
+      if (groupClass?.name) in1.set9_1_organizationName(groupClass.name);
+      if (coverage.period?.start) in1.set12_planEffectiveDate(formatHL7Date(coverage.period.start));
+      if (coverage.period?.end) in1.set13_planExpirationDate(formatHL7Date(coverage.period.end));
+      if (relationship.code) {
+        in1.set17_1_identifier(relationship.code);
+        if (relationship.display) in1.set17_2_text(relationship.display);
+      }
+      if (coverage.subscriberId) in1.set36_policyNumber(coverage.subscriberId);
+
+      return in1;
+    };
+  }
+
+  private buildDG1(condition: Condition, setId: number) {
+    return (dg1: DG1Builder) => {
+      const code = getCode(condition.code);
+      const category = getCode(condition.category?.[0]);
+      const diagDate = condition.recordedDate ?? condition.onsetDateTime;
+
+      dg1.set1_setIdDg1(String(setId));
+
+      if (code.system) dg1.set2_diagnosisCodingMethod(code.system);
+      if (code.code) {
+        dg1.set3_1_identifier(code.code);
+        if (code.display) dg1.set3_2_text(code.display);
+        if (code.system) dg1.set3_3_nameOfCodingSystem(code.system);
+      }
+      if (diagDate) dg1.set5_diagnosisDateTime(formatHL7Date(diagDate));
+      if (category.code) dg1.set6_diagnosisType(category.code);
+      dg1.set15_diagnosisPriority(String(setId));
+
+      return dg1;
+    };
+  }
+
+  private buildPR1(procedure: Procedure, setId: number) {
+    return (pr1: PR1Builder) => {
+      const code = getCode(procedure.code);
+      const procDate = procedure.performedDateTime ?? procedure.performedPeriod?.start;
+
+      pr1.set1_setIdPr1(String(setId));
+
+      if (code.system) pr1.set2_procedureCodingMethod(code.system);
+      if (code.code) {
+        pr1.set3_1_identifier(code.code);
+        if (code.display) pr1.set3_2_text(code.display);
+        if (code.system) pr1.set3_3_nameOfCodingSystem(code.system);
+      }
+      if (procDate) pr1.set5_procedureDateTime(formatHL7Date(procDate));
+
+      return pr1;
+    };
+  }
+
+  private buildVisit = (visit: BAR_P01_VISITBuilder) => {
+    const { encounter, conditions, procedures, guarantor, coverages, organizations } = this.input;
+
+    if (encounter) {
+      visit.pv1(this.buildPV1(encounter));
+    }
+
+    conditions?.forEach((condition, idx) => {
+      visit.addDG1(this.buildDG1(condition, idx + 1));
+    });
+
+    procedures?.forEach((procedure, idx) => {
+      visit.addPROCEDURE(proc => proc.pr1(this.buildPR1(procedure, idx + 1)));
+    });
+
+    if (guarantor) {
+      visit.addGT1(this.buildGT1(guarantor, 1));
+    }
+
+    if (coverages?.length) {
+      const sorted = [...coverages].sort((a, b) => (a.order ?? 1) - (b.order ?? 1));
+      sorted.forEach((coverage, idx) => {
+        const payorRef = coverage.payor?.[0]?.reference;
+        const payorOrg = payorRef ? organizations?.get(payorRef) : undefined;
+        visit.addINSURANCE(ins => ins.in1(this.buildIN1(coverage, idx + 1, payorOrg)));
+      });
+    }
+
+    return visit;
+  };
+
+  /**
+   * Build the BAR message
+   */
+  build(): HL7v2Message {
+    return new BAR_P01Builder()
+      .msh(this.buildMSH)
+      .evn(this.buildEVN)
+      .pid(this.buildPID)
+      .addVISIT(this.buildVisit)
+      .build();
+  }
 }
 
-/**
- * Build EVN segment
- * EVN-2 is semantically important:
- * - P01: account start time
- * - P05: time of update
- * - P06: account end time
- */
-function buildEVN(input: BarMessageInput): HL7v2Segment {
-  const account = input.account;
-  let eventDateTime: string;
-
-  if (input.triggerEvent === "P01") {
-    eventDateTime = formatHL7Date(account.servicePeriod?.start) || nowHL7();
-  } else if (input.triggerEvent === "P06") {
-    eventDateTime = formatHL7Date(account.servicePeriod?.end) || nowHL7();
-  } else {
-    eventDateTime = nowHL7();
-  }
-
-  return new EVNBuilder()
-    .set1_eventTypeCode(input.triggerEvent)
-    .set2_recordedDateTime(eventDateTime)
-    .set6_eventOccurred(eventDateTime)
-    .build();
-}
-
-/**
- * Build PID segment from Patient + Account
- *
- * Key mappings:
- * - PID-3: Patient.identifier[] (MRN)
- * - PID-5: Patient.name[]
- * - PID-7: Patient.birthDate
- * - PID-8: Patient.gender
- * - PID-11: Patient.address[]
- * - PID-13: Patient.telecom[]
- * - PID-18: Account.identifier (account number - not in Patient!)
- */
-function buildPID(patient: Patient, account: Account): HL7v2Segment {
-  const name = getFirstName(patient.name);
-  const address = getFirstAddress(patient.address);
-  const phone = patient.telecom?.find((t) => t.system === "phone");
-  const patientId = getIdentifierValue(patient.identifier);
-  const accountId = getIdentifierValue(account.identifier);
-
-  const builder = new PIDBuilder().set1_setIdPid("1");
-
-  // PID-3: Patient Identifier List (MRN)
-  if (patientId) {
-    builder
-      .set3_1_idNumber(patientId)
-      .set3_5_identifierTypeCode("MR");
-  }
-
-  // PID-5: Patient Name
-  if (name) {
-    if (name.family) builder.set5_1_1_surname(name.family);
-    if (name.given?.[0]) builder.set5_2_givenName(name.given[0]);
-    if (name.given?.[1]) builder.set5_3_secondAndFurtherGivenNamesOrInitialsThereof(name.given[1]);
-  }
-
-  // PID-7: Date of Birth
-  if (patient.birthDate) {
-    builder.set7_dateTimeOfBirth(formatHL7Date(patient.birthDate));
-  }
-
-  // PID-8: Administrative Sex
-  if (patient.gender) {
-    builder.set8_administrativeSex(mapGender(patient.gender));
-  }
-
-  // PID-11: Patient Address
-  if (address) {
-    if (address.line?.[0]) builder.set11_1_1_streetOrMailingAddress(address.line[0]);
-    if (address.city) builder.set11_3_city(address.city);
-    if (address.state) builder.set11_4_stateOrProvince(address.state);
-    if (address.postalCode) builder.set11_5_zipOrPostalCode(address.postalCode);
-    if (address.country) builder.set11_6_country(address.country);
-  }
-
-  // PID-13: Phone Number - Home
-  if (phone?.value) {
-    builder.set13_1_telephoneNumber(phone.value);
-  }
-
-  // PID-18: Patient Account Number (from Account, not Patient!)
-  if (accountId) {
-    builder.set18_1_idNumber(accountId);
-  }
-
-  return builder.build();
-}
-
-/**
- * Build PV1 segment from Encounter
- *
- * Key mappings:
- * - PV1-2: Encounter.class
- * - PV1-3: Encounter.location[].location
- * - PV1-19: Encounter.identifier[] (visit number)
- * - PV1-44: Encounter.period.start (admit date)
- * - PV1-45: Encounter.period.end (discharge date)
- */
-function buildPV1(encounter: Encounter): HL7v2Segment {
-  const builder = new PV1Builder().set1_setIdPv1("1");
-
-  // PV1-2: Patient Class
-  builder.set2_patientClass(mapPatientClass(encounter.class));
-
-  // PV1-3: Assigned Patient Location
-  const location = encounter.location?.[0];
-  if (location?.location?.display) {
-    builder.set3_1_pointOfCare(location.location.display);
-  }
-
-  // PV1-19: Visit Number
-  const visitId = getIdentifierValue(encounter.identifier);
-  if (visitId) {
-    builder.set19_1_idNumber(visitId);
-  }
-
-  // PV1-44: Admit Date/Time
-  if (encounter.period?.start) {
-    builder.set44_admitDateTime(formatHL7Date(encounter.period.start));
-  }
-
-  // PV1-45: Discharge Date/Time
-  if (encounter.period?.end) {
-    builder.set45_dischargeDateTime(formatHL7Date(encounter.period.end));
-  }
-
-  return builder.build();
-}
-
-/**
- * Build GT1 segment from RelatedPerson or Patient (if self-guarantor)
- *
- * Key mappings:
- * - GT1-2: Guarantor Number
- * - GT1-3: Guarantor Name
- * - GT1-5: Guarantor Address
- * - GT1-6: Guarantor Phone
- * - GT1-10: Guarantor Type (relationship)
- */
-function buildGT1(guarantor: RelatedPerson | Patient, setId: number = 1): HL7v2Segment {
-  const name = getFirstName(guarantor.name);
-  const address = getFirstAddress(guarantor.address);
-  const phone = guarantor.telecom?.find((t) => t.system === "phone");
-  const guarantorId = getIdentifierValue(guarantor.identifier);
-
-  const builder = new GT1Builder().set1_setIdGt1(String(setId));
-
-  // GT1-2: Guarantor Number
-  if (guarantorId) {
-    builder.set2_1_idNumber(guarantorId);
-  }
-
-  // GT1-3: Guarantor Name
-  if (name) {
-    if (name.family) builder.set3_1_1_surname(name.family);
-    if (name.given?.[0]) builder.set3_2_givenName(name.given[0]);
-  }
-
-  // GT1-5: Guarantor Address
-  if (address) {
-    if (address.line?.[0]) builder.set5_1_1_streetOrMailingAddress(address.line[0]);
-    if (address.city) builder.set5_3_city(address.city);
-    if (address.state) builder.set5_4_stateOrProvince(address.state);
-    if (address.postalCode) builder.set5_5_zipOrPostalCode(address.postalCode);
-    if (address.country) builder.set5_6_country(address.country);
-  }
-
-  // GT1-6: Guarantor Phone Number
-  if (phone?.value) {
-    builder.set6_1_telephoneNumber(phone.value);
-  }
-
-  // GT1-10: Guarantor Type
-  if (guarantor.resourceType === "Patient") {
-    builder.set10_guarantorType("SE"); // Self
-  } else {
-    const relationship = (guarantor as RelatedPerson).relationship?.[0];
-    builder.set10_guarantorType(mapGuarantorRelationship(relationship));
-  }
-
-  return builder.build();
-}
-
-/**
- * Build IN1 segment from Coverage
- *
- * Key mappings:
- * - IN1-1: Set ID (1=primary, 2=secondary, ...)
- * - IN1-2: Insurance Plan ID (Coverage.class or Coverage.type)
- * - IN1-3: Insurance Company ID (Coverage.payor.identifier)
- * - IN1-4: Insurance Company Name (Organization.name from payor)
- * - IN1-8: Group Number (Coverage.class[group])
- * - IN1-12: Plan Effective Date
- * - IN1-13: Plan Expiration Date
- * - IN1-17: Insured's Relationship to Patient
- * - IN1-36: Policy Number (Coverage.subscriberId)
- */
-function buildIN1(
-  coverage: Coverage,
-  setId: number,
-  payorOrg?: Organization
-): HL7v2Segment {
-  const builder = new IN1Builder().set1_setIdIn1(String(setId));
-
-  // IN1-2: Insurance Plan ID (from Coverage.type)
-  const planCode = getCode(coverage.type);
-  if (planCode.code) {
-    builder.set2_1_identifier(planCode.code);
-    if (planCode.display) builder.set2_2_text(planCode.display);
-  }
-
-  // IN1-3: Insurance Company ID (from payor)
-  const payorId = payorOrg?.identifier?.[0]?.value ?? coverage.payor?.[0]?.reference;
-  if (payorId) {
-    builder.set3_1_idNumber(payorId);
-  }
-
-  // IN1-4: Insurance Company Name
-  if (payorOrg?.name) {
-    builder.set4_1_organizationName(payorOrg.name);
-  } else if (coverage.payor?.[0]?.display) {
-    builder.set4_1_organizationName(coverage.payor[0].display);
-  }
-
-  // IN1-8: Group Number (from Coverage.class with type=group)
-  const groupClass = coverage.class?.find(
-    (c) => c.type?.coding?.[0]?.code === "group"
-  );
-  if (groupClass?.value) {
-    builder.set8_groupNumber(groupClass.value);
-  }
-
-  // IN1-9: Group Name
-  if (groupClass?.name) {
-    builder.set9_1_organizationName(groupClass.name);
-  }
-
-  // IN1-12: Plan Effective Date
-  if (coverage.period?.start) {
-    builder.set12_planEffectiveDate(formatHL7Date(coverage.period.start));
-  }
-
-  // IN1-13: Plan Expiration Date
-  if (coverage.period?.end) {
-    builder.set13_planExpirationDate(formatHL7Date(coverage.period.end));
-  }
-
-  // IN1-17: Insured's Relationship to Patient
-  const relationship = getCode(coverage.relationship);
-  if (relationship.code) {
-    builder.set17_1_identifier(relationship.code);
-    if (relationship.display) builder.set17_2_text(relationship.display);
-  }
-
-  // IN1-36: Policy Number / Subscriber ID
-  if (coverage.subscriberId) {
-    builder.set36_policyNumber(coverage.subscriberId);
-  }
-
-  return builder.build();
-}
-
-/**
- * Build DG1 segment from Condition
- *
- * Key mappings:
- * - DG1-1: Set ID
- * - DG1-3: Diagnosis Code (Condition.code)
- * - DG1-5: Diagnosis Date/Time
- * - DG1-6: Diagnosis Type
- * - DG1-15: Diagnosis Priority
- */
-function buildDG1(condition: Condition, setId: number): HL7v2Segment {
-  const code = getCode(condition.code);
-  const category = getCode(condition.category?.[0]);
-
-  const builder = new DG1Builder().set1_setIdDg1(String(setId));
-
-  // DG1-2: Diagnosis Coding Method (deprecated but some systems use it)
-  if (code.system) {
-    builder.set2_diagnosisCodingMethod(code.system);
-  }
-
-  // DG1-3: Diagnosis Code
-  if (code.code) {
-    builder.set3_1_identifier(code.code);
-    if (code.display) builder.set3_2_text(code.display);
-    if (code.system) builder.set3_3_nameOfCodingSystem(code.system);
-  }
-
-  // DG1-5: Diagnosis Date/Time
-  const diagDate = condition.recordedDate ?? condition.onsetDateTime;
-  if (diagDate) {
-    builder.set5_diagnosisDateTime(formatHL7Date(diagDate));
-  }
-
-  // DG1-6: Diagnosis Type (A=admitting, W=working, F=final)
-  if (category.code) {
-    builder.set6_diagnosisType(category.code);
-  }
-
-  // DG1-15: Diagnosis Priority (1=primary)
-  builder.set15_diagnosisPriority(String(setId));
-
-  return builder.build();
-}
-
-/**
- * Build PR1 segment from Procedure
- *
- * Key mappings:
- * - PR1-1: Set ID
- * - PR1-3: Procedure Code
- * - PR1-5: Procedure Date/Time
- * - PR1-6: Procedure Functional Type
- */
-function buildPR1(procedure: Procedure, setId: number): HL7v2Segment {
-  const code = getCode(procedure.code);
-
-  const builder = new PR1Builder().set1_setIdPr1(String(setId));
-
-  // PR1-2: Procedure Coding Method (deprecated)
-  if (code.system) {
-    builder.set2_procedureCodingMethod(code.system);
-  }
-
-  // PR1-3: Procedure Code
-  if (code.code) {
-    builder.set3_1_identifier(code.code);
-    if (code.display) builder.set3_2_text(code.display);
-    if (code.system) builder.set3_3_nameOfCodingSystem(code.system);
-  }
-
-  // PR1-5: Procedure Date/Time
-  const procDate = procedure.performedDateTime ?? procedure.performedPeriod?.start;
-  if (procDate) {
-    builder.set5_procedureDateTime(formatHL7Date(procDate));
-  }
-
-  return builder.build();
-}
+// ============================================================================
+// Convenience function
+// ============================================================================
 
 /**
  * Generate a BAR message from FHIR resources
- *
- * @param input - Bundle of FHIR resources and message metadata
- * @returns HL7v2 BAR message as array of segments
- *
- * Message structure (BAR^P01/P05):
- * MSH - Message Header
- * EVN - Event Type
- * PID - Patient Identification
- * [PV1] - Patient Visit
- * {DG1} - Diagnosis (repeating)
- * {PR1} - Procedure (repeating)
- * {GT1} - Guarantor (repeating)
- * {IN1} - Insurance (repeating)
  */
 export function generateBarMessage(input: BarMessageInput): HL7v2Message {
-  const segments: HL7v2Message = [];
-
-  // Required segments
-  segments.push(buildMSH(input));
-  segments.push(buildEVN(input));
-  segments.push(buildPID(input.patient, input.account));
-
-  // PV1 if encounter provided
-  if (input.encounter) {
-    segments.push(buildPV1(input.encounter));
-  }
-
-  // DG1 segments for conditions
-  if (input.conditions?.length) {
-    input.conditions.forEach((condition, idx) => {
-      segments.push(buildDG1(condition, idx + 1));
-    });
-  }
-
-  // PR1 segments for procedures
-  if (input.procedures?.length) {
-    input.procedures.forEach((procedure, idx) => {
-      segments.push(buildPR1(procedure, idx + 1));
-    });
-  }
-
-  // GT1 for guarantor
-  if (input.guarantor) {
-    segments.push(buildGT1(input.guarantor, 1));
-  }
-
-  // IN1 segments for coverages
-  if (input.coverages?.length) {
-    // Sort by order (primary first)
-    const sortedCoverages = [...input.coverages].sort(
-      (a, b) => (a.order ?? 1) - (b.order ?? 1)
-    );
-
-    sortedCoverages.forEach((coverage, idx) => {
-      // Try to resolve payor organization
-      const payorRef = coverage.payor?.[0]?.reference;
-      const payorOrg = payorRef ? input.organizations?.get(payorRef) : undefined;
-      segments.push(buildIN1(coverage, idx + 1, payorOrg));
-    });
-  }
-
-  return segments;
+  return new BarMessageBuilder(input).build();
 }
 
-// Re-export types for convenience
+// Re-export types
 export type { BarMessageInput } from "./types";
