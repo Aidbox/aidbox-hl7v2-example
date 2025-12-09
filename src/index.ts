@@ -1,25 +1,4 @@
-const AIDBOX_URL = "http://localhost:8080";
-const CLIENT_ID = "root";
-const CLIENT_SECRET = "Vbro4upIT1";
-
-const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
-
-async function aidboxFetch(path: string, options: RequestInit = {}) {
-  const response = await fetch(`${AIDBOX_URL}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/fhir+json",
-      ...options.headers,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-  }
-
-  return response.json();
-}
+import { getResources } from "./aidbox";
 
 interface Invoice {
   id: string;
@@ -37,32 +16,39 @@ interface OutgoingBarMessage {
   hl7v2?: string;
 }
 
-interface Bundle<T> {
-  total?: number;
-  entry?: Array<{ resource: T }>;
+interface IncomingHL7v2Message {
+  id: string;
+  type: string;
+  date?: string;
+  patient?: { reference: string };
+  message: string;
 }
 
-async function getInvoices(): Promise<Invoice[]> {
-  const bundle = (await aidboxFetch("/fhir/Invoice?_count=100")) as Bundle<Invoice>;
-  return bundle.entry?.map((e) => e.resource) || [];
-}
+const getInvoices = () => getResources<Invoice>("Invoice");
+const getOutgoingMessages = () => getResources<OutgoingBarMessage>("OutgoingBarMessage");
+const getIncomingMessages = () => getResources<IncomingHL7v2Message>("IncomingHL7v2Message");
 
-async function getOutgoingMessages(): Promise<OutgoingBarMessage[]> {
-  const bundle = (await aidboxFetch("/fhir/OutgoingBarMessage?_count=100")) as Bundle<OutgoingBarMessage>;
-  return bundle.entry?.map((e) => e.resource) || [];
-}
+type NavTab = "invoices" | "outgoing" | "incoming";
 
-function renderNav(active: "invoices" | "messages"): string {
+function renderNav(active: NavTab): string {
+  const tabs: Array<{ id: NavTab; href: string; label: string }> = [
+    { id: "invoices", href: "/invoices", label: "Invoices" },
+    { id: "outgoing", href: "/outgoing-messages", label: "Outgoing Messages" },
+    { id: "incoming", href: "/incoming-messages", label: "Incoming Messages" },
+  ];
+
   return `
   <nav class="bg-white shadow mb-6">
     <div class="container mx-auto px-4">
       <div class="flex space-x-4">
-        <a href="/invoices" class="py-4 px-2 border-b-2 ${active === "invoices" ? "border-blue-500 text-blue-600 font-semibold" : "border-transparent text-gray-600 hover:text-gray-800"}">
-          Invoices
-        </a>
-        <a href="/outgoing-messages" class="py-4 px-2 border-b-2 ${active === "messages" ? "border-blue-500 text-blue-600 font-semibold" : "border-transparent text-gray-600 hover:text-gray-800"}">
-          Outgoing Messages
-        </a>
+        ${tabs
+          .map(
+            (tab) => `
+        <a href="${tab.href}" class="py-4 px-2 border-b-2 ${active === tab.id ? "border-blue-500 text-blue-600 font-semibold" : "border-transparent text-gray-600 hover:text-gray-800"}">
+          ${tab.label}
+        </a>`
+          )
+          .join("")}
       </div>
     </div>
   </nav>`;
@@ -131,7 +117,7 @@ function renderInvoicesPage(invoices: Invoice[]): string {
   return renderLayout("Invoices", renderNav("invoices"), content);
 }
 
-function renderMessagesPage(messages: OutgoingBarMessage[]): string {
+function renderOutgoingMessagesPage(messages: OutgoingBarMessage[]): string {
   const rows = messages
     .map(
       (msg) => `
@@ -183,7 +169,54 @@ function renderMessagesPage(messages: OutgoingBarMessage[]): string {
     </div>
     <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
 
-  return renderLayout("Outgoing Messages", renderNav("messages"), content);
+  return renderLayout("Outgoing Messages", renderNav("outgoing"), content);
+}
+
+function renderIncomingMessagesPage(messages: IncomingHL7v2Message[]): string {
+  const rows = messages
+    .map(
+      (msg) => `
+      <tr class="border-b border-gray-200">
+        <td class="py-3 px-4">
+          <details class="group">
+            <summary class="cursor-pointer list-none flex items-center gap-2">
+              <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+              <span class="font-mono text-sm">${msg.id}</span>
+            </summary>
+            <div class="mt-3 ml-6 p-3 bg-gray-50 rounded font-mono text-xs text-gray-600 overflow-x-auto whitespace-pre">${msg.message}</div>
+          </details>
+        </td>
+        <td class="py-3 px-4">
+          <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">${msg.type}</span>
+        </td>
+        <td class="py-3 px-4 text-sm text-gray-600">${msg.date || "-"}</td>
+        <td class="py-3 px-4 text-sm text-gray-600">${msg.patient?.reference || "-"}</td>
+      </tr>`
+    )
+    .join("");
+
+  const content = `
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Incoming Messages</h1>
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">ID / Message</th>
+            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Patient</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || '<tr><td colspan="4" class="py-8 text-center text-gray-500">No messages found</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
+
+  return renderLayout("Incoming Messages", renderNav("incoming"), content);
 }
 
 Bun.serve({
@@ -203,7 +236,13 @@ Bun.serve({
     },
     "/outgoing-messages": async () => {
       const messages = await getOutgoingMessages();
-      return new Response(renderMessagesPage(messages), {
+      return new Response(renderOutgoingMessagesPage(messages), {
+        headers: { "Content-Type": "text/html" },
+      });
+    },
+    "/incoming-messages": async () => {
+      const messages = await getIncomingMessages();
+      return new Response(renderIncomingMessagesPage(messages), {
         headers: { "Content-Type": "text/html" },
       });
     },
