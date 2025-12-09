@@ -71,7 +71,7 @@ describe("MLPParser", () => {
 
     let messages: string[] = [];
     for (let i = 0; i < framedMessage.length; i++) {
-      const result = parser.processData(Buffer.from([framedMessage[i]]));
+      const result = parser.processData(Buffer.from([framedMessage[i] ?? 0]));
       messages = messages.concat(result);
     }
 
@@ -324,9 +324,7 @@ describe("MLP Server Functional Tests", () => {
   });
 
   test("stores message in Aidbox", async () => {
-    const mockFetch = globalThis.fetch as unknown as ReturnType<typeof mock> & {
-      mock: { calls: [string, RequestInit][] };
-    };
+    const mockFetch = globalThis.fetch as unknown as ReturnType<typeof mock>;
 
     const client = net.createConnection({ port });
     await new Promise<void>((resolve) => client.on("connect", resolve));
@@ -338,7 +336,7 @@ describe("MLP Server Functional Tests", () => {
 
     expect(mockFetch).toHaveBeenCalled();
 
-    const calls = mockFetch.mock.calls;
+    const calls = mockFetch.mock.calls as [string, RequestInit][];
     const postCall = calls.find(([url, opts]) =>
       url.includes("/fhir/IncomingHL7v2Message") && opts?.method === "POST"
     );
