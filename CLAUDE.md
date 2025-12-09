@@ -19,12 +19,23 @@ docker compose up -d
 # Run database migrations (creates custom resources)
 bun src/migrate.ts
 
-# Start the web server
-bun src/index.ts
+# Start the web server (with hot reload, logs to file)
+bun run dev
 ```
 
 - **Web UI**: http://localhost:3000
 - **Aidbox**: http://localhost:8080
+
+## Development Scripts
+
+```sh
+bun run dev   # Start server with hot reload (logs to logs/server.log, PID in logs/server.pid)
+bun run stop  # Stop the server
+bun run logs  # Tail server logs (tail -f logs/server.log)
+
+# Load test data (5 patients with encounters, conditions, procedures, coverages)
+bun scripts/load-test-data.ts
+```
 
 ## Project Structure
 
