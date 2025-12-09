@@ -1,8 +1,60 @@
 ---
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
+description: Aidbox HL7 Integration - Use Bun instead of Node.js, npm, pnpm, or vite.
 globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
 alwaysApply: false
 ---
+
+# Aidbox HL7 Integration
+
+## Project Overview
+
+This project integrates with Aidbox FHIR server for HL7v2 message processing. It provides a web UI to view Invoices, Outgoing BAR messages, and Incoming HL7v2 messages.
+
+## Quick Start
+
+```sh
+# Start Aidbox and PostgreSQL
+docker compose up -d
+
+# Run database migrations (creates custom resources)
+bun src/migrate.ts
+
+# Start the web server
+bun src/index.ts
+```
+
+- **Web UI**: http://localhost:3000
+- **Aidbox**: http://localhost:8080
+
+## Project Structure
+
+- `src/index.ts` - Bun HTTP server with routes for Invoices, Outgoing/Incoming Messages
+- `src/aidbox.ts` - Reusable Aidbox client with `aidboxFetch`, `getResources`, `putResource`
+- `src/migrate.ts` - Custom resource StructureDefinitions (OutgoingBarMessage, IncomingHL7v2Message)
+- `docker-compose.yaml` - Aidbox and PostgreSQL setup
+
+## Custom FHIR Resources
+
+### OutgoingBarMessage
+- `patient` (Reference to Patient) - required
+- `invoice` (Reference to Invoice) - required
+- `status` (string) - required
+- `hl7v2` (string) - optional
+
+### IncomingHL7v2Message
+- `type` (string) - required
+- `date` (dateTime) - optional
+- `patient` (Reference to Patient) - optional
+- `message` (string) - required
+
+## Aidbox Credentials (Development)
+
+From docker-compose.yaml:
+- URL: `http://localhost:8080`
+- Client ID: `root`
+- Client Secret: `Vbro4upIT1`
+
+## Bun Guidelines
 
 Default to using Bun instead of Node.js.
 
