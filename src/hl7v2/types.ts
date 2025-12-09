@@ -55,14 +55,14 @@ export function getComponent(field: FieldValue | undefined, ...path: number[]): 
     if (Array.isArray(current)) {
       current = current[0];
     }
-    if (typeof current === 'object' && !Array.isArray(current)) {
+    if (current !== undefined && typeof current === 'object' && !Array.isArray(current)) {
       current = current[idx];
     }
   }
 
   if (typeof current === 'string') return current;
-  if (Array.isArray(current)) return getComponent(current[0]);
-  if (typeof current === 'object') {
+  if (Array.isArray(current) && current[0] !== undefined) return getComponent(current[0]);
+  if (current !== undefined && typeof current === 'object' && !Array.isArray(current)) {
     // Return first subcomponent for nested complex types
     return getComponent(current[1]);
   }
@@ -90,37 +90,38 @@ export function setComponent(
     fields[fieldNum] = {};
   }
 
-  let current: FieldValue = fields[fieldNum];
+  let current: FieldValue = fields[fieldNum]!;
 
   // If array, work with first element
   if (Array.isArray(current)) {
     if (current.length === 0) {
       current.push({});
     }
-    current = current[0];
+    current = current[0]!;
   }
 
   // Navigate/create path except last element
   for (let i = 0; i < componentPath.length - 1; i++) {
     const idx = componentPath[i];
+    if (idx === undefined) continue;
     if (typeof current === 'string') {
       throw new Error('Cannot set component on string value');
     }
     if (Array.isArray(current)) {
       if (current.length === 0) current.push({});
-      current = current[0];
+      current = current[0]!;
     }
     if (typeof current === 'object' && !Array.isArray(current)) {
       if (current[idx] === undefined) {
         current[idx] = {};
       }
-      current = current[idx];
+      current = current[idx]!;
     }
   }
 
   // Set final value
   const lastIdx = componentPath[componentPath.length - 1];
-  if (typeof current === 'object' && !Array.isArray(current)) {
+  if (lastIdx !== undefined && typeof current === 'object' && !Array.isArray(current)) {
     current[lastIdx] = value;
   }
 }

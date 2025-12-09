@@ -85,7 +85,7 @@ const insurers = [
 function formatDate(daysAgo: number): string {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
-  return date.toISOString().split("T")[0];
+  return date.toISOString().split("T")[0] ?? "";
 }
 
 function formatDateTime(daysAgo: number, hour: number = 9): string {
@@ -112,10 +112,10 @@ async function loadTestData() {
 
   // Create Patients with related resources
   for (let i = 0; i < testPatients.length; i++) {
-    const p = testPatients[i];
-    const insurer = insurers[i % insurers.length];
-    const condition = conditions[i];
-    const procedure = procedures[i];
+    const p = testPatients[i]!;
+    const insurer = insurers[i % insurers.length]!;
+    const condition = conditions[i]!;
+    const procedure = procedures[i]!;
     const daysAgo = (i + 1) * 7; // Each patient visited 7, 14, 21, 28, 35 days ago
 
     // Patient

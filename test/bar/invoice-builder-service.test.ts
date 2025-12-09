@@ -8,7 +8,7 @@ import {
 } from "../../src/bar/invoice-builder-service";
 
 // Mock fetch for testing
-const mockFetch = mock(() => Promise.resolve(new Response()));
+const mockFetch = mock((url: string, options?: RequestInit) => Promise.resolve(new Response())) as unknown as typeof fetch & { mock: { calls: unknown[][] }; mockReset: () => void; mockImplementation: (fn: (url: string, options?: RequestInit) => Promise<Response>) => typeof fetch };
 
 // Test fixtures
 const testInvoice: Invoice = {
@@ -265,7 +265,7 @@ describe("createInvoiceBarBuilderService", () => {
           headers: { "Content-Type": "application/json" },
         })
       )
-    );
+    ) as unknown as typeof fetch;
 
     try {
       const service = createInvoiceBarBuilderService({
@@ -290,7 +290,7 @@ describe("createInvoiceBarBuilderService", () => {
     const originalFetch = globalThis.fetch;
     const onError = mock(() => {});
 
-    globalThis.fetch = mock(() => Promise.reject(new Error("Network error")));
+    globalThis.fetch = mock(() => Promise.reject(new Error("Network error"))) as unknown as typeof fetch;
 
     try {
       const service = createInvoiceBarBuilderService({

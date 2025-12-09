@@ -121,84 +121,126 @@ bun src/hl7v2/codegen.ts BAR_P01 --messages > src/hl7v2/messages.ts
 
 ### Segment Builders
 
-Fluent API for building segments. Fields use callbacks for complex/repeating types:
+Fluent API for building segments. Method names follow the pattern `set_[segment][idx]_fieldName`:
 
 ```ts
 import { PIDBuilder } from "./hl7v2/fields";
 
 const pid = new PIDBuilder()
-  // Primitive field (maxOccurs: 1) - direct value
-  .set1_setIdPid("1")
-  .set8_administrativeSex("M")
+  // Primitive field - direct value
+  .set_pid1_setIdPid("1")
+  .set_pid8_administrativeSex("M")
 
-  // Complex field (maxOccurs: 1) - callback with datatype builder
-  .set9(msg => msg
-    .set1_messageCode("BAR")
-    .set2_triggerEvent("P01"))
+  // Complex field - record object with __N suffix for component positions
+  .set_pid5_patientName([{
+    familyName__1: {
+      surname__1: "Smith",
+      ownSurnamePrefix__2: "van"
+    },
+    givenName__2: "John",
+    middleName__3: "Robert",
+    suffix__4: "Jr"
+  }])
 
-  // Repeating field (maxOccurs: unbounded) - set first value
-  .set3(cx => cx
-    .set1_idNumber("12345")
-    .set5_identifierTypeCode("MR"))
+  // Repeating field - set all values as array
+  .set_pid3_patientIdentifierList([{
+    idNumber__1: "12345",
+    assigningAuthority__4: {
+      namespaceId__1: "Hospital"
+    },
+    identifierTypeCode__5: "MR"
+  }])
 
-  // Repeating field - add additional values
-  .add3(cx => cx
-    .set1_idNumber("67890")
-    .set5_identifierTypeCode("SSN"))
-
-  // Complex field with nested components (PID.5 = XPN, XPN.1 = FN)
-  .set5(xpn => xpn
-    .set1_surname("Smith")      // XPN.1.1 (FN.1 = surname)
-    .set2_givenName("John"))    // XPN.2
+  // Repeating field - add additional values one by one
+  .add_pid3_patientIdentifierList({
+    idNumber__1: "67890",
+    identifierTypeCode__5: "SSN"
+  })
 
   .build();
+```
+
+### Field Naming Convention
+
+Field names use `__N` suffix to indicate HL7v2 component position:
+
+```
+{name}__N     →  component N
+{name}__N__M  →  component N, subcomponent M (flattened in parent)
+```
+
+Examples:
+- `givenName__2` → XPN.2
+- `surname__1` → FN.1 (when nested in `familyName__1`)
+- `idNumber__1` → CX.1
+
+### DataType Interfaces
+
+Generated interfaces mirror HL7v2 datatype structure:
+
+```ts
+// XPN - Extended Person Name
+interface XPN {
+  familyName__1?: FN;        // complex component
+  givenName__2?: string;     // primitive component
+  middleName__3?: string;
+  suffix__4?: string;
+  prefix__5?: string;
+  degree__6?: string;
+  nameTypeCode__7?: string;
+  // ...
+}
+
+// FN - Family Name (nested in XPN.1)
+interface FN {
+  surname__1?: string;
+  ownSurnamePrefix__2?: string;
+  ownSurname__3?: string;
+  surnamePrefixFromPartner__4?: string;
+  surnameFromPartner__5?: string;
+}
+
+// CX - Composite ID
+interface CX {
+  idNumber__1?: string;
+  checkDigit__2?: string;
+  checkDigitScheme__3?: string;
+  assigningAuthority__4?: HD;
+  identifierTypeCode__5?: string;
+  assigningFacility__6?: HD;
+  // ...
+}
+
+// HD - Hierarchic Designator
+interface HD {
+  namespaceId__1?: string;
+  universalId__2?: string;
+  universalIdType__3?: string;
+}
 ```
 
 ### Field Access Patterns
 
 | Schema | Method | Example |
 |--------|--------|---------|
-| `maxOccurs: 1`, primitive | `setN_name(value)` | `set8_administrativeSex("M")` |
-| `maxOccurs: 1`, complex | `setN(cb)` | `set9(msg => msg.set1_messageCode("BAR"))` |
-| `maxOccurs: unbounded` | `setN(cb)` / `addN(cb)` | `set3(cx => ...)`, `add3(cx => ...)` |
+| primitive | `set_[seg][N]_name(value)` | `set_pid8_administrativeSex("M")` |
+| complex, single | `set_[seg][N]_name(record)` | `set_msh9_messageType({ messageCode__1: "BAR" })` |
+| complex, repeating | `set_[seg][N]_name(records[])` | `set_pid3_patientIdentifierList([{ idNumber__1: "123" }])` |
+| complex, repeating | `add_[seg][N]_name(record)` | `add_pid3_patientIdentifierList({ idNumber__1: "456" })` |
 
-### DataType Builders
+### Nullable Fields
 
-Each complex datatype (CX, XPN, MSG, etc.) gets its own builder:
-
-```ts
-// CXBuilder - Composite ID with Check Digit
-cx.set1_idNumber("12345")
-  .set4_assigningAuthority("Hospital")
-  .set5_identifierTypeCode("MR")
-
-// XPNBuilder - Extended Person Name
-// XPN.1 is FN (Family Name) which has subcomponents, but we flatten common paths
-xpn.set1_surname("Smith")       // sets XPN.1.1 (FN.1)
-   .set2_givenName("John")      // sets XPN.2
-   .set3_middleName("Robert")   // sets XPN.3
-
-// MSGBuilder - Message Type
-msg.set1_messageCode("BAR")
-   .set2_triggerEvent("P01")
-   .set3_messageStructure("BAR_P01")
-```
-
-### Nullable Setters
-
-All setter methods accept `string | null | undefined`. When null/undefined is passed, the setter is a no-op:
+All fields in record objects are optional. Undefined/null values are ignored:
 
 ```ts
-// Pass nullable values directly - no fallbacks needed
-pid.set5(xpn => xpn
-    .set1_surname(patient.name?.family)
-    .set2_givenName(patient.name?.given?.[0]))
+// Pass values directly - undefined fields are skipped
+pid.set_pid5_patientName([{
+  familyName__1: {
+    surname__1: patient.name?.family  // undefined if missing
+  },
+  givenName__2: patient.name?.given?.[0]
+}])
 ```
-
-**Why all setters accept null:**
-- **Data type components**: All have `minOccurs: "0"` in schema (all optional)
-- **Validation**: Required segments validated at message build time
-- **Formatter**: Empty/null values ignored during serialization
 
 ### Message Builders
 
@@ -209,61 +251,61 @@ import { BAR_P01Builder } from "./hl7v2/messages";
 
 const message = new BAR_P01Builder()
   .msh(msh => msh
-    .set3_sendingApplication("FHIR_APP")
-    .set9(msg => msg
-      .set1_messageCode("BAR")
-      .set2_triggerEvent("P01"))
-    .set10_messageControlId("MSG001"))
+    .set_msh3_sendingApplication({ namespaceId__1: "FHIR_APP" })
+    .set_msh9_messageType({
+      messageCode__1: "BAR",
+      triggerEvent__2: "P01",
+      messageStructure__3: "BAR_P01"
+    })
+    .set_msh10_messageControlId("MSG001"))
   .evn(evn => evn
-    .set1_eventTypeCode("P01")
-    .set2_recordedDateTime("20231201120000"))
+    .set_evn1_eventTypeCode("P01")
+    .set_evn2_recordedDateTime("20231201120000"))
   .pid(pid => pid
-    .set3(cx => cx
-      .set1_idNumber("12345")
-      .set5_identifierTypeCode("MR"))
-    .set5(xpn => xpn
-      .set1_surname("Smith")
-      .set2_givenName("John")))
+    .set_pid3_patientIdentifierList([{
+      idNumber__1: "12345",
+      identifierTypeCode__5: "MR"
+    }])
+    .set_pid5_patientName([{
+      familyName__1: { surname__1: "Smith" },
+      givenName__2: "John"
+    }]))
   .addVISIT(visit => visit
-    .pv1(pv1 => pv1.set2_patientClass("I"))
+    .pv1(pv1 => pv1.set_pv12_patientClass("I"))
     .addDG1(dg1 => dg1
-      .set3(ce => ce
-        .set1_identifier("J20.9")
-        .set3_nameOfCodingSystem("ICD10")))
+      .set_dg13_diagnosisCodeDg1({
+        identifier__1: "J20.9",
+        nameOfCodingSystem__3: "ICD10"
+      }))
     .addINSURANCE(ins => ins
-      .in1(in1 => in1.set1_setIdIn1("1"))))
+      .in1(in1 => in1.set_in11_setIdIn1("1"))))
   .build();
 ```
 
-**Curried builder functions** (from `src/bar/generator.ts`):
+**Generator example** (from `src/bar/generator.ts`):
 
 ```ts
-// Curried functions capture context, return callbacks for builders
-const buildMSH = (input: BarMessageInput) => (msh: MSHBuilder) => msh
-  .set3_sendingApplication(input.sendingApplication)
-  .set9(msg => msg
-    .set1_messageCode("BAR")
-    .set2_triggerEvent(input.triggerEvent))
-  .set10_messageControlId(input.messageControlId);
-
 const buildPID = (input: BarMessageInput) => (pid: PIDBuilder) => {
   const name = input.patient.name?.[0];
   const address = input.patient.address?.[0];
+
   return pid
-    .set3(cx => cx.set1_idNumber(input.patient.identifier?.[0]?.value))
-    .set5(xpn => xpn
-      .set1_surname(name?.family)
-      .set2_givenName(name?.given?.[0]))
-    .set11(xad => xad.set3_city(address?.city));
+    .set_pid3_patientIdentifierList([{
+      idNumber__1: input.patient.identifier?.[0]?.value,
+      identifierTypeCode__5: "MR"
+    }])
+    .set_pid5_patientName([{
+      familyName__1: { surname__1: name?.family },
+      givenName__2: name?.given?.[0]
+    }])
+    .set_pid11_patientAddress([{
+      streetAddress__1: { streetOrMailingAddress__1: address?.line?.[0] },
+      city__3: address?.city,
+      stateOrProvince__4: address?.state,
+      zipOrPostalCode__5: address?.postalCode
+    }]);
 };
 
-const buildVisit = (input: BarMessageInput) => (visit: BAR_P01_VISITBuilder) => {
-  if (input.encounter) visit.pv1(buildPV1(input.encounter));
-  input.conditions?.forEach((c, i) => visit.addDG1(buildDG1(c, i + 1)));
-  return visit;
-};
-
-// Usage
 export function generateBarMessage(input: BarMessageInput): HL7v2Message {
   return new BAR_P01Builder()
     .msh(buildMSH(input))

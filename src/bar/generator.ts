@@ -25,8 +25,6 @@ import type {
   RelatedPerson,
   Condition,
   Procedure,
-  HumanName,
-  Address,
   Organization,
   CodeableConcept,
   Patient,
@@ -67,18 +65,6 @@ function mapPatientClass(encounterClass: { code?: string } | undefined): string 
     case "PRENC": return "P";
     default: return encounterClass.code;
   }
-}
-
-function getIdentifierValue(identifiers: { value?: string }[] | undefined): string {
-  return identifiers?.[0]?.value ?? "";
-}
-
-function getFirstName(names: HumanName[] | undefined): HumanName | undefined {
-  return names?.[0];
-}
-
-function getFirstAddress(addresses: Address[] | undefined): Address | undefined {
-  return addresses?.[0];
 }
 
 function getCode(concept: CodeableConcept | undefined): { code: string; display: string; system: string } {
@@ -125,19 +111,21 @@ function mapGuarantorRelationship(relationship: CodeableConcept | undefined): st
 // ============================================================================
 
 const buildMSH = (input: BarMessageInput) => (msh: MSHBuilder) => msh
-  .set1_fieldSeparator("|")
-  .set2_encodingCharacters("^~\\&")
-  .set3_sendingApplication(input.sendingApplication ?? "FHIR_APP")
-  .set4_sendingFacility(input.sendingFacility ?? "FHIR_FAC")
-  .set5_receivingApplication(input.receivingApplication ?? "BILLING_APP")
-  .set6_receivingFacility(input.receivingFacility ?? "BILLING_FAC")
-  .set7_dateTimeOfMessage(nowHL7())
-  .set9_1_messageCode("BAR")
-  .set9_2_triggerEvent(input.triggerEvent)
-  .set9_3_messageStructure(`BAR_${input.triggerEvent}`)
-  .set10_messageControlId(input.messageControlId)
-  .set11_1_processingId("P")
-  .set12_1_versionId("2.5.1");
+  .set_msh1_fieldSeparator("|")
+  .set_msh2_encodingCharacters("^~\\&")
+  .set_msh3_sendingApplication({ namespaceId__1: input.sendingApplication ?? "FHIR_APP" })
+  .set_msh4_sendingFacility({ namespaceId__1: input.sendingFacility ?? "FHIR_FAC" })
+  .set_msh5_receivingApplication({ namespaceId__1: input.receivingApplication ?? "BILLING_APP" })
+  .set_msh6_receivingFacility({ namespaceId__1: input.receivingFacility ?? "BILLING_FAC" })
+  .set_msh7_dateTimeOfMessage(nowHL7())
+  .set_msh9_messageType({
+    messageCode__1: "BAR",
+    triggerEvent__2: input.triggerEvent,
+    messageStructure__3: `BAR_${input.triggerEvent}`,
+  })
+  .set_msh10_messageControlId(input.messageControlId)
+  .set_msh11_processingId({ processingId__1: "P" })
+  .set_msh12_versionId({ versionId__1: "2.5.1" });
 
 const buildEVN = (input: BarMessageInput) => (evn: EVNBuilder) => {
   const account = input.account;
@@ -148,67 +136,89 @@ const buildEVN = (input: BarMessageInput) => (evn: EVNBuilder) => {
       : nowHL7();
 
   return evn
-    .set1_eventTypeCode(input.triggerEvent)
-    .set2_recordedDateTime(eventDateTime)
-    .set6_eventOccurred(eventDateTime);
+    .set_evn1_eventTypeCode(input.triggerEvent)
+    .set_evn2_recordedDateTime(eventDateTime)
+    .set_evn6_eventOccurred(eventDateTime);
 };
 
 const buildPID = (input: BarMessageInput) => (pid: PIDBuilder) => {
   const { patient, account } = input;
-  const name = getFirstName(patient.name);
-  const address = getFirstAddress(patient.address);
+  const name = patient.name?.[0];
+  const address = patient.address?.[0];
   const phone = patient.telecom?.find(t => t.system === "phone");
 
   return pid
-    .set1_setIdPid("1")
-    .set3_1_idNumber(getIdentifierValue(patient.identifier))
-    .set3_5_identifierTypeCode("MR")
-    .set5_1_1_surname(name?.family)
-    .set5_2_givenName(name?.given?.[0])
-    .set5_3_secondAndFurtherGivenNamesOrInitialsThereof(name?.given?.[1])
-    .set7_dateTimeOfBirth(formatHL7Date(patient.birthDate))
-    .set8_administrativeSex(mapGender(patient.gender))
-    .set11_1_1_streetOrMailingAddress(address?.line?.[0])
-    .set11_3_city(address?.city)
-    .set11_4_stateOrProvince(address?.state)
-    .set11_5_zipOrPostalCode(address?.postalCode)
-    .set11_6_country(address?.country)
-    .set13_1_telephoneNumber(phone?.value)
-    .set18_1_idNumber(getIdentifierValue(account.identifier));
+    .set_pid1_setIdPid("1")
+    .set_pid3_patientIdentifierList([{
+      idNumber__1: patient.identifier?.[0]?.value,
+      identifierTypeCode__5: "MR",
+    }])
+    .set_pid5_patientName([{
+      familyName__1: { surname__1: name?.family },
+      givenName__2: name?.given?.[0],
+      secondAndFurtherGivenNamesOrInitialsThereof__3: name?.given?.[1],
+    }])
+    .set_pid7_dateTimeOfBirth(formatHL7Date(patient.birthDate))
+    .set_pid8_administrativeSex(mapGender(patient.gender))
+    .set_pid11_patientAddress([{
+      streetAddress__1: { streetOrMailingAddress__1: address?.line?.[0] },
+      city__3: address?.city,
+      stateOrProvince__4: address?.state,
+      zipOrPostalCode__5: address?.postalCode,
+      country__6: address?.country,
+    }])
+    .set_pid13_phoneNumberHome([{
+      telephoneNumber__1: phone?.value,
+    }])
+    .set_pid18_patientAccountNumber({
+      idNumber__1: account.identifier?.[0]?.value,
+    });
 };
 
 const buildPV1 = (encounter: Encounter) => (pv1: PV1Builder) => {
   const location = encounter.location?.[0];
 
   return pv1
-    .set1_setIdPv1("1")
-    .set2_patientClass(mapPatientClass(encounter.class))
-    .set3_1_pointOfCare(location?.location?.display)
-    .set19_1_idNumber(getIdentifierValue(encounter.identifier))
-    .set44_admitDateTime(formatHL7Date(encounter.period?.start))
-    .set45_dischargeDateTime(formatHL7Date(encounter.period?.end));
+    .set_pv11_setIdPv1("1")
+    .set_pv12_patientClass(mapPatientClass(encounter.class))
+    .set_pv13_assignedPatientLocation({
+      pointOfCare__1: location?.location?.display,
+    })
+    .set_pv119_visitNumber({
+      idNumber__1: encounter.identifier?.[0]?.value,
+    })
+    .set_pv144_admitDateTime(formatHL7Date(encounter.period?.start))
+    .set_pv145_dischargeDateTime(formatHL7Date(encounter.period?.end));
 };
 
 const buildGT1 = (guarantor: RelatedPerson | Patient, setId: number) => (gt1: GT1Builder) => {
-  const name = getFirstName(guarantor.name);
-  const address = getFirstAddress(guarantor.address);
+  const name = guarantor.name?.[0];
+  const address = guarantor.address?.[0];
   const phone = guarantor.telecom?.find(t => t.system === "phone");
   const guarantorType = guarantor.resourceType === "Patient"
     ? "SE"
     : mapGuarantorRelationship((guarantor as RelatedPerson).relationship?.[0]);
 
   return gt1
-    .set1_setIdGt1(String(setId))
-    .set2_1_idNumber(getIdentifierValue(guarantor.identifier))
-    .set3_1_1_surname(name?.family)
-    .set3_2_givenName(name?.given?.[0])
-    .set5_1_1_streetOrMailingAddress(address?.line?.[0])
-    .set5_3_city(address?.city)
-    .set5_4_stateOrProvince(address?.state)
-    .set5_5_zipOrPostalCode(address?.postalCode)
-    .set5_6_country(address?.country)
-    .set6_1_telephoneNumber(phone?.value)
-    .set10_guarantorType(guarantorType);
+    .set_gt11_setIdGt1(String(setId))
+    .set_gt12_guarantorNumber([{
+      idNumber__1: guarantor.identifier?.[0]?.value,
+    }])
+    .set_gt13_guarantorName([{
+      familyName__1: { surname__1: name?.family },
+      givenName__2: name?.given?.[0],
+    }])
+    .set_gt15_guarantorAddress([{
+      streetAddress__1: { streetOrMailingAddress__1: address?.line?.[0] },
+      city__3: address?.city,
+      stateOrProvince__4: address?.state,
+      zipOrPostalCode__5: address?.postalCode,
+      country__6: address?.country,
+    }])
+    .set_gt16_guarantorPhNumHome([{
+      telephoneNumber__1: phone?.value,
+    }])
+    .set_gt110_guarantorType(guarantorType);
 };
 
 const buildIN1 = (coverage: Coverage, setId: number, payorOrg?: Organization) => (in1: IN1Builder) => {
@@ -219,18 +229,28 @@ const buildIN1 = (coverage: Coverage, setId: number, payorOrg?: Organization) =>
   const relationship = getCode(coverage.relationship);
 
   return in1
-    .set1_setIdIn1(String(setId))
-    .set2_1_identifier(planCode.code)
-    .set2_2_text(planCode.display)
-    .set3_1_idNumber(payorId)
-    .set4_1_organizationName(payorName)
-    .set8_groupNumber(groupClass?.value)
-    .set9_1_organizationName(groupClass?.name)
-    .set12_planEffectiveDate(formatHL7Date(coverage.period?.start))
-    .set13_planExpirationDate(formatHL7Date(coverage.period?.end))
-    .set17_1_identifier(relationship.code)
-    .set17_2_text(relationship.display)
-    .set36_policyNumber(coverage.subscriberId);
+    .set_in11_setIdIn1(String(setId))
+    .set_in12_insurancePlanId({
+      identifier__1: planCode.code,
+      text__2: planCode.display,
+    })
+    .set_in13_insuranceCompanyId([{
+      idNumber__1: payorId,
+    }])
+    .set_in14_insuranceCompanyName([{
+      organizationName__1: payorName,
+    }])
+    .set_in18_groupNumber(groupClass?.value)
+    .set_in19_groupName([{
+      organizationName__1: groupClass?.name,
+    }])
+    .set_in112_planEffectiveDate(formatHL7Date(coverage.period?.start))
+    .set_in113_planExpirationDate(formatHL7Date(coverage.period?.end))
+    .set_in117_insuredSRelationshipToPatient({
+      identifier__1: relationship.code,
+      text__2: relationship.display,
+    })
+    .set_in136_policyNumber(coverage.subscriberId);
 };
 
 const buildDG1 = (condition: Condition, setId: number) => (dg1: DG1Builder) => {
@@ -239,14 +259,16 @@ const buildDG1 = (condition: Condition, setId: number) => (dg1: DG1Builder) => {
   const diagDate = condition.recordedDate ?? condition.onsetDateTime;
 
   return dg1
-    .set1_setIdDg1(String(setId))
-    .set2_diagnosisCodingMethod(code.system)
-    .set3_1_identifier(code.code)
-    .set3_2_text(code.display)
-    .set3_3_nameOfCodingSystem(code.system)
-    .set5_diagnosisDateTime(formatHL7Date(diagDate))
-    .set6_diagnosisType(category.code)
-    .set15_diagnosisPriority(String(setId));
+    .set_dg11_setIdDg1(String(setId))
+    .set_dg12_diagnosisCodingMethod(code.system)
+    .set_dg13_diagnosisCodeDg1({
+      identifier__1: code.code,
+      text__2: code.display,
+      nameOfCodingSystem__3: code.system,
+    })
+    .set_dg15_diagnosisDateTime(formatHL7Date(diagDate))
+    .set_dg16_diagnosisType(category.code)
+    .set_dg115_diagnosisPriority(String(setId));
 };
 
 const buildPR1 = (procedure: Procedure, setId: number) => (pr1: PR1Builder) => {
@@ -254,12 +276,14 @@ const buildPR1 = (procedure: Procedure, setId: number) => (pr1: PR1Builder) => {
   const procDate = procedure.performedDateTime ?? procedure.performedPeriod?.start;
 
   return pr1
-    .set1_setIdPr1(String(setId))
-    .set2_procedureCodingMethod(code.system)
-    .set3_1_identifier(code.code)
-    .set3_2_text(code.display)
-    .set3_3_nameOfCodingSystem(code.system)
-    .set5_procedureDateTime(formatHL7Date(procDate));
+    .set_pr11_setIdPr1(String(setId))
+    .set_pr12_procedureCodingMethod(code.system)
+    .set_pr13_procedureCode({
+      identifier__1: code.code,
+      text__2: code.display,
+      nameOfCodingSystem__3: code.system,
+    })
+    .set_pr15_procedureDateTime(formatHL7Date(procDate));
 };
 
 const buildVisit = (input: BarMessageInput) => (visit: BAR_P01_VISITBuilder) => {

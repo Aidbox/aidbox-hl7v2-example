@@ -1,4 +1,4 @@
-import { aidboxFetch, Bundle } from "../aidbox";
+import { aidboxFetch, type Bundle } from "../aidbox";
 import { generateBarMessage } from "./generator";
 import { formatMessage } from "../hl7v2/format";
 import type { Patient, Account, Encounter, Coverage, RelatedPerson, Condition, Procedure, Organization } from "./types";

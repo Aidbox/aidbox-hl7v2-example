@@ -1,4 +1,4 @@
-import { aidboxFetch, Bundle, putResource } from "../aidbox";
+import { aidboxFetch, type Bundle, putResource } from "../aidbox";
 
 export interface OutgoingBarMessage {
   resourceType: "OutgoingBarMessage";

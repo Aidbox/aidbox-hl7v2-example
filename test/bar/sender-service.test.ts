@@ -10,7 +10,7 @@ import {
 import * as aidbox from "../../src/aidbox";
 
 // Mock fetch for testing
-const mockFetch = mock(() => Promise.resolve(new Response()));
+const mockFetch = mock((url: string, options?: RequestInit) => Promise.resolve(new Response())) as unknown as typeof fetch & { mock: { calls: unknown[][] }; mockReset: () => void; mockImplementation: (fn: (url: string, options?: RequestInit) => Promise<Response>) => typeof fetch };
 
 // Test fixtures
 const testOutgoingMessage: OutgoingBarMessage = {
@@ -83,12 +83,12 @@ describe("sendAsIncomingMessage", () => {
   test("creates IncomingHL7v2Message from OutgoingBarMessage", async () => {
     const originalFetch = globalThis.fetch;
     const createdMessage = {
-      resourceType: "IncomingHL7v2Message",
+      resourceType: "IncomingHL7v2Message" as const,
       id: "incoming-1",
       type: "BAR",
       date: "2023-12-15T10:00:00Z",
       patient: testOutgoingMessage.patient,
-      message: testOutgoingMessage.hl7v2,
+      message: testOutgoingMessage.hl7v2!,
     };
 
     globalThis.fetch = mockFetch.mockImplementation(() =>
@@ -259,7 +259,7 @@ describe("createBarMessageSenderService", () => {
           headers: { "Content-Type": "application/json" },
         })
       )
-    );
+    ) as unknown as typeof fetch;
 
     try {
       const service = createBarMessageSenderService({
@@ -284,7 +284,7 @@ describe("createBarMessageSenderService", () => {
     const originalFetch = globalThis.fetch;
     const onError = mock(() => {});
 
-    globalThis.fetch = mock(() => Promise.reject(new Error("Network error")));
+    globalThis.fetch = mock(() => Promise.reject(new Error("Network error"))) as unknown as typeof fetch;
 
     try {
       const service = createBarMessageSenderService({
@@ -309,7 +309,7 @@ describe("createBarMessageSenderService", () => {
     const originalFetch = globalThis.fetch;
     let pollCount = 0;
 
-    globalThis.fetch = mock((url: string, options?: RequestInit) => {
+    globalThis.fetch = mock((url: string, _options?: RequestInit) => {
       if (url.includes("OutgoingBarMessage?status=pending")) {
         pollCount++;
         if (pollCount <= 2) {
@@ -337,7 +337,7 @@ describe("createBarMessageSenderService", () => {
           headers: { "Content-Type": "application/json" },
         })
       );
-    });
+    }) as unknown as typeof fetch;
 
     try {
       const onIdle = mock(() => {});

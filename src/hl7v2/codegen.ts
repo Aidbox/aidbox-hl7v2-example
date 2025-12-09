@@ -40,7 +40,7 @@ interface DataTypeDef {
 
 // Primitive data types that don't have further components
 const PRIMITIVE_TYPES = new Set([
-  "ST", "TX", "FT", "NM", "SI", "ID", "IS", "DT", "TM", "DTM", "TS", "GTS", "NUL",
+  "ST", "TX", "FT", "NM", "SI", "ID", "IS", "DT", "TM", "DTM", "TS", "GTS", "NUL", "varies",
 ]);
 
 function toSnakeCase(str: string): string {
@@ -51,14 +51,6 @@ function toSnakeCase(str: string): string {
     .replace(/[^a-z0-9_]/g, "_")
     .replace(/_+/g, "_")
     .replace(/_$/, "");
-}
-
-function readJson<T>(path: string): T | null {
-  try {
-    return JSON.parse(Bun.file(path).text() as unknown as string);
-  } catch {
-    return null;
-  }
 }
 
 async function readJsonAsync<T>(path: string): Promise<T | null> {
@@ -97,36 +89,26 @@ class HL7v2CodeGen {
 
     // 4. Generate output
     this.generateHeader();
-    this.generateHelpers();
+    this.generateDataTypeInterfaces();
+    this.generateConversionFunction();
+    this.generateSegmentBuilders();
 
     return this.output.join("\n");
   }
 
   private async collectSegmentsFromMessage(msgType: string): Promise<void> {
-    // Find the message file
-    const files = await this.findMessageFile(msgType);
-    if (!files) {
+    const path = `${SCHEMA_BASE}/messages/${msgType}.json`;
+    const file = Bun.file(path);
+    if (!(await file.exists())) {
       console.error(`Warning: Message type ${msgType} not found`);
       return;
     }
 
-    const msgDef = await readJsonAsync<MessageDef>(files);
+    const msgDef = await readJsonAsync<MessageDef>(path);
     if (!msgDef) return;
 
-    // Store the message definition for later use in message builder generation
     this.messageDefs.set(msgType, msgDef);
-
-    // Recursively collect segments from message definition
     this.collectSegmentsFromDef(msgDef, msgType);
-  }
-
-  private async findMessageFile(msgType: string): Promise<string | null> {
-    const path = `${SCHEMA_BASE}/messages/${msgType}.json`;
-    const file = Bun.file(path);
-    if (await file.exists()) {
-      return path;
-    }
-    return null;
   }
 
   private collectSegmentsFromDef(def: MessageDef, rootKey: string): void {
@@ -135,8 +117,11 @@ class HL7v2CodeGen {
         if (el.segment) {
           this.usedSegments.add(el.segment);
         }
-        if (el.group && def[el.group]) {
-          processElements(def[el.group].elements);
+        if (el.group) {
+          const groupDef = def[el.group];
+          if (groupDef) {
+            processElements(groupDef.elements);
+          }
         }
       }
     };
@@ -145,9 +130,8 @@ class HL7v2CodeGen {
       processElements(def[rootKey].elements);
     }
 
-    // Also process any group definitions at the top level
     for (const key of Object.keys(def)) {
-      if (key !== rootKey && def[key].elements) {
+      if (key !== rootKey && def[key]?.elements) {
         processElements(def[key].elements);
       }
     }
@@ -160,7 +144,6 @@ class HL7v2CodeGen {
 
     this.segmentDefs.set(segmentName, segDef);
 
-    // Load field definitions
     for (const field of segDef.fields) {
       const fieldPath = `${SCHEMA_BASE}/fields/${field.field}.json`;
       const fieldDef = await readJsonAsync<FieldDef>(fieldPath);
@@ -184,10 +167,8 @@ class HL7v2CodeGen {
       if (dtDef) {
         this.dataTypeDefs.set(dt, dtDef);
 
-        // If complex type, load component definitions
         if (dtDef.components) {
           for (const comp of dtDef.components) {
-            // Load the component definition (e.g., XPN.1.json)
             const compPath = `${SCHEMA_BASE}/dataTypes/${comp.dataType}.json`;
             const compDef = await readJsonAsync<FieldDef>(compPath);
             if (compDef) {
@@ -208,12 +189,68 @@ class HL7v2CodeGen {
     this.output.push(`// Run: bun src/hl7v2/codegen.ts ${this.messageTypes.join(" ")}`);
     this.output.push(``);
     this.output.push(`import type { HL7v2Segment, FieldValue } from "./types";`);
-    this.output.push(`import { getComponent, setComponent } from "./types";`);
+    this.output.push(`import { getComponent } from "./types";`);
     this.output.push(``);
   }
 
-  private generateHelpers(): void {
-    // Sort segments for consistent output
+  private generateDataTypeInterfaces(): void {
+    this.output.push(`// ====== DataType Interfaces ======`);
+    this.output.push(``);
+
+    // Sort datatypes for consistent output
+    const sortedTypes = [...this.dataTypeDefs.keys()].sort();
+
+    for (const dtName of sortedTypes) {
+      const dtDef = this.dataTypeDefs.get(dtName);
+      if (!dtDef?.components) continue;
+
+      this.output.push(`/** ${dtName} DataType */`);
+      this.output.push(`export interface ${dtName} {`);
+
+      for (let i = 0; i < dtDef.components.length; i++) {
+        const comp = dtDef.components[i]!;
+        const compNum = i + 1;
+        const compDef = this.fieldDefs.get(comp.dataType);
+        if (!compDef) continue;
+
+        const fieldName = this.toCamelCase(compDef.longName);
+        const nestedDtDef = this.dataTypeDefs.get(compDef.dataType);
+        const typeName = nestedDtDef ? compDef.dataType : "string";
+
+        this.output.push(`  /** ${comp.dataType} - ${compDef.longName} */`);
+        this.output.push(`  ${fieldName}__${compNum}?: ${typeName};`);
+      }
+
+      this.output.push(`}`);
+      this.output.push(``);
+    }
+  }
+
+  private generateConversionFunction(): void {
+    this.output.push(`// ====== Conversion Functions ======`);
+    this.output.push(``);
+    this.output.push(`/** Convert a record object to FieldValue */`);
+    this.output.push(`function toFieldValue(obj: Record<string, unknown> | null | undefined): FieldValue | undefined {`);
+    this.output.push(`  if (obj == null) return undefined;`);
+    this.output.push(`  const result: { [key: number]: FieldValue } = {};`);
+    this.output.push(`  for (const [key, value] of Object.entries(obj)) {`);
+    this.output.push(`    if (value == null) continue;`);
+    this.output.push(`    const match = key.match(/__(\\\d+)$/);`);
+    this.output.push(`    if (!match || !match[1]) continue;`);
+    this.output.push(`    const idx = parseInt(match[1], 10);`);
+    this.output.push(`    if (typeof value === "string") {`);
+    this.output.push(`      result[idx] = value;`);
+    this.output.push(`    } else if (typeof value === "object") {`);
+    this.output.push(`      const nested = toFieldValue(value as Record<string, unknown>);`);
+    this.output.push(`      if (nested !== undefined) result[idx] = nested;`);
+    this.output.push(`    }`);
+    this.output.push(`  }`);
+    this.output.push(`  return Object.keys(result).length > 0 ? result : undefined;`);
+    this.output.push(`}`);
+    this.output.push(``);
+  }
+
+  private generateSegmentBuilders(): void {
     const segments = [...this.usedSegments].sort();
 
     for (const segName of segments) {
@@ -223,83 +260,88 @@ class HL7v2CodeGen {
       this.output.push(`// ====== ${segName} Segment ======`);
       this.output.push(``);
 
+      // Generate helper getter functions
+      this.generateSegmentHelpers(segName, segDef);
+
+      this.output.push(`export class ${segName}Builder {`);
+      this.output.push(`  private seg: HL7v2Segment = { segment: "${segName}", fields: {} };`);
+      this.output.push(``);
+
       for (const field of segDef.fields) {
-        this.generateFieldHelpers(segName, field.field);
+        const fieldDef = this.fieldDefs.get(field.field);
+        if (!fieldDef) continue;
+
+        const fieldNumStr = field.field.split(".")[1];
+        if (!fieldNumStr) continue;
+        const fieldNum = parseInt(fieldNumStr, 10);
+        const fieldName = this.toCamelCase(fieldDef.longName);
+        const isRepeating = field.maxOccurs === "unbounded" || parseInt(field.maxOccurs) > 1;
+        const dtDef = this.dataTypeDefs.get(fieldDef.dataType);
+        const isPrimitive = PRIMITIVE_TYPES.has(fieldDef.dataType);
+
+        // Use segment name in lowercase for method prefix
+        const segLower = segName.toLowerCase();
+
+        if (isPrimitive) {
+          // Primitive field - direct string value
+          this.output.push(`  /** ${field.field} - ${fieldDef.longName} */`);
+          this.output.push(`  set_${segLower}${fieldNum}_${fieldName}(value: string | null | undefined): this {`);
+          this.output.push(`    if (value != null) this.seg.fields[${fieldNum}] = value;`);
+          this.output.push(`    return this;`);
+          this.output.push(`  }`);
+          this.output.push(``);
+        } else if (dtDef) {
+          // Complex field - record object
+          const typeName = fieldDef.dataType;
+
+          if (isRepeating) {
+            // Repeating field: set accepts array, add adds single item
+            this.output.push(`  /** ${field.field} - ${fieldDef.longName} (set all values) */`);
+            this.output.push(`  set_${segLower}${fieldNum}_${fieldName}(values: ${typeName}[] | null | undefined): this {`);
+            this.output.push(`    if (values == null) return this;`);
+            this.output.push(`    const arr: FieldValue[] = [];`);
+            this.output.push(`    for (const v of values) {`);
+            this.output.push(`      const fv = toFieldValue(v as Record<string, unknown>);`);
+            this.output.push(`      if (fv !== undefined) arr.push(fv);`);
+            this.output.push(`    }`);
+            this.output.push(`    if (arr.length > 0) this.seg.fields[${fieldNum}] = arr;`);
+            this.output.push(`    return this;`);
+            this.output.push(`  }`);
+            this.output.push(``);
+
+            this.output.push(`  /** ${field.field} - ${fieldDef.longName} (add single value) */`);
+            this.output.push(`  add_${segLower}${fieldNum}_${fieldName}(value: ${typeName} | null | undefined): this {`);
+            this.output.push(`    if (value == null) return this;`);
+            this.output.push(`    const fv = toFieldValue(value as Record<string, unknown>);`);
+            this.output.push(`    if (fv !== undefined) {`);
+            this.output.push(`      const existing = this.seg.fields[${fieldNum}];`);
+            this.output.push(`      if (Array.isArray(existing)) {`);
+            this.output.push(`        existing.push(fv);`);
+            this.output.push(`      } else {`);
+            this.output.push(`        this.seg.fields[${fieldNum}] = [fv];`);
+            this.output.push(`      }`);
+            this.output.push(`    }`);
+            this.output.push(`    return this;`);
+            this.output.push(`  }`);
+            this.output.push(``);
+          } else {
+            // Non-repeating complex field
+            this.output.push(`  /** ${field.field} - ${fieldDef.longName} */`);
+            this.output.push(`  set_${segLower}${fieldNum}_${fieldName}(value: ${typeName} | null | undefined): this {`);
+            this.output.push(`    const fv = toFieldValue(value as Record<string, unknown>);`);
+            this.output.push(`    if (fv !== undefined) this.seg.fields[${fieldNum}] = fv;`);
+            this.output.push(`    return this;`);
+            this.output.push(`  }`);
+            this.output.push(``);
+          }
+        }
       }
 
-      // Generate fluent builder class
-      this.generateFluentBuilder(segName, segDef);
-    }
-  }
-
-  private generateFluentBuilder(segName: string, segDef: SegmentDef): void {
-    this.output.push(`// ${segName} Fluent Builder`);
-    this.output.push(`export class ${segName}Builder {`);
-    this.output.push(`  private seg: HL7v2Segment = { segment: "${segName}", fields: {} };`);
-    this.output.push(``);
-
-    // Generate methods for each field
-    for (const field of segDef.fields) {
-      const fieldDef = this.fieldDefs.get(field.field);
-      if (!fieldDef) continue;
-
-      const fieldNum = parseInt(field.field.split(".")[1], 10);
-      const fieldName = this.toCamelCase(fieldDef.longName);
-
-      // Field-level method: set5_patientName
-      this.output.push(`  /** ${field.field} - ${fieldDef.longName} */`);
-      this.output.push(`  set${fieldNum}_${fieldName}(value: FieldValue | null | undefined): this {`);
-      this.output.push(`    if (value != null) this.seg.fields[${fieldNum}] = value;`);
-      this.output.push(`    return this;`);
+      this.output.push(`  build(): HL7v2Segment {`);
+      this.output.push(`    return this.seg;`);
       this.output.push(`  }`);
+      this.output.push(`}`);
       this.output.push(``);
-
-      // Component methods with field number prefix: set5_1_familyName
-      const dtDef = this.dataTypeDefs.get(fieldDef.dataType);
-      if (dtDef?.components) {
-        this.generateFluentComponentMethods(fieldNum, dtDef, []);
-      }
-    }
-
-    // Build method
-    this.output.push(`  build(): HL7v2Segment {`);
-    this.output.push(`    return this.seg;`);
-    this.output.push(`  }`);
-    this.output.push(`}`);
-    this.output.push(``);
-  }
-
-  private generateFluentComponentMethods(
-    fieldNum: number,
-    dtDef: DataTypeDef,
-    parentPath: number[]
-  ): void {
-    if (!dtDef.components) return;
-
-    for (let i = 0; i < dtDef.components.length; i++) {
-      const comp = dtDef.components[i];
-      const compNum = i + 1;
-      const compId = comp.dataType;
-      const compDef = this.fieldDefs.get(compId);
-
-      if (!compDef) continue;
-
-      const path = [...parentPath, compNum];
-      const compName = this.toCamelCase(compDef.longName);
-      // Method name: set5_1_familyName or set5_1_1_surname for deeper nesting
-      const methodName = `set${fieldNum}_${path.join("_")}_${compName}`;
-
-      this.output.push(`  ${methodName}(value: string | null | undefined): this {`);
-      this.output.push(`    if (value != null) setComponent(this.seg.fields, ${fieldNum}, value, ${path.join(", ")});`);
-      this.output.push(`    return this;`);
-      this.output.push(`  }`);
-      this.output.push(``);
-
-      // Recursively handle nested types
-      const nestedDtDef = this.dataTypeDefs.get(compDef.dataType);
-      if (nestedDtDef?.components) {
-        this.generateFluentComponentMethods(fieldNum, nestedDtDef, path);
-      }
     }
   }
 
@@ -314,65 +356,74 @@ class HL7v2CodeGen {
       .join("");
   }
 
-  private generateFieldHelpers(segName: string, fieldId: string): void {
-    const fieldDef = this.fieldDefs.get(fieldId);
-    if (!fieldDef) return;
+  private generateSegmentHelpers(segName: string, segDef: SegmentDef): void {
+    for (const field of segDef.fields) {
+      const fieldDef = this.fieldDefs.get(field.field);
+      if (!fieldDef) continue;
 
-    // Extract field number (e.g., "PID.5" -> 5)
-    const fieldNum = parseInt(fieldId.split(".")[1], 10);
-    const fieldName = toSnakeCase(fieldDef.longName);
-    const funcName = `${segName}_${fieldNum}_${fieldName}`;
+      const fieldNumStr = field.field.split(".")[1];
+      if (!fieldNumStr) continue;
+      const fieldNum = parseInt(fieldNumStr, 10);
+      const fieldSnake = toSnakeCase(fieldDef.longName);
+      const dtDef = this.dataTypeDefs.get(fieldDef.dataType);
+      const isPrimitive = PRIMITIVE_TYPES.has(fieldDef.dataType);
 
-    // Generate field-level getter and setter
-    this.output.push(`// ${fieldId} - ${fieldDef.longName} (${fieldDef.dataType})`);
-    this.output.push(`export const ${funcName} = (seg: HL7v2Segment): FieldValue | undefined => seg.fields[${fieldNum}];`);
-    this.output.push(`export const set_${funcName} = (seg: HL7v2Segment, value: FieldValue): void => { seg.fields[${fieldNum}] = value; };`);
-
-    // If complex type, generate component helpers
-    const dtDef = this.dataTypeDefs.get(fieldDef.dataType);
-    if (dtDef?.components) {
-      this.generateComponentHelpers(segName, fieldNum, fieldDef.dataType, dtDef, []);
+      if (isPrimitive) {
+        // Primitive field getter: SEGMENT_N_name
+        const fnName = `${segName}_${fieldNum}_${fieldSnake}`;
+        this.output.push(`/** Get ${field.field} - ${fieldDef.longName} */`);
+        this.output.push(`export function ${fnName}(seg: HL7v2Segment): string | undefined {`);
+        this.output.push(`  const val = seg.fields[${fieldNum}];`);
+        this.output.push(`  if (typeof val === "string") return val;`);
+        this.output.push(`  if (Array.isArray(val) && typeof val[0] === "string") return val[0];`);
+        this.output.push(`  return undefined;`);
+        this.output.push(`}`);
+        this.output.push(``);
+      } else if (dtDef?.components) {
+        // Complex field - generate getters for each component
+        this.generateComponentHelpers(segName, fieldNum, fieldDef.longName, dtDef, []);
+      }
     }
-
-    this.output.push(``);
   }
 
   private generateComponentHelpers(
     segName: string,
     fieldNum: number,
-    parentType: string,
+    fieldName: string,
     dtDef: DataTypeDef,
     parentPath: number[]
   ): void {
     if (!dtDef.components) return;
 
     for (let i = 0; i < dtDef.components.length; i++) {
-      const comp = dtDef.components[i];
-      const compNum = i + 1; // 1-indexed in HL7v2
-      const compId = comp.dataType; // e.g., "XPN.1"
-      const compDef = this.fieldDefs.get(compId);
-
+      const comp = dtDef.components[i]!;
+      const compNum = i + 1;
+      const compDef = this.fieldDefs.get(comp.dataType);
       if (!compDef) continue;
 
-      const path = [...parentPath, compNum];
-      const compName = toSnakeCase(compDef.longName);
-      const funcName = `${segName}_${fieldNum}_${path.join("_")}_${compName}`;
-
-      // Getter
-      this.output.push(
-        `export const ${funcName} = (seg: HL7v2Segment): string | undefined => ` +
-          `getComponent(seg.fields[${fieldNum}], ${path.join(", ")});`
-      );
-      // Setter
-      this.output.push(
-        `export const set_${funcName} = (seg: HL7v2Segment, value: string): void => ` +
-          `setComponent(seg.fields, ${fieldNum}, value, ${path.join(", ")});`
-      );
-
-      // Recursively handle nested complex types (e.g., XPN.1 -> FN -> FN.1)
+      const compPath = [...parentPath, compNum];
       const nestedDtDef = this.dataTypeDefs.get(compDef.dataType);
-      if (nestedDtDef?.components) {
-        this.generateComponentHelpers(segName, fieldNum, compDef.dataType, nestedDtDef, path);
+      const isNestedPrimitive = PRIMITIVE_TYPES.has(compDef.dataType);
+
+      // Build function name: SEGMENT_FIELD_COMP1_COMP2_..._name
+      const fieldSnake = toSnakeCase(fieldName);
+      const compSnake = toSnakeCase(compDef.longName);
+      const pathStr = compPath.join("_");
+      const fnName = `${segName}_${fieldNum}_${pathStr}_${compSnake}`;
+
+      // Build path expression for getComponent
+      const pathArgs = compPath.join(", ");
+
+      this.output.push(`/** Get ${segName}.${fieldNum}.${compPath.join(".")} - ${compDef.longName} */`);
+      this.output.push(`export function ${fnName}(seg: HL7v2Segment): string | undefined {`);
+      this.output.push(`  const field = seg.fields[${fieldNum}];`);
+      this.output.push(`  return getComponent(field, ${pathArgs});`);
+      this.output.push(`}`);
+      this.output.push(``);
+
+      // Recursively generate for nested complex types
+      if (!isNestedPrimitive && nestedDtDef?.components) {
+        this.generateComponentHelpers(segName, fieldNum, fieldName, nestedDtDef, compPath);
       }
     }
   }
@@ -381,7 +432,6 @@ class HL7v2CodeGen {
    * Generate message-level type-safe builders
    */
   async generateMessages(): Promise<string> {
-    // 1. Collect all segments from message definitions (also stores messageDefs)
     for (const msgType of this.messageTypes) {
       await this.collectSegmentsFromMessage(msgType);
     }
@@ -395,7 +445,6 @@ class HL7v2CodeGen {
     output.push(`import type { HL7v2Segment, HL7v2Message } from "./types";`);
     output.push(`import {`);
 
-    // Collect all segment builders needed
     const allSegments = new Set<string>();
     for (const msgType of this.messageTypes) {
       const msgDef = this.messageDefs.get(msgType);
@@ -409,7 +458,6 @@ class HL7v2CodeGen {
     output.push(`} from "./fields";`);
     output.push(``);
 
-    // Generate interfaces and builders for each message type
     for (const msgType of this.messageTypes) {
       const msgDef = this.messageDefs.get(msgType);
       if (!msgDef) continue;
@@ -427,8 +475,11 @@ class HL7v2CodeGen {
         if (el.segment) {
           segments.add(el.segment);
         }
-        if (el.group && def[el.group]) {
-          processElements(def[el.group].elements);
+        if (el.group) {
+          const groupDef = def[el.group];
+          if (groupDef) {
+            processElements(groupDef.elements);
+          }
         }
       }
     };
@@ -438,7 +489,7 @@ class HL7v2CodeGen {
     }
 
     for (const key of Object.keys(def)) {
-      if (key !== rootKey && def[key].elements) {
+      if (key !== rootKey && def[key]?.elements) {
         processElements(def[key].elements);
       }
     }
@@ -467,11 +518,10 @@ class HL7v2CodeGen {
 
       if (el.segment) {
         const fieldName = el.segment.toLowerCase();
-        const typeName = `HL7v2Segment`;
         if (isRepeating) {
-          output.push(`  ${fieldName}${optionalMark}: ${typeName}[];`);
+          output.push(`  ${fieldName}${optionalMark}: HL7v2Segment[];`);
         } else {
-          output.push(`  ${fieldName}${optionalMark}: ${typeName};`);
+          output.push(`  ${fieldName}${optionalMark}: HL7v2Segment;`);
         }
       } else if (el.group) {
         const fieldName = el.group.toLowerCase();
@@ -504,11 +554,10 @@ class HL7v2CodeGen {
 
       if (el.segment) {
         const fieldName = el.segment.toLowerCase();
-        const typeName = `HL7v2Segment`;
         if (isRepeating) {
-          output.push(`  ${fieldName}${optionalMark}: ${typeName}[];`);
+          output.push(`  ${fieldName}${optionalMark}: HL7v2Segment[];`);
         } else {
-          output.push(`  ${fieldName}${optionalMark}: ${typeName};`);
+          output.push(`  ${fieldName}${optionalMark}: HL7v2Segment;`);
         }
       } else if (el.group) {
         const fieldName = el.group.toLowerCase();
@@ -524,7 +573,6 @@ class HL7v2CodeGen {
     output.push(`}`);
     output.push(``);
 
-    // Generate builder class for this group
     this.generateGroupBuilder(output, msgType, groupName, groupDef, msgDef);
   }
 
@@ -538,9 +586,6 @@ class HL7v2CodeGen {
     const builderName = `${msgType}_${groupName}Builder`;
     const typeName = `${msgType}_${groupName}`;
 
-    output.push(`/**`);
-    output.push(` * Builder for ${msgType} ${groupName} group`);
-    output.push(` */`);
     output.push(`export class ${builderName} {`);
     output.push(`  private group: Partial<${typeName}> = {};`);
     output.push(``);
@@ -553,30 +598,20 @@ class HL7v2CodeGen {
         const segBuilderName = `${el.segment}Builder`;
 
         if (isRepeating) {
-          output.push(`  /** Add ${el.segment} segment */`);
           output.push(`  add${el.segment}(segment: HL7v2Segment | ${segBuilderName} | ((builder: ${segBuilderName}) => ${segBuilderName})): this {`);
           output.push(`    let seg: HL7v2Segment;`);
-          output.push(`    if (typeof segment === "function") {`);
-          output.push(`      seg = segment(new ${segBuilderName}()).build();`);
-          output.push(`    } else if (segment instanceof ${segBuilderName}) {`);
-          output.push(`      seg = segment.build();`);
-          output.push(`    } else {`);
-          output.push(`      seg = segment;`);
-          output.push(`    }`);
+          output.push(`    if (typeof segment === "function") seg = segment(new ${segBuilderName}()).build();`);
+          output.push(`    else if (segment instanceof ${segBuilderName}) seg = segment.build();`);
+          output.push(`    else seg = segment;`);
           output.push(`    if (!this.group.${fieldName}) this.group.${fieldName} = [];`);
           output.push(`    this.group.${fieldName}.push(seg);`);
           output.push(`    return this;`);
           output.push(`  }`);
         } else {
-          output.push(`  /** Set ${el.segment} segment */`);
           output.push(`  ${fieldName}(segment: HL7v2Segment | ${segBuilderName} | ((builder: ${segBuilderName}) => ${segBuilderName})): this {`);
-          output.push(`    if (typeof segment === "function") {`);
-          output.push(`      this.group.${fieldName} = segment(new ${segBuilderName}()).build();`);
-          output.push(`    } else if (segment instanceof ${segBuilderName}) {`);
-          output.push(`      this.group.${fieldName} = segment.build();`);
-          output.push(`    } else {`);
-          output.push(`      this.group.${fieldName} = segment;`);
-          output.push(`    }`);
+          output.push(`    if (typeof segment === "function") this.group.${fieldName} = segment(new ${segBuilderName}()).build();`);
+          output.push(`    else if (segment instanceof ${segBuilderName}) this.group.${fieldName} = segment.build();`);
+          output.push(`    else this.group.${fieldName} = segment;`);
           output.push(`    return this;`);
           output.push(`  }`);
         }
@@ -587,30 +622,20 @@ class HL7v2CodeGen {
         const nestedBuilderName = `${nestedTypeName}Builder`;
 
         if (isRepeating) {
-          output.push(`  /** Add ${el.group} group */`);
           output.push(`  add${el.group}(group: ${nestedTypeName} | ${nestedBuilderName} | ((builder: ${nestedBuilderName}) => ${nestedBuilderName})): this {`);
           output.push(`    let g: ${nestedTypeName};`);
-          output.push(`    if (typeof group === "function") {`);
-          output.push(`      g = group(new ${nestedBuilderName}()).build();`);
-          output.push(`    } else if (group instanceof ${nestedBuilderName}) {`);
-          output.push(`      g = group.build();`);
-          output.push(`    } else {`);
-          output.push(`      g = group;`);
-          output.push(`    }`);
+          output.push(`    if (typeof group === "function") g = group(new ${nestedBuilderName}()).build();`);
+          output.push(`    else if (group instanceof ${nestedBuilderName}) g = group.build();`);
+          output.push(`    else g = group;`);
           output.push(`    if (!this.group.${nestedFieldName}) this.group.${nestedFieldName} = [];`);
           output.push(`    this.group.${nestedFieldName}.push(g);`);
           output.push(`    return this;`);
           output.push(`  }`);
         } else {
-          output.push(`  /** Set ${el.group} group */`);
           output.push(`  ${nestedFieldName}(group: ${nestedTypeName} | ${nestedBuilderName} | ((builder: ${nestedBuilderName}) => ${nestedBuilderName})): this {`);
-          output.push(`    if (typeof group === "function") {`);
-          output.push(`      this.group.${nestedFieldName} = group(new ${nestedBuilderName}()).build();`);
-          output.push(`    } else if (group instanceof ${nestedBuilderName}) {`);
-          output.push(`      this.group.${nestedFieldName} = group.build();`);
-          output.push(`    } else {`);
-          output.push(`      this.group.${nestedFieldName} = group;`);
-          output.push(`    }`);
+          output.push(`    if (typeof group === "function") this.group.${nestedFieldName} = group(new ${nestedBuilderName}()).build();`);
+          output.push(`    else if (group instanceof ${nestedBuilderName}) this.group.${nestedFieldName} = group.build();`);
+          output.push(`    else this.group.${nestedFieldName} = group;`);
           output.push(`    return this;`);
           output.push(`  }`);
         }
@@ -618,10 +643,7 @@ class HL7v2CodeGen {
       }
     }
 
-    output.push(`  /** Build the group */`);
-    output.push(`  build(): ${typeName} {`);
-    output.push(`    return this.group as ${typeName};`);
-    output.push(`  }`);
+    output.push(`  build(): ${typeName} { return this.group as ${typeName}; }`);
     output.push(`}`);
     output.push(``);
   }
@@ -630,7 +652,6 @@ class HL7v2CodeGen {
     const rootDef = msgDef[msgType];
     if (!rootDef) return;
 
-    // Collect required fields for validation
     const requiredFields: string[] = [];
     for (const el of rootDef.elements) {
       if (el.minOccurs !== "0") {
@@ -639,14 +660,10 @@ class HL7v2CodeGen {
       }
     }
 
-    output.push(`/**`);
-    output.push(` * Type-safe builder for ${msgType} messages`);
-    output.push(` */`);
     output.push(`export class ${msgType}Builder {`);
     output.push(`  private msg: Partial<${msgType}_Message> = {};`);
     output.push(``);
 
-    // Generate setter methods for each element
     for (const el of rootDef.elements) {
       const isRepeating = el.maxOccurs === "unbounded" || parseInt(el.maxOccurs) > 1;
 
@@ -655,32 +672,20 @@ class HL7v2CodeGen {
         const builderName = `${el.segment}Builder`;
 
         if (isRepeating) {
-          // Add method for repeating segments - accepts segment, builder, or callback
-          output.push(`  /** Add ${el.segment} segment */`);
           output.push(`  add${el.segment}(segment: HL7v2Segment | ${builderName} | ((builder: ${builderName}) => ${builderName})): this {`);
           output.push(`    let seg: HL7v2Segment;`);
-          output.push(`    if (typeof segment === "function") {`);
-          output.push(`      seg = segment(new ${builderName}()).build();`);
-          output.push(`    } else if (segment instanceof ${builderName}) {`);
-          output.push(`      seg = segment.build();`);
-          output.push(`    } else {`);
-          output.push(`      seg = segment;`);
-          output.push(`    }`);
+          output.push(`    if (typeof segment === "function") seg = segment(new ${builderName}()).build();`);
+          output.push(`    else if (segment instanceof ${builderName}) seg = segment.build();`);
+          output.push(`    else seg = segment;`);
           output.push(`    if (!this.msg.${fieldName}) this.msg.${fieldName} = [];`);
           output.push(`    this.msg.${fieldName}.push(seg);`);
           output.push(`    return this;`);
           output.push(`  }`);
         } else {
-          // Set method for single segments - accepts segment, builder, or callback
-          output.push(`  /** Set ${el.segment} segment */`);
           output.push(`  ${fieldName}(segment: HL7v2Segment | ${builderName} | ((builder: ${builderName}) => ${builderName})): this {`);
-          output.push(`    if (typeof segment === "function") {`);
-          output.push(`      this.msg.${fieldName} = segment(new ${builderName}()).build();`);
-          output.push(`    } else if (segment instanceof ${builderName}) {`);
-          output.push(`      this.msg.${fieldName} = segment.build();`);
-          output.push(`    } else {`);
-          output.push(`      this.msg.${fieldName} = segment;`);
-          output.push(`    }`);
+          output.push(`    if (typeof segment === "function") this.msg.${fieldName} = segment(new ${builderName}()).build();`);
+          output.push(`    else if (segment instanceof ${builderName}) this.msg.${fieldName} = segment.build();`);
+          output.push(`    else this.msg.${fieldName} = segment;`);
           output.push(`    return this;`);
           output.push(`  }`);
         }
@@ -691,30 +696,20 @@ class HL7v2CodeGen {
         const groupBuilderName = `${groupTypeName}Builder`;
 
         if (isRepeating) {
-          output.push(`  /** Add ${el.group} group */`);
           output.push(`  add${el.group}(group: ${groupTypeName} | ${groupBuilderName} | ((builder: ${groupBuilderName}) => ${groupBuilderName})): this {`);
           output.push(`    let g: ${groupTypeName};`);
-          output.push(`    if (typeof group === "function") {`);
-          output.push(`      g = group(new ${groupBuilderName}()).build();`);
-          output.push(`    } else if (group instanceof ${groupBuilderName}) {`);
-          output.push(`      g = group.build();`);
-          output.push(`    } else {`);
-          output.push(`      g = group;`);
-          output.push(`    }`);
+          output.push(`    if (typeof group === "function") g = group(new ${groupBuilderName}()).build();`);
+          output.push(`    else if (group instanceof ${groupBuilderName}) g = group.build();`);
+          output.push(`    else g = group;`);
           output.push(`    if (!this.msg.${fieldName}) this.msg.${fieldName} = [];`);
           output.push(`    this.msg.${fieldName}.push(g);`);
           output.push(`    return this;`);
           output.push(`  }`);
         } else {
-          output.push(`  /** Set ${el.group} group */`);
           output.push(`  ${fieldName}(group: ${groupTypeName} | ${groupBuilderName} | ((builder: ${groupBuilderName}) => ${groupBuilderName})): this {`);
-          output.push(`    if (typeof group === "function") {`);
-          output.push(`      this.msg.${fieldName} = group(new ${groupBuilderName}()).build();`);
-          output.push(`    } else if (group instanceof ${groupBuilderName}) {`);
-          output.push(`      this.msg.${fieldName} = group.build();`);
-          output.push(`    } else {`);
-          output.push(`      this.msg.${fieldName} = group;`);
-          output.push(`    }`);
+          output.push(`    if (typeof group === "function") this.msg.${fieldName} = group(new ${groupBuilderName}()).build();`);
+          output.push(`    else if (group instanceof ${groupBuilderName}) this.msg.${fieldName} = group.build();`);
+          output.push(`    else this.msg.${fieldName} = group;`);
           output.push(`    return this;`);
           output.push(`  }`);
         }
@@ -722,36 +717,15 @@ class HL7v2CodeGen {
       }
     }
 
-    // Generate build method that converts to HL7v2Message (flat segment array)
-    output.push(`  /**`);
-    output.push(`   * Build the message as a flat array of segments (HL7v2Message)`);
-    output.push(`   * @throws Error if required fields are missing`);
-    output.push(`   */`);
     output.push(`  build(): HL7v2Message {`);
-
-    // Validation
     if (requiredFields.length > 0) {
-      output.push(`    // Validate required fields`);
       for (const field of requiredFields) {
         output.push(`    if (!this.msg.${field}) throw new Error("${msgType}: ${field} is required");`);
       }
-      output.push(``);
     }
-
     output.push(`    const segments: HL7v2Message = [];`);
-    output.push(``);
-
-    // Flatten the message structure into segments array
     this.generateFlattenCode(output, rootDef.elements, msgDef, "this.msg");
-
     output.push(`    return segments;`);
-    output.push(`  }`);
-    output.push(``);
-
-    // Also provide a method to get the structured message
-    output.push(`  /** Get the structured message object */`);
-    output.push(`  toStructured(): ${msgType}_Message {`);
-    output.push(`    return this.msg as ${msgType}_Message;`);
     output.push(`  }`);
     output.push(`}`);
     output.push(``);
@@ -771,11 +745,7 @@ class HL7v2CodeGen {
         const fieldPath = `${prefix}.${fieldName}`;
 
         if (isRepeating) {
-          output.push(`    if (${fieldPath}) {`);
-          output.push(`      for (const seg of ${fieldPath}) {`);
-          output.push(`        segments.push(seg);`);
-          output.push(`      }`);
-          output.push(`    }`);
+          output.push(`    if (${fieldPath}) for (const seg of ${fieldPath}) segments.push(seg);`);
         } else {
           output.push(`    if (${fieldPath}) segments.push(${fieldPath});`);
         }
@@ -786,10 +756,8 @@ class HL7v2CodeGen {
 
         if (groupDef) {
           if (isRepeating) {
-            output.push(`    if (${fieldPath}) {`);
-            output.push(`      for (const group of ${fieldPath}) {`);
-            this.generateFlattenCodeForGroup(output, groupDef.elements, msgDef, "group", "        ");
-            output.push(`      }`);
+            output.push(`    if (${fieldPath}) for (const group of ${fieldPath}) {`);
+            this.generateFlattenCodeForGroup(output, groupDef.elements, msgDef, "group", "      ");
             output.push(`    }`);
           } else {
             output.push(`    if (${fieldPath}) {`);
@@ -817,11 +785,7 @@ class HL7v2CodeGen {
         const fieldPath = `${prefix}.${fieldName}`;
 
         if (isRepeating) {
-          output.push(`${indent}if (${fieldPath}) {`);
-          output.push(`${indent}  for (const seg of ${fieldPath}) {`);
-          output.push(`${indent}    segments.push(seg);`);
-          output.push(`${indent}  }`);
-          output.push(`${indent}}`);
+          output.push(`${indent}if (${fieldPath}) for (const seg of ${fieldPath}) segments.push(seg);`);
         } else {
           output.push(`${indent}if (${fieldPath}) segments.push(${fieldPath});`);
         }
@@ -832,10 +796,8 @@ class HL7v2CodeGen {
 
         if (groupDef) {
           if (isRepeating) {
-            output.push(`${indent}if (${fieldPath}) {`);
-            output.push(`${indent}  for (const subgroup of ${fieldPath}) {`);
-            this.generateFlattenCodeForGroup(output, groupDef.elements, msgDef, "subgroup", indent + "    ");
-            output.push(`${indent}  }`);
+            output.push(`${indent}if (${fieldPath}) for (const subgroup of ${fieldPath}) {`);
+            this.generateFlattenCodeForGroup(output, groupDef.elements, msgDef, "subgroup", indent + "  ");
             output.push(`${indent}}`);
           } else {
             output.push(`${indent}if (${fieldPath}) {`);

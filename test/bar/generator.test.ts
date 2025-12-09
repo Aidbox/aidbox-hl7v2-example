@@ -180,21 +180,21 @@ describe("generateBarMessage", () => {
 
     // Should have MSH, EVN, PID
     expect(message.length).toBe(3);
-    expect(message[0].segment).toBe("MSH");
-    expect(message[1].segment).toBe("EVN");
-    expect(message[2].segment).toBe("PID");
+    expect(message[0]!.segment).toBe("MSH");
+    expect(message[1]!.segment).toBe("EVN");
+    expect(message[2]!.segment).toBe("PID");
 
     // Verify MSH content
-    expect(MSH_9_1_message_code(message[0])).toBe("BAR");
-    expect(MSH_9_2_trigger_event(message[0])).toBe("P01");
+    expect(MSH_9_1_message_code(message[0]!)).toBe("BAR");
+    expect(MSH_9_2_trigger_event(message[0]!)).toBe("P01");
 
     // Verify PID content
-    expect(PID_3_1_i_d_number(message[2])).toBe("MRN12345");
-    expect(PID_5_1_family_name(message[2])).toBe("Smith");
-    expect(PID_5_2_given_name(message[2])).toBe("John");
-    expect(PID_7_date_time_of_birth(message[2])).toBe("19850315");
-    expect(PID_8_administrative_sex(message[2])).toBe("M");
-    expect(PID_18_1_i_d_number(message[2])).toBe("ACC789");
+    expect(PID_3_1_i_d_number(message[2]!)).toBe("MRN12345");
+    expect(PID_5_1_family_name(message[2]!)).toBe("Smith");
+    expect(PID_5_2_given_name(message[2]!)).toBe("John");
+    expect(PID_7_date_time_of_birth(message[2]!)).toBe("19850315");
+    expect(PID_8_administrative_sex(message[2]!)).toBe("M");
+    expect(PID_18_1_i_d_number(message[2]!)).toBe("ACC789");
   });
 
   test("generates BAR^P05 update message", () => {
@@ -206,7 +206,7 @@ describe("generateBarMessage", () => {
     };
 
     const message = generateBarMessage(input);
-    expect(MSH_9_2_trigger_event(message[0])).toBe("P05");
+    expect(MSH_9_2_trigger_event(message[0]!)).toBe("P05");
   });
 
   test("generates BAR^P06 end message", () => {
@@ -218,7 +218,7 @@ describe("generateBarMessage", () => {
     };
 
     const message = generateBarMessage(input);
-    expect(MSH_9_2_trigger_event(message[0])).toBe("P06");
+    expect(MSH_9_2_trigger_event(message[0]!)).toBe("P06");
   });
 
   test("includes PV1 when encounter provided", () => {
@@ -350,14 +350,14 @@ describe("generateBarMessage", () => {
     const message = generateBarMessage(input);
 
     // Verify segment order: MSH, EVN, PID, PV1, DG1, PR1, GT1, IN1
-    expect(message[0].segment).toBe("MSH");
-    expect(message[1].segment).toBe("EVN");
-    expect(message[2].segment).toBe("PID");
-    expect(message[3].segment).toBe("PV1");
-    expect(message[4].segment).toBe("DG1");
-    expect(message[5].segment).toBe("PR1");
-    expect(message[6].segment).toBe("GT1");
-    expect(message[7].segment).toBe("IN1");
+    expect(message[0]!.segment).toBe("MSH");
+    expect(message[1]!.segment).toBe("EVN");
+    expect(message[2]!.segment).toBe("PID");
+    expect(message[3]!.segment).toBe("PV1");
+    expect(message[4]!.segment).toBe("DG1");
+    expect(message[5]!.segment).toBe("PR1");
+    expect(message[6]!.segment).toBe("GT1");
+    expect(message[7]!.segment).toBe("IN1");
 
     // Verify it formats correctly
     const hl7String = formatMessage(message);
@@ -389,10 +389,10 @@ describe("generateBarMessage", () => {
 
     const in1Segments = message.filter((s) => s.segment === "IN1");
     expect(in1Segments.length).toBe(2);
-    expect(IN1_1_set_i_d_i_n1(in1Segments[0])).toBe("1");
-    expect(IN1_36_policy_number(in1Segments[0])).toBe("SUB123456"); // Primary first
-    expect(IN1_1_set_i_d_i_n1(in1Segments[1])).toBe("2");
-    expect(IN1_36_policy_number(in1Segments[1])).toBe("SEC999"); // Secondary second
+    expect(IN1_1_set_i_d_i_n1(in1Segments[0]!)).toBe("1");
+    expect(IN1_36_policy_number(in1Segments[0]!)).toBe("SUB123456"); // Primary first
+    expect(IN1_1_set_i_d_i_n1(in1Segments[1]!)).toBe("2");
+    expect(IN1_36_policy_number(in1Segments[1]!)).toBe("SEC999"); // Secondary second
   });
 });
 
@@ -414,8 +414,8 @@ describe("BAR message wire format", () => {
     // Segments should be separated by \r
     const segments = hl7String.split("\r");
     expect(segments.length).toBe(3);
-    expect(segments[0].startsWith("MSH|")).toBe(true);
-    expect(segments[1].startsWith("EVN|")).toBe(true);
-    expect(segments[2].startsWith("PID|")).toBe(true);
+    expect(segments[0]!.startsWith("MSH|")).toBe(true);
+    expect(segments[1]!.startsWith("EVN|")).toBe(true);
+    expect(segments[2]!.startsWith("PID|")).toBe(true);
   });
 });
