@@ -172,23 +172,23 @@ export interface BarMessageInput {
   account: Account;
 
   // Usually required
-  encounter?: Encounter;
-  coverages?: Coverage[];
+  encounter?: Encounter | null;
+  coverages?: Coverage[] | null;
 
   // Guarantor info
-  guarantor?: RelatedPerson | Patient;
+  guarantor?: RelatedPerson | Patient | null;
 
   // Optional resources
-  conditions?: Condition[];
-  procedures?: Procedure[];
-  practitioners?: Map<string, Practitioner>;
-  organizations?: Map<string, Organization>;
+  conditions?: Condition[] | null;
+  procedures?: Procedure[] | null;
+  practitioners?: Map<string, Practitioner> | null;
+  organizations?: Map<string, Organization> | null;
 
   // Message metadata
   messageControlId: string;
   triggerEvent: "P01" | "P05" | "P06"; // Add | Update | End
-  sendingApplication?: string;
-  sendingFacility?: string;
-  receivingApplication?: string;
-  receivingFacility?: string;
+  sendingApplication?: string | null;
+  sendingFacility?: string | null;
+  receivingApplication?: string | null;
+  receivingFacility?: string | null;
 }
