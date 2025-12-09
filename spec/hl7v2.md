@@ -139,6 +139,28 @@ const pid = new PIDBuilder()
   .build();
 ```
 
+### Nullable Setters
+
+All setter methods accept `string | null | undefined`. When null/undefined is passed, the setter is a no-op (value is not set). This allows passing nullable values directly without fallbacks:
+
+```ts
+// Clean - pass nullable values directly
+pid.set5_1_1_surname(patient.name?.family)
+   .set5_2_givenName(patient.name?.given?.[0])
+   .set11_3_city(patient.address?.city);
+
+// No need for fallbacks like:
+// .set5_1_1_surname(patient.name?.family ?? "")
+```
+
+**Why all setters accept null:**
+- **Segment fields**: Some have `minOccurs: "1"` (required), some `minOccurs: "0"` (optional)
+- **Data type components**: All have `minOccurs: "0"` in schema (all optional)
+- **Validation**: Required segments are validated at message build time, not field level
+- **Formatter**: Empty/null values are ignored during serialization anyway
+
+This design prioritizes developer ergonomics - pass values as-is from nullable sources without defensive coding.
+
 ### Message Builders
 
 Type-safe builders enforce message structure from schema. Methods accept either:
@@ -209,36 +231,40 @@ new BAR_P01Builder()
   .build();
 ```
 
-**Builder with context** (from `src/bar/generator.ts`):
+**Curried builder functions** (from `src/bar/generator.ts`):
 
 ```ts
-// Builder class holds FHIR input, methods are callbacks
-export class BarMessageBuilder {
-  constructor(private input: BarMessageInput) {}
+// Curried functions capture context, return callbacks for builders
+const buildMSH = (input: BarMessageInput) => (msh: MSHBuilder) => msh
+  .set9_1_messageCode("BAR")
+  .set9_2_triggerEvent(input.triggerEvent)
+  .set10_messageControlId(input.messageControlId);
 
-  private buildMSH = (msh: MSHBuilder) => msh
-    .set9_1_messageCode("BAR")
-    .set9_2_triggerEvent(this.input.triggerEvent)
-    .set10_messageControlId(this.input.messageControlId);
+const buildPID = (input: BarMessageInput) => (pid: PIDBuilder) => {
+  const name = input.patient.name?.[0];
+  const address = input.patient.address?.[0];
+  return pid
+    .set3_1_idNumber(input.patient.identifier?.[0]?.value)
+    .set5_1_1_surname(name?.family)
+    .set5_2_givenName(name?.given?.[0])
+    .set11_3_city(address?.city);
+};
 
-  private buildVisit = (visit: BAR_P01_VISITBuilder) => {
-    if (this.input.encounter) visit.pv1(this.buildPV1(this.input.encounter));
-    this.input.conditions?.forEach((c, i) => visit.addDG1(this.buildDG1(c, i + 1)));
-    return visit;
-  };
+const buildVisit = (input: BarMessageInput) => (visit: BAR_P01_VISITBuilder) => {
+  if (input.encounter) visit.pv1(buildPV1(input.encounter));
+  input.conditions?.forEach((c, i) => visit.addDG1(buildDG1(c, i + 1)));
+  return visit;
+};
 
-  build(): HL7v2Message {
-    return new BAR_P01Builder()
-      .msh(this.buildMSH)
-      .evn(this.buildEVN)
-      .pid(this.buildPID)
-      .addVISIT(this.buildVisit)
-      .build();
-  }
+// Usage - curried functions called with input, return callbacks
+export function generateBarMessage(input: BarMessageInput): HL7v2Message {
+  return new BAR_P01Builder()
+    .msh(buildMSH(input))
+    .evn(buildEVN(input))
+    .pid(buildPID(input))
+    .addVISIT(buildVisit(input))
+    .build();
 }
-
-// Usage
-const message = new BarMessageBuilder(input).build();
 ```
 
 **Generated interfaces and builders:**
