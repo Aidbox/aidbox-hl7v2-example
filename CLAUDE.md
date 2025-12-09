@@ -69,6 +69,7 @@ Generates HL7v2 BAR messages from FHIR resources.
 
 - `types.ts` - FHIR resource types (Patient, Account, Coverage, etc.)
 - `generator.ts` - `generateBarMessage()` pure function
+- `sender-service.ts` - Polling service for sending OutgoingBarMessage
 - `index.ts` - Module exports
 
 ```ts
@@ -88,6 +89,32 @@ const barMessage = generateBarMessage({
 });
 
 console.log(formatMessage(barMessage));
+```
+
+## BAR Message Sender Service (`src/bar/sender-service.ts`)
+
+Polls Aidbox for pending OutgoingBarMessage resources and sends them as IncomingHL7v2Message.
+
+- Polls every minute for OutgoingBarMessage with `status=pending`, sorted by `_lastUpdated`
+- On message found: sends as IncomingHL7v2Message, updates status to "sent", polls immediately for next
+- On no message: waits 1 minute before polling again
+
+```sh
+# Run as standalone service
+bun src/bar/sender-service.ts
+```
+
+```ts
+import { createBarMessageSenderService } from "./src/bar";
+
+const service = createBarMessageSenderService({
+  pollIntervalMs: 60000,  // default: 1 minute
+  onError: (error) => console.error(error),
+  onIdle: () => console.log("No pending messages"),
+});
+
+service.start();
+// service.stop();
 ```
 
 ## Custom FHIR Resources

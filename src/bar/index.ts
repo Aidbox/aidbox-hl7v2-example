@@ -33,3 +33,11 @@ export type {
   Condition,
   Procedure,
 } from "./types";
+export {
+  createBarMessageSenderService,
+  pollPendingMessage,
+  sendAsIncomingMessage,
+  markAsSent,
+  processNextMessage,
+} from "./sender-service";
+export type { OutgoingBarMessage, IncomingHL7v2Message } from "./sender-service";
