@@ -132,16 +132,11 @@ async function fetchRelatedResources(invoice: InvoiceWithId): Promise<{
     }
   }
 
-  // Use ChargeItem-linked resources if available, otherwise fall back to patient-based queries
-  const hasChargeItemData = chargeItemEncounters.length > 0 || chargeItemProcedures.length > 0;
+  // Use explicitly linked resources from ChargeItems
+  result.encounter = chargeItemEncounters[0] ?? null;
+  result.procedures = chargeItemProcedures;
 
-  if (hasChargeItemData) {
-    // Use explicitly linked resources from ChargeItems
-    result.encounter = chargeItemEncounters[0] ?? null;
-    result.procedures = chargeItemProcedures;
-  }
-
-  // Fetch coverages for patient (always from patient, not ChargeItem)
+  // Fetch coverages and conditions for patient
   if (result.patient) {
     const coverageBundle = await aidboxFetch<Bundle<Coverage>>(
       `/fhir/Coverage?beneficiary=Patient/${result.patient.id}&_count=10`
@@ -159,22 +154,7 @@ async function fetchRelatedResources(invoice: InvoiceWithId): Promise<{
       }
     }
 
-    // Fallback: Fetch from patient if no ChargeItem data
-    if (!hasChargeItemData) {
-      // Fetch encounters for patient (most recent)
-      const encounterBundle = await aidboxFetch<Bundle<Encounter>>(
-        `/fhir/Encounter?patient=Patient/${result.patient.id}&_sort=-date&_count=1`
-      );
-      result.encounter = encounterBundle.entry?.[0]?.resource ?? null;
-
-      // Fetch procedures for patient
-      const procedureBundle = await aidboxFetch<Bundle<Procedure>>(
-        `/fhir/Procedure?patient=Patient/${result.patient.id}&_count=10`
-      );
-      result.procedures = procedureBundle.entry?.map((e) => e.resource) || [];
-    }
-
-    // Fetch conditions for patient (always from patient, not ChargeItem)
+    // Fetch conditions for patient
     const conditionBundle = await aidboxFetch<Bundle<Condition>>(
       `/fhir/Condition?patient=Patient/${result.patient.id}&_count=10`
     );
