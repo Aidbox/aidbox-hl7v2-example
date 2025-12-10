@@ -1,3 +1,15 @@
+/**
+ * Invoice BAR Builder Service
+ *
+ * Polls for draft Invoices and generates BAR messages.
+ *
+ * Environment variables:
+ * - FHIR_APP: Sending application name for MSH-3 (e.g., "HOSPITAL_EMR")
+ * - FHIR_FAC: Sending facility name for MSH-4 (e.g., "MAIN_CAMPUS")
+ * - BILLING_APP: Receiving application name for MSH-5 (e.g., "BILLING_SYSTEM")
+ * - BILLING_FAC: Receiving facility name for MSH-6 (e.g., "BILLING_DEPT")
+ */
+
 import { aidboxFetch, type Bundle } from "../aidbox";
 import { generateBarMessage } from "./generator";
 import { formatMessage } from "../hl7v2/format";
@@ -184,6 +196,10 @@ export async function buildBarFromInvoice(invoice: InvoiceWithId): Promise<strin
     practitioners: related.practitioners.size > 0 ? related.practitioners : undefined,
     messageControlId,
     triggerEvent: "P01",
+    sendingApplication: process.env.FHIR_APP,
+    sendingFacility: process.env.FHIR_FAC,
+    receivingApplication: process.env.BILLING_APP,
+    receivingFacility: process.env.BILLING_FAC
   });
 
   return formatMessage(barMessage);

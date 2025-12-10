@@ -165,6 +165,13 @@ bun src/bar/invoice-builder-service.ts
 bun src/bar/sender-service.ts
 ```
 
+There are environment variables allowing one to customize some of the resulting BAR message:
+
+- `FHIR_APP`: Sending application name for MSH-3 (e.g., "HOSPITAL_EMR")
+- `FHIR_FAC`: Sending facility name for MSH-4 (e.g., "MAIN_CAMPUS")
+- `BILLING_APP`: Receiving application name for MSH-5 (e.g., "BILLING_SYSTEM")
+- `BILLING_FAC`: Receiving facility name for MSH-6 (e.g., "BILLING_DEPT")
+
 ## Testing
 
 ```sh
