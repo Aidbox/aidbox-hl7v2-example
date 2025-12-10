@@ -8,15 +8,24 @@ interface FHIRResource {
 }
 
 async function loadFhirResources(): Promise<FHIRResource[]> {
-  const glob = new Glob("*.json");
+  const structuredefs_glob = new Glob("StructureDefinition-*.json");
+  const all_glob = new Glob("*.json");
   const fhirDir = new URL("../fhir", import.meta.url).pathname;
   const resources: FHIRResource[] = [];
 
-  for await (const file of glob.scan(fhirDir)) {
+  for await (const file of structuredefs_glob.scan(fhirDir)) {
     const filePath = `${fhirDir}/${file}`;
     const content = await Bun.file(filePath).text();
     const resource = JSON.parse(content) as FHIRResource;
     resources.push(resource);
+  }
+
+  for await (const file of all_glob.scan(fhirDir)) {
+    const filePath = `${fhirDir}/${file}`;
+    const content = await Bun.file(filePath).text();
+    const resource = JSON.parse(content) as FHIRResource;
+    if (!resources.find((r) => r.id === resource.id))
+      resources.push(resource);
   }
 
   return resources;
