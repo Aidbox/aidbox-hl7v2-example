@@ -42,6 +42,7 @@ bun scripts/load-test-data.ts
 - `src/index.ts` - Bun HTTP server with routes for Invoices, Outgoing/Incoming Messages, MLLP Client
 - `src/aidbox.ts` - Reusable Aidbox client with `aidboxFetch`, `getResources`, `putResource`
 - `src/migrate.ts` - Custom resource StructureDefinitions (OutgoingBarMessage, IncomingHL7v2Message)
+- `src/fhir/` - Code-generated FHIR R4 type definitions
 - `src/bar/` - BAR message generation from FHIR resources
 - `src/hl7v2/` - HL7v2 message representation, builders, and formatter
 - `src/mllp/` - MLLP (Minimal Lower Layer Protocol) TCP server for receiving HL7v2 messages
@@ -75,11 +76,22 @@ const message = [
 console.log(formatMessage(message));
 ```
 
+## FHIR Types (`src/fhir/`)
+
+Code-generated FHIR R4 type definitions from the HL7 FHIR specification.
+
+- `hl7-fhir-r4-core/` - Complete FHIR R4 resource types (Patient, Encounter, Coverage, Condition, Procedure, etc.)
+- `hl7-fhir-r4-core/index.ts` - Re-exports all FHIR types
+
+```ts
+import type { Patient, Encounter, Coverage } from "./src/fhir/hl7-fhir-r4-core";
+```
+
 ## BAR Message Generator (`src/bar/`)
 
 Generates HL7v2 BAR messages from FHIR resources.
 
-- `types.ts` - FHIR resource types (Patient, Account, Coverage, etc.)
+- `types.ts` - Re-exports FHIR types from `src/fhir/` and defines `BarMessageInput`
 - `generator.ts` - `generateBarMessage()` pure function
 - `sender-service.ts` - Polling service for sending OutgoingBarMessage
 - `index.ts` - Module exports
