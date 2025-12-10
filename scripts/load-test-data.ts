@@ -6,6 +6,7 @@
  */
 
 import { putResource } from "../src/aidbox";
+import type { Practitioner } from "../src/fhir/hl7-fhir-r4-core";
 
 const testPatients = [
   {
@@ -82,6 +83,12 @@ const insurers = [
   { id: "org-united", name: "UnitedHealthcare", planCode: "UHC" },
 ];
 
+const practitioners = [
+  { id: "practitioner-1", names: [{ family: "Chen", given: ["David", "Wei"]}], npi: "1234567890", specialty: "Internal Medicine"},
+  { id: "practitioner-2", names: [{ family: "Patel", given: ["Priya"]}], npi: "2345678901", specialty: "Family Medicine"},
+  { id: "practitioner-3", names: [{ family: "Rodriguez", given: ["Maria", "Elena"]}], npi: "3456789012", specialty: "Emergency Medicine"},
+];
+
 function formatDate(daysAgo: number): string {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
@@ -108,6 +115,26 @@ async function loadTestData() {
       type: [{ coding: [{ system: "http://terminology.hl7.org/CodeSystem/organization-type", code: "pay", display: "Payer" }] }],
     });
     console.log(`  Created Organization: ${insurer.name}`);
+  }
+
+  // Create Practitioners
+  for (const pr of practitioners) {
+    const displayName = `${pr.names[0]?.given?.[0] ?? ""} ${pr.names[0]?.family ?? ""}`.trim();
+    await putResource("Practitioner", pr.id, {
+      resourceType: "Practitioner",
+      id: pr.id,
+      identifier: [{ system: "http://hl7.org/fhir/sid/us-npi", value: pr.npi }],
+      name: pr.names,
+      qualification: [
+        {
+          code: {
+            coding: [{ system: "http://terminology.hl7.org/CodeSystem/v2-0360", code: "MD", display: "Doctor of Medicine" }],
+            text: pr.specialty,
+          },
+        },
+      ],
+    } satisfies Practitioner);
+    console.log(`  Created Practitioner: ${displayName} (${pr.specialty})`);
   }
 
   // Create Patients with related resources
@@ -226,6 +253,7 @@ async function loadTestData() {
 
   console.log("\n✓ Test data loaded successfully!");
   console.log(`  - ${insurers.length} Organizations (insurers)`);
+  console.log(`  - ${practitioners.length} Practitioners`);
   console.log(`  - ${testPatients.length} Patients`);
   console.log(`  - ${testPatients.length} Accounts`);
   console.log(`  - ${testPatients.length} Encounters`);
