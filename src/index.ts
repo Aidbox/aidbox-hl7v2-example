@@ -4,11 +4,7 @@ import { processNextMessage } from "./bar/sender-service";
 import { processNextInvoice } from "./bar/invoice-builder-service";
 import { wrapWithMLLP, VT, FS, CR } from "./mllp/mllp-server";
 import { highlightHL7Message, getHighlightStyles } from "./hl7v2/highlight";
-
-interface Patient {
-  id: string;
-  name?: Array<{ family?: string; given?: string[] }>;
-}
+import type { Patient } from "./fhir/hl7-fhir-r4-core/Patient";
 
 const getPatients = () => getResources<Patient>("Patient");
 

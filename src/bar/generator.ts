@@ -19,7 +19,6 @@ import {
   type BAR_P01_VISITBuilder,
 } from "../hl7v2/messages";
 import type {
-  BarMessageInput,
   Encounter,
   Coverage,
   RelatedPerson,
@@ -28,7 +27,8 @@ import type {
   Organization,
   CodeableConcept,
   Patient,
-} from "./types";
+} from "../fhir/hl7-fhir-r4-core";
+import type { BarMessageInput } from "./types";
 
 // ============================================================================
 // Helper functions
