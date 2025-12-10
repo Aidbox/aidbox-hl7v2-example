@@ -2,7 +2,7 @@ import * as net from "node:net";
 import { aidboxFetch, getResources } from "./aidbox";
 import { processNextMessage } from "./bar/sender-service";
 import { processNextInvoice } from "./bar/invoice-builder-service";
-import { wrapWithMLP, VT, FS, CR } from "./mlp/mlp-server";
+import { wrapWithMLLP, VT, FS, CR } from "./mllp/mllp-server";
 import { highlightHL7Message, getHighlightStyles } from "./hl7v2/highlight";
 
 interface Patient {
@@ -714,7 +714,7 @@ Bun.serve({
 async function sendMLPMessage(host: string, port: number, message: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const client = net.createConnection({ host, port }, () => {
-      client.write(wrapWithMLP(message));
+      client.write(wrapWithMLLP(message));
     });
 
     const timeout = setTimeout(() => {

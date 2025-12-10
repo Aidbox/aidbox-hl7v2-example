@@ -1,7 +1,7 @@
 import * as net from "node:net";
 import { aidboxFetch } from "../aidbox";
 
-// MLP (Minimum Layer Protocol) framing characters
+// MLLP (Minimum Layer Protocol) framing characters
 export const VT = 0x0b; // Vertical Tab - Start Block
 export const FS = 0x1c; // File Separator - End Block (part 1)
 export const CR = 0x0d; // Carriage Return - End Block (part 2)
@@ -74,9 +74,9 @@ export function formatHL7Date(date: Date): string {
 }
 
 /**
- * Wrap HL7v2 message with MLP framing
+ * Wrap HL7v2 message with MLLP framing
  */
-export function wrapWithMLP(message: string): Buffer {
+export function wrapWithMLLP(message: string): Buffer {
   const messageBuffer = Buffer.from(message, "utf-8");
   const framedMessage = Buffer.alloc(messageBuffer.length + 3);
   framedMessage[0] = VT;
@@ -105,13 +105,13 @@ async function storeMessage(hl7Message: string): Promise<void> {
     body: JSON.stringify(resource),
   });
 
-  console.log(`[MLP] Stored message of type: ${messageType}`);
+  console.log(`[MLLP] Stored message of type: ${messageType}`);
 }
 
 /**
- * MLP message parser - handles buffering and framing
+ * MLLP message parser - handles buffering and framing
  */
-export class MLPParser {
+export class MLLPParser {
   private buffer: Buffer = Buffer.alloc(0);
   private inMessage = false;
 
@@ -165,50 +165,50 @@ export class MLPParser {
 }
 
 /**
- * Create MLP TCP server
+ * Create MLLP TCP server
  */
-export function createMLPServer(port: number = 2575): net.Server {
+export function createMLLPServer(port: number = 2575): net.Server {
   const server = net.createServer((socket) => {
     const clientAddr = `${socket.remoteAddress}:${socket.remotePort}`;
-    console.log(`[MLP] Client connected: ${clientAddr}`);
+    console.log(`[MLLP] Client connected: ${clientAddr}`);
 
-    const parser = new MLPParser();
+    const parser = new MLLPParser();
 
     socket.on("data", async (data) => {
       const messages = parser.processData(data);
 
       for (const message of messages) {
-        console.log(`[MLP] Received message from ${clientAddr}`);
-        console.log(`[MLP] Message preview: ${message.substring(0, 100)}...`);
+        console.log(`[MLLP] Received message from ${clientAddr}`);
+        console.log(`[MLLP] Message preview: ${message.substring(0, 100)}...`);
 
         try {
           await storeMessage(message);
           const ack = generateAck(message, "AA");
-          socket.write(wrapWithMLP(ack));
-          console.log(`[MLP] Sent ACK to ${clientAddr}`);
+          socket.write(wrapWithMLLP(ack));
+          console.log(`[MLLP] Sent ACK to ${clientAddr}`);
         } catch (error) {
-          console.error(`[MLP] Error processing message:`, error);
+          console.error(`[MLLP] Error processing message:`, error);
           const ack = generateAck(
             message,
             "AE",
             error instanceof Error ? error.message : "Unknown error"
           );
-          socket.write(wrapWithMLP(ack));
+          socket.write(wrapWithMLLP(ack));
         }
       }
     });
 
     socket.on("close", () => {
-      console.log(`[MLP] Client disconnected: ${clientAddr}`);
+      console.log(`[MLLP] Client disconnected: ${clientAddr}`);
     });
 
     socket.on("error", (err) => {
-      console.error(`[MLP] Socket error from ${clientAddr}:`, err.message);
+      console.error(`[MLLP] Socket error from ${clientAddr}:`, err.message);
     });
   });
 
   server.on("error", (err) => {
-    console.error("[MLP] Server error:", err);
+    console.error("[MLLP] Server error:", err);
   });
 
   return server;
@@ -216,20 +216,20 @@ export function createMLPServer(port: number = 2575): net.Server {
 
 // Run as standalone service
 if (import.meta.main) {
-  const port = parseInt(process.env.MLP_PORT || "2575", 10);
+  const port = parseInt(process.env.MLLP_PORT || "2575", 10);
 
-  const server = createMLPServer(port);
+  const server = createMLLPServer(port);
 
   server.listen(port, () => {
-    console.log(`[MLP] Server listening on port ${port}`);
-    console.log(`[MLP] Ready to receive HL7v2 messages via MLP protocol`);
+    console.log(`[MLLP] Server listening on port ${port}`);
+    console.log(`[MLLP] Ready to receive HL7v2 messages via MLLP protocol`);
   });
 
   // Graceful shutdown
   process.on("SIGINT", () => {
-    console.log("\n[MLP] Shutting down...");
+    console.log("\n[MLLP] Shutting down...");
     server.close(() => {
-      console.log("[MLP] Server closed");
+      console.log("[MLLP] Server closed");
       process.exit(0);
     });
   });
