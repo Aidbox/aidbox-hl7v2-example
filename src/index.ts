@@ -5,8 +5,16 @@ import { processNextInvoice } from "./bar/invoice-builder-service";
 import { wrapWithMLLP, VT, FS, CR } from "./mllp/mllp-server";
 import { highlightHL7Message, getHighlightStyles } from "./hl7v2/highlight";
 import type { Patient } from "./fhir/hl7-fhir-r4-core/Patient";
+import type { ChargeItem } from "./fhir/hl7-fhir-r4-core/ChargeItem";
+import type { Practitioner } from "./fhir/hl7-fhir-r4-core/Practitioner";
+import type { Encounter } from "./fhir/hl7-fhir-r4-core/Encounter";
+import type { Procedure } from "./fhir/hl7-fhir-r4-core/Procedure";
 
 const getPatients = () => getResources<Patient>("Patient");
+const getChargeItems = () => getResources<ChargeItem>("ChargeItem", "_sort=-_lastUpdated");
+const getPractitioners = () => getResources<Practitioner>("Practitioner", "_sort=-_lastUpdated");
+const getEncounters = () => getResources<Encounter>("Encounter", "_sort=-_lastUpdated");
+const getProcedures = () => getResources<Procedure>("Procedure", "_sort=-_lastUpdated");
 
 interface Invoice {
   id: string;
@@ -88,7 +96,14 @@ function renderLayout(title: string, nav: string, content: string): string {
 </html>`;
 }
 
-function renderInvoicesPage(invoices: Invoice[], patients: Patient[], statusFilter?: string): string {
+function renderInvoicesPage(
+  invoices: Invoice[],
+  patients: Patient[],
+  encounters: Encounter[],
+  procedures: Procedure[],
+  practitioners: Practitioner[],
+  statusFilter?: string
+): string {
   const rows = invoices
     .map(
       (inv) => `
@@ -192,6 +207,41 @@ function renderInvoicesPage(invoices: Invoice[], patients: Patient[], statusFilt
             </select>
           </div>
         </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Practitioner</label>
+          <select name="practitioner" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="">No practitioner</option>
+            ${practitioners.map((pr) => {
+              const name = pr.name?.[0];
+              const displayName = name ? `${name.given?.join(" ") || ""} ${name.family || ""}`.trim() : pr.id;
+              return `<option value="Practitioner/${pr.id}">${displayName} (${pr.id})</option>`;
+            }).join("")}
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Encounters</label>
+            <select name="encounters" id="encounters-select" multiple class="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              ${encounters.map((e) => {
+                const patientRef = e.subject?.reference || "";
+                const classDisplay = e.class?.code || "";
+                const period = e.period?.start ? new Date(e.period.start).toLocaleDateString() : "";
+                return `<option value="Encounter/${e.id}" data-patient="${patientRef}">${e.id} - ${classDisplay} ${period}</option>`;
+              }).join("")}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Procedures</label>
+            <select name="procedures" id="procedures-select" multiple class="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              ${procedures.map((proc) => {
+                const patientRef = proc.subject?.reference || "";
+                const code = proc.code?.coding?.[0];
+                const display = code?.display || code?.code || proc.id;
+                return `<option value="Procedure/${proc.id}" data-patient="${patientRef}">${display} (${proc.id})</option>`;
+              }).join("")}
+            </select>
+          </div>
+        </div>
         <div class="flex gap-2">
           <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700">
             Create Invoice
@@ -201,6 +251,40 @@ function renderInvoicesPage(invoices: Invoice[], patients: Patient[], statusFilt
           </button>
         </div>
       </form>
+      <script>
+      (function() {
+        const patientSelect = document.querySelector('select[name="subject"]');
+        const encountersSelect = document.getElementById('encounters-select');
+        const proceduresSelect = document.getElementById('procedures-select');
+
+        function filterByPatient(selectedPatient) {
+          // Filter encounters
+          Array.from(encountersSelect.options).forEach(option => {
+            const patientRef = option.dataset.patient;
+            option.style.display = (!selectedPatient || patientRef === selectedPatient) ? '' : 'none';
+            if (option.style.display === 'none') {
+              option.selected = false;
+            }
+          });
+
+          // Filter procedures
+          Array.from(proceduresSelect.options).forEach(option => {
+            const patientRef = option.dataset.patient;
+            option.style.display = (!selectedPatient || patientRef === selectedPatient) ? '' : 'none';
+            if (option.style.display === 'none') {
+              option.selected = false;
+            }
+          });
+        }
+
+        patientSelect.addEventListener('change', function() {
+          filterByPatient(this.value);
+        });
+
+        // Initial filter on page load
+        filterByPatient(patientSelect.value);
+      })();
+      </script>
     </div>
 
     <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -547,8 +631,14 @@ Bun.serve({
     "/": async (req) => {
       const url = new URL(req.url);
       const statusFilter = url.searchParams.get("status") || undefined;
-      const [invoices, patients] = await Promise.all([getInvoices(statusFilter), getPatients()]);
-      return new Response(renderInvoicesPage(invoices, patients, statusFilter), {
+      const [invoices, patients, encounters, procedures, practitioners] = await Promise.all([
+        getInvoices(statusFilter),
+        getPatients(),
+        getEncounters(),
+        getProcedures(),
+        getPractitioners(),
+      ]);
+      return new Response(renderInvoicesPage(invoices, patients, encounters, procedures, practitioners, statusFilter), {
         headers: { "Content-Type": "text/html" },
       });
     },
@@ -556,8 +646,14 @@ Bun.serve({
       GET: async (req) => {
         const url = new URL(req.url);
         const statusFilter = url.searchParams.get("status") || undefined;
-        const [invoices, patients] = await Promise.all([getInvoices(statusFilter), getPatients()]);
-        return new Response(renderInvoicesPage(invoices, patients, statusFilter), {
+        const [invoices, patients, encounters, procedures, practitioners] = await Promise.all([
+          getInvoices(statusFilter),
+          getPatients(),
+          getEncounters(),
+          getProcedures(),
+          getPractitioners(),
+        ]);
+        return new Response(renderInvoicesPage(invoices, patients, encounters, procedures, practitioners, statusFilter), {
           headers: { "Content-Type": "text/html" },
         });
       },
@@ -568,6 +664,65 @@ Bun.serve({
         const date = formData.get("date") as string;
         const amount = formData.get("amount") as string;
         const currency = formData.get("currency") as string;
+        const practitioner = formData.get("practitioner") as string;
+        const encounterRefs = formData.getAll("encounters") as string[];
+        const procedureRefs = formData.getAll("procedures") as string[];
+
+        // Create ChargeItems for selected encounters and procedures
+        const chargeItemRefs: string[] = [];
+
+        if (subject && (encounterRefs.length > 0 || procedureRefs.length > 0)) {
+          // Create a ChargeItem linking encounters and procedures
+          const chargeItem: Record<string, unknown> = {
+            resourceType: "ChargeItem",
+            status: "billable",
+            code: {
+              coding: [{ system: "http://example.org/charge-codes", code: "invoice-item", display: "Invoice Item" }],
+            },
+            subject: { reference: subject },
+          };
+
+          // Link to first encounter (ChargeItem.context is singular)
+          if (encounterRefs.length > 0) {
+            chargeItem.context = { reference: encounterRefs[0] };
+          }
+
+          // Link to procedures via service array
+          if (procedureRefs.length > 0) {
+            chargeItem.service = procedureRefs.map((ref) => ({ reference: ref }));
+          }
+
+          const chargeItemResponse = await aidboxFetch<{ id: string }>("/fhir/ChargeItem", {
+            method: "POST",
+            body: JSON.stringify(chargeItem),
+          });
+
+          if (chargeItemResponse.id) {
+            chargeItemRefs.push(`ChargeItem/${chargeItemResponse.id}`);
+          }
+
+          // Create additional ChargeItems for remaining encounters (if any)
+          for (let i = 1; i < encounterRefs.length; i++) {
+            const additionalChargeItem: Record<string, unknown> = {
+              resourceType: "ChargeItem",
+              status: "billable",
+              code: {
+                coding: [{ system: "http://example.org/charge-codes", code: "invoice-item", display: "Invoice Item" }],
+              },
+              subject: { reference: subject },
+              context: { reference: encounterRefs[i] },
+            };
+
+            const additionalResponse = await aidboxFetch<{ id: string }>("/fhir/ChargeItem", {
+              method: "POST",
+              body: JSON.stringify(additionalChargeItem),
+            });
+
+            if (additionalResponse.id) {
+              chargeItemRefs.push(`ChargeItem/${additionalResponse.id}`);
+            }
+          }
+        }
 
         const newInvoice: Record<string, unknown> = {
           resourceType: "Invoice",
@@ -585,6 +740,23 @@ Bun.serve({
             value: parseFloat(amount),
             currency: currency || "USD",
           };
+        }
+
+        // Add lineItems referencing the created ChargeItems
+        if (chargeItemRefs.length > 0) {
+          newInvoice.lineItem = chargeItemRefs.map((ref, index) => ({
+            sequence: index + 1,
+            chargeItemReference: { reference: ref },
+          }));
+        }
+
+        // Add participant for practitioner
+        if (practitioner) {
+          newInvoice.participant = [
+            {
+              actor: { reference: practitioner },
+            },
+          ];
         }
 
         await aidboxFetch("/fhir/Invoice", {

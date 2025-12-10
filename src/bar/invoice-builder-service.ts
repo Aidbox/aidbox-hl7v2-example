@@ -1,16 +1,20 @@
 import { aidboxFetch, type Bundle } from "../aidbox";
 import { generateBarMessage } from "./generator";
 import { formatMessage } from "../hl7v2/format";
-import type { Patient, Account, Encounter, Coverage, RelatedPerson, Condition, Procedure, Organization } from "./types";
+import type { Account } from "../fhir/hl7-fhir-r4-core/Account";
+import type { ChargeItem } from "../fhir/hl7-fhir-r4-core/ChargeItem";
+import type { Condition } from "../fhir/hl7-fhir-r4-core/Condition";
+import type { Coverage } from "../fhir/hl7-fhir-r4-core/Coverage";
+import type { Encounter } from "../fhir/hl7-fhir-r4-core/Encounter";
+import type { Invoice } from "../fhir/hl7-fhir-r4-core/Invoice";
+import type { Organization } from "../fhir/hl7-fhir-r4-core/Organization";
+import type { Patient } from "../fhir/hl7-fhir-r4-core/Patient";
+import type { Practitioner } from "../fhir/hl7-fhir-r4-core/Practitioner";
+import type { Procedure } from "../fhir/hl7-fhir-r4-core/Procedure";
+import type { RelatedPerson } from "../fhir/hl7-fhir-r4-core/RelatedPerson";
 
-export interface Invoice {
-  resourceType: "Invoice";
-  id: string;
-  status: string;
-  subject?: { reference: string };
-  account?: { reference: string };
-  date?: string;
-}
+// Type for Invoice with required id (as returned from Aidbox)
+type InvoiceWithId = Invoice & { id: string };
 
 export interface OutgoingBarMessage {
   resourceType: "OutgoingBarMessage";
@@ -38,7 +42,7 @@ async function fetchResource<T>(reference: string): Promise<T | null> {
   }
 }
 
-async function fetchRelatedResources(invoice: Invoice): Promise<{
+async function fetchRelatedResources(invoice: InvoiceWithId): Promise<{
   patient: Patient | null;
   account: Account | null;
   encounter: Encounter | null;
@@ -47,6 +51,7 @@ async function fetchRelatedResources(invoice: Invoice): Promise<{
   procedures: Procedure[];
   guarantor: RelatedPerson | Patient | null;
   organizations: Map<string, Organization>;
+  practitioners: Map<string, Practitioner>;
 }> {
   const result = {
     patient: null as Patient | null,
@@ -57,6 +62,7 @@ async function fetchRelatedResources(invoice: Invoice): Promise<{
     procedures: [] as Procedure[],
     guarantor: null as RelatedPerson | Patient | null,
     organizations: new Map<string, Organization>(),
+    practitioners: new Map<string, Practitioner>(),
   };
 
   // Fetch patient
@@ -79,7 +85,63 @@ async function fetchRelatedResources(invoice: Invoice): Promise<{
     };
   }
 
-  // Fetch coverages for patient
+  // Fetch practitioners from Invoice.participant
+  if (invoice.participant) {
+    for (const participant of invoice.participant) {
+      const actorRef = participant.actor?.reference;
+      if (actorRef?.startsWith("Practitioner/")) {
+        const practitioner = await fetchResource<Practitioner>(actorRef);
+        if (practitioner) {
+          result.practitioners.set(actorRef, practitioner);
+        }
+      }
+    }
+  }
+
+  // Fetch related resources from Invoice.lineItem -> ChargeItem
+  const chargeItemEncounters: Encounter[] = [];
+  const chargeItemProcedures: Procedure[] = [];
+
+  if (invoice.lineItem) {
+    for (const lineItem of invoice.lineItem) {
+      const chargeItemRef = lineItem.chargeItemReference?.reference;
+      if (chargeItemRef) {
+        const chargeItem = await fetchResource<ChargeItem>(chargeItemRef);
+        if (chargeItem) {
+          // Fetch Encounter from ChargeItem.context
+          if (chargeItem.context?.reference?.startsWith("Encounter/")) {
+            const encounter = await fetchResource<Encounter>(chargeItem.context.reference);
+            if (encounter) {
+              chargeItemEncounters.push(encounter);
+            }
+          }
+
+          // Fetch Procedures from ChargeItem.service
+          if (chargeItem.service) {
+            for (const service of chargeItem.service) {
+              if (service.reference?.startsWith("Procedure/")) {
+                const procedure = await fetchResource<Procedure>(service.reference);
+                if (procedure) {
+                  chargeItemProcedures.push(procedure);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Use ChargeItem-linked resources if available, otherwise fall back to patient-based queries
+  const hasChargeItemData = chargeItemEncounters.length > 0 || chargeItemProcedures.length > 0;
+
+  if (hasChargeItemData) {
+    // Use explicitly linked resources from ChargeItems
+    result.encounter = chargeItemEncounters[0] ?? null;
+    result.procedures = chargeItemProcedures;
+  }
+
+  // Fetch coverages for patient (always from patient, not ChargeItem)
   if (result.patient) {
     const coverageBundle = await aidboxFetch<Bundle<Coverage>>(
       `/fhir/Coverage?beneficiary=Patient/${result.patient.id}&_count=10`
@@ -97,29 +159,32 @@ async function fetchRelatedResources(invoice: Invoice): Promise<{
       }
     }
 
-    // Fetch encounters for patient (most recent)
-    const encounterBundle = await aidboxFetch<Bundle<Encounter>>(
-      `/fhir/Encounter?patient=Patient/${result.patient.id}&_sort=-date&_count=1`
-    );
-    result.encounter = encounterBundle.entry?.[0]?.resource ?? null;
+    // Fallback: Fetch from patient if no ChargeItem data
+    if (!hasChargeItemData) {
+      // Fetch encounters for patient (most recent)
+      const encounterBundle = await aidboxFetch<Bundle<Encounter>>(
+        `/fhir/Encounter?patient=Patient/${result.patient.id}&_sort=-date&_count=1`
+      );
+      result.encounter = encounterBundle.entry?.[0]?.resource ?? null;
 
-    // Fetch conditions for patient
+      // Fetch procedures for patient
+      const procedureBundle = await aidboxFetch<Bundle<Procedure>>(
+        `/fhir/Procedure?patient=Patient/${result.patient.id}&_count=10`
+      );
+      result.procedures = procedureBundle.entry?.map((e) => e.resource) || [];
+    }
+
+    // Fetch conditions for patient (always from patient, not ChargeItem)
     const conditionBundle = await aidboxFetch<Bundle<Condition>>(
       `/fhir/Condition?patient=Patient/${result.patient.id}&_count=10`
     );
     result.conditions = conditionBundle.entry?.map((e) => e.resource) || [];
-
-    // Fetch procedures for patient
-    const procedureBundle = await aidboxFetch<Bundle<Procedure>>(
-      `/fhir/Procedure?patient=Patient/${result.patient.id}&_count=10`
-    );
-    result.procedures = procedureBundle.entry?.map((e) => e.resource) || [];
   }
 
   return result;
 }
 
-export async function buildBarFromInvoice(invoice: Invoice): Promise<string> {
+export async function buildBarFromInvoice(invoice: InvoiceWithId): Promise<string> {
   const related = await fetchRelatedResources(invoice);
 
   if (!related.patient || !related.account) {
@@ -136,6 +201,7 @@ export async function buildBarFromInvoice(invoice: Invoice): Promise<string> {
     conditions: related.conditions.length > 0 ? related.conditions : undefined,
     procedures: related.procedures.length > 0 ? related.procedures : undefined,
     organizations: related.organizations.size > 0 ? related.organizations : undefined,
+    practitioners: related.practitioners.size > 0 ? related.practitioners : undefined,
     messageControlId,
     triggerEvent: "P01",
   });
@@ -143,7 +209,7 @@ export async function buildBarFromInvoice(invoice: Invoice): Promise<string> {
   return formatMessage(barMessage);
 }
 
-export async function createOutgoingBarMessage(invoice: Invoice, hl7v2: string): Promise<OutgoingBarMessage> {
+export async function createOutgoingBarMessage(invoice: InvoiceWithId, hl7v2: string): Promise<OutgoingBarMessage> {
   const newMessage: OutgoingBarMessage = {
     resourceType: "OutgoingBarMessage",
     patient: { reference: invoice.subject!.reference! },
@@ -171,7 +237,7 @@ export async function updateInvoiceStatus(invoiceId: string, status: string): Pr
 }
 
 export async function processNextInvoice(): Promise<boolean> {
-  const invoice = await pollDraftInvoice();
+  const invoice = await pollDraftInvoice() as InvoiceWithId | null;
 
   if (!invoice) {
     return false;
