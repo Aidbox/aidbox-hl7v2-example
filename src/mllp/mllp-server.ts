@@ -1,7 +1,7 @@
 import * as net from "node:net";
 import { aidboxFetch } from "../aidbox";
 
-// MLLP (Minimum Layer Protocol) framing characters
+// MLLP (Minimal Lower Layer Protocol) framing characters
 export const VT = 0x0b; // Vertical Tab - Start Block
 export const FS = 0x1c; // File Separator - End Block (part 1)
 export const CR = 0x0d; // Carriage Return - End Block (part 2)

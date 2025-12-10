@@ -39,12 +39,12 @@ bun scripts/load-test-data.ts
 
 ## Project Structure
 
-- `src/index.ts` - Bun HTTP server with routes for Invoices, Outgoing/Incoming Messages, MLP Client
+- `src/index.ts` - Bun HTTP server with routes for Invoices, Outgoing/Incoming Messages, MLLP Client
 - `src/aidbox.ts` - Reusable Aidbox client with `aidboxFetch`, `getResources`, `putResource`
 - `src/migrate.ts` - Custom resource StructureDefinitions (OutgoingBarMessage, IncomingHL7v2Message)
 - `src/bar/` - BAR message generation from FHIR resources
 - `src/hl7v2/` - HL7v2 message representation, builders, and formatter
-- `src/mlp/` - MLP (Minimum Layer Protocol) TCP server for receiving HL7v2 messages
+- `src/mllp/` - MLLP (Minimal Lower Layer Protocol) TCP server for receiving HL7v2 messages
 - `docker-compose.yaml` - Aidbox and PostgreSQL setup
 
 ## HL7v2 Module (`src/hl7v2/`)
@@ -131,39 +131,39 @@ Polls Aidbox for pending OutgoingBarMessage resources and sends them as Incoming
 bun src/bar/sender-service.ts
 ```
 
-## MLP Server (`src/mlp/`)
+## MLLP Server (`src/mllp/`)
 
-TCP server implementing the Minimum Layer Protocol (MLP) for receiving HL7v2 messages over TCP/IP.
+TCP server implementing the Minimal Lower Layer Protocol (MLLP) for receiving HL7v2 messages over TCP/IP.
 
-- `mlp-server.ts` - MLP TCP server with message parsing and ACK generation
+- `mllp-server.ts` - MLLP TCP server with message parsing and ACK generation
 - `index.ts` - Module exports
 
-**MLP Protocol:**
+**MLLP Protocol:**
 - Start Block: `0x0B` (VT - Vertical Tab)
 - End Block: `0x1C 0x0D` (FS + CR)
 - Default Port: 2575
 
 **Features:**
-- Accepts HL7v2 messages wrapped in MLP framing
+- Accepts HL7v2 messages wrapped in MLLP framing
 - Stores messages as `IncomingHL7v2Message` resources in Aidbox
 - Sends HL7v2 ACK responses (AA/AE/AR)
 - Handles multiple concurrent connections
 - Supports fragmented TCP delivery
 
 ```sh
-# Start MLP server (default port 2575)
-bun run mlp
+# Start MLLP server (default port 2575)
+bun run mllp
 
 # With custom port
-MLP_PORT=3001 bun run mlp
+MLLP_PORT=3001 bun run mllp
 
 # Test with sample client
-bun run test-mlp
+bun run test-mllp
 ```
 
-**Web UI MLP Test Client:**
+**Web UI MLLP Test Client:**
 
-The web UI includes an MLP Test Client at `/mlp-client` for sending test messages:
+The web UI includes an MLLP Test Client at `/mllp-client` for sending test messages:
 - Configure host and port
 - Select from sample messages (ADT^A01, ADT^A08, BAR^P01, ORM^O01)
 - View ACK responses

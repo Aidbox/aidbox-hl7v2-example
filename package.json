@@ -7,8 +7,8 @@
     "dev": "scripts/dev.sh",
     "stop": "scripts/stop.sh",
     "logs": "tail -f logs/server.log",
-    "mlp": "bun src/mlp/mlp-server.ts",
-    "test-mlp": "bun scripts/test-mlp-client.ts"
+    "mllp": "bun src/mllp/mllp-server.ts",
+    "test-mllp": "bun scripts/test-mllp-client.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

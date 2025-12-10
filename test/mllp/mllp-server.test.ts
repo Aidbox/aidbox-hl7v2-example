@@ -1,16 +1,16 @@
 import { test, expect, describe, beforeEach, afterEach, mock } from "bun:test";
 import * as net from "node:net";
 import {
-  createMLPServer,
-  MLPParser,
+  createMLLPServer,
+  MLLPParser,
   extractMessageType,
   generateAck,
   formatHL7Date,
-  wrapWithMLP,
+  wrapWithMLLP,
   VT,
   FS,
   CR,
-} from "../../src/mlp/mlp-server";
+} from "../../src/mllp/mllp-server";
 
 // Sample HL7v2 messages for testing
 const sampleADT = [
@@ -24,10 +24,10 @@ const sampleBAR = [
   "PID|1||MRN12345||Doe^Jane",
 ].join("\r");
 
-describe("MLPParser", () => {
+describe("MLLPParser", () => {
   test("parses single complete message", () => {
-    const parser = new MLPParser();
-    const framedMessage = wrapWithMLP(sampleADT);
+    const parser = new MLLPParser();
+    const framedMessage = wrapWithMLLP(sampleADT);
 
     const messages = parser.processData(framedMessage);
 
@@ -36,9 +36,9 @@ describe("MLPParser", () => {
   });
 
   test("parses multiple messages in one chunk", () => {
-    const parser = new MLPParser();
-    const framed1 = wrapWithMLP(sampleADT);
-    const framed2 = wrapWithMLP(sampleBAR);
+    const parser = new MLLPParser();
+    const framed1 = wrapWithMLLP(sampleADT);
+    const framed2 = wrapWithMLLP(sampleBAR);
     const combined = Buffer.concat([framed1, framed2]);
 
     const messages = parser.processData(combined);
@@ -49,8 +49,8 @@ describe("MLPParser", () => {
   });
 
   test("handles fragmented message across multiple chunks", () => {
-    const parser = new MLPParser();
-    const framedMessage = wrapWithMLP(sampleADT);
+    const parser = new MLLPParser();
+    const framedMessage = wrapWithMLLP(sampleADT);
 
     // Split in the middle
     const mid = Math.floor(framedMessage.length / 2);
@@ -66,8 +66,8 @@ describe("MLPParser", () => {
   });
 
   test("handles byte-by-byte delivery", () => {
-    const parser = new MLPParser();
-    const framedMessage = wrapWithMLP(sampleADT);
+    const parser = new MLLPParser();
+    const framedMessage = wrapWithMLLP(sampleADT);
 
     let messages: string[] = [];
     for (let i = 0; i < framedMessage.length; i++) {
@@ -80,9 +80,9 @@ describe("MLPParser", () => {
   });
 
   test("ignores data before start block", () => {
-    const parser = new MLPParser();
+    const parser = new MLLPParser();
     const garbage = Buffer.from("garbage data");
-    const framedMessage = wrapWithMLP(sampleADT);
+    const framedMessage = wrapWithMLLP(sampleADT);
     const combined = Buffer.concat([garbage, framedMessage]);
 
     const messages = parser.processData(combined);
@@ -92,7 +92,7 @@ describe("MLPParser", () => {
   });
 
   test("handles message after incomplete end block", () => {
-    const parser = new MLPParser();
+    const parser = new MLLPParser();
 
     // Send VT + partial message (no end block)
     const partial = Buffer.concat([Buffer.from([VT]), Buffer.from("partial")]);
@@ -102,7 +102,7 @@ describe("MLPParser", () => {
     // Send end block + new complete message
     const endAndNew = Buffer.concat([
       Buffer.from([FS, CR]),
-      wrapWithMLP(sampleADT),
+      wrapWithMLLP(sampleADT),
     ]);
     const messages2 = parser.processData(endAndNew);
 
@@ -186,10 +186,10 @@ describe("formatHL7Date", () => {
   });
 });
 
-describe("wrapWithMLP", () => {
+describe("wrapWithMLLP", () => {
   test("wraps message with VT header and FS+CR trailer", () => {
     const message = "TEST";
-    const wrapped = wrapWithMLP(message);
+    const wrapped = wrapWithMLLP(message);
 
     expect(wrapped[0]).toBe(VT);
     expect(wrapped.subarray(1, 5).toString()).toBe("TEST");
@@ -199,7 +199,7 @@ describe("wrapWithMLP", () => {
   });
 });
 
-describe("MLP Server Functional Tests", () => {
+describe("MLLP Server Functional Tests", () => {
   let server: net.Server;
   let port: number;
   let originalFetch: typeof fetch;
@@ -218,7 +218,7 @@ describe("MLP Server Functional Tests", () => {
 
     // Use random available port
     port = 0;
-    server = createMLPServer(port);
+    server = createMLLPServer(port);
 
     await new Promise<void>((resolve) => {
       server.listen(0, () => {
@@ -243,7 +243,7 @@ describe("MLP Server Functional Tests", () => {
     await new Promise<void>((resolve) => client.on("connect", resolve));
 
     // Send framed message
-    client.write(wrapWithMLP(sampleADT));
+    client.write(wrapWithMLLP(sampleADT));
 
     // Wait for ACK
     const response = await new Promise<Buffer>((resolve) => {
@@ -277,11 +277,11 @@ describe("MLP Server Functional Tests", () => {
     });
 
     // Send first message
-    client.write(wrapWithMLP(sampleADT));
+    client.write(wrapWithMLLP(sampleADT));
     await new Promise((r) => setTimeout(r, 50));
 
     // Send second message
-    client.write(wrapWithMLP(sampleBAR));
+    client.write(wrapWithMLLP(sampleBAR));
     await new Promise((r) => setTimeout(r, 50));
 
     expect(acks.length).toBe(2);
@@ -296,7 +296,7 @@ describe("MLP Server Functional Tests", () => {
 
     await new Promise<void>((resolve) => client.on("connect", resolve));
 
-    const framedMessage = wrapWithMLP(sampleADT);
+    const framedMessage = wrapWithMLLP(sampleADT);
 
     // Split message into 3 parts
     const part1 = framedMessage.subarray(0, 10);
@@ -329,7 +329,7 @@ describe("MLP Server Functional Tests", () => {
     const client = net.createConnection({ port });
     await new Promise<void>((resolve) => client.on("connect", resolve));
 
-    client.write(wrapWithMLP(sampleADT));
+    client.write(wrapWithMLLP(sampleADT));
 
     // Wait for processing
     await new Promise((r) => setTimeout(r, 50));
@@ -361,7 +361,7 @@ describe("MLP Server Functional Tests", () => {
     const client = net.createConnection({ port });
     await new Promise<void>((resolve) => client.on("connect", resolve));
 
-    client.write(wrapWithMLP(sampleADT));
+    client.write(wrapWithMLLP(sampleADT));
 
     const response = await new Promise<Buffer>((resolve) => {
       client.once("data", resolve);
@@ -403,7 +403,7 @@ describe("MLP Server Functional Tests", () => {
     // Send messages from all clients
     clients.forEach((client, i) => {
       const msg = `MSH|^~\\&|APP${i}|FAC|RCV|FAC|20231215||ADT^A01|MSG${i}|P|2.4`;
-      client.write(wrapWithMLP(msg));
+      client.write(wrapWithMLLP(msg));
     });
 
     // Wait for all responses

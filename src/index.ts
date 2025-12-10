@@ -46,14 +46,14 @@ const getOutgoingMessages = (status?: string) =>
 const getIncomingMessages = (status?: string) =>
   getResources<IncomingHL7v2Message>("IncomingHL7v2Message", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
 
-type NavTab = "invoices" | "outgoing" | "incoming" | "mlp-client";
+type NavTab = "invoices" | "outgoing" | "incoming" | "mllp-client";
 
 function renderNav(active: NavTab): string {
   const tabs: Array<{ id: NavTab; href: string; label: string }> = [
     { id: "invoices", href: "/invoices", label: "Invoices" },
     { id: "outgoing", href: "/outgoing-messages", label: "Outgoing Messages" },
     { id: "incoming", href: "/incoming-messages", label: "Incoming Messages" },
-    { id: "mlp-client", href: "/mlp-client", label: "MLP Test Client" },
+    { id: "mllp-client", href: "/mllp-client", label: "MLLP Test Client" },
   ];
 
   return `
@@ -366,7 +366,7 @@ function renderOutgoingMessagesPage(messages: OutgoingBarMessage[], patients: Pa
   return renderLayout("Outgoing Messages", renderNav("outgoing"), content);
 }
 
-interface MLPClientState {
+interface MLLPClientState {
   host: string;
   port: number;
   message: string;
@@ -375,7 +375,7 @@ interface MLPClientState {
   sent?: boolean;
 }
 
-function renderMLPClientPage(state: MLPClientState = { host: "localhost", port: 2575, message: "" }): string {
+function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port: 2575, message: "" }): string {
   const sampleMessages = [
     {
       name: "ADT^A01 (Admit)",
@@ -397,9 +397,9 @@ function renderMLPClientPage(state: MLPClientState = { host: "localhost", port: 
 
   const content = `
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-bold text-gray-800">MLP Test Client</h1>
+      <h1 class="text-3xl font-bold text-gray-800">MLLP Test Client</h1>
       <div class="text-sm text-gray-500">
-        Send HL7v2 messages via MLP protocol
+        Send HL7v2 messages via MLLP protocol
       </div>
     </div>
 
@@ -432,10 +432,10 @@ function renderMLPClientPage(state: MLPClientState = { host: "localhost", port: 
 
     <div class="grid grid-cols-3 gap-6">
       <div class="col-span-2">
-        <form method="POST" action="/mlp-client" class="bg-white rounded-lg shadow p-6 space-y-4">
+        <form method="POST" action="/mllp-client" class="bg-white rounded-lg shadow p-6 space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">MLP Server Host</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">MLLP Server Host</label>
               <input type="text" name="host" value="${state.host}" required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="localhost">
@@ -461,7 +461,7 @@ function renderMLPClientPage(state: MLPClientState = { host: "localhost", port: 
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
               </svg>
-              Send via MLP
+              Send via MLLP
             </button>
             <button type="reset" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300">
               Clear
@@ -484,7 +484,7 @@ function renderMLPClientPage(state: MLPClientState = { host: "localhost", port: 
         </div>
 
         <div class="mt-4 bg-blue-50 rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold text-blue-800 mb-2">MLP Protocol Info</h2>
+          <h2 class="text-lg font-semibold text-blue-800 mb-2">MLLP Protocol Info</h2>
           <div class="text-sm text-blue-700 space-y-2">
             <p><strong>Start Block:</strong> VT (0x0B)</p>
             <p><strong>End Block:</strong> FS + CR (0x1C 0x0D)</p>
@@ -493,13 +493,13 @@ function renderMLPClientPage(state: MLPClientState = { host: "localhost", port: 
         </div>
 
         <div class="mt-4 bg-yellow-50 rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold text-yellow-800 mb-2">Start MLP Server</h2>
-          <pre class="text-xs font-mono bg-white p-2 rounded overflow-x-auto">bun run mlp</pre>
+          <h2 class="text-lg font-semibold text-yellow-800 mb-2">Start MLLP Server</h2>
+          <pre class="text-xs font-mono bg-white p-2 rounded overflow-x-auto">bun run mllp</pre>
         </div>
       </div>
     </div>`;
 
-  return renderLayout("MLP Test Client", renderNav("mlp-client"), content);
+  return renderLayout("MLLP Test Client", renderNav("mllp-client"), content);
 }
 
 function renderIncomingMessagesPage(messages: IncomingHL7v2Message[], statusFilter?: string): string {
@@ -675,9 +675,9 @@ Bun.serve({
         });
       },
     },
-    "/mlp-client": {
+    "/mllp-client": {
       GET: () => {
-        return new Response(renderMLPClientPage(), {
+        return new Response(renderMLLPClientPage(), {
           headers: { "Content-Type": "text/html" },
         });
       },
@@ -690,17 +690,17 @@ Bun.serve({
         // Normalize line endings to \r (HL7v2 standard)
         const message = rawMessage.replace(/\r\n/g, "\r").replace(/\n/g, "\r");
 
-        const state: MLPClientState = { host, port, message: rawMessage };
+        const state: MLLPClientState = { host, port, message: rawMessage };
 
         try {
-          const response = await sendMLPMessage(host, port, message);
+          const response = await sendMLLPMessage(host, port, message);
           state.response = response;
           state.sent = true;
         } catch (error) {
           state.error = error instanceof Error ? error.message : "Unknown error";
         }
 
-        return new Response(renderMLPClientPage(state), {
+        return new Response(renderMLLPClientPage(state), {
           headers: { "Content-Type": "text/html" },
         });
       },
@@ -709,9 +709,9 @@ Bun.serve({
 });
 
 /**
- * Send HL7v2 message via MLP protocol and wait for ACK
+ * Send HL7v2 message via MLLP protocol and wait for ACK
  */
-async function sendMLPMessage(host: string, port: number, message: string): Promise<string> {
+async function sendMLLPMessage(host: string, port: number, message: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const client = net.createConnection({ host, port }, () => {
       client.write(wrapWithMLLP(message));
@@ -727,7 +727,7 @@ async function sendMLPMessage(host: string, port: number, message: string): Prom
     client.on("data", (data) => {
       buffer = Buffer.concat([buffer, data]);
 
-      // Look for MLP framing
+      // Look for MLLP framing
       const startIndex = buffer.indexOf(VT);
       if (startIndex === -1) return;
 

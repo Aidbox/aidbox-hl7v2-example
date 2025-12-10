@@ -1,14 +1,14 @@
 import * as net from "node:net";
 
-// MLP framing characters
+// MLLP (Minimal Lower Layer Protocol) framing characters
 const VT = 0x0b;
 const FS = 0x1c;
 const CR = 0x0d;
 
 /**
- * Wrap HL7v2 message with MLP framing
+ * Wrap HL7v2 message with MLLP framing
  */
-function wrapWithMLP(message: string): Buffer {
+function wrapWithMLLP(message: string): Buffer {
   const messageBuffer = Buffer.from(message, "utf-8");
   const framedMessage = Buffer.alloc(messageBuffer.length + 3);
   framedMessage[0] = VT;
@@ -19,9 +19,9 @@ function wrapWithMLP(message: string): Buffer {
 }
 
 /**
- * Parse MLP response
+ * Parse MLLP response
  */
-function parseMLPResponse(data: Buffer): string | null {
+function parseMLLPResponse(data: Buffer): string | null {
   const startIndex = data.indexOf(VT);
   if (startIndex === -1) return null;
 
@@ -44,18 +44,18 @@ const sampleMessage = [
 const host = process.argv[2] || "localhost";
 const port = parseInt(process.argv[3] || "2575", 10);
 
-console.log(`Connecting to MLP server at ${host}:${port}...`);
+console.log(`Connecting to MLLP server at ${host}:${port}...`);
 
 const client = net.createConnection({ host, port }, () => {
-  console.log("Connected to MLP server");
+  console.log("Connected to MLLP server");
   console.log("\nSending ADT^A01 message...");
   console.log("Message preview:", sampleMessage.substring(0, 80) + "...\n");
 
-  client.write(wrapWithMLP(sampleMessage));
+  client.write(wrapWithMLLP(sampleMessage));
 });
 
 client.on("data", (data) => {
-  const response = parseMLPResponse(data);
+  const response = parseMLLPResponse(data);
   if (response) {
     console.log("Received ACK:");
     console.log(response.replace(/\r/g, "\n"));
