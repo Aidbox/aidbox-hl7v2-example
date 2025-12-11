@@ -3,21 +3,22 @@
  * Generates BAR^P01/P05/P06 messages from FHIR resources
  */
 
-import type { HL7v2Message } from "../hl7v2/types";
-import type {
-  MSHBuilder,
-  EVNBuilder,
-  PIDBuilder,
-  PV1Builder,
-  GT1Builder,
-  IN1Builder,
-  DG1Builder,
-  PR1Builder,
-} from "../hl7v2/fields";
+import type { HL7v2Message, HL7v2Segment } from "../hl7v2/generated/types";
+import {
+  toSegment,
+  type MSH,
+  type EVN,
+  type PID,
+  type PV1,
+  type GT1,
+  type IN1,
+  type DG1,
+  type PR1,
+} from "../hl7v2/generated/fields";
 import {
   BAR_P01Builder,
   type BAR_P01_VISITBuilder,
-} from "../hl7v2/messages";
+} from "../hl7v2/generated/messages";
 import type {
   Encounter,
   Coverage,
@@ -110,24 +111,28 @@ function mapGuarantorRelationship(relationship: CodeableConcept | undefined): st
 // Segment builders
 // ============================================================================
 
-const buildMSH = (input: BarMessageInput) => (msh: MSHBuilder) => msh
-  .set_msh1_fieldSeparator("|")
-  .set_msh2_encodingCharacters("^~\\&")
-  .set_msh3_sendingApplication({ namespaceId__1: input.sendingApplication ?? "FHIR_APP" })
-  .set_msh4_sendingFacility({ namespaceId__1: input.sendingFacility ?? "FHIR_FAC" })
-  .set_msh5_receivingApplication({ namespaceId__1: input.receivingApplication ?? "BILLING_APP" })
-  .set_msh6_receivingFacility({ namespaceId__1: input.receivingFacility ?? "BILLING_FAC" })
-  .set_msh7_dateTimeOfMessage(nowHL7())
-  .set_msh9_messageType({
-    messageCode__1: "BAR",
-    triggerEvent__2: input.triggerEvent,
-    messageStructure__3: `BAR_${input.triggerEvent}`,
-  })
-  .set_msh10_messageControlId(input.messageControlId)
-  .set_msh11_processingId({ processingId__1: "P" })
-  .set_msh12_versionId({ versionId__1: "2.5.1" });
+function buildMSH (input: BarMessageInput): MSH {
+  return {
+      $1_fieldSeparator: "|",
+      $2_encodingCharacters: "^~\\&",
+      $3_sendingApplication: { $1_namespace: input.sendingApplication ?? "FHIR_APP" },
+      $4_sendingFacility: { $1_namespace: input.sendingFacility ?? "FHIR_FAC" },
+      $5_receivingApplication: { $1_namespace: input.receivingApplication ?? "BILLING_APP"},
+      $6_receivingFacility: { $1_namespace: input.receivingFacility ?? "BILLING_FAC"},
+      $7_messageDateTime: nowHL7(),
+      $9_messageType: {
+        $1_code: "BAR",
+        $2_event: input.triggerEvent,
+        $3_structure: `BAR_${input.triggerEvent}`,
+      },
+      $10_messageControlId: input.messageControlId,
+      $11_processingId: {$1_processingId: "P"},
+      $12_version: {$1_version: "2.5.1"}
 
-const buildEVN = (input: BarMessageInput) => (evn: EVNBuilder) => {
+    }
+}
+
+function buildEVN (input: BarMessageInput): EVN {
   const account = input.account;
   const eventDateTime = input.triggerEvent === "P01"
     ? formatHL7Date(account.servicePeriod?.start) || nowHL7()
@@ -135,162 +140,168 @@ const buildEVN = (input: BarMessageInput) => (evn: EVNBuilder) => {
       ? formatHL7Date(account.servicePeriod?.end) || nowHL7()
       : nowHL7();
 
-  return evn
-    .set_evn1_eventTypeCode(input.triggerEvent)
-    .set_evn2_recordedDateTime(eventDateTime)
-    .set_evn6_eventOccurred(eventDateTime);
+  return {
+    $1_eventTypeCode: input.triggerEvent,
+    $2_recordedDateTime: eventDateTime,
+    $6_eventOccurred: eventDateTime
+  }
 };
 
-const buildPID = (input: BarMessageInput) => (pid: PIDBuilder) => {
+function buildPID (input: BarMessageInput): PID {
   const { patient, account } = input;
   const name = patient.name?.[0];
   const address = patient.address?.[0];
   const phone = patient.telecom?.find(t => t.system === "phone");
 
-  return pid
-    .set_pid1_setIdPid("1")
-    .set_pid3_patientIdentifierList([{
-      idNumber__1: patient.identifier?.[0]?.value,
-      identifierTypeCode__5: "MR",
-    }])
-    .set_pid5_patientName([{
-      familyName__1: { surname__1: name?.family },
-      givenName__2: name?.given?.[0],
-      secondAndFurtherGivenNamesOrInitialsThereof__3: name?.given?.[1],
-    }])
-    .set_pid7_dateTimeOfBirth(formatHL7Date(patient.birthDate))
-    .set_pid8_administrativeSex(mapGender(patient.gender))
-    .set_pid11_patientAddress([{
-      streetAddress__1: { streetOrMailingAddress__1: address?.line?.[0] },
-      city__3: address?.city,
-      stateOrProvince__4: address?.state,
-      zipOrPostalCode__5: address?.postalCode,
-      country__6: address?.country,
-    }])
-    .set_pid13_phoneNumberHome([{
-      telephoneNumber__1: phone?.value,
-    }])
-    .set_pid18_patientAccountNumber({
-      idNumber__1: account.identifier?.[0]?.value,
-    });
+  return {
+    $1_setIdPid: "1",
+    $3_identifier: [{
+      $1_value: patient.identifier?.[0]?.value,
+      $5_type: "MR",
+    }],
+    $5_name: [{
+      $1_family: { $1_family: name?.family },
+      $2_given: name?.given?.[0],
+      $3_additionalGiven: name?.given?.[1],
+    }],
+    $7_birthDate: formatHL7Date(patient.birthDate),
+    $8_gender: mapGender(patient.gender),
+    $11_address: [{
+      $1_line1: { $1_line: address?.line?.[0] },
+      $3_city: address?.city,
+      $4_state: address?.state,
+      $5_postalCode: address?.postalCode,
+      $6_country: address?.country,
+    }],
+    $13_homePhone: [{
+      $1_value: phone?.value,
+    }],
+    $18_accountNumber: {
+      $1_value: account.identifier?.[0]?.value
+    }
+
+  }
 };
 
-const buildPV1 = (encounter: Encounter) => (pv1: PV1Builder) => {
+function buildPV1 (encounter: Encounter): PV1 {
   const location = encounter.location?.[0];
-
-  return pv1
-    .set_pv11_setIdPv1("1")
-    .set_pv12_patientClass(mapPatientClass(encounter.class))
-    .set_pv13_assignedPatientLocation({
-      pointOfCare__1: location?.location?.display,
-    })
-    .set_pv119_visitNumber({
-      idNumber__1: encounter.identifier?.[0]?.value,
-    })
-    .set_pv144_admitDateTime(formatHL7Date(encounter.period?.start))
-    .set_pv145_dischargeDateTime(formatHL7Date(encounter.period?.end));
+  return {
+      $1_setIdPv1: "1",
+      $2_class: mapPatientClass(encounter.class),
+      $3_assignedPatientLocation: {
+        $1_careSite: location?.location?.display,
+      },
+      $19_visitNumber: {
+        $1_value: encounter.identifier?.[0]?.value
+      },
+      $44_admission: formatHL7Date(encounter.period?.start),
+      $45_discharge: [formatHL7Date(encounter.period?.end)]
+    }
 };
 
-const buildGT1 = (guarantor: RelatedPerson | Patient, setId: number) => (gt1: GT1Builder) => {
+function buildGT1 (guarantor: RelatedPerson | Patient, setId: number): GT1 {
   const name = guarantor.name?.[0];
   const address = guarantor.address?.[0];
   const phone = guarantor.telecom?.find(t => t.system === "phone");
   const guarantorType = guarantor.resourceType === "Patient"
     ? "SE"
     : mapGuarantorRelationship((guarantor as RelatedPerson).relationship?.[0]);
-
-  return gt1
-    .set_gt11_setIdGt1(String(setId))
-    .set_gt12_guarantorNumber([{
-      idNumber__1: guarantor.identifier?.[0]?.value,
-    }])
-    .set_gt13_guarantorName([{
-      familyName__1: { surname__1: name?.family },
-      givenName__2: name?.given?.[0],
-    }])
-    .set_gt15_guarantorAddress([{
-      streetAddress__1: { streetOrMailingAddress__1: address?.line?.[0] },
-      city__3: address?.city,
-      stateOrProvince__4: address?.state,
-      zipOrPostalCode__5: address?.postalCode,
-      country__6: address?.country,
-    }])
-    .set_gt16_guarantorPhNumHome([{
-      telephoneNumber__1: phone?.value,
-    }])
-    .set_gt110_guarantorType(guarantorType);
+  return {
+      $1_setIdGt1: String(setId),
+      $2_guarantorNumber: [{
+        $1_value: guarantor.identifier?.[0]?.value,
+      }],
+      $3_guarantorName: [{
+        $1_family: { $1_family: name?.family },
+        $2_given: name?.given?.[0],
+      }],
+      $5_guarantorAddress: [{
+        $1_line1: { $1_line: address?.line?.[0] },
+        $3_city: address?.city,
+        $4_state: address?.state,
+        $5_postalCode: address?.postalCode,
+        $6_country: address?.country,
+      }],
+      $6_guarantorPhNumHome: [{
+        $1_value: phone?.value,
+      }],
+      $10_guarantorType: guarantorType
+  }
 };
 
-const buildIN1 = (coverage: Coverage, setId: number, payorOrg?: Organization) => (in1: IN1Builder) => {
+function buildIN1 (coverage: Coverage, setId: number, payorOrg?: Organization): IN1 {
   const planCode = getCode(coverage.type);
   const payorId = payorOrg?.identifier?.[0]?.value ?? coverage.payor?.[0]?.reference;
   const payorName = payorOrg?.name ?? coverage.payor?.[0]?.display;
   const groupClass = coverage.class?.find(c => c.type?.coding?.[0]?.code === "group");
   const relationship = getCode(coverage.relationship);
 
-  return in1
-    .set_in11_setIdIn1(String(setId))
-    .set_in12_insurancePlanId({
-      identifier__1: planCode.code,
-      text__2: planCode.display,
-    })
-    .set_in13_insuranceCompanyId([{
-      idNumber__1: payorId,
-    }])
-    .set_in14_insuranceCompanyName([{
-      organizationName__1: payorName,
-    }])
-    .set_in18_groupNumber(groupClass?.value)
-    .set_in19_groupName([{
-      organizationName__1: groupClass?.name,
-    }])
-    .set_in112_planEffectiveDate(formatHL7Date(coverage.period?.start))
-    .set_in113_planExpirationDate(formatHL7Date(coverage.period?.end))
-    .set_in117_insuredSRelationshipToPatient({
-      identifier__1: relationship.code,
-      text__2: relationship.display,
-    })
-    .set_in136_policyNumber(coverage.subscriberId);
+  return {
+      $1_setIdIn1: (String(setId)),
+      $2_insurancePlanId: {
+        $1_code: planCode.code,
+        $2_text: planCode.display,
+      },
+      $3_insuranceCompanyId: [{
+        $1_value: payorId,
+      }],
+      $4_insuranceCompanyName: [{
+        $1_name: payorName,
+      }],
+      $8_groupNumber: groupClass?.value,
+      $9_groupName: [{
+        $1_name: groupClass?.name,
+      }],
+      $12_planEffectiveDate: formatHL7Date(coverage.period?.start),
+      $13_planExpirationDate: formatHL7Date(coverage.period?.end),
+      $17_insuredsRelationshipToPatient: {
+        $1_code: relationship.code,
+        $2_text: relationship.display,
+      },
+      $36_policyNumber: coverage.subscriberId
+    }
 };
 
-const buildDG1 = (condition: Condition, setId: number) => (dg1: DG1Builder) => {
+function buildDG1 (condition: Condition, setId: number): DG1 {
   const code = getCode(condition.code);
   const category = getCode(condition.category?.[0]);
   const diagDate = condition.recordedDate ?? condition.onsetDateTime;
 
-  return dg1
-    .set_dg11_setIdDg1(String(setId))
-    .set_dg12_diagnosisCodingMethod(code.system)
-    .set_dg13_diagnosisCodeDg1({
-      identifier__1: code.code,
-      text__2: code.display,
-      nameOfCodingSystem__3: code.system,
-    })
-    .set_dg15_diagnosisDateTime(formatHL7Date(diagDate))
-    .set_dg16_diagnosisType(category.code)
-    .set_dg115_diagnosisPriority(String(setId));
+  return {
+      $1_setIdDg1: String(setId),
+      $2_diagnosisCodingMethod: code.system,
+      $3_diagnosisCodeDg1: {
+        $1_code: code.code,
+        $2_text: code.display,
+        $3_system: code.system,
+      },
+      $5_diagnosisDateTime: formatHL7Date(diagDate),
+      $6_diagnosisType: category.code,
+      $15_diagnosisPriority: String(setId)
+    }
 };
 
-const buildPR1 = (procedure: Procedure, setId: number) => (pr1: PR1Builder) => {
+function buildPR1 (procedure: Procedure, setId: number): PR1 {
   const code = getCode(procedure.code);
   const procDate = procedure.performedDateTime ?? procedure.performedPeriod?.start;
 
-  return pr1
-    .set_pr11_setIdPr1(String(setId))
-    .set_pr12_procedureCodingMethod(code.system)
-    .set_pr13_procedureCode({
-      identifier__1: code.code,
-      text__2: code.display,
-      nameOfCodingSystem__3: code.system,
-    })
-    .set_pr15_procedureDateTime(formatHL7Date(procDate));
+  return {
+      $1_setIdPr1: String(setId),
+      $2_procedureCodingMethod: code.system,
+      $3_procedureCode: {
+        $1_code: code.code,
+        $2_text: code.display,
+        $3_system: code.system,
+      },
+      $5_procedureDateTime: formatHL7Date(procDate)
+    }
 };
 
 const buildVisit = (input: BarMessageInput) => (visit: BAR_P01_VISITBuilder) => {
   const { encounter, conditions, procedures, guarantor, coverages, organizations } = input;
 
   if (encounter) {
-    visit.pv1(buildPV1(encounter));
+    visit.pv1(buildPV1(encounter) as PV1);
   }
 
   conditions?.forEach((condition, idx) => {
