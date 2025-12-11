@@ -13,25 +13,16 @@ import type {
   BarMessageInput,
 } from "../../src/bar/types";
 import {
-  MSH_9_1_message_code,
-  MSH_9_2_trigger_event,
-  PID_3_1_i_d_number,
-  PID_5_1_family_name,
-  PID_5_2_given_name,
-  PID_7_date_time_of_birth,
-  PID_8_administrative_sex,
-  PID_18_1_i_d_number,
-  PV1_2_patient_class,
-  PV1_19_1_i_d_number,
-  GT1_3_1_family_name,
-  GT1_10_guarantor_type,
-  IN1_1_set_i_d_i_n1,
-  IN1_4_1_organization_name,
-  IN1_36_policy_number,
-  DG1_3_1_identifier,
-  DG1_3_2_text,
-  PR1_3_1_identifier,
-} from "../../src/hl7v2/fields";
+  fromDG1,
+  fromGT1,
+  fromIN1,
+  fromMSH,
+  fromPID,
+  fromPR1,
+  fromPV1,
+  type MSH,
+} from "../../src/hl7v2/generated/fields";
+import type { HL7v2Segment } from "../../src/hl7v2/generated/types";
 
 // Test fixtures
 const testPatient: Patient = {
@@ -185,16 +176,17 @@ describe("generateBarMessage", () => {
     expect(message[2]!.segment).toBe("PID");
 
     // Verify MSH content
-    expect(MSH_9_1_message_code(message[0]!)).toBe("BAR");
-    expect(MSH_9_2_trigger_event(message[0]!)).toBe("P01");
+    expect(fromMSH(message[0]!).$9_messageType.$1_code).toBe("BAR");
+    expect(fromMSH(message[0]!).$9_messageType.$2_event).toBe("P01")
 
     // Verify PID content
-    expect(PID_3_1_i_d_number(message[2]!)).toBe("MRN12345");
-    expect(PID_5_1_family_name(message[2]!)).toBe("Smith");
-    expect(PID_5_2_given_name(message[2]!)).toBe("John");
-    expect(PID_7_date_time_of_birth(message[2]!)).toBe("19850315");
-    expect(PID_8_administrative_sex(message[2]!)).toBe("M");
-    expect(PID_18_1_i_d_number(message[2]!)).toBe("ACC789");
+    // FIXME: This index management is bad and should be wrapped into getters like it used to
+    expect(fromPID(message![2]!).$3_identifier[0]?.$1_value).toBe("MRN12345");
+    expect(fromPID(message[2]!).$5_name[0]?.$1_family?.$1_family).toBe("Smith");
+    expect(fromPID(message[2]!).$5_name[0]?.$2_given).toBe("John");
+    expect(fromPID(message[2]!).$7_birthDate).toBe("19850315");
+    expect(fromPID(message[2]!).$8_gender).toBe("M");
+    expect(fromPID(message[2]!).$18_accountNumber?.$1_value).toBe("ACC789");
   });
 
   test("generates BAR^P05 update message", () => {
@@ -206,7 +198,7 @@ describe("generateBarMessage", () => {
     };
 
     const message = generateBarMessage(input);
-    expect(MSH_9_2_trigger_event(message[0]!)).toBe("P05");
+    expect(fromMSH(message[0]!).$9_messageType.$2_event).toBe("P05");
   });
 
   test("generates BAR^P06 end message", () => {
@@ -218,7 +210,7 @@ describe("generateBarMessage", () => {
     };
 
     const message = generateBarMessage(input);
-    expect(MSH_9_2_trigger_event(message[0]!)).toBe("P06");
+    expect(fromMSH(message[0]!).$9_messageType.$2_event).toBe("P06");
   });
 
   test("includes PV1 when encounter provided", () => {
@@ -234,8 +226,8 @@ describe("generateBarMessage", () => {
 
     const pv1 = message.find((s) => s.segment === "PV1");
     expect(pv1).toBeDefined();
-    expect(PV1_2_patient_class(pv1!)).toBe("I"); // Inpatient
-    expect(PV1_19_1_i_d_number(pv1!)).toBe("VISIT456");
+    expect(fromPV1(pv1!).$2_class).toBe("I"); // Inpatient
+    expect(fromPV1(pv1!).$19_visitNumber?.$1_value).toBe("VISIT456");
   });
 
   test("includes GT1 when guarantor provided", () => {
@@ -251,8 +243,8 @@ describe("generateBarMessage", () => {
 
     const gt1 = message.find((s) => s.segment === "GT1");
     expect(gt1).toBeDefined();
-    expect(GT1_3_1_family_name(gt1!)).toBe("Smith");
-    expect(GT1_10_guarantor_type(gt1!)).toBe("SP"); // Spouse
+    expect(fromGT1(gt1!).$3_guarantorName[0]?.$1_family?.$1_family).toBe("Smith");
+    expect(fromGT1(gt1!).$10_guarantorType).toBe("SP"); // Spouse
   });
 
   test("uses patient as self-guarantor", () => {
@@ -268,7 +260,7 @@ describe("generateBarMessage", () => {
 
     const gt1 = message.find((s) => s.segment === "GT1");
     expect(gt1).toBeDefined();
-    expect(GT1_10_guarantor_type(gt1!)).toBe("SE"); // Self
+    expect(fromGT1(gt1!).$10_guarantorType).toBe("SE"); // Self
   });
 
   test("includes IN1 segments for coverages", () => {
@@ -288,9 +280,9 @@ describe("generateBarMessage", () => {
 
     const in1 = message.find((s) => s.segment === "IN1");
     expect(in1).toBeDefined();
-    expect(IN1_1_set_i_d_i_n1(in1!)).toBe("1");
-    expect(IN1_4_1_organization_name(in1!)).toBe("Blue Cross Blue Shield of California");
-    expect(IN1_36_policy_number(in1!)).toBe("SUB123456");
+    expect(fromIN1(in1!).$1_setIdIn1).toBe("1");
+    expect(fromIN1(in1!).$4_insuranceCompanyName![0]?.$1_name).toBe("Blue Cross Blue Shield of California");
+    expect(fromIN1(in1!).$36_policyNumber).toBe("SUB123456");
   });
 
   test("includes DG1 segments for conditions", () => {
@@ -306,8 +298,8 @@ describe("generateBarMessage", () => {
 
     const dg1 = message.find((s) => s.segment === "DG1");
     expect(dg1).toBeDefined();
-    expect(DG1_3_1_identifier(dg1!)).toBe("J18.9");
-    expect(DG1_3_2_text(dg1!)).toBe("Pneumonia, unspecified organism");
+    expect(fromDG1(dg1!).$3_diagnosisCodeDg1?.$1_code).toBe("J18.9");
+    expect(fromDG1(dg1!).$3_diagnosisCodeDg1?.$2_text).toBe("Pneumonia, unspecified organism");
   });
 
   test("includes PR1 segments for procedures", () => {
@@ -323,7 +315,7 @@ describe("generateBarMessage", () => {
 
     const pr1 = message.find((s) => s.segment === "PR1");
     expect(pr1).toBeDefined();
-    expect(PR1_3_1_identifier(pr1!)).toBe("94003");
+    expect(fromPR1(pr1!).$3_procedureCode.$1_code).toBe("94003");
   });
 
   test("generates complete BAR message with all segments", () => {
@@ -389,10 +381,10 @@ describe("generateBarMessage", () => {
 
     const in1Segments = message.filter((s) => s.segment === "IN1");
     expect(in1Segments.length).toBe(2);
-    expect(IN1_1_set_i_d_i_n1(in1Segments[0]!)).toBe("1");
-    expect(IN1_36_policy_number(in1Segments[0]!)).toBe("SUB123456"); // Primary first
-    expect(IN1_1_set_i_d_i_n1(in1Segments[1]!)).toBe("2");
-    expect(IN1_36_policy_number(in1Segments[1]!)).toBe("SEC999"); // Secondary second
+    expect(fromIN1(in1Segments[0]!).$1_setIdIn1).toBe("1");
+    expect(fromIN1(in1Segments[0]!).$36_policyNumber).toBe("SUB123456"); // Primary first
+    expect(fromIN1(in1Segments[1]!).$1_setIdIn1).toBe("2");
+    expect(fromIN1(in1Segments[1]!).$36_policyNumber).toBe("SEC999"); // Secondary second
   });
 });
 
