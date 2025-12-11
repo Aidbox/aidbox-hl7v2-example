@@ -37,3 +37,14 @@ export interface BarMessageInput {
   receivingApplication?: string | null;
   receivingFacility?: string | null;
 }
+
+export type {
+  Account,
+  Condition,
+  Coverage,
+  Encounter,
+  Organization,
+  Patient,
+  Practitioner,
+  Procedure,
+  RelatedPerson} from "../fhir/hl7-fhir-r4-core";
