@@ -15,7 +15,11 @@ bun install
 
 # Start Aidbox and PostgreSQL
 docker compose up -d
+```
 
+> **First run:** Go to http://localhost:8080 and log in with [aidbox.app](https://aidbox.app) to activate the license.
+
+```sh
 # Run database migrations (creates custom FHIR resources)
 bun src/migrate.ts
 
