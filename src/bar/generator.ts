@@ -15,6 +15,12 @@ import {
   type DG1,
   type PR1,
 } from "../hl7v2/generated/fields";
+
+import { 
+  AdministrativeSex,
+  PatientClass,
+} from "../hl7v2/generated/tables";
+
 import {
   BAR_P01Builder,
   type BAR_P01_VISITBuilder,
@@ -46,11 +52,11 @@ function nowHL7(): string {
 
 function mapGender(gender: string | undefined): string {
   switch (gender) {
-    case "male": return "M";
-    case "female": return "F";
-    case "other": return "O";
-    case "unknown": return "U";
-    default: return "";
+    case "male": return AdministrativeSex.Male;
+    case "female": return AdministrativeSex.Female;
+    case "other": return AdministrativeSex.Other;
+    case "unknown": return AdministrativeSex.Unknown;
+    default: return AdministrativeSex.Unknown;
   }
 }
 
@@ -59,12 +65,12 @@ function mapPatientClass(encounterClass: { code?: string } | undefined): string 
   switch (encounterClass.code) {
     case "IMP":
     case "ACUTE":
-    case "NONAC": return "I";
+    case "NONAC": return PatientClass.Inpatient;
     case "AMB":
-    case "OBSENC": return "O";
-    case "EMER": return "E";
-    case "PRENC": return "P";
-    default: return encounterClass.code;
+    case "OBSENC": return PatientClass.Outpatient;
+    case "EMER": return PatientClass.Emergency;
+    case "PRENC": return PatientClass.Preadmit;
+    default: return PatientClass.Unknown;
   }
 }
 

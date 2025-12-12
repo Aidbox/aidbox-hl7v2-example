@@ -3,6 +3,9 @@
   "workspaces": {
     "": {
       "name": "aidbox-hl7",
+      "dependencies": {
+        "@atomic-ehr/hl7v2": "^0.0.1-canary.22.202c8cc",
+      },
       "devDependencies": {
         "@types/bun": "latest",
       },
@@ -12,6 +15,8 @@
     },
   },
   "packages": {
+    "@atomic-ehr/hl7v2": ["@atomic-ehr/hl7v2@0.0.1-canary.22.202c8cc", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-iAA6mjVah89YWAm9AGKwWRyN1rSvEUcNXSu95PltEPCtEi3mpPhqzVCGXJJic/Ka6jokRu7e5AuQtvtg4SIxag=="],
+
     "@types/bun": ["@types/bun@1.3.4", "", { "dependencies": { "bun-types": "1.3.4" } }, "sha512-EEPTKXHP+zKGPkhRLv+HI0UEX8/o+65hqARxLy8Ov5rIxMBPNTjeZww00CIihrIQGEQBYg+0roO5qOnS/7boGA=="],
 
     "@types/node": ["@types/node@24.10.2", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-WOhQTZ4G8xZ1tjJTvKOpyEVSGgOTvJAfDK3FNFgELyaTpzhdgHVHeqW8V+UJvzF5BT+/B54T/1S2K6gd9c7bbA=="],

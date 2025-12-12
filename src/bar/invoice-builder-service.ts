@@ -12,7 +12,7 @@
 
 import { aidboxFetch, type Bundle } from "../aidbox";
 import { generateBarMessage } from "./generator";
-import { formatMessage } from "../hl7v2/format";
+import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
 import type { Account } from "../fhir/hl7-fhir-r4-core/Account";
 import type { ChargeItem } from "../fhir/hl7-fhir-r4-core/ChargeItem";
 import type { Condition } from "../fhir/hl7-fhir-r4-core/Condition";

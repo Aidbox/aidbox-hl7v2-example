@@ -50,13 +50,11 @@ src/
 │   ├── sender-service.ts # Sends pending OutgoingBarMessage
 │   └── types.ts          # FHIR resource type definitions
 └── hl7v2/
-    ├── types.ts          # HL7v2 message types
-    ├── fields.ts         # Generated segment builders (MSH, PID, PV1, etc.)
-    ├── format.ts         # Serializes messages to pipe-delimited format
-    ├── highlight.ts      # HL7v2 syntax highlighter with schema metadata tooltips
-    └── codegen.ts        # Generates builders from HL7v2 schema
-
-hl7v2/schema/             # HL7v2 schema definitions (segments, fields, dataTypes)
+    └── generated/        # Auto-generated from @atomic-ehr/hl7v2
+        ├── types.ts      # HL7v2 message types
+        ├── fields.ts     # Segment interfaces and fromXXX() getters
+        ├── messages.ts   # Message builders (BAR_P01Builder)
+        └── tables.ts     # HL7 table constants
 
 fhir/                     # FHIR resource definitions (loaded by migrate.ts)
 scripts/
@@ -105,27 +103,34 @@ The UI displays HL7v2 messages with rich syntax highlighting and tooltips:
 - **Color-coded delimiters** - Pipe `|` (blue), caret `^` (purple), tilde `~` (green), ampersand `&` (red)
 - **Required indicators** - Fields marked with `[R]` are required per HL7v2 spec
 
-Metadata is sourced from the HL7v2 schema in `hl7v2/schema/`.
+Metadata is sourced from the HL7v2 schema bundled in `@atomic-ehr/hl7v2`.
 
 ## HL7v2 Module
 
-Type-safe HL7v2 message building with fluent API:
+Uses [@atomic-ehr/hl7v2](https://github.com/atomic-ehr/atomic-hl7v2) for type-safe HL7v2 message handling.
+
+**Regenerate bindings:** `bun run regenerate-hl7v2`
 
 ```ts
-import { MSHBuilder, PIDBuilder } from "./src/hl7v2/fields";
-import { formatMessage } from "./src/hl7v2/format";
+import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
+import { BAR_P01Builder } from "./src/hl7v2/generated/messages";
+import type { MSH, PID } from "./src/hl7v2/generated/fields";
 
-const message = [
-  new MSHBuilder()
-    .set9_1_messageCode("BAR")
-    .set9_2_triggerEvent("P01")
-    .build(),
-  new PIDBuilder()
-    .set3_1_idNumber("12345")
-    .set5_1_1_surname("Smith")
-    .set5_2_givenName("John")
-    .build(),
-];
+const msh: MSH = {
+  $3_sendingApplication: { $1_namespace: "HOSPITAL" },
+  $9_messageType: { $1_code: "BAR", $2_event: "P01" },
+  $10_messageControlId: "MSG001",
+};
+
+const pid: PID = {
+  $3_identifier: [{ $1_value: "12345" }],
+  $5_name: [{ $1_family: { $1_family: "Smith" }, $2_given: "John" }],
+};
+
+const message = new BAR_P01Builder()
+  .msh(msh)
+  .pid(pid)
+  .build();
 
 console.log(formatMessage(message));
 ```
@@ -136,7 +141,7 @@ Generate HL7v2 BAR messages from FHIR resources:
 
 ```ts
 import { generateBarMessage } from "./src/bar";
-import { formatMessage } from "./src/hl7v2/format";
+import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
 
 const barMessage = generateBarMessage({
   patient,           // FHIR Patient

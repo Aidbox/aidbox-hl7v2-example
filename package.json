@@ -1,19 +1,23 @@
 {
   "name": "aidbox-hl7",
   "module": "index.ts",
-  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
   "private": true,
   "scripts": {
     "dev": "scripts/dev.sh",
     "stop": "scripts/stop.sh",
     "logs": "tail -f logs/server.log",
     "mllp": "bun src/mllp/mllp-server.ts",
-    "test-mllp": "bun scripts/test-mllp-client.ts"
+    "test-mllp": "bun scripts/test-mllp-client.ts",
+    "regenerate-hl7v2": "scripts/regenerate-hl7v2.sh"
   },
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
+  "type": "module",
+  "dependencies": {
+    "@atomic-ehr/hl7v2": "^0.0.1-canary.22.202c8cc"
   }
 }

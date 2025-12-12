@@ -1,6 +1,6 @@
 import { test, expect, describe } from "bun:test";
 import { generateBarMessage } from "../../src/bar/generator";
-import { formatMessage } from "../../src/hl7v2/format";
+import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
 import type {
   Patient,
   Account,

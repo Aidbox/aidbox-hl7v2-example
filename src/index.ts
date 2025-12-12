@@ -3,7 +3,7 @@ import { aidboxFetch, getResources } from "./aidbox";
 import { processNextMessage } from "./bar/sender-service";
 import { processNextInvoice } from "./bar/invoice-builder-service";
 import { wrapWithMLLP, VT, FS, CR } from "./mllp/mllp-server";
-import { highlightHL7Message, getHighlightStyles } from "./hl7v2/highlight";
+import { highlightHL7Message, getHighlightStyles } from "@atomic-ehr/hl7v2/src/hl7v2/highlight";
 import type { Patient } from "./fhir/hl7-fhir-r4-core/Patient";
 import type { ChargeItem } from "./fhir/hl7-fhir-r4-core/ChargeItem";
 import type { Practitioner } from "./fhir/hl7-fhir-r4-core/Practitioner";
