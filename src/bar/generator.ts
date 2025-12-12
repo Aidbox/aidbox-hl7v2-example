@@ -3,9 +3,8 @@
  * Generates BAR^P01/P05/P06 messages from FHIR resources
  */
 
-import type { HL7v2Message, HL7v2Segment } from "../hl7v2/generated/types";
+import type { HL7v2Message } from "../hl7v2/generated/types";
 import {
-  toSegment,
   type MSH,
   type EVN,
   type PID,

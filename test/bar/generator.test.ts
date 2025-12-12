@@ -20,9 +20,7 @@ import {
   fromPID,
   fromPR1,
   fromPV1,
-  type MSH,
 } from "../../src/hl7v2/generated/fields";
-import type { HL7v2Segment } from "../../src/hl7v2/generated/types";
 
 // Test fixtures
 const testPatient: Patient = {
@@ -75,6 +73,7 @@ const testEncounter: Encounter = {
 const testCoverage: Coverage = {
   resourceType: "Coverage",
   id: "coverage-1",
+  beneficiary: { reference: "Patient/patient-1" },
   status: "active",
   type: {
     coding: [{ system: "http://hl7.org/fhir/v3/ActCode", code: "HMO", display: "Health Maintenance Organization" }],
@@ -101,6 +100,7 @@ const testCoverage: Coverage = {
 const testGuarantor: RelatedPerson = {
   resourceType: "RelatedPerson",
   id: "guarantor-1",
+  patient: { reference: "Patient/patient-1" },
   identifier: [{ value: "GT001" }],
   name: [{ family: "Smith", given: ["Jane"] }],
   relationship: [{ coding: [{ code: "SPOUSE" }] }],
@@ -118,6 +118,7 @@ const testGuarantor: RelatedPerson = {
 const testCondition: Condition = {
   resourceType: "Condition",
   id: "condition-1",
+  subject: { reference: "Patient/patient-1" },
   code: {
     coding: [
       {
@@ -138,6 +139,7 @@ const testCondition: Condition = {
 const testProcedure: Procedure = {
   resourceType: "Procedure",
   id: "procedure-1",
+  subject: { reference: "Patient/patient-1" },
   code: {
     coding: [
       {
