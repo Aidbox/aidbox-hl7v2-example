@@ -48,18 +48,36 @@ bun scripts/load-test-data.ts
 - `src/mllp/` - MLLP (Minimal Lower Layer Protocol) TCP server for receiving HL7v2 messages
 - `docker-compose.yaml` - Aidbox and PostgreSQL setup
 
-## HL7v2 Module (`src/hl7v2/`)
+## Code Generation
 
-Type-safe HL7v2 message handling using [@atomic-ehr/hl7v2](https://github.com/atomic-ehr/atomic-hl7v2) library.
+### FHIR R4 Types (`src/fhir/`)
 
-- `generated/types.ts` - Core types: `HL7v2Message`, `HL7v2Segment`, `FieldValue`
-- `generated/fields.ts` - Generated segment interfaces, `toSegment()`, and `fromXXX()` getters
-- `generated/messages.ts` - Message builders (`BAR_P01Builder`)
-- `generated/tables.ts` - HL7 table constants
+Generated using [@atomic-ehr/codegen](https://github.com/atomic-ehr/codegen) from the official HL7 FHIR R4 specification.
 
-Note: `highlightHL7Message` and `getHighlightStyles` are imported from `@atomic-ehr/hl7v2/src/hl7v2/highlight`.
+```sh
+bun run regenerate-fhir   # Regenerates src/fhir/hl7-fhir-r4-core/
+```
 
-**Regenerate bindings:** `bun run regenerate-hl7v2`
+- Script: `scripts/regenerate-fhir.ts`
+- Output: 195 TypeScript interfaces for FHIR R4 resources
+- Uses `APIBuilder` from `@atomic-ehr/codegen` with `hl7.fhir.r4.core` package
+
+### HL7v2 Module (`src/hl7v2/`)
+
+Generated using [@atomic-ehr/hl7v2](https://github.com/atomic-ehr/atomic-hl7v2) for type-safe HL7v2 message handling.
+
+```sh
+bun run regenerate-hl7v2  # Regenerates src/hl7v2/generated/
+```
+
+- Script: `scripts/regenerate-hl7v2.sh`
+- Output:
+  - `generated/types.ts` - Core types: `HL7v2Message`, `HL7v2Segment`, `FieldValue`
+  - `generated/fields.ts` - Segment interfaces, `toSegment()`, and `fromXXX()` getters
+  - `generated/messages.ts` - Message builders (`BAR_P01Builder`)
+  - `generated/tables.ts` - HL7 table constants
+
+Note: `highlightHL7Message`, `getHighlightStyles`, and `formatMessage` are imported directly from `@atomic-ehr/hl7v2`.
 
 ```ts
 import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
@@ -83,17 +101,6 @@ const message = new BAR_P01Builder()
   .build();
 
 console.log(formatMessage(message));
-```
-
-## FHIR Types (`src/fhir/`)
-
-Code-generated FHIR R4 type definitions from the HL7 FHIR specification.
-
-- `hl7-fhir-r4-core/` - Complete FHIR R4 resource types (Patient, Encounter, Coverage, Condition, Procedure, etc.)
-- `hl7-fhir-r4-core/index.ts` - Re-exports all FHIR types
-
-```ts
-import type { Patient, Encounter, Coverage } from "./src/fhir/hl7-fhir-r4-core";
 ```
 
 ## BAR Message Generator (`src/bar/`)

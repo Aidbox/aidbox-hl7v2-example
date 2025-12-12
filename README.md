@@ -58,6 +58,8 @@ src/
 
 fhir/                     # FHIR resource definitions (loaded by migrate.ts)
 scripts/
+├── regenerate-fhir.ts    # FHIR R4 type generation script
+├── regenerate-hl7v2.sh   # HL7v2 bindings generation script
 ├── dev.sh                # Development server script
 ├── stop.sh               # Stop server script
 └── load-test-data.ts     # Creates sample FHIR data
@@ -105,11 +107,36 @@ The UI displays HL7v2 messages with rich syntax highlighting and tooltips:
 
 Metadata is sourced from the HL7v2 schema bundled in `@atomic-ehr/hl7v2`.
 
-## HL7v2 Module
+## Code Generation
 
-Uses [@atomic-ehr/hl7v2](https://github.com/atomic-ehr/atomic-hl7v2) for type-safe HL7v2 message handling.
+This project uses two code generators from the [@atomic-ehr](https://github.com/atomic-ehr) ecosystem:
 
-**Regenerate bindings:** `bun run regenerate-hl7v2`
+### FHIR R4 Types
+
+Generated using [@atomic-ehr/codegen](https://github.com/atomic-ehr/codegen) from the official HL7 FHIR R4 specification.
+
+```sh
+bun run regenerate-fhir   # Regenerates src/fhir/hl7-fhir-r4-core/
+```
+
+- Generates 195 TypeScript interfaces for FHIR R4 resources
+- Includes Patient, Encounter, Coverage, Condition, Procedure, Invoice, etc.
+- Configuration in `scripts/regenerate-fhir.ts`
+
+### HL7v2 Message Bindings
+
+Generated using [@atomic-ehr/hl7v2](https://github.com/atomic-ehr/atomic-hl7v2) for type-safe HL7v2 message handling.
+
+```sh
+bun run regenerate-hl7v2  # Regenerates src/hl7v2/generated/
+```
+
+- Generates segment interfaces (MSH, PID, PV1, IN1, DG1, PR1, etc.)
+- Generates message builders (BAR_P01Builder)
+- Generates `fromXXX()` getter functions for reading segments
+- Configuration in `scripts/regenerate-hl7v2.sh`
+
+## HL7v2 Usage Example
 
 ```ts
 import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
