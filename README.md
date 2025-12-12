@@ -185,6 +185,30 @@ const barMessage = generateBarMessage({
 console.log(formatMessage(barMessage));
 ```
 
+## MLLP Server
+
+TCP server implementing the Minimal Lower Layer Protocol (MLLP) for receiving HL7v2 messages.
+
+```sh
+# Start MLLP server (default port 2575)
+bun run mllp
+
+# With custom port
+MLLP_PORT=3001 bun run mllp
+
+# Test with sample client
+bun run test-mllp
+```
+
+**Features:**
+- Receives HL7v2 messages wrapped in MLLP framing (VT/FS+CR)
+- Stores messages as `IncomingHL7v2Message` resources in Aidbox
+- Sends HL7v2 ACK responses (AA/AE/AR)
+- Handles multiple concurrent connections
+- Supports fragmented TCP delivery
+
+The web UI also includes an MLLP Test Client at `/mllp-client` for sending test messages.
+
 ## Background Services
 
 Run as standalone processes:
