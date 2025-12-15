@@ -22,7 +22,7 @@ interface Invoice {
   subject?: { reference: string };
   date?: string;
   totalGross?: { value: number; currency: string };
-  extension?: Array<{ url: string; valueCode?: string; valueString?: string }>;
+  extension?: Array<{ url: string; valueCode?: string; valueString?: string; valueInteger?: number }>;
 }
 
 function getProcessingStatus(invoice: Invoice): string {
@@ -33,6 +33,11 @@ function getProcessingStatus(invoice: Invoice): string {
 function getErrorReason(invoice: Invoice): string | undefined {
   const ext = invoice.extension?.find(e => e.url === "http://example.org/invoice-processing-error-reason");
   return ext?.valueString;
+}
+
+function getRetryCount(invoice: Invoice): number {
+  const ext = invoice.extension?.find(e => e.url === "http://example.org/invoice-processing-retry-count");
+  return ext?.valueInteger ?? 0;
 }
 
 interface OutgoingBarMessage {
@@ -119,6 +124,7 @@ function renderInvoicesPage(
     .map((inv) => {
       const processingStatus = getProcessingStatus(inv);
       const errorReason = getErrorReason(inv);
+      const retryCount = getRetryCount(inv);
       return `
       <tr class="border-b border-gray-200 hover:bg-gray-50">
         <td class="py-3 px-4 font-mono text-sm">${inv.id}</td>
@@ -131,7 +137,8 @@ function renderInvoicesPage(
                 : processingStatus === "error"
                   ? "bg-red-100 text-red-800"
                   : "bg-gray-100 text-gray-800"
-          }"${processingStatus === "error" && errorReason ? ` title="${errorReason}"` : ""}>${processingStatus}</span>
+          }"${errorReason ? ` title="${errorReason}"` : ""}>${processingStatus}</span>
+          ${retryCount > 0 ? `<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800" title="Retry attempts">${retryCount}/3</span>` : ""}
         </td>
         <td class="py-3 px-4 text-sm text-gray-600">${inv.subject?.reference || "-"}</td>
         <td class="py-3 px-4 text-sm text-gray-600">${inv.date || "-"}</td>
