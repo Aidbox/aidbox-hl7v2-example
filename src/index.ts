@@ -22,6 +22,17 @@ interface Invoice {
   subject?: { reference: string };
   date?: string;
   totalGross?: { value: number; currency: string };
+  extension?: Array<{ url: string; valueCode?: string; valueString?: string }>;
+}
+
+function getProcessingStatus(invoice: Invoice): string {
+  const ext = invoice.extension?.find(e => e.url === "http://example.org/invoice-processing-status");
+  return ext?.valueCode || "unknown";
+}
+
+function getErrorReason(invoice: Invoice): string | undefined {
+  const ext = invoice.extension?.find(e => e.url === "http://example.org/invoice-processing-error-reason");
+  return ext?.valueString;
 }
 
 interface OutgoingBarMessage {
@@ -43,8 +54,8 @@ interface IncomingHL7v2Message {
   meta?: { lastUpdated?: string };
 }
 
-const getInvoices = (status?: string) =>
-  getResources<Invoice>("Invoice", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
+const getInvoices = (processingStatus?: string) =>
+  getResources<Invoice>("Invoice", `_sort=-_lastUpdated${processingStatus ? `&processing-status=${processingStatus}` : ""}`);
 const getOutgoingMessages = (status?: string) =>
   getResources<OutgoingBarMessage>("OutgoingBarMessage", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
 const getIncomingMessages = (status?: string) =>
@@ -105,43 +116,43 @@ function renderInvoicesPage(
   statusFilter?: string
 ): string {
   const rows = invoices
-    .map(
-      (inv) => `
+    .map((inv) => {
+      const processingStatus = getProcessingStatus(inv);
+      const errorReason = getErrorReason(inv);
+      return `
       <tr class="border-b border-gray-200 hover:bg-gray-50">
         <td class="py-3 px-4 font-mono text-sm">${inv.id}</td>
         <td class="py-3 px-4">
           <span class="px-2 py-1 rounded-full text-xs font-medium ${
-            inv.status === "issued"
+            processingStatus === "sent"
               ? "bg-green-100 text-green-800"
-              : inv.status === "draft"
+              : processingStatus === "pending"
                 ? "bg-yellow-100 text-yellow-800"
-                : inv.status === "balanced"
-                  ? "bg-blue-100 text-blue-800"
-                  : inv.status === "cancelled"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-gray-100 text-gray-800"
-          }">${inv.status}</span>
+                : processingStatus === "error"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-gray-100 text-gray-800"
+          }"${processingStatus === "error" && errorReason ? ` title="${errorReason}"` : ""}>${processingStatus}</span>
         </td>
         <td class="py-3 px-4 text-sm text-gray-600">${inv.subject?.reference || "-"}</td>
         <td class="py-3 px-4 text-sm text-gray-600">${inv.date || "-"}</td>
         <td class="py-3 px-4 text-sm text-right">${inv.totalGross ? `${inv.totalGross.value} ${inv.totalGross.currency}` : "-"}</td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
 
-  const draftCount = invoices.filter((inv) => inv.status === "draft").length;
-  const invoiceStatuses = ["draft", "issued", "balanced", "cancelled"];
+  const pendingCount = invoices.filter((inv) => getProcessingStatus(inv) === "pending").length;
+  const processingStatuses = ["pending", "error", "completed"];
 
   const content = `
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-3xl font-bold text-gray-800">Invoices</h1>
       <div class="flex gap-2">
         <form method="POST" action="/build-bar">
-          <button type="submit" ${draftCount === 0 ? "disabled" : ""} class="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
+          <button type="submit" ${pendingCount === 0 ? "disabled" : ""} class="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-            Build BAR (${draftCount} draft)
+            Build BAR (${pendingCount} pending)
           </button>
         </form>
         <button onclick="document.getElementById('add-invoice-form').classList.toggle('hidden')" class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center gap-2">
@@ -157,8 +168,8 @@ function renderInvoicesPage(
       <a href="/invoices" class="px-3 py-1.5 rounded-lg text-sm font-medium ${!statusFilter ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
         All
       </a>
-      ${invoiceStatuses.map((s) => `
-        <a href="/invoices?status=${s}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
+      ${processingStatuses.map((s) => `
+        <a href="/invoices?processing-status=${s}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
           ${s.charAt(0).toUpperCase() + s.slice(1)}
         </a>
       `).join("")}
@@ -167,27 +178,16 @@ function renderInvoicesPage(
     <div id="add-invoice-form" class="hidden mb-6 bg-white rounded-lg shadow p-6">
       <h2 class="text-lg font-semibold text-gray-800 mb-4">Add New Invoice</h2>
       <form method="POST" action="/invoices" class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Subject (Patient)</label>
-            <select name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="">No subject</option>
-              ${patients.map((p) => {
-                const name = p.name?.[0];
-                const displayName = name ? `${name.given?.join(" ") || ""} ${name.family || ""}`.trim() : p.id;
-                return `<option value="Patient/${p.id}">${displayName} (${p.id})</option>`;
-              }).join("")}
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select name="status" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="draft">Draft</option>
-              <option value="issued">Issued</option>
-              <option value="balanced">Balanced</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Subject (Patient)</label>
+          <select name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="">No subject</option>
+            ${patients.map((p) => {
+              const name = p.name?.[0];
+              const displayName = name ? `${name.given?.join(" ") || ""} ${name.family || ""}`.trim() : p.id;
+              return `<option value="Patient/${p.id}">${displayName} (${p.id})</option>`;
+            }).join("")}
+          </select>
         </div>
         <div class="grid grid-cols-3 gap-4">
           <div>
@@ -630,7 +630,7 @@ Bun.serve({
   routes: {
     "/": async (req) => {
       const url = new URL(req.url);
-      const statusFilter = url.searchParams.get("status") || undefined;
+      const statusFilter = url.searchParams.get("processing-status") || undefined;
       const [invoices, patients, encounters, procedures, practitioners] = await Promise.all([
         getInvoices(statusFilter),
         getPatients(),
@@ -645,7 +645,7 @@ Bun.serve({
     "/invoices": {
       GET: async (req) => {
         const url = new URL(req.url);
-        const statusFilter = url.searchParams.get("status") || undefined;
+        const statusFilter = url.searchParams.get("processing-status") || undefined;
         const [invoices, patients, encounters, procedures, practitioners] = await Promise.all([
           getInvoices(statusFilter),
           getPatients(),
@@ -660,7 +660,6 @@ Bun.serve({
       POST: async (req) => {
         const formData = await req.formData();
         const subject = formData.get("subject") as string;
-        const status = formData.get("status") as string;
         const date = formData.get("date") as string;
         const amount = formData.get("amount") as string;
         const currency = formData.get("currency") as string;
@@ -726,7 +725,13 @@ Bun.serve({
 
         const newInvoice: Record<string, unknown> = {
           resourceType: "Invoice",
-          status,
+          status: "draft",
+          extension: [
+            {
+              url: "http://example.org/invoice-processing-status",
+              valueCode: "pending",
+            },
+          ],
         };
 
         if (subject) {
@@ -832,7 +837,7 @@ Bun.serve({
     },
     "/build-bar": {
       POST: async () => {
-        // Process all draft invoices
+        // Process all pending invoices
         while (await processNextInvoice()) {
           // Continue processing
         }

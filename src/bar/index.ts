@@ -43,7 +43,7 @@ export {
 export type { OutgoingBarMessage, IncomingHL7v2Message } from "./sender-service";
 export {
   createInvoiceBarBuilderService,
-  pollDraftInvoice,
+  pollPendingInvoice,
   buildBarFromInvoice,
   processNextInvoice,
 } from "./invoice-builder-service";

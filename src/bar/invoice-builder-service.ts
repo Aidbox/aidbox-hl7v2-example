@@ -1,7 +1,7 @@
 /**
  * Invoice BAR Builder Service
  *
- * Polls for draft Invoices and generates BAR messages.
+ * Polls for pending Invoices and generates BAR messages.
  *
  * Environment variables:
  * - FHIR_APP: Sending application name for MSH-3 (e.g., "HOSPITAL_EMR")
@@ -39,9 +39,9 @@ export interface OutgoingBarMessage {
 
 const POLL_INTERVAL_MS = 60_000; // 1 minute
 
-export async function pollDraftInvoice(): Promise<Invoice | null> {
+export async function pollPendingInvoice(): Promise<Invoice | null> {
   const bundle = await aidboxFetch<Bundle<Invoice>>(
-    "/fhir/Invoice?status=draft&_sort=_lastUpdated&_count=1"
+    "/fhir/Invoice?processing-status=pending&_sort=_lastUpdated&_count=1"
   );
   return bundle.entry?.[0]?.resource ?? null;
 }
@@ -179,8 +179,14 @@ async function fetchRelatedResources(invoice: InvoiceWithId): Promise<{
 export async function buildBarFromInvoice(invoice: InvoiceWithId): Promise<string> {
   const related = await fetchRelatedResources(invoice);
 
-  if (!related.patient || !related.account) {
-    throw new Error(`Invoice ${invoice.id} has no patient or account`);
+  if (!related.patient) {
+    await updateInvoiceStatus(invoice.id, "build-error", "Invoice has no patient");
+    throw new Error(`Invoice ${invoice.id} has no patient`);
+  }
+
+  if (!related.account) {
+    await updateInvoiceStatus(invoice.id, "build-error", "Invoice has no account");
+    throw new Error(`Invoice ${invoice.id} has no account`);
   }
 
   const messageControlId = `BAR-${invoice.id}-${Date.now()}`;
@@ -220,20 +226,75 @@ export async function createOutgoingBarMessage(invoice: InvoiceWithId, hl7v2: st
   });
 }
 
-export async function updateInvoiceStatus(invoiceId: string, status: string): Promise<void> {
+export async function updateInvoiceStatus(invoiceId: string, status: string, reason?: string): Promise<void> {
   await aidboxFetch(`/fhir/Invoice/${invoiceId}`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json-patch+json",
-    },
-    body: JSON.stringify([
-      { op: "replace", path: "/status", value: status },
-    ]),
+    body: JSON.stringify({
+      "resourceType": "Parameters",
+      "parameter": [
+        {
+          "name": "operation",
+          "part": [
+            {
+              "name": "type",
+              "valueCode": "replace",
+            },
+            {
+              "name": "path",
+              "valueString": "Invoice.extension.where(url='http://example.org/invoice-processing-status').value",
+            },
+            {
+              "name": "value",
+              "valueCode": status,
+            },
+          ]
+        },
+        ...(reason ? [
+          {
+            "name": "operation",
+            "part": [
+              {
+                "name": "type",
+                "valueCode": "delete",
+              },
+              {
+                "name": "path",
+                "valueString": "Invoice.extension.where(url='http://example.org/invoice-processing-error-reason')",
+              },
+            ]
+          },
+          {
+            "name": "operation",
+            "part": [
+              {
+                "name": "type",
+                "valueCode": "insert",
+              },
+              {
+                "name": "path",
+                "valueString": "Invoice.extension",
+              },
+              {
+                "name": "index",
+                "valueInteger": 0,
+              },
+              {
+                "name": "value",
+                "valueExtension": {
+                  "url": "http://example.org/invoice-processing-error-reason",
+                  "valueString": reason,
+                }
+              }
+            ]
+          }
+        ] : []),
+      ],
+    }),
   });
 }
 
 export async function processNextInvoice(): Promise<boolean> {
-  const invoice = await pollDraftInvoice() as InvoiceWithId | null;
+  const invoice = await pollPendingInvoice() as InvoiceWithId | null;
 
   if (!invoice) {
     return false;
@@ -241,12 +302,18 @@ export async function processNextInvoice(): Promise<boolean> {
 
   if (!invoice.subject?.reference) {
     console.error(`Invoice ${invoice.id} has no patient subject, skipping`);
+    await updateInvoiceStatus(invoice.id, "error", "No patient subject");
     return true; // Continue to next invoice
   }
 
-  const hl7v2 = await buildBarFromInvoice(invoice);
-  await createOutgoingBarMessage(invoice, hl7v2);
-  await updateInvoiceStatus(invoice.id, "issued");
+  try {
+    const hl7v2 = await buildBarFromInvoice(invoice);
+    await createOutgoingBarMessage(invoice, hl7v2);
+    await updateInvoiceStatus(invoice.id, "completed");
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    await updateInvoiceStatus(invoice.id, "error", errorMessage);
+  }
 
   return true;
 }
@@ -306,12 +373,12 @@ export function createInvoiceBarBuilderService(options: {
 // Main entry point when run directly
 if (import.meta.main) {
   console.log("Starting Invoice BAR Builder Service...");
-  console.log("Polling for draft Invoice resources every minute.");
+  console.log("Polling for pending Invoice resources every minute.");
 
   const service = createInvoiceBarBuilderService({
     onError: (error) => console.error("Error processing invoice:", error.message),
     onProcessed: (invoice) => console.log(`Processed invoice: ${invoice.id}`),
-    onIdle: () => console.log("No draft invoices, waiting..."),
+    onIdle: () => console.log("No pending invoices, waiting..."),
   });
 
   service.start();

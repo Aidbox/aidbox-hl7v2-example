@@ -133,13 +133,15 @@ console.log(formatMessage(barMessage));
 
 ## Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
 
-Polls Aidbox for draft Invoices and generates BAR messages.
+Polls Aidbox for pending Invoices and generates BAR messages.
 
-- Polls every minute for Invoice with `status=draft`, sorted by `_lastUpdated` (oldest first)
+- Polls every minute for Invoice with `processing-status=pending` (custom extension), sorted by `_lastUpdated` (oldest first)
+- Invoice.status remains "draft" (FHIR standard), processing tracked via extension
+- Processing statuses: `pending` → `completed` (or `error` on failure)
 - Fetches related resources: Patient, Account, Coverage, Encounter, Condition, Procedure
 - Generates BAR message using `generateBarMessage()`
 - Creates OutgoingBarMessage with `status=pending`
-- Updates Invoice status to "issued" via PATCH
+- Updates Invoice processing-status to "completed" via PATCH
 
 ```sh
 # Run as standalone service

@@ -1,0 +1,44 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "invoice-processing-error-reason",
+  "url": "http://example.org/invoice-processing-error-reason",
+  "name": "InvoiceProcessingErrorReason",
+  "title": "Invoice Processing Error Reason",
+  "status": "active",
+  "kind": "complex-type",
+  "abstract": false,
+  "context": [
+    {
+      "type": "element",
+      "expression": "Invoice"
+    }
+  ],
+  "type": "Extension",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Extension",
+        "path": "Extension",
+        "short": "Reason for Invoice processing failure",
+        "definition": "Describes the reason why Invoice processing failed or was cancelled."
+      },
+      {
+        "id": "Extension.url",
+        "path": "Extension.url",
+        "fixedUri": "http://example.org/invoice-processing-error-reason"
+      },
+      {
+        "id": "Extension.value[x]",
+        "path": "Extension.value[x]",
+        "min": 1,
+        "type": [
+          {
+            "code": "string"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -50,7 +50,7 @@ src/
 ├── migrate.ts            # Loads FHIR resources from fhir/ folder
 ├── bar/
 │   ├── generator.ts      # BAR message generator from FHIR resources
-│   ├── invoice-builder-service.ts  # Polls draft Invoices, creates BAR messages
+│   ├── invoice-builder-service.ts  # Polls pending Invoices, creates BAR messages
 │   ├── sender-service.ts # Sends pending OutgoingBarMessage
 │   └── types.ts          # FHIR resource type definitions
 └── hl7v2/
@@ -96,7 +96,7 @@ Stores received HL7v2 messages.
 
 ## Web UI Features
 
-- **Invoices:** View all invoices, filter by status, create new invoices, build BAR messages from drafts
+- **Invoices:** View all invoices, filter by processing-status (pending/error/completed), create new invoices, build BAR messages from pending
 - **Outgoing Messages:** View BAR messages with HL7v2 syntax highlighting, filter by status, send pending messages
 - **Incoming Messages:** View received HL7v2 messages, filter by status
 
@@ -218,7 +218,7 @@ The web UI also includes an MLLP Test Client at `/mllp-client` for sending test 
 Run as standalone processes:
 
 ```sh
-# Poll draft invoices and generate BAR messages
+# Poll pending invoices and generate BAR messages
 bun src/bar/invoice-builder-service.ts
 
 # Send pending OutgoingBarMessage resources

@@ -1,0 +1,44 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "invoice-processing-retry-count",
+  "url": "http://example.org/invoice-processing-retry-count",
+  "name": "InvoiceProcessingRetryCount",
+  "title": "Invoice Processing Retry Count",
+  "status": "active",
+  "kind": "complex-type",
+  "abstract": false,
+  "context": [
+    {
+      "type": "element",
+      "expression": "Invoice"
+    }
+  ],
+  "type": "Extension",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Extension",
+        "path": "Extension",
+        "short": "Number of processing retry attempts",
+        "definition": "Tracks how many times the Invoice processing has been retried after failures."
+      },
+      {
+        "id": "Extension.url",
+        "path": "Extension.url",
+        "fixedUri": "http://example.org/invoice-processing-retry-count"
+      },
+      {
+        "id": "Extension.value[x]",
+        "path": "Extension.value[x]",
+        "min": 1,
+        "type": [
+          {
+            "code": "integer"
+          }
+        ]
+      }
+    ]
+  }
+}

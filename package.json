@@ -15,7 +15,8 @@
     "mllp": "bun src/mllp/mllp-server.ts",
     "test-mllp": "bun scripts/test-mllp-client.ts",
     "regenerate-hl7v2": "scripts/regenerate-hl7v2.sh",
-    "regenerate-fhir": "bun scripts/regenerate-fhir.ts"
+    "regenerate-fhir": "bun scripts/regenerate-fhir.ts",
+    "migrate": "bun src/migrate.ts"
   },
   "type": "module",
   "dependencies": {

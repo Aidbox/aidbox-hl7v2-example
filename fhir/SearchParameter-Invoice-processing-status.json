@@ -1,0 +1,12 @@
+{
+  "resourceType": "SearchParameter",
+  "id": "Invoice-processing-status",
+  "url": "http://example.org/SearchParameter/Invoice-processing-status",
+  "name": "processing-status",
+  "status": "active",
+  "description": "Search Invoice by processing status extension",
+  "code": "processing-status",
+  "base": ["Invoice"],
+  "type": "token",
+  "expression": "Invoice.extension.where(url='http://example.org/invoice-processing-status').value.as(code)"
+}

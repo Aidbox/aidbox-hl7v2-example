@@ -44,7 +44,7 @@ flowchart TB
 
 **Standard FHIR Resources:**
 - `Patient` - Patient demographics
-- `Invoice` - Billing invoices (status: draft → issued)
+- `Invoice` - Billing invoices (status: draft, processing-status extension: pending → completed)
 - `Coverage` - Insurance coverage information
 - `Encounter` - Patient visits
 - `Condition` - Diagnoses (→ DG1 segments)
@@ -87,7 +87,7 @@ Bun HTTP server serving server-rendered HTML pages with Tailwind CSS.
 | `/incoming-messages` | GET | List received messages with status filter |
 | `/mllp-client` | GET | MLLP test client UI |
 | `/mllp-client` | POST | Send HL7v2 message via MLLP |
-| `/build-bar` | POST | Trigger BAR generation for draft invoices |
+| `/build-bar` | POST | Trigger BAR generation for pending invoices |
 | `/send-messages` | POST | Trigger sending of pending messages |
 
 ### Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
@@ -95,7 +95,7 @@ Bun HTTP server serving server-rendered HTML pages with Tailwind CSS.
 Background service that transforms FHIR resources into HL7v2 BAR messages.
 
 **Process:**
-1. Poll for oldest `Invoice` with `status=draft`
+1. Poll for oldest `Invoice` with `processing-status=pending` (custom extension)
 2. Fetch related resources (Patient, Coverage, Encounter, Condition, Procedure)
 3. Generate HL7v2 BAR message using segment builders
 4. Create `OutgoingBarMessage` with `status=pending`
@@ -198,7 +198,7 @@ sequenceDiagram
     UI->>Aidbox: POST /Invoice
 
     Note over Builder: Polling loop
-    Builder->>Aidbox: GET /Invoice?status=draft&_sort=_lastUpdated&_count=1
+    Builder->>Aidbox: GET /Invoice?processing-status=pending&_sort=_lastUpdated&_count=1
     Aidbox-->>Builder: Invoice
 
     Builder->>Aidbox: GET /Patient/{id}
@@ -209,7 +209,7 @@ sequenceDiagram
 
     Builder->>Builder: Generate HL7v2 BAR message
     Builder->>Aidbox: POST /OutgoingBarMessage (status=pending)
-    Builder->>Aidbox: PATCH /Invoice (status=issued)
+    Builder->>Aidbox: PATCH /Invoice (processing-status=completed)
 
     Note over Sender: Polling loop
     Sender->>Aidbox: GET /OutgoingBarMessage?status=pending&_count=1
@@ -223,11 +223,10 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-    state Invoice {
-        [*] --> draft: Created
-        draft --> issued: BAR Builder
-        issued --> balanced: Payment
-        issued --> cancelled: Void
+    state "Invoice (processing-status extension)" as Invoice {
+        [*] --> pending: Created
+        pending --> completed: BAR Builder
+        pending --> error: Build failed
     }
 
     state OutgoingBarMessage {
