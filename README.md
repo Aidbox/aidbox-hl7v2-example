@@ -21,7 +21,7 @@ docker compose up -d
 
 ```sh
 # Run database migrations (creates custom FHIR resources)
-bun src/migrate.ts
+bun migrate
 
 # Start the web server
 bun run dev
