@@ -1,7 +1,7 @@
 import * as net from "node:net";
 import { aidboxFetch, getResources, type Bundle } from "./aidbox";
 import { processNextMessage } from "./bar/sender-service";
-import { processNextInvoice } from "./bar/invoice-builder-service";
+import { processNextInvoice, pollPendingInvoice, updateInvoiceStatus, getRetryCount } from "./bar/invoice-builder-service";
 import { wrapWithMLLP, VT, FS, CR } from "./mllp/mllp-server";
 import { highlightHL7Message, getHighlightStyles } from "@atomic-ehr/hl7v2/src/hl7v2/highlight";
 import type { Patient } from "./fhir/hl7-fhir-r4-core/Patient";
@@ -36,10 +36,11 @@ function getErrorReason(invoice: Invoice): string | undefined {
   return ext?.valueString;
 }
 
-function getRetryCount(invoice: Invoice): number {
+function getInvoiceRetryCount(invoice: Invoice): number {
   const ext = invoice.extension?.find(e => e.url === "http://example.org/invoice-processing-retry-count");
   return ext?.valueInteger ?? 0;
 }
+
 
 
 const PAGE_SIZE = 20;
@@ -60,6 +61,10 @@ const getInvoices = async (processingStatus?: string, page = 1): Promise<{ invoi
 };
 const getPendingInvoiceCount = async (): Promise<number> => {
   const bundle = await aidboxFetch<Bundle<Invoice>>("/fhir/Invoice?processing-status=pending&_count=0");
+  return bundle.total ?? 0;
+};
+const getErrorInvoiceCount = async (): Promise<number> => {
+  const bundle = await aidboxFetch<Bundle<Invoice>>("/fhir/Invoice?processing-status=error&_count=0");
   return bundle.total ?? 0;
 };
 
@@ -123,48 +128,80 @@ function renderInvoicesPage(
   statusFilter?: string,
   currentPage = 1,
   total = 0,
-  pendingCount = 0
+  pendingCount = 0,
+  errorCount = 0
 ): string {
   const totalPages = Math.ceil(total / PAGE_SIZE);
-  const rows = invoices
+  const invoiceItems = invoices
     .map((inv) => {
       const processingStatus = getProcessingStatus(inv);
       const errorReason = getErrorReason(inv);
-      const retryCount = getRetryCount(inv);
+      const retryCount = getInvoiceRetryCount(inv);
+      const statusClass = processingStatus === "completed"
+        ? "bg-green-100 text-green-800"
+        : processingStatus === "pending"
+          ? "bg-yellow-100 text-yellow-800"
+          : processingStatus === "error"
+            ? "bg-red-100 text-red-800"
+            : processingStatus === "failed"
+              ? "bg-red-200 text-red-900"
+              : "bg-gray-100 text-gray-800";
+
       return `
-      <tr class="border-b border-gray-200 hover:bg-gray-50">
-        <td class="py-3 px-4 font-mono text-sm">${inv.id}</td>
-        <td class="py-3 px-4">
-          <span class="px-2 py-1 rounded-full text-xs font-medium ${
-            processingStatus === "sent"
-              ? "bg-green-100 text-green-800"
-              : processingStatus === "pending"
-                ? "bg-yellow-100 text-yellow-800"
-                : processingStatus === "error"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-gray-100 text-gray-800"
-          }"${errorReason ? ` title="${errorReason}"` : ""}>${processingStatus}</span>
-          ${retryCount > 0 ? `<span class="ml-1 px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800" title="Retry attempts">${retryCount}/3</span>` : ""}
-        </td>
-        <td class="py-3 px-4 text-sm text-gray-600">${inv.subject?.reference || "-"}</td>
-        <td class="py-3 px-4 text-sm text-gray-600">${inv.date || "-"}</td>
-        <td class="py-3 px-4 text-sm text-right">${inv.totalGross ? `${inv.totalGross.value} ${inv.totalGross.currency}` : "-"}</td>
-      </tr>`;
+      <li class="bg-white rounded-lg shadow">
+        <details class="group">
+          <summary class="cursor-pointer list-none p-4 flex items-center justify-between hover:bg-gray-50 rounded-lg">
+            <div class="flex items-center gap-3">
+              <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+              <span class="font-mono text-sm font-medium">${inv.id}</span>
+              <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">${processingStatus}</span>
+              ${retryCount > 0 ? `<span class="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">retry: ${retryCount}</span>` : ""}
+              ${errorReason ? `<span class="text-xs text-red-600">${errorReason}</span>` : ""}
+            </div>
+            <div class="flex items-center gap-4 text-sm text-gray-500">
+              ${inv.subject?.reference ? `<span><span class="text-gray-400">Subject:</span> ${inv.subject.reference}</span>` : ""}
+              ${inv.date ? `<span><span class="text-gray-400">Date:</span> ${inv.date}</span>` : ""}
+              ${inv.totalGross ? `<span><span class="text-gray-400">Total:</span> ${inv.totalGross.value} ${inv.totalGross.currency}</span>` : ""}
+            </div>
+          </summary>
+          <div class="px-4 pb-4">
+            <pre class="p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${JSON.stringify(inv, null, 2)}</pre>
+          </div>
+        </details>
+      </li>`;
     })
     .join("");
 
-  const processingStatuses = ["pending", "error", "completed"];
+  const processingStatuses = ["pending", "error", "failed", "completed"];
 
   const content = `
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-3xl font-bold text-gray-800">Invoices</h1>
       <div class="flex gap-2">
-        <form method="POST" action="/build-bar">
+        <form method="POST" action="/build-bar" class="spinner-form">
           <button type="submit" ${pendingCount === 0 ? "disabled" : ""} class="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-            Build BAR (${pendingCount} pending)
+            <svg class="w-4 h-4 btn-spinner hidden animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="btn-text">Build BAR (${pendingCount} pending)</span>
+          </button>
+        </form>
+        <form method="POST" action="/reprocess-errors" class="spinner-form">
+          <button type="submit" ${errorCount === 0 ? "disabled" : ""} class="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
+            <svg class="w-4 h-4 btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <svg class="w-4 h-4 btn-spinner hidden animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="btn-text">Reprocess (${errorCount} errors)</span>
           </button>
         </form>
         <button onclick="document.getElementById('add-invoice-form').classList.toggle('hidden')" class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center gap-2">
@@ -299,22 +336,9 @@ function renderInvoicesPage(
       </script>
     </div>
 
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <table class="w-full">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">ID</th>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Subject</th>
-            <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
-            <th class="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows || '<tr><td colspan="5" class="py-8 text-center text-gray-500">No invoices found</td></tr>'}
-        </tbody>
-      </table>
-    </div>
+    <ul class="space-y-2">
+      ${invoiceItems || '<li class="bg-white rounded-lg shadow p-8 text-center text-gray-500">No invoices found</li>'}
+    </ul>
     <div class="mt-4 flex items-center justify-between">
       <p class="text-sm text-gray-500">Total: ${total} invoices</p>
       ${totalPages > 1 ? `
@@ -342,7 +366,25 @@ function renderInvoicesPage(
           </a>
         </div>
       ` : ''}
-    </div>`;
+    </div>
+
+    <script>
+      document.querySelectorAll('.spinner-form').forEach(form => {
+        form.addEventListener('submit', function() {
+          const btn = this.querySelector('button');
+          const icon = btn.querySelector('.btn-icon');
+          const spinner = btn.querySelector('.btn-spinner');
+          const text = btn.querySelector('.btn-text');
+
+          btn.disabled = true;
+          btn.classList.add('bg-gray-400');
+          btn.classList.remove('bg-purple-600', 'bg-orange-600', 'hover:bg-purple-700', 'hover:bg-orange-700');
+          icon.classList.add('hidden');
+          spinner.classList.remove('hidden');
+          text.textContent = 'Processing...';
+        });
+      });
+    </script>`;
 
   return renderLayout("Invoices", renderNav("invoices"), content);
 }
@@ -671,15 +713,16 @@ Bun.serve({
       const url = new URL(req.url);
       const statusFilter = url.searchParams.get("processing-status") || undefined;
       const page = parseInt(url.searchParams.get("_page") || "1", 10);
-      const [invoicesResult, patients, encounters, procedures, practitioners, pendingCount] = await Promise.all([
+      const [invoicesResult, patients, encounters, procedures, practitioners, pendingCount, errorCount] = await Promise.all([
         getInvoices(statusFilter, page),
         getPatients(),
         getEncounters(),
         getProcedures(),
         getPractitioners(),
         getPendingInvoiceCount(),
+        getErrorInvoiceCount(),
       ]);
-      return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total, pendingCount), {
+      return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total, pendingCount, errorCount), {
         headers: { "Content-Type": "text/html" },
       });
     },
@@ -688,15 +731,16 @@ Bun.serve({
         const url = new URL(req.url);
         const statusFilter = url.searchParams.get("processing-status") || undefined;
         const page = parseInt(url.searchParams.get("_page") || "1", 10);
-        const [invoicesResult, patients, encounters, procedures, practitioners, pendingCount] = await Promise.all([
+        const [invoicesResult, patients, encounters, procedures, practitioners, pendingCount, errorCount] = await Promise.all([
           getInvoices(statusFilter, page),
           getPatients(),
           getEncounters(),
           getProcedures(),
           getPractitioners(),
           getPendingInvoiceCount(),
+          getErrorInvoiceCount(),
         ]);
-        return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total, pendingCount), {
+        return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total, pendingCount, errorCount), {
           headers: { "Content-Type": "text/html" },
         });
       },
@@ -880,11 +924,59 @@ Bun.serve({
     },
     "/build-bar": {
       POST: async () => {
-        // Process all pending invoices
-        while (await processNextInvoice()) {
-          // Continue processing
-        }
-        // Redirect back to invoices page
+        // Run processing in background
+        (async () => {
+          while (await pollPendingInvoice()) {
+            await processNextInvoice();
+          }
+        })().catch(console.error);
+
+        // Redirect immediately
+        return new Response(null, {
+          status: 302,
+          headers: { Location: "/invoices" },
+        });
+      },
+    },
+    "/reprocess-errors": {
+      POST: async () => {
+        const MAX_RETRIES = 3;
+
+        // Run reprocessing in background
+        (async () => {
+          // Update all error invoices to pending or failed using pagination
+          let hasMore = true;
+          while (hasMore) {
+            const bundle = await aidboxFetch<Bundle<Invoice>>("/fhir/Invoice?processing-status=error&_count=100");
+            const errorInvoices = bundle.entry?.map((e) => e.resource) || [];
+
+            if (errorInvoices.length === 0) {
+              hasMore = false;
+            } else {
+              for (const invoice of errorInvoices) {
+                if (invoice.id) {
+                  const currentRetryCount = getRetryCount(invoice);
+                  const newRetryCount = currentRetryCount + 1;
+
+                  if (newRetryCount >= MAX_RETRIES) {
+                    // Max retries exceeded - mark as failed
+                    await updateInvoiceStatus(invoice.id, "failed", { retryCount: newRetryCount });
+                  } else {
+                    // Retry - set to pending with incremented count
+                    await updateInvoiceStatus(invoice.id, "pending", { retryCount: newRetryCount });
+                  }
+                }
+              }
+            }
+          }
+
+          // Process all pending invoices
+          while (await pollPendingInvoice()) {
+            await processNextInvoice();
+          }
+        })().catch(console.error);
+
+        // Redirect immediately
         return new Response(null, {
           status: 302,
           headers: { Location: "/invoices" },
