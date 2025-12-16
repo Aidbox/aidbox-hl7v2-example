@@ -12,5 +12,4 @@ export type { Element } from "../hl7-fhir-r4-core/Element";
 export interface CodeableConcept extends Element {
     coding?: Coding[];
     text?: string;
-    _text?: Element;
 }

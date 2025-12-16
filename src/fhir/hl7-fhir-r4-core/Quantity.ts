@@ -9,13 +9,8 @@ export type { Element } from "../hl7-fhir-r4-core/Element";
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Quantity
 export interface Quantity extends Element {
     code?: string;
-    _code?: Element;
     comparator?: ("<" | "<=" | ">=" | ">");
-    _comparator?: Element;
     system?: string;
-    _system?: Element;
     unit?: string;
-    _unit?: Element;
     value?: number;
-    _value?: Element;
 }

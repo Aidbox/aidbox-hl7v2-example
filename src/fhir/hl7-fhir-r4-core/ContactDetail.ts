@@ -11,6 +11,5 @@ export type { Element } from "../hl7-fhir-r4-core/Element";
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/ContactDetail
 export interface ContactDetail extends Element {
     name?: string;
-    _name?: Element;
     telecom?: ContactPoint[];
 }

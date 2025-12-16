@@ -12,7 +12,6 @@ import type { Period } from "../hl7-fhir-r4-core/Period";
 import type { Range } from "../hl7-fhir-r4-core/Range";
 import type { Reference } from "../hl7-fhir-r4-core/Reference";
 
-import type { Element } from "../hl7-fhir-r4-core/Element";
 export type { Age } from "../hl7-fhir-r4-core/Age";
 export type { Annotation } from "../hl7-fhir-r4-core/Annotation";
 export type { BackboneElement } from "../hl7-fhir-r4-core/BackboneElement";
@@ -39,11 +38,9 @@ export interface Condition extends DomainResource {
 
     abatementAge?: Age;
     abatementDateTime?: string;
-    _abatementDateTime?: Element;
     abatementPeriod?: Period;
     abatementRange?: Range;
     abatementString?: string;
-    _abatementString?: Element;
     asserter?: Reference<"Patient" | "Practitioner" | "PractitionerRole" | "RelatedPerson">;
     bodySite?: CodeableConcept[];
     category?: CodeableConcept[];
@@ -55,13 +52,10 @@ export interface Condition extends DomainResource {
     note?: Annotation[];
     onsetAge?: Age;
     onsetDateTime?: string;
-    _onsetDateTime?: Element;
     onsetPeriod?: Period;
     onsetRange?: Range;
     onsetString?: string;
-    _onsetString?: Element;
     recordedDate?: string;
-    _recordedDate?: Element;
     recorder?: Reference<"Patient" | "Practitioner" | "PractitionerRole" | "RelatedPerson">;
     severity?: CodeableConcept;
     stage?: ConditionStage[];

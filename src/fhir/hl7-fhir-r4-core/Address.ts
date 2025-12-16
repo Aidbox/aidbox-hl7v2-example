@@ -11,22 +11,13 @@ export type { Period } from "../hl7-fhir-r4-core/Period";
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Address
 export interface Address extends Element {
     city?: string;
-    _city?: Element;
     country?: string;
-    _country?: Element;
     district?: string;
-    _district?: Element;
     line?: string[];
-    _line?: Element;
     period?: Period;
     postalCode?: string;
-    _postalCode?: Element;
     state?: string;
-    _state?: Element;
     text?: string;
-    _text?: Element;
     type?: ("postal" | "physical" | "both");
-    _type?: Element;
     use?: ("home" | "work" | "temp" | "old" | "billing");
-    _use?: Element;
 }

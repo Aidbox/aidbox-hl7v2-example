@@ -13,7 +13,6 @@ import type { Identifier } from "../hl7-fhir-r4-core/Identifier";
 import type { Period } from "../hl7-fhir-r4-core/Period";
 import type { Reference } from "../hl7-fhir-r4-core/Reference";
 
-import type { Element } from "../hl7-fhir-r4-core/Element";
 export type { Address } from "../hl7-fhir-r4-core/Address";
 export type { Attachment } from "../hl7-fhir-r4-core/Attachment";
 export type { BackboneElement } from "../hl7-fhir-r4-core/BackboneElement";
@@ -49,27 +48,20 @@ export interface Patient extends DomainResource {
     resourceType: "Patient";
 
     active?: boolean;
-    _active?: Element;
     address?: Address[];
     birthDate?: string;
-    _birthDate?: Element;
     communication?: PatientCommunication[];
     contact?: PatientContact[];
     deceasedBoolean?: boolean;
-    _deceasedBoolean?: Element;
     deceasedDateTime?: string;
-    _deceasedDateTime?: Element;
     gender?: ("male" | "female" | "other" | "unknown");
-    _gender?: Element;
     generalPractitioner?: Reference<"Organization" | "Practitioner" | "PractitionerRole">[];
     identifier?: Identifier[];
     link?: PatientLink[];
     managingOrganization?: Reference<"Organization">;
     maritalStatus?: CodeableConcept;
     multipleBirthBoolean?: boolean;
-    _multipleBirthBoolean?: Element;
     multipleBirthInteger?: number;
-    _multipleBirthInteger?: Element;
     name?: HumanName[];
     photo?: Attachment[];
     telecom?: ContactPoint[];

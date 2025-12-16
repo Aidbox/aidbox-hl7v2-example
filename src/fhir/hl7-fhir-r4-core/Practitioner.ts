@@ -13,7 +13,6 @@ import type { Identifier } from "../hl7-fhir-r4-core/Identifier";
 import type { Period } from "../hl7-fhir-r4-core/Period";
 import type { Reference } from "../hl7-fhir-r4-core/Reference";
 
-import type { Element } from "../hl7-fhir-r4-core/Element";
 export type { Address } from "../hl7-fhir-r4-core/Address";
 export type { Attachment } from "../hl7-fhir-r4-core/Attachment";
 export type { BackboneElement } from "../hl7-fhir-r4-core/BackboneElement";
@@ -36,13 +35,10 @@ export interface Practitioner extends DomainResource {
     resourceType: "Practitioner";
 
     active?: boolean;
-    _active?: Element;
     address?: Address[];
     birthDate?: string;
-    _birthDate?: Element;
     communication?: CodeableConcept[];
     gender?: ("male" | "female" | "other" | "unknown");
-    _gender?: Element;
     identifier?: Identifier[];
     name?: HumanName[];
     photo?: Attachment[];

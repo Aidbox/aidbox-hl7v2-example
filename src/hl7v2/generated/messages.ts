@@ -372,17 +372,17 @@ export function toBAR_P01(input: BAR_P01_Input): HL7v2Message {
     if (group.AL1) for (const seg of group.AL1) segments.push(toSegment("AL1", seg));
     if (group.DG1) for (const seg of group.DG1) segments.push(toSegment("DG1", seg));
     if (group.DRG) segments.push(toSegment("DRG", group.DRG));
-    if (group.PROCEDURE) for (const group of group.PROCEDURE) {
-      if (group.PR1) segments.push(toSegment("PR1", group.PR1));
-      if (group.ROL) for (const seg of group.ROL) segments.push(toSegment("ROL", seg));
+    if (group.PROCEDURE) for (const procGroup of group.PROCEDURE) {
+      if (procGroup.PR1) segments.push(toSegment("PR1", procGroup.PR1));
+      if (procGroup.ROL) for (const seg of procGroup.ROL) segments.push(toSegment("ROL", seg));
     }
     if (group.GT1) for (const seg of group.GT1) segments.push(toSegment("GT1", seg));
     if (group.NK1) for (const seg of group.NK1) segments.push(toSegment("NK1", seg));
-    if (group.INSURANCE) for (const group of group.INSURANCE) {
-      if (group.IN1) segments.push(toSegment("IN1", group.IN1));
-      if (group.IN2) segments.push(toSegment("IN2", group.IN2));
-      if (group.IN3) for (const seg of group.IN3) segments.push(toSegment("IN3", seg));
-      if (group.ROL) for (const seg of group.ROL) segments.push(toSegment("ROL", seg));
+    if (group.INSURANCE) for (const insGroup of group.INSURANCE) {
+      if (insGroup.IN1) segments.push(toSegment("IN1", insGroup.IN1));
+      if (insGroup.IN2) segments.push(toSegment("IN2", insGroup.IN2));
+      if (insGroup.IN3) for (const seg of insGroup.IN3) segments.push(toSegment("IN3", seg));
+      if (insGroup.ROL) for (const seg of insGroup.ROL) segments.push(toSegment("ROL", seg));
     }
     if (group.ACC) segments.push(toSegment("ACC", group.ACC));
     if (group.UB1) segments.push(toSegment("UB1", group.UB1));

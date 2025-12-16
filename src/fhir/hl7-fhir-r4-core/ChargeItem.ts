@@ -13,7 +13,6 @@ import type { Quantity } from "../hl7-fhir-r4-core/Quantity";
 import type { Reference } from "../hl7-fhir-r4-core/Reference";
 import type { Timing } from "../hl7-fhir-r4-core/Timing";
 
-import type { Element } from "../hl7-fhir-r4-core/Element";
 export type { Annotation } from "../hl7-fhir-r4-core/Annotation";
 export type { BackboneElement } from "../hl7-fhir-r4-core/BackboneElement";
 export type { CodeableConcept } from "../hl7-fhir-r4-core/CodeableConcept";
@@ -39,22 +38,16 @@ export interface ChargeItem extends DomainResource {
     context?: Reference<"Encounter" | "EpisodeOfCare">;
     costCenter?: Reference<"Organization">;
     definitionCanonical?: string[];
-    _definitionCanonical?: Element;
     definitionUri?: string[];
-    _definitionUri?: Element;
     enteredDate?: string;
-    _enteredDate?: Element;
     enterer?: Reference<"Device" | "Organization" | "Patient" | "Practitioner" | "PractitionerRole" | "RelatedPerson">;
     factorOverride?: number;
-    _factorOverride?: Element;
     identifier?: Identifier[];
     note?: Annotation[];
     occurrenceDateTime?: string;
-    _occurrenceDateTime?: Element;
     occurrencePeriod?: Period;
     occurrenceTiming?: Timing;
     overrideReason?: string;
-    _overrideReason?: Element;
     partOf?: Reference<"ChargeItem">[];
     performer?: ChargeItemPerformer[];
     performingOrganization?: Reference<"Organization">;
@@ -66,7 +59,6 @@ export interface ChargeItem extends DomainResource {
     requestingOrganization?: Reference<"Organization">;
     service?: Reference<"DiagnosticReport" | "ImagingStudy" | "Immunization" | "MedicationAdministration" | "MedicationDispense" | "Observation" | "Procedure" | "SupplyDelivery">[];
     status: ("planned" | "billable" | "not-billable" | "aborted" | "billed" | "entered-in-error" | "unknown");
-    _status?: Element;
     subject: Reference<"Group" | "Patient">;
     supportingInformation?: Reference<"Resource">[];
 }

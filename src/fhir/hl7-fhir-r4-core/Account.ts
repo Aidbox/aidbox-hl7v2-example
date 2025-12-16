@@ -9,7 +9,6 @@ import type { Identifier } from "../hl7-fhir-r4-core/Identifier";
 import type { Period } from "../hl7-fhir-r4-core/Period";
 import type { Reference } from "../hl7-fhir-r4-core/Reference";
 
-import type { Element } from "../hl7-fhir-r4-core/Element";
 export type { BackboneElement } from "../hl7-fhir-r4-core/BackboneElement";
 export type { CodeableConcept } from "../hl7-fhir-r4-core/CodeableConcept";
 export type { Identifier } from "../hl7-fhir-r4-core/Identifier";
@@ -33,16 +32,13 @@ export interface Account extends DomainResource {
 
     coverage?: AccountCoverage[];
     description?: string;
-    _description?: Element;
     guarantor?: AccountGuarantor[];
     identifier?: Identifier[];
     name?: string;
-    _name?: Element;
     owner?: Reference<"Organization">;
     partOf?: Reference<"Account">;
     servicePeriod?: Period;
     status: ("active" | "inactive" | "entered-in-error" | "on-hold" | "unknown");
-    _status?: Element;
     subject?: Reference<"Device" | "HealthcareService" | "Location" | "Organization" | "Patient" | "Practitioner" | "PractitionerRole">[];
     type?: CodeableConcept;
 }

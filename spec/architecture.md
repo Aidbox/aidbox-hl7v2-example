@@ -41,6 +41,7 @@ flowchart TB
 - Port: 8080
 - Database: PostgreSQL 18
 - FHIR Version: R4 (`hl7.fhir.r4.core#4.0.1`)
+- Init Bundle: `file:///init-bundle.json`
 
 **Standard FHIR Resources:**
 - `Patient` - Patient demographics
@@ -55,6 +56,21 @@ flowchart TB
 **Custom Resources (defined via StructureDefinition):**
 - `OutgoingBarMessage` - Queued BAR messages (status: pending → sent)
 - `IncomingHL7v2Message` - Received HL7v2 messages (status: received → processed)
+
+### Init Bundle (`init-bundle.json`)
+
+Aidbox executes the init bundle at startup before the HTTP server starts. Used for database initialization that must be idempotent.
+
+**Current contents:**
+- PostgreSQL partial index for pending invoices
+
+```sql
+CREATE INDEX IF NOT EXISTS invoice_pending_ts_idx
+ON invoice (ts DESC)
+WHERE resource @> '{"extension": [{"url": "http://example.org/invoice-processing-status", "value": {"code": "pending"}}]}'
+```
+
+This index optimizes the Invoice BAR Builder polling query by indexing only pending invoices.
 
 ### Aidbox Client (`src/aidbox.ts`)
 

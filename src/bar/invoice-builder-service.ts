@@ -24,20 +24,12 @@ import type { Patient } from "../fhir/hl7-fhir-r4-core/Patient";
 import type { Practitioner } from "../fhir/hl7-fhir-r4-core/Practitioner";
 import type { Procedure } from "../fhir/hl7-fhir-r4-core/Procedure";
 import type { RelatedPerson } from "../fhir/hl7-fhir-r4-core/RelatedPerson";
+import type { OutgoingBarMessage } from "../fhir/aidbox-hl7v2-custom/OutgoingBarMessage";
 
 // Type for Invoice with required id (as returned from Aidbox)
 type InvoiceWithId = Invoice & { id: string };
 
-export interface OutgoingBarMessage {
-  resourceType: "OutgoingBarMessage";
-  id?: string;
-  patient: { reference: string };
-  invoice: { reference: string };
-  status: string;
-  hl7v2?: string;
-}
-
-const POLL_INTERVAL_MS = 60_000; // 1 minute
+const POLL_INTERVAL_MS = 1_000; // 1 minute
 const MAX_RETRIES = 3;
 
 const RETRY_COUNT_URL = "http://example.org/invoice-processing-retry-count";
@@ -220,7 +212,7 @@ export async function buildBarFromInvoice(invoice: InvoiceWithId): Promise<strin
 export async function createOutgoingBarMessage(invoice: InvoiceWithId, hl7v2: string): Promise<OutgoingBarMessage> {
   const newMessage: OutgoingBarMessage = {
     resourceType: "OutgoingBarMessage",
-    patient: { reference: invoice.subject!.reference! },
+    patient: { reference: invoice.subject!.reference! as `Patient/${string}` },
     invoice: { reference: `Invoice/${invoice.id}` },
     status: "pending",
     hl7v2,
@@ -237,7 +229,7 @@ export async function updateInvoiceStatus(
   status: string,
   options?: { reason?: string; retryCount?: number }
 ): Promise<void> {
-  const operations = [
+  const operations: Array<{ name: string; part: Array<Record<string, unknown>> }> = [
     {
       "name": "operation",
       "part": [
@@ -359,7 +351,6 @@ export function createInvoiceBarBuilderService(options: {
 
     try {
       const processed = await processNextInvoice();
-
       if (processed) {
         // Invoice was processed, try immediately for the next one
         setImmediate(poll);

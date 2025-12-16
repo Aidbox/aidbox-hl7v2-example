@@ -19,13 +19,9 @@ export interface TriggerDefinition extends Element {
     condition?: Expression;
     data?: DataRequirement[];
     name?: string;
-    _name?: Element;
     timingDate?: string;
-    _timingDate?: Element;
     timingDateTime?: string;
-    _timingDateTime?: Element;
     timingReference?: Reference<"Schedule">;
     timingTiming?: Timing;
     type: ("named-event" | "periodic" | "data-changed" | "data-added" | "data-modified" | "data-removed" | "data-accessed" | "data-access-ended");
-    _type?: Element;
 }

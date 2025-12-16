@@ -17,10 +17,7 @@ export interface Identifier extends Element {
     assigner?: Reference<"Organization">;
     period?: Period;
     system?: string;
-    _system?: Element;
     type?: CodeableConcept;
     use?: ("usual" | "official" | "temp" | "secondary" | "old");
-    _use?: Element;
     value?: string;
-    _value?: Element;
 }

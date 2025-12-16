@@ -9,19 +9,11 @@ export type { Element } from "../hl7-fhir-r4-core/Element";
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Attachment
 export interface Attachment extends Element {
     contentType?: string;
-    _contentType?: Element;
     creation?: string;
-    _creation?: Element;
     data?: string;
-    _data?: Element;
     hash?: string;
-    _hash?: Element;
     language?: string;
-    _language?: Element;
     size?: number;
-    _size?: Element;
     title?: string;
-    _title?: Element;
     url?: string;
-    _url?: Element;
 }

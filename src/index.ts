@@ -9,6 +9,8 @@ import type { ChargeItem } from "./fhir/hl7-fhir-r4-core/ChargeItem";
 import type { Practitioner } from "./fhir/hl7-fhir-r4-core/Practitioner";
 import type { Encounter } from "./fhir/hl7-fhir-r4-core/Encounter";
 import type { Procedure } from "./fhir/hl7-fhir-r4-core/Procedure";
+import type { OutgoingBarMessage } from "./fhir/aidbox-hl7v2-custom/OutgoingBarMessage";
+import type { IncomingHL7v2Message } from "./fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 
 const getPatients = () => getResources<Patient>("Patient");
 const getChargeItems = () => getResources<ChargeItem>("ChargeItem", "_sort=-_lastUpdated");
@@ -40,24 +42,6 @@ function getRetryCount(invoice: Invoice): number {
   return ext?.valueInteger ?? 0;
 }
 
-interface OutgoingBarMessage {
-  id: string;
-  status: string;
-  patient?: { reference: string };
-  invoice?: { reference: string };
-  hl7v2?: string;
-  meta?: { lastUpdated?: string };
-}
-
-interface IncomingHL7v2Message {
-  id: string;
-  type: string;
-  status?: string;
-  date?: string;
-  patient?: { reference: string };
-  message: string;
-  meta?: { lastUpdated?: string };
-}
 
 const PAGE_SIZE = 20;
 
@@ -75,6 +59,11 @@ const getInvoices = async (processingStatus?: string, page = 1): Promise<{ invoi
     total: bundle.total ?? 0,
   };
 };
+const getPendingInvoiceCount = async (): Promise<number> => {
+  const bundle = await aidboxFetch<Bundle<Invoice>>("/fhir/Invoice?processing-status=pending&_count=0");
+  return bundle.total ?? 0;
+};
+
 const getOutgoingMessages = (status?: string) =>
   getResources<OutgoingBarMessage>("OutgoingBarMessage", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
 const getIncomingMessages = (status?: string) =>
@@ -134,7 +123,8 @@ function renderInvoicesPage(
   practitioners: Practitioner[],
   statusFilter?: string,
   currentPage = 1,
-  total = 0
+  total = 0,
+  pendingCount = 0
 ): string {
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const rows = invoices
@@ -164,7 +154,6 @@ function renderInvoicesPage(
     })
     .join("");
 
-  const pendingCount = invoices.filter((inv) => getProcessingStatus(inv) === "pending").length;
   const processingStatuses = ["pending", "error", "completed"];
 
   const content = `
@@ -397,7 +386,7 @@ function renderMessageList(items: MessageListItem[]): string {
 
 function renderOutgoingMessagesPage(messages: OutgoingBarMessage[], patients: Patient[], invoices: Invoice[], statusFilter?: string): string {
   const listItems: MessageListItem[] = messages.map(msg => ({
-    id: msg.id,
+    id: msg.id ?? "",
     statusBadge: {
       text: msg.status,
       class: msg.status === "sent"
@@ -635,7 +624,7 @@ function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port
 
 function renderIncomingMessagesPage(messages: IncomingHL7v2Message[], statusFilter?: string): string {
   const listItems: MessageListItem[] = messages.map(msg => ({
-    id: msg.id,
+    id: msg.id ?? "",
     statusBadge: {
       text: msg.status || "received",
       class: msg.status === "processed"
@@ -683,14 +672,15 @@ Bun.serve({
       const url = new URL(req.url);
       const statusFilter = url.searchParams.get("processing-status") || undefined;
       const page = parseInt(url.searchParams.get("_page") || "1", 10);
-      const [invoicesResult, patients, encounters, procedures, practitioners] = await Promise.all([
+      const [invoicesResult, patients, encounters, procedures, practitioners, pendingCount] = await Promise.all([
         getInvoices(statusFilter, page),
         getPatients(),
         getEncounters(),
         getProcedures(),
         getPractitioners(),
+        getPendingInvoiceCount(),
       ]);
-      return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total), {
+      return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total, pendingCount), {
         headers: { "Content-Type": "text/html" },
       });
     },
@@ -699,14 +689,15 @@ Bun.serve({
         const url = new URL(req.url);
         const statusFilter = url.searchParams.get("processing-status") || undefined;
         const page = parseInt(url.searchParams.get("_page") || "1", 10);
-        const [invoicesResult, patients, encounters, procedures, practitioners] = await Promise.all([
+        const [invoicesResult, patients, encounters, procedures, practitioners, pendingCount] = await Promise.all([
           getInvoices(statusFilter, page),
           getPatients(),
           getEncounters(),
           getProcedures(),
           getPractitioners(),
+          getPendingInvoiceCount(),
         ]);
-        return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total), {
+        return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total, pendingCount), {
           headers: { "Content-Type": "text/html" },
         });
       },

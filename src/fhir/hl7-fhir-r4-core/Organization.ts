@@ -11,7 +11,6 @@ import type { HumanName } from "../hl7-fhir-r4-core/HumanName";
 import type { Identifier } from "../hl7-fhir-r4-core/Identifier";
 import type { Reference } from "../hl7-fhir-r4-core/Reference";
 
-import type { Element } from "../hl7-fhir-r4-core/Element";
 export type { Address } from "../hl7-fhir-r4-core/Address";
 export type { BackboneElement } from "../hl7-fhir-r4-core/BackboneElement";
 export type { CodeableConcept } from "../hl7-fhir-r4-core/CodeableConcept";
@@ -32,15 +31,12 @@ export interface Organization extends DomainResource {
     resourceType: "Organization";
 
     active?: boolean;
-    _active?: Element;
     address?: Address[];
     alias?: string[];
-    _alias?: Element;
     contact?: OrganizationContact[];
     endpoint?: Reference<"Endpoint">[];
     identifier?: Identifier[];
     name?: string;
-    _name?: Element;
     partOf?: Reference<"Organization">;
     telecom?: ContactPoint[];
     type?: CodeableConcept[];

@@ -11,16 +11,10 @@ export type { Quantity } from "../hl7-fhir-r4-core/Quantity";
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/SampledData
 export interface SampledData extends Element {
     data?: string;
-    _data?: Element;
     dimensions: number;
-    _dimensions?: Element;
     factor?: number;
-    _factor?: Element;
     lowerLimit?: number;
-    _lowerLimit?: Element;
     origin: Quantity;
     period: number;
-    _period?: Element;
     upperLimit?: number;
-    _upperLimit?: Element;
 }

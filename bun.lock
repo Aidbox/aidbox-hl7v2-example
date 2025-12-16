@@ -1,10 +1,11 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "aidbox-hl7",
       "dependencies": {
-        "@atomic-ehr/codegen": "0.0.4-canary.20251211114058.39d4b3a",
+        "@atomic-ehr/codegen": "0.0.4-canary.20251216132615.27719de",
         "@atomic-ehr/hl7v2": "^0.0.1-canary.22.202c8cc",
       },
       "devDependencies": {
@@ -16,9 +17,9 @@
     },
   },
   "packages": {
-    "@atomic-ehr/codegen": ["@atomic-ehr/codegen@0.0.4-canary.20251211114058.39d4b3a", "", { "dependencies": { "@atomic-ehr/fhir-canonical-manager": "^0.0.15", "@atomic-ehr/fhirschema": "^0.0.5", "picocolors": "^1.1.1", "yaml": "^2.8.1", "yargs": "^18.0.0" }, "bin": { "atomic-codegen": "dist/cli/index.js" } }, "sha512-U1QeLztflKsLvbpvGHOqCxCKzjaRPKMzkwgou+L3w+LojTcdH1wPn/z2e5fMoQWDokR6N/djfE5Sb5uKzfbVog=="],
+    "@atomic-ehr/codegen": ["@atomic-ehr/codegen@0.0.4-canary.20251216132615.27719de", "", { "dependencies": { "@atomic-ehr/fhir-canonical-manager": "canary", "@atomic-ehr/fhirschema": "^0.0.5", "picocolors": "^1.1.1", "tinyglobby": "^0.2.15", "yaml": "^2.8.2", "yargs": "^18.0.0" }, "bin": { "atomic-codegen": "dist/cli/index.js" } }, "sha512-VUIEcuJ5c9Ef9FQbhANdXw3JqjEm3Ro0msZTVn+SMx2DH8eC01jYqO2DHChuo8/Lwj0rx3EUUQxlCyNI8yelKw=="],
 
-    "@atomic-ehr/fhir-canonical-manager": ["@atomic-ehr/fhir-canonical-manager@0.0.15", "", { "peerDependencies": { "typescript": "^5" }, "bin": { "fcm": "dist/cli/index.js" } }, "sha512-hVtvJrs7NjSuDx8RiUpEglaF3PuKESGRNslvEtsIl6cThnwSdovTCo+LgKD8u3W0aMdq0Dpbah9ISvkeB9+ASw=="],
+    "@atomic-ehr/fhir-canonical-manager": ["@atomic-ehr/fhir-canonical-manager@0.0.1-canary.20251215212455.81640ff", "", { "peerDependencies": { "typescript": "^5" }, "bin": { "fcm": "dist/cli/index.js" } }, "sha512-wfcKmcWWdkJT0OFiDl2vOVFYXuYq/H4Z2UOLkt7x78LC3LA3FY9DSUEry4JfhbpIMJUdiiIhCL0egA6/H2eXdQ=="],
 
     "@atomic-ehr/fhirschema": ["@atomic-ehr/fhirschema@0.0.5", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-B/8ScNnnQUIR6d3FsIuGGvanOyE2j7W3mAubVmpPE2I/tho+meEBRrGgs5E+AY4jDz9mviTdOta08RpIhH2kew=="],
 
@@ -40,15 +41,21 @@
 
     "escalade": ["escalade@3.2.0", "", {}, "sha512-WUj2qlxaQtO4g6Pq5c29GTcWGDyd8itL8zTlipgECz3JesAiiOKotd8JU6otB3PACgG6xkJUyVhboMS+bje/jA=="],
 
+    "fdir": ["fdir@6.5.0", "", { "peerDependencies": { "picomatch": "^3 || ^4" }, "optionalPeers": ["picomatch"] }, "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg=="],
+
     "get-caller-file": ["get-caller-file@2.0.5", "", {}, "sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg=="],
 
     "get-east-asian-width": ["get-east-asian-width@1.4.0", "", {}, "sha512-QZjmEOC+IT1uk6Rx0sX22V6uHWVwbdbxf1faPqJ1QhLdGgsRGCZoyaQBm/piRdJy/D2um6hM1UP7ZEeQ4EkP+Q=="],
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
+    "picomatch": ["picomatch@4.0.3", "", {}, "sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q=="],
+
     "string-width": ["string-width@7.2.0", "", { "dependencies": { "emoji-regex": "^10.3.0", "get-east-asian-width": "^1.0.0", "strip-ansi": "^7.1.0" } }, "sha512-tsaTIkKW9b4N+AEj+SVA+WhJzV7/zMhcSu78mLKWSk7cXMOSHsBKFWUs0fWwq8QyK3MgJBQRX6Gbi4kYbdvGkQ=="],
 
     "strip-ansi": ["strip-ansi@7.1.2", "", { "dependencies": { "ansi-regex": "^6.0.1" } }, "sha512-gmBGslpoQJtgnMAvOVqGZpEz9dyoKTCzy2nfz/n8aIFhN/jCE/rCmcxabB6jOOHV+0WNnylOxaxBQPSvcWklhA=="],
+
+    "tinyglobby": ["tinyglobby@0.2.15", "", { "dependencies": { "fdir": "^6.5.0", "picomatch": "^4.0.3" } }, "sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ=="],
 
     "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 

@@ -10,7 +10,6 @@ import type { Identifier } from "../hl7-fhir-r4-core/Identifier";
 import type { Money } from "../hl7-fhir-r4-core/Money";
 import type { Reference } from "../hl7-fhir-r4-core/Reference";
 
-import type { Element } from "../hl7-fhir-r4-core/Element";
 export type { Annotation } from "../hl7-fhir-r4-core/Annotation";
 export type { BackboneElement } from "../hl7-fhir-r4-core/BackboneElement";
 export type { CodeableConcept } from "../hl7-fhir-r4-core/CodeableConcept";
@@ -43,19 +42,15 @@ export interface Invoice extends DomainResource {
 
     account?: Reference<"Account">;
     cancelledReason?: string;
-    _cancelledReason?: Element;
     date?: string;
-    _date?: Element;
     identifier?: Identifier[];
     issuer?: Reference<"Organization">;
     lineItem?: InvoiceLineItem[];
     note?: Annotation[];
     participant?: InvoiceParticipant[];
     paymentTerms?: string;
-    _paymentTerms?: Element;
     recipient?: Reference<"Organization" | "Patient" | "RelatedPerson">;
     status: ("draft" | "issued" | "balanced" | "cancelled" | "entered-in-error");
-    _status?: Element;
     subject?: Reference<"Group" | "Patient">;
     totalGross?: Money;
     totalNet?: Money;

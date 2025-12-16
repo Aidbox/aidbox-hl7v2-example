@@ -31,7 +31,6 @@ export interface DosageDoseAndRate extends Element {
 export interface Dosage extends BackboneElement {
     additionalInstruction?: CodeableConcept[];
     asNeededBoolean?: boolean;
-    _asNeededBoolean?: Element;
     asNeededCodeableConcept?: CodeableConcept;
     doseAndRate?: Element[];
     maxDosePerAdministration?: Quantity;
@@ -39,12 +38,9 @@ export interface Dosage extends BackboneElement {
     maxDosePerPeriod?: Ratio;
     method?: CodeableConcept;
     patientInstruction?: string;
-    _patientInstruction?: Element;
     route?: CodeableConcept;
     sequence?: number;
-    _sequence?: Element;
     site?: CodeableConcept;
     text?: string;
-    _text?: Element;
     timing?: Timing;
 }

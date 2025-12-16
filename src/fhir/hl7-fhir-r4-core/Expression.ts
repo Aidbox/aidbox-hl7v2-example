@@ -9,13 +9,8 @@ export type { Element } from "../hl7-fhir-r4-core/Element";
 // CanonicalURL: http://hl7.org/fhir/StructureDefinition/Expression
 export interface Expression extends Element {
     description?: string;
-    _description?: Element;
     expression?: string;
-    _expression?: Element;
     language: string;
-    _language?: Element;
     name?: string;
-    _name?: Element;
     reference?: string;
-    _reference?: Element;
 }

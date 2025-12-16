@@ -124,11 +124,11 @@ describe("buildBarFromInvoice", () => {
   });
 
   test("throws error when invoice has no patient", async () => {
-    const invoiceNoPatient: Invoice = {
+    const invoiceNoPatient = {
       resourceType: "Invoice",
       id: "invoice-2",
       status: "draft",
-    };
+    } as Invoice & { id: string };
 
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mockFetch.mockImplementation(() =>
@@ -224,9 +224,9 @@ describe("processNextInvoice", () => {
 
       // Verify PATCH was called to update status
       expect(patchCalls.length).toBe(1);
-      expect(patchCalls[0].url).toContain("/fhir/Invoice/invoice-no-patient");
+      expect(patchCalls[0]!.url).toContain("/fhir/Invoice/invoice-no-patient");
 
-      const patchBody = JSON.parse(patchCalls[0].body);
+      const patchBody = JSON.parse(patchCalls[0]!.body);
       expect(patchBody.resourceType).toBe("Parameters");
 
       // Verify status is set to "error"

@@ -12,7 +12,5 @@ export type { Element } from "../hl7-fhir-r4-core/Element";
 export interface Contributor extends Element {
     contact?: ContactDetail[];
     name: string;
-    _name?: Element;
     type: ("author" | "editor" | "reviewer" | "endorser");
-    _type?: Element;
 }

@@ -10,5 +10,4 @@ export type { Extension } from "../hl7-fhir-r4-core/Extension";
 export interface Element {
     extension?: Extension[];
     id?: string;
-    _id?: Element;
 }

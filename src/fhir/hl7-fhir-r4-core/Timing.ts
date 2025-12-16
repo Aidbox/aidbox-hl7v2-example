@@ -40,6 +40,5 @@ export interface TimingRepeat extends Element {
 export interface Timing extends BackboneElement {
     code?: CodeableConcept;
     event?: string[];
-    _event?: Element;
     repeat?: Element;
 }

@@ -11,7 +11,6 @@ import type { Period } from "../hl7-fhir-r4-core/Period";
 import type { Quantity } from "../hl7-fhir-r4-core/Quantity";
 import type { Reference } from "../hl7-fhir-r4-core/Reference";
 
-import type { Element } from "../hl7-fhir-r4-core/Element";
 export type { BackboneElement } from "../hl7-fhir-r4-core/BackboneElement";
 export type { CodeableConcept } from "../hl7-fhir-r4-core/CodeableConcept";
 export type { Identifier } from "../hl7-fhir-r4-core/Identifier";
@@ -47,23 +46,17 @@ export interface Coverage extends DomainResource {
     contract?: Reference<"Contract">[];
     costToBeneficiary?: CoverageCostToBeneficiary[];
     dependent?: string;
-    _dependent?: Element;
     identifier?: Identifier[];
     network?: string;
-    _network?: Element;
     order?: number;
-    _order?: Element;
     payor: Reference<"Organization" | "Patient" | "RelatedPerson">[];
     period?: Period;
     policyHolder?: Reference<"Organization" | "Patient" | "RelatedPerson">;
     relationship?: CodeableConcept;
     status: ("active" | "cancelled" | "draft" | "entered-in-error");
-    _status?: Element;
     subrogation?: boolean;
-    _subrogation?: Element;
     subscriber?: Reference<"Patient" | "RelatedPerson">;
     subscriberId?: string;
-    _subscriberId?: Element;
     type?: CodeableConcept;
 }
 export const isCoverage = (resource: unknown): resource is Coverage => {

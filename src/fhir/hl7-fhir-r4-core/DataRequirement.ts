@@ -41,14 +41,10 @@ export interface DataRequirement extends Element {
     codeFilter?: Element[];
     dateFilter?: Element[];
     limit?: number;
-    _limit?: Element;
     mustSupport?: string[];
-    _mustSupport?: Element;
     profile?: string[];
-    _profile?: Element;
     sort?: Element[];
     subjectCodeableConcept?: CodeableConcept;
     subjectReference?: Reference<"Group">;
     type: string;
-    _type?: Element;
 }
