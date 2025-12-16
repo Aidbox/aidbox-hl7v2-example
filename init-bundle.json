@@ -7,7 +7,7 @@
         "method": "POST",
         "url": "/$sql"
       },
-      "resource": "CREATE INDEX IF NOT EXISTS invoice_pending_ts_idx ON invoice (ts DESC) WHERE resource @> '{\"extension\": [{\"url\": \"http://example.org/invoice-processing-status\", \"value\": {\"code\": \"pending\"}}]}'"
+      "resource": "CREATE INDEX IF NOT EXISTS invoice_pending_ts_idx ON invoice (ts ASC) WHERE resource @> '{\"extension\": [{\"url\": \"http://example.org/invoice-processing-status\", \"value\": {\"code\": \"pending\"}}]}'"
     }
   ]
 }
