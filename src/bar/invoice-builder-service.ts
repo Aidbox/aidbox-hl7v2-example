@@ -24,7 +24,7 @@ import type { Patient } from "../fhir/hl7-fhir-r4-core/Patient";
 import type { Practitioner } from "../fhir/hl7-fhir-r4-core/Practitioner";
 import type { Procedure } from "../fhir/hl7-fhir-r4-core/Procedure";
 import type { RelatedPerson } from "../fhir/hl7-fhir-r4-core/RelatedPerson";
-import type { OutgoingBarMessage } from "../fhir/aidbox-hl7v2-custom/OutgoingBarMessage";
+import type { OutgoingBarMessage } from "../fhir/aidbox-hl7v2-custom";
 
 // Type for Invoice with required id (as returned from Aidbox)
 type InvoiceWithId = Invoice & { id: string };

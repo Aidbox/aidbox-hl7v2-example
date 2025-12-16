@@ -9,8 +9,7 @@ import type { ChargeItem } from "./fhir/hl7-fhir-r4-core/ChargeItem";
 import type { Practitioner } from "./fhir/hl7-fhir-r4-core/Practitioner";
 import type { Encounter } from "./fhir/hl7-fhir-r4-core/Encounter";
 import type { Procedure } from "./fhir/hl7-fhir-r4-core/Procedure";
-import type { OutgoingBarMessage } from "./fhir/aidbox-hl7v2-custom/OutgoingBarMessage";
-import type { IncomingHL7v2Message } from "./fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
+import type { OutgoingBarMessage, IncomingHL7v2Message } from "./fhir/aidbox-hl7v2-custom";
 
 const getPatients = () => getResources<Patient>("Patient");
 const getChargeItems = () => getResources<ChargeItem>("ChargeItem", "_sort=-_lastUpdated");
