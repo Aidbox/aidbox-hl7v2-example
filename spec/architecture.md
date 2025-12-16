@@ -103,7 +103,8 @@ Bun HTTP server serving server-rendered HTML pages with Tailwind CSS.
 | `/incoming-messages` | GET | List received messages with status filter |
 | `/mllp-client` | GET | MLLP test client UI |
 | `/mllp-client` | POST | Send HL7v2 message via MLLP |
-| `/build-bar` | POST | Trigger BAR generation for pending invoices |
+| `/build-bar` | POST | Trigger BAR generation for pending invoices (background) |
+| `/reprocess-errors` | POST | Retry failed invoices (up to 3 attempts, then mark as failed) |
 | `/send-messages` | POST | Trigger sending of pending messages |
 
 ### Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
@@ -243,6 +244,8 @@ stateDiagram-v2
         [*] --> pending: Created
         pending --> completed: BAR Builder
         pending --> error: Build failed
+        error --> pending: Reprocess (retry < 3)
+        error --> failed: Reprocess (retry >= 3)
     }
 
     state OutgoingBarMessage {
@@ -257,6 +260,21 @@ stateDiagram-v2
         received --> error: Processing failed
     }
 ```
+
+### Invoice Retry Mechanism
+
+Invoices that fail BAR generation are marked with `processing-status=error`. The Web UI provides a "Reprocess Errors" button that:
+
+1. Fetches all invoices with `processing-status=error`
+2. Checks retry count (stored in `invoice-processing-retry-count` extension)
+3. If retry count < 3: increments retry count and sets status to `pending`
+4. If retry count >= 3: marks as `failed` (terminal state)
+5. Processes all pending invoices
+
+**Extensions used:**
+- `http://example.org/invoice-processing-status` - processing status (pending/completed/error/failed)
+- `http://example.org/invoice-processing-error-reason` - error message from last failure
+- `http://example.org/invoice-processing-retry-count` - number of retry attempts
 
 ## HL7v2 Message Generation
 
