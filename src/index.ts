@@ -1,5 +1,5 @@
 import * as net from "node:net";
-import { aidboxFetch, getResources } from "./aidbox";
+import { aidboxFetch, getResources, type Bundle } from "./aidbox";
 import { processNextMessage } from "./bar/sender-service";
 import { processNextInvoice } from "./bar/invoice-builder-service";
 import { wrapWithMLLP, VT, FS, CR } from "./mllp/mllp-server";
@@ -59,8 +59,22 @@ interface IncomingHL7v2Message {
   meta?: { lastUpdated?: string };
 }
 
-const getInvoices = (processingStatus?: string) =>
-  getResources<Invoice>("Invoice", `_sort=-_lastUpdated${processingStatus ? `&processing-status=${processingStatus}` : ""}`);
+const PAGE_SIZE = 20;
+
+const getInvoices = async (processingStatus?: string, page = 1): Promise<{ invoices: Invoice[]; total: number }> => {
+  const params = new URLSearchParams({
+    _sort: "-lastUpdated",
+    _count: String(PAGE_SIZE),
+    _page: String(page),
+  });
+  if (processingStatus) params.set("processing-status", processingStatus);
+
+  const bundle = await aidboxFetch<Bundle<Invoice>>(`/fhir/Invoice?${params}`);
+  return {
+    invoices: bundle.entry?.map((e) => e.resource) || [],
+    total: bundle.total ?? 0,
+  };
+};
 const getOutgoingMessages = (status?: string) =>
   getResources<OutgoingBarMessage>("OutgoingBarMessage", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
 const getIncomingMessages = (status?: string) =>
@@ -118,8 +132,11 @@ function renderInvoicesPage(
   encounters: Encounter[],
   procedures: Procedure[],
   practitioners: Practitioner[],
-  statusFilter?: string
+  statusFilter?: string,
+  currentPage = 1,
+  total = 0
 ): string {
+  const totalPages = Math.ceil(total / PAGE_SIZE);
   const rows = invoices
     .map((inv) => {
       const processingStatus = getProcessingStatus(inv);
@@ -310,7 +327,34 @@ function renderInvoicesPage(
         </tbody>
       </table>
     </div>
-    <p class="mt-4 text-sm text-gray-500">Total: ${invoices.length} invoices</p>`;
+    <div class="mt-4 flex items-center justify-between">
+      <p class="text-sm text-gray-500">Total: ${total} invoices</p>
+      ${totalPages > 1 ? `
+        <div class="flex items-center gap-1">
+          <a href="/invoices?_page=1${statusFilter ? `&processing-status=${statusFilter}` : ""}"
+             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+             ${currentPage === 1 ? 'aria-disabled="true"' : ''}>
+            First
+          </a>
+          <a href="/invoices?_page=${currentPage - 1}${statusFilter ? `&processing-status=${statusFilter}` : ""}"
+             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+             ${currentPage === 1 ? 'aria-disabled="true"' : ''}>
+            Prev
+          </a>
+          <span class="px-3 py-1.5 text-sm text-gray-600">${currentPage} / ${totalPages}</span>
+          <a href="/invoices?_page=${currentPage + 1}${statusFilter ? `&processing-status=${statusFilter}` : ""}"
+             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+             ${currentPage === totalPages ? 'aria-disabled="true"' : ''}>
+            Next
+          </a>
+          <a href="/invoices?_page=${totalPages}${statusFilter ? `&processing-status=${statusFilter}` : ""}"
+             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+             ${currentPage === totalPages ? 'aria-disabled="true"' : ''}>
+            Last
+          </a>
+        </div>
+      ` : ''}
+    </div>`;
 
   return renderLayout("Invoices", renderNav("invoices"), content);
 }
@@ -638,14 +682,15 @@ Bun.serve({
     "/": async (req) => {
       const url = new URL(req.url);
       const statusFilter = url.searchParams.get("processing-status") || undefined;
-      const [invoices, patients, encounters, procedures, practitioners] = await Promise.all([
-        getInvoices(statusFilter),
+      const page = parseInt(url.searchParams.get("_page") || "1", 10);
+      const [invoicesResult, patients, encounters, procedures, practitioners] = await Promise.all([
+        getInvoices(statusFilter, page),
         getPatients(),
         getEncounters(),
         getProcedures(),
         getPractitioners(),
       ]);
-      return new Response(renderInvoicesPage(invoices, patients, encounters, procedures, practitioners, statusFilter), {
+      return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total), {
         headers: { "Content-Type": "text/html" },
       });
     },
@@ -653,14 +698,15 @@ Bun.serve({
       GET: async (req) => {
         const url = new URL(req.url);
         const statusFilter = url.searchParams.get("processing-status") || undefined;
-        const [invoices, patients, encounters, procedures, practitioners] = await Promise.all([
-          getInvoices(statusFilter),
+        const page = parseInt(url.searchParams.get("_page") || "1", 10);
+        const [invoicesResult, patients, encounters, procedures, practitioners] = await Promise.all([
+          getInvoices(statusFilter, page),
           getPatients(),
           getEncounters(),
           getProcedures(),
           getPractitioners(),
         ]);
-        return new Response(renderInvoicesPage(invoices, patients, encounters, procedures, practitioners, statusFilter), {
+        return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total), {
           headers: { "Content-Type": "text/html" },
         });
       },
@@ -786,12 +832,12 @@ Bun.serve({
       GET: async (req) => {
         const url = new URL(req.url);
         const statusFilter = url.searchParams.get("status") || undefined;
-        const [messages, patients, invoices] = await Promise.all([
+        const [messages, patients, invoicesResult] = await Promise.all([
           getOutgoingMessages(statusFilter),
           getPatients(),
           getInvoices(),
         ]);
-        return new Response(renderOutgoingMessagesPage(messages, patients, invoices, statusFilter), {
+        return new Response(renderOutgoingMessagesPage(messages, patients, invoicesResult.invoices, statusFilter), {
           headers: { "Content-Type": "text/html" },
         });
       },
