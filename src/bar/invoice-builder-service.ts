@@ -29,12 +29,11 @@ import type { OutgoingBarMessage } from "../fhir/aidbox-hl7v2-custom";
 // Type for Invoice with required id (as returned from Aidbox)
 type InvoiceWithId = Invoice & { id: string };
 
-const POLL_INTERVAL_MS = 1_000; // 1 minute
+const POLL_INTERVAL_MS = 60_000; // 1 minute
 const MAX_RETRIES = 3;
-
 const RETRY_COUNT_URL = "http://example.org/invoice-processing-retry-count";
 
-function getRetryCount(invoice: Invoice): number {
+export function getRetryCount(invoice: Invoice): number {
   const ext = invoice.extension?.find(e => e.url === RETRY_COUNT_URL);
   return (ext as { valueInteger?: number } | undefined)?.valueInteger ?? 0;
 }
@@ -180,11 +179,11 @@ export async function buildBarFromInvoice(invoice: InvoiceWithId): Promise<strin
   const related = await fetchRelatedResources(invoice);
 
   if (!related.patient) {
-    throw new Error(`Invoice ${invoice.id} has no patient`);
+    throw new Error("Invoice has no patient");
   }
 
   if (!related.account) {
-    throw new Error(`Invoice ${invoice.id} has no account`);
+    throw new Error("Invoice has no account");
   }
 
   const messageControlId = `BAR-${invoice.id}-${Date.now()}`;
@@ -265,6 +264,15 @@ export async function updateInvoiceStatus(
         ]
       }
     );
+  } else if (status === "pending") {
+    // Remove error reason when setting to pending
+    operations.push({
+      "name": "operation",
+      "part": [
+        { "name": "type", "valueCode": "delete" },
+        { "name": "path", "valueString": "Invoice.extension.where(url='http://example.org/invoice-processing-error-reason')" },
+      ]
+    });
   }
 
   if (options?.retryCount !== undefined) {
@@ -310,27 +318,13 @@ export async function processNextInvoice(): Promise<boolean> {
     return false;
   }
 
-  const currentRetryCount = getRetryCount(invoice);
-
   try {
     const hl7v2 = await buildBarFromInvoice(invoice);
     await createOutgoingBarMessage(invoice, hl7v2);
     await updateInvoiceStatus(invoice.id, "completed");
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const newRetryCount = currentRetryCount + 1;
-
-    if (newRetryCount < MAX_RETRIES) {
-      // Retry: set back to pending with incremented retry count
-      console.log(`Invoice ${invoice.id} failed (attempt ${newRetryCount}/${MAX_RETRIES}), will retry: ${errorMessage}`);
-      await updateInvoiceStatus(invoice.id, "pending", { reason: errorMessage, retryCount: newRetryCount });
-      return false;
-    } else {
-      // Max retries reached: mark as error
-      console.error(`Invoice ${invoice.id} failed after ${MAX_RETRIES} attempts: ${errorMessage}`);
-      await updateInvoiceStatus(invoice.id, "error", { reason: errorMessage, retryCount: newRetryCount });
-      return true;
-    }
+    await updateInvoiceStatus(invoice.id, "error", { reason: errorMessage });
   }
 
   return true;
