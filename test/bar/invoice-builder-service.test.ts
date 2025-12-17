@@ -244,7 +244,7 @@ describe("processNextInvoice", () => {
       expect(reasonOperation).toBeDefined();
 
       const reasonPart = reasonOperation.part.find((part: { name: string; valueExtension?: { url: string; valueString: string } }) => part.valueExtension);
-      expect(reasonPart.valueExtension.valueString).toBe("No patient subject");
+      expect(reasonPart.valueExtension.valueString).toBe("Invoice has no patient");
     } finally {
       globalThis.fetch = originalFetch;
     }
