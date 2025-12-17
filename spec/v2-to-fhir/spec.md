@@ -4,7 +4,7 @@ Based on mappings from: https://github.com/AidboxHL7/v2-to-fhir
 
 ## Supported Messages
 
-- [ ] ADT_A01
+- [x] ADT_A01
 - [ ] ADT_A02
 - [ ] ADT_A05
 - [ ] ADT_A06
@@ -26,13 +26,13 @@ Based on mappings from: https://github.com/AidboxHL7/v2-to-fhir
 - [ ] AIP[Appointment]
 - [ ] AIS[Appointment]
 - [ ] AIS[ServiceRequest]
-- [ ] AL1[AllergyIntolerance]
-- [ ] DG1[Condition]
+- [x] AL1[AllergyIntolerance]
+- [x] DG1[Condition]
 - [ ] DG1[Encounter]
 - [ ] DG1[EpisodeOfCare]
 - [ ] EVN[Provenance]
 - [ ] IAM[AllergyIntolerance]
-- [ ] IN1[Coverage]
+- [x] IN1[Coverage]
 - [ ] IN3[CareTeam]
 - [ ] MRG[Account]
 - [ ] MSA[MessageHeader]
@@ -43,7 +43,7 @@ Based on mappings from: https://github.com/AidboxHL7/v2-to-fhir
 - [ ] MSH[Provenance-Source]
 - [ ] MSH[Provenance-Transformation]
 - [ ] NK1[Patient]
-- [ ] NK1[RelatedPerson]
+- [x] NK1[RelatedPerson]
 - [ ] NTE[Appointment-Comment]
 - [ ] NTE[DocumentReference]
 - [ ] NTE[Observation]
@@ -63,7 +63,7 @@ Based on mappings from: https://github.com/AidboxHL7/v2-to-fhir
 - [ ] PD1[Patient]
 - [ ] PID[Account]
 - [ ] PID[Appointment]
-- [ ] PID[Patient]
+- [x] PID[Patient]
 - [ ] PID[Provenance-Patient]
 - [ ] PR1[Procedure]
 - [ ] PRT[CareTeam]
@@ -75,7 +75,7 @@ Based on mappings from: https://github.com/AidboxHL7/v2-to-fhir
 - [ ] PRT[RelatedPerson]
 - [ ] PV1[Basic-EncounterHistory]
 - [ ] PV1[Coverage]
-- [ ] PV1[Encounter]
+- [x] PV1[Encounter]
 - [ ] PV1[Patient]
 - [ ] PV2[Encounter]
 - [ ] ROL[CareTeam]
