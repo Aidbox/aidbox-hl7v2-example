@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { convertToFHIR } from "./converter";
+import { convertToFHIR } from "../../src/v2-to-fhir/converter";
 
 const ADT_A08_MESSAGE = `MSH|^~\\&|ST01|F|PCM|F|20251109032904||ADT^A08|150466177|P|2.2|150466177||AL
 EVN|A08|20251109032904|||sb69385^BUNGARD^STACEY
@@ -48,8 +48,8 @@ describe("convertToFHIR", () => {
     const patient = bundle.entry[0].resource;
 
     expect(patient.name).toBeDefined();
-    expect(patient.name![0].family).toBe("Czegxd");
-    expect(patient.name![0].given).toContain("Zcezc");
+    expect(patient.name![0].family).toBe("CZEGXD");
+    expect(patient.name![0].given).toContain("ZCEZC");
     expect(patient.name![0].given).toContain("N");
   });
 

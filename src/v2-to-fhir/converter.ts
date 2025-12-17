@@ -11,11 +11,11 @@ import {
   type MSH,
   type PID,
   type CX,
-  type XPN,
   type XAD,
   type XTN,
   type CE,
 } from "../hl7v2/generated/fields";
+import { convertXPNToHumanName } from "./datatypes/xpn-humanname";
 import type {
   Patient,
   Identifier,
@@ -78,10 +78,6 @@ function mapGender(gender: string | undefined): Patient["gender"] {
   }
 }
 
-function capitalizeFirst(str: string | undefined): string {
-  if (!str) return "";
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-}
 
 // ============================================================================
 // Datatype Converters
@@ -118,29 +114,6 @@ function convertCXToIdentifier(cx: CX | undefined, typeOverride?: string): Ident
   return identifier;
 }
 
-function convertXPNToHumanName(xpn: XPN | undefined): HumanName | undefined {
-  if (!xpn) return undefined;
-
-  const family = xpn.$1_family?.$1_family;
-  const given = xpn.$2_given;
-  const middle = xpn.$3_additionalGiven;
-
-  if (!family && !given) return undefined;
-
-  const givenNames: string[] = [];
-  if (given) givenNames.push(capitalizeFirst(given));
-  if (middle) givenNames.push(capitalizeFirst(middle));
-
-  const textParts: string[] = [];
-  if (givenNames.length > 0) textParts.push(...givenNames);
-  if (family) textParts.push(capitalizeFirst(family));
-
-  return {
-    family: capitalizeFirst(family),
-    given: givenNames.length > 0 ? givenNames : undefined,
-    text: textParts.join(" ") || undefined,
-  };
-}
 
 function convertXADToAddress(xad: XAD | undefined): Address | undefined {
   if (!xad) return undefined;

@@ -1,0 +1,18 @@
+HL7 v2,,,,,,Condition (IF True),,,HL7 FHIR,,,,Comments
+Sort Order,Identifier,Syntax,Name,Cardinality - Min,Cardinality - Max,Computable ANTLR,Computable FHIRPath,Narrative,Primary Target,Segment Map,References,,
+1,ADT_A08.MSH,MSH,Message Header,1,1,,,,Bundle,MSH[Bundle],,,Processing of the MSH segment results in the creation of a new Bundle resource.
+1,ADT_A08.MSH,MSH,Message Header,1,1,,,,Patient[1].meta.tag,MSH[Patient-Meta-Tag],,,MSH-10 and MSH-9 are mapped to Patient.meta.tag for message tracking.
+2,ADT_A08.EVN,EVN,Event Type,1,1,,,,,,,,Event segment not mapped in simplified implementation.
+3,ADT_A08.PID,PID,Patient Identification,1,1,,,,Patient[1],PID[Patient],,,Processing of the PID segment results in the creation of a new Patient resource.
+3,ADT_A08.PID,PID,Patient Identification,1,1,,,,Patient[1].id,PID[Patient-Id],,,"PID-2.1 maps to Patient.id for PUT request URL."
+3,ADT_A08.PID,PID,Patient Identification,1,1,,,,Patient[1].identifier,PID[Patient-Identifier],,,"PID-2, PID-3, PID-19 map to Patient.identifier array."
+3,ADT_A08.PID,PID,Patient Identification,1,1,,,,Patient[1].meta.tag,PID[Patient-Meta-Tag],,,"PID-3.4.1 (MR assigning authority) maps to sender tag."
+4,ADT_A08.PV1,[ PV1 ],Patient Visit,0,1,,,,,,,,Patient Visit segment not mapped in simplified implementation.
+5,ADT_A08.NK1,[{ NK1 }],Next of Kin,0,-1,,,,,,,,Next of Kin segment not mapped in simplified implementation.
+6,ADT_A08.DB1,[{ DB1 }],Disability Information,0,-1,,,,,,,,Disability segment not mapped in simplified implementation.
+7,ADT_A08.OBX,[{ OBX }],Observation/Result,0,-1,,,,,,,,Observation segment not mapped in simplified implementation.
+8,ADT_A08.AL1,[{ AL1 }],Allergy Information,0,-1,,,,,,,,Allergy segment not mapped in simplified implementation.
+9,ADT_A08.DG1,[{ DG1 }],Diagnosis Information,0,-1,,,,,,,,Diagnosis segment not mapped in simplified implementation.
+10,ADT_A08.PR1,[{ PR1 }],Procedures,0,-1,,,,,,,,Procedures segment not mapped in simplified implementation.
+11,ADT_A08.GT1,[{ GT1 }],Guarantor,0,-1,,,,,,,,Guarantor segment not mapped in simplified implementation.
+12,ADT_A08.IN1,[{ IN1 }],Insurance,0,-1,,,,,,,,Insurance segment not mapped in simplified implementation.
