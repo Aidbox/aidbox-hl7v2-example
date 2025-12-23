@@ -1,0 +1,364 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`processor-service processes ADT_A01 message and returns correct Bundle 1`] = `
+{
+  "entry": [
+    {
+      "request": {
+        "method": "PUT",
+        "url": "/Patient/P12345",
+      },
+      "resource": {
+        "address": [
+          {
+            "city": "Anytown",
+            "country": "USA",
+            "line": [
+              "123 Main St",
+            ],
+            "postalCode": "12345",
+            "state": "CA",
+          },
+        ],
+        "birthDate": "1985-03-15",
+        "gender": "male",
+        "id": "P12345",
+        "identifier": [
+          {
+            "system": "HOSPITAL",
+            "type": {
+              "coding": [
+                {
+                  "code": "MR",
+                },
+              ],
+            },
+            "value": "P12345",
+          },
+        ],
+        "maritalStatus": {
+          "coding": [
+            {
+              "code": "M",
+            },
+          ],
+        },
+        "meta": {
+          "tag": [
+            {
+              "code": "MSG001",
+              "system": "urn:aidbox:hl7v2:message-id",
+            },
+            {
+              "code": "ADT_A01",
+              "system": "urn:aidbox:hl7v2:message-type",
+            },
+            {
+              "code": "hospital",
+              "system": "urn:aidbox:hl7v2:sender",
+            },
+          ],
+        },
+        "name": [
+          {
+            "family": "Smith",
+            "given": [
+              "John",
+              "Robert",
+            ],
+            "text": "John Robert Smith",
+          },
+        ],
+        "resourceType": "Patient",
+        "telecom": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-country",
+                "valueString": "1",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-area",
+                "valueString": "555",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
+                "valueString": "1234567",
+              },
+            ],
+            "system": "phone",
+            "use": "home",
+            "value": "+1 555 1234567",
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-country",
+                "valueString": "1",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-area",
+                "valueString": "555",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
+                "valueString": "9876543",
+              },
+            ],
+            "system": "phone",
+            "use": "work",
+            "value": "+1 555 9876543",
+          },
+        ],
+      },
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "/Encounter/VN001",
+      },
+      "resource": {
+        "class": {
+          "code": "IMP",
+          "display": "inpatient encounter",
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        },
+        "hospitalization": {
+          "admitSource": {
+            "coding": [
+              {
+                "code": "ADM",
+              },
+            ],
+          },
+        },
+        "id": "VN001",
+        "identifier": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "code": "VN",
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                },
+              ],
+              "text": "visit number",
+            },
+            "value": "VN001",
+          },
+        ],
+        "location": [
+          {
+            "location": {
+              "display": "BED1",
+            },
+            "status": "active",
+          },
+        ],
+        "participant": [
+          {
+            "individual": {
+              "display": "DOCTOR ATTENDING",
+              "identifier": {
+                "value": "123",
+              },
+            },
+            "type": [
+              {
+                "coding": [
+                  {
+                    "code": "ATND",
+                    "display": "attender",
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                  },
+                ],
+                "text": "attender",
+              },
+            ],
+          },
+        ],
+        "resourceType": "Encounter",
+        "serviceType": {
+          "coding": [
+            {
+              "code": "MED",
+            },
+          ],
+        },
+        "status": "in-progress",
+        "subject": {
+          "reference": "Patient/P12345",
+        },
+      },
+    },
+  ],
+  "resourceType": "Bundle",
+  "type": "transaction",
+}
+`;
+
+exports[`processor-service processes ADT_A01 message and returns correct Bundle 2`] = `
+{
+  "id": "test-msg-001",
+  "message": 
+"MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215143000||ADT^A01^ADT_A01|MSG001|P|2.5.1|||AL|AL
+EVN|A01|20231215143000|||OPERATOR
+PID|1||P12345^^^HOSPITAL^MR||Smith^John^Robert||19850315|M|||123 Main St^^Anytown^CA^12345^USA||^PRN^PH^^1^555^1234567|^WPN^PH^^1^555^9876543||M||P12345
+PV1|1|I|WARD1^ROOM1^BED1||||123^ATTENDING^DOCTOR|||MED||||ADM|||||VN001|||||||||||||||||||||||||||20231215140000"
+,
+  "patient": {
+    "reference": "Patient/P12345",
+  },
+  "resourceType": "IncomingHL7v2Message",
+  "status": "processed",
+  "type": "ADT_A01",
+}
+`;
+
+exports[`processor-service processes ADT_A08 message and returns correct Bundle 1`] = `
+{
+  "entry": [
+    {
+      "request": {
+        "method": "PUT",
+        "url": "/Patient/P67890",
+      },
+      "resource": {
+        "address": [
+          {
+            "city": "Othertown",
+            "country": "USA",
+            "line": [
+              "456 Oak Ave",
+            ],
+            "postalCode": "67890",
+            "state": "NY",
+          },
+        ],
+        "birthDate": "1990-05-21",
+        "communication": [
+          {
+            "language": {
+              "coding": [
+                {
+                  "code": "S",
+                },
+              ],
+            },
+            "preferred": true,
+          },
+        ],
+        "extension": [
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/patient-religion",
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "code": "P67890",
+                },
+              ],
+            },
+          },
+        ],
+        "gender": "female",
+        "id": "P67890",
+        "identifier": [
+          {
+            "system": "HOSPITAL",
+            "type": {
+              "coding": [
+                {
+                  "code": "MR",
+                },
+              ],
+            },
+            "value": "P67890",
+          },
+        ],
+        "meta": {
+          "tag": [
+            {
+              "code": "MSG002",
+              "system": "urn:aidbox:hl7v2:message-id",
+            },
+            {
+              "code": "ADT_A08",
+              "system": "urn:aidbox:hl7v2:message-type",
+            },
+            {
+              "code": "hospital",
+              "system": "urn:aidbox:hl7v2:sender",
+            },
+          ],
+        },
+        "name": [
+          {
+            "family": "Doe",
+            "given": [
+              "Jane",
+              "Marie",
+            ],
+            "text": "Jane Marie Doe",
+          },
+        ],
+        "resourceType": "Patient",
+        "telecom": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-country",
+                "valueString": "1",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-area",
+                "valueString": "555",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
+                "valueString": "9876543",
+              },
+            ],
+            "system": "phone",
+            "use": "home",
+            "value": "+1 555 9876543",
+          },
+        ],
+      },
+    },
+  ],
+  "resourceType": "Bundle",
+  "type": "transaction",
+}
+`;
+
+exports[`processor-service processes ADT_A08 message and returns correct Bundle 2`] = `
+{
+  "id": "test-msg-002",
+  "message": 
+"MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215143000||ADT^A08^ADT_A08|MSG002|P|2.5.1|||AL|AL
+EVN|A08|20231215143000|||OPERATOR
+PID|1||P67890^^^HOSPITAL^MR||Doe^Jane^Marie||19900521|F|||456 Oak Ave^^Othertown^NY^67890^USA||^PRN^PH^^1^555^9876543||S||P67890"
+,
+  "patient": {
+    "reference": "Patient/P67890",
+  },
+  "resourceType": "IncomingHL7v2Message",
+  "status": "processed",
+  "type": "ADT_A08",
+}
+`;
+
+exports[`processor-service returns false when no messages to process 1`] = `null`;
+
+exports[`processor-service returns false when no messages to process 2`] = `null`;
+
+exports[`processor-service handles conversion errors and updates status to error 1`] = `
+{
+  "id": "test-msg-003",
+  "message": "INVALID|MESSAGE",
+  "patient": undefined,
+  "resourceType": "IncomingHL7v2Message",
+  "status": "error",
+  "type": "ADT_A01",
+}
+`;

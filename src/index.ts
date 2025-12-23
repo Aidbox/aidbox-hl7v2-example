@@ -687,15 +687,29 @@ function renderIncomingMessagesPage(messages: IncomingHL7v2Message[], statusFilt
   const content = `
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Incoming Messages</h1>
 
-    <div class="mb-4 flex gap-2">
-      <a href="/incoming-messages" class="px-3 py-1.5 rounded-lg text-sm font-medium ${!statusFilter ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
-        All
-      </a>
-      ${statuses.map(s => `
-        <a href="/incoming-messages?status=${s}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
-          ${s.charAt(0).toUpperCase() + s.slice(1)}
+    <div class="mb-4 flex gap-2 items-center justify-between">
+      <div class="flex gap-2">
+        <a href="/incoming-messages" class="px-3 py-1.5 rounded-lg text-sm font-medium ${!statusFilter ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
+          All
         </a>
-      `).join("")}
+        ${statuses.map(s => `
+          <a href="/incoming-messages?status=${s}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
+            ${s.charAt(0).toUpperCase() + s.slice(1)}
+          </a>
+        `).join("")}
+      </div>
+      <form method="POST" action="/process-incoming-messages" class="spinner-form">
+        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center gap-2">
+          <svg class="w-4 h-4 btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span class="btn-text">Process All</span>
+          <svg class="w-4 h-4 spinner hidden" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </button>
+      </form>
     </div>
 
     <ul class="space-y-2">
@@ -980,6 +994,23 @@ Bun.serve({
         return new Response(null, {
           status: 302,
           headers: { Location: "/invoices" },
+        });
+      },
+    },
+    "/process-incoming-messages": {
+      POST: async () => {
+        // Run processing in background
+        (async () => {
+          const { processNextMessage } = await import("./v2-to-fhir/processor-service");
+          while (await processNextMessage()) {
+            // Process until queue empty
+          }
+        })().catch(console.error);
+
+        // Redirect immediately
+        return new Response(null, {
+          status: 302,
+          headers: { Location: "/incoming-messages" },
         });
       },
     },

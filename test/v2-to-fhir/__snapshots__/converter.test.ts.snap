@@ -1,0 +1,397 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`convertToFHIR converts ADT^A08 message to FHIR Bundle 1`] = `
+{
+  "entry": [
+    {
+      "request": {
+        "method": "PUT",
+        "url": "/Patient/11467314",
+      },
+      "resource": {
+        "address": [
+          {
+            "city": "HYNOYYZT",
+            "country": "US",
+            "district": "WPG",
+            "extension": [
+              {
+                "url": "http://terminology.hl7.org/CodeSystem/v2-0190",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "code": "P",
+                      "system": "http://terminology.hl7.org/CodeSystem/v2-0190",
+                    },
+                  ],
+                },
+              },
+            ],
+            "line": [
+              "207 BFYDE ETQH",
+              "MT EYJ 69",
+            ],
+            "postalCode": "77139",
+            "state": "PA",
+          },
+        ],
+        "birthDate": "9489-10-53",
+        "communication": [
+          {
+            "language": {
+              "coding": [
+                {
+                  "code": "E",
+                  "display": "ENGLISH",
+                  "system": "HL70296",
+                },
+                {
+                  "code": "E",
+                  "display": "ENGLISH",
+                  "system": "99CLAN",
+                },
+              ],
+              "text": "ENGLISH",
+            },
+            "preferred": true,
+          },
+        ],
+        "deceasedBoolean": false,
+        "extension": [
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName",
+            "valueString": "VIDXVK,DMLL",
+          },
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/patient-religion",
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "code": "14",
+                },
+              ],
+            },
+          },
+          {
+            "extension": [
+              {
+                "url": "code",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "code": "1",
+                      "display": "AMERICAN",
+                      "system": "99NAT",
+                    },
+                  ],
+                  "text": "AMERICAN",
+                },
+              },
+            ],
+            "url": "http://hl7.org/fhir/StructureDefinition/patient-nationality",
+          },
+        ],
+        "gender": "male",
+        "id": "11467314",
+        "identifier": [
+          {
+            "system": "OCCAM",
+            "type": {
+              "coding": [
+                {
+                  "code": "PE",
+                },
+              ],
+            },
+            "value": "11467314",
+          },
+          {
+            "system": "CERNER",
+            "type": {
+              "coding": [
+                {
+                  "code": "MR",
+                },
+              ],
+            },
+            "value": "F336974",
+          },
+          {
+            "system": "CERNER",
+            "type": {
+              "coding": [
+                {
+                  "code": "PI",
+                },
+              ],
+            },
+            "value": "00556588",
+          },
+          {
+            "system": "http://hl7.org/fhir/sid/us-ssn",
+            "type": {
+              "coding": [
+                {
+                  "code": "SS",
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                },
+              ],
+            },
+            "value": "877-73-6705",
+          },
+        ],
+        "maritalStatus": {
+          "coding": [
+            {
+              "code": "S",
+            },
+          ],
+        },
+        "meta": {
+          "tag": [
+            {
+              "code": "150466177",
+              "system": "urn:aidbox:hl7v2:message-id",
+            },
+            {
+              "code": "ADT_A08",
+              "system": "urn:aidbox:hl7v2:message-type",
+            },
+            {
+              "code": "cerner",
+              "system": "urn:aidbox:hl7v2:sender",
+            },
+          ],
+        },
+        "name": [
+          {
+            "family": "CZEGXD",
+            "given": [
+              "ZCEZC",
+              "N",
+            ],
+            "text": "ZCEZC N CZEGXD",
+          },
+        ],
+        "resourceType": "Patient",
+        "telecom": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-area",
+                "valueString": "151",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
+                "valueString": "3942567",
+              },
+            ],
+            "system": "phone",
+            "use": "home",
+            "value": "151 3942567",
+          },
+        ],
+      },
+    },
+  ],
+  "resourceType": "Bundle",
+  "type": "transaction",
+}
+`;
+
+exports[`convertToFHIR converts ADT^A01 message to FHIR Bundle 1`] = `
+{
+  "entry": [
+    {
+      "request": {
+        "method": "PUT",
+        "url": "/Patient/P12345",
+      },
+      "resource": {
+        "address": [
+          {
+            "city": "Anytown",
+            "country": "USA",
+            "line": [
+              "123 Main St",
+            ],
+            "postalCode": "12345",
+            "state": "CA",
+          },
+        ],
+        "birthDate": "1985-03-15",
+        "gender": "male",
+        "id": "P12345",
+        "identifier": [
+          {
+            "system": "HOSPITAL",
+            "type": {
+              "coding": [
+                {
+                  "code": "MR",
+                },
+              ],
+            },
+            "value": "P12345",
+          },
+        ],
+        "maritalStatus": {
+          "coding": [
+            {
+              "code": "M",
+            },
+          ],
+        },
+        "meta": {
+          "tag": [
+            {
+              "code": "MSG001",
+              "system": "urn:aidbox:hl7v2:message-id",
+            },
+            {
+              "code": "ADT_A01",
+              "system": "urn:aidbox:hl7v2:message-type",
+            },
+            {
+              "code": "hospital",
+              "system": "urn:aidbox:hl7v2:sender",
+            },
+          ],
+        },
+        "name": [
+          {
+            "family": "Smith",
+            "given": [
+              "John",
+              "Robert",
+            ],
+            "text": "John Robert Smith",
+          },
+        ],
+        "resourceType": "Patient",
+        "telecom": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-country",
+                "valueString": "1",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-area",
+                "valueString": "555",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
+                "valueString": "1234567",
+              },
+            ],
+            "system": "phone",
+            "use": "home",
+            "value": "+1 555 1234567",
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-country",
+                "valueString": "1",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-area",
+                "valueString": "555",
+              },
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
+                "valueString": "9876543",
+              },
+            ],
+            "system": "phone",
+            "use": "work",
+            "value": "+1 555 9876543",
+          },
+        ],
+      },
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "/Encounter/VN001",
+      },
+      "resource": {
+        "class": {
+          "code": "IMP",
+          "display": "inpatient encounter",
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        },
+        "hospitalization": {
+          "admitSource": {
+            "coding": [
+              {
+                "code": "ADM",
+              },
+            ],
+          },
+        },
+        "id": "VN001",
+        "identifier": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "code": "VN",
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                },
+              ],
+              "text": "visit number",
+            },
+            "value": "VN001",
+          },
+        ],
+        "location": [
+          {
+            "location": {
+              "display": "BED1",
+            },
+            "status": "active",
+          },
+        ],
+        "participant": [
+          {
+            "individual": {
+              "display": "DOCTOR ATTENDING",
+              "identifier": {
+                "value": "123",
+              },
+            },
+            "type": [
+              {
+                "coding": [
+                  {
+                    "code": "ATND",
+                    "display": "attender",
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                  },
+                ],
+                "text": "attender",
+              },
+            ],
+          },
+        ],
+        "resourceType": "Encounter",
+        "serviceType": {
+          "coding": [
+            {
+              "code": "MED",
+            },
+          ],
+        },
+        "status": "in-progress",
+        "subject": {
+          "reference": "Patient/P12345",
+        },
+      },
+    },
+  ],
+  "resourceType": "Bundle",
+  "type": "transaction",
+}
+`;

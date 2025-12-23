@@ -46,25 +46,6 @@ import { convertAL1ToAllergyIntolerance } from "../segments/al1-allergyintoleran
 import { convertIN1ToCoverage } from "../segments/in1-coverage";
 
 // ============================================================================
-// Types
-// ============================================================================
-
-export interface ADT_A01_Bundle extends Bundle {
-  type: "transaction";
-  entry: BundleEntry[];
-}
-
-interface ConversionResult {
-  bundle: ADT_A01_Bundle;
-  patient?: Patient;
-  encounter?: Encounter;
-  relatedPersons: RelatedPerson[];
-  conditions: Condition[];
-  allergies: AllergyIntolerance[];
-  coverages: Coverage[];
-}
-
-// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -150,7 +131,7 @@ function createBundleEntry(
  * AL1 - Allergy Information (0..*)
  * IN1 - Insurance (0..*)
  */
-export function convertADT_A01(message: string): ConversionResult {
+export function convertADT_A01(message: string): Bundle {
   const parsed = parseMessage(message);
 
   // =========================================================================
@@ -338,21 +319,13 @@ export function convertADT_A01(message: string): ConversionResult {
     entries.push(createBundleEntry(coverage));
   }
 
-  const bundle: ADT_A01_Bundle = {
+  const bundle: Bundle = {
     resourceType: "Bundle",
     type: "transaction",
     entry: entries,
   };
 
-  return {
-    bundle,
-    patient,
-    encounter,
-    relatedPersons,
-    conditions,
-    allergies,
-    coverages,
-  };
+  return bundle;
 }
 
 export default convertADT_A01;
