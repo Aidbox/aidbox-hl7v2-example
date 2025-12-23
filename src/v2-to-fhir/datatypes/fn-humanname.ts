@@ -40,7 +40,7 @@ export function convertFNToHumanName(fn: FN | undefined): HumanName | undefined 
   };
 
   if (extensions.length > 0) {
-    result._family = { extension: extensions };
+    (result as any)._family = { extension: extensions };
   }
 
   return result;

@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { convertPV1ToEncounter } from "./pv1-encounter";
-import type { PV1 } from "../../hl7v2/generated/fields";
+import { convertPV1ToEncounter } from "../../../src/v2-to-fhir/segments/pv1-encounter";
+import type { PV1 } from "../../../src/hl7v2/generated/fields";
 
 describe("convertPV1ToEncounter", () => {
   describe("class and status", () => {
@@ -85,9 +85,9 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.identifier).toHaveLength(1);
-      expect(encounter.identifier![0].value).toBe("V12345");
-      expect(encounter.identifier![0].type?.coding?.[0]?.code).toBe("VN");
-      expect(encounter.identifier![0].type?.text).toBe("visit number");
+      expect(encounter.identifier![0]!.value).toBe("V12345");
+      expect(encounter.identifier![0]!.type?.coding?.[0]?.code).toBe("VN");
+      expect(encounter.identifier![0]!.type?.text).toBe("visit number");
     });
 
     test("converts PV1-50 Alternate Visit ID", () => {
@@ -101,7 +101,7 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.identifier).toHaveLength(1);
-      expect(encounter.identifier![0].value).toBe("ALT123");
+      expect(encounter.identifier![0]!.value).toBe("ALT123");
     });
   });
 
@@ -115,7 +115,7 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.type).toHaveLength(1);
-      expect(encounter.type![0].coding?.[0]?.code).toBe("E");
+      expect(encounter.type![0]!.coding?.[0]?.code).toBe("E");
     });
 
     test("converts PV1-10 Hospital Service", () => {
@@ -172,9 +172,9 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.participant).toHaveLength(1);
-      expect(encounter.participant![0].type?.[0]?.coding?.[0]?.code).toBe("ATND");
-      expect(encounter.participant![0].type?.[0]?.coding?.[0]?.display).toBe("attender");
-      expect(encounter.participant![0].individual?.display).toBe("John Smith");
+      expect(encounter.participant![0]!.type![0]?.coding?.[0]?.code).toBe("ATND");
+      expect(encounter.participant![0]!.type![0]?.coding?.[0]?.display).toBe("attender");
+      expect(encounter.participant![0]!.individual?.display).toBe("John Smith");
     });
 
     test("converts PV1-8 Referring Doctor with type REF", () => {
@@ -192,8 +192,8 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.participant).toHaveLength(1);
-      expect(encounter.participant![0].type?.[0]?.coding?.[0]?.code).toBe("REF");
-      expect(encounter.participant![0].type?.[0]?.text).toBe("referrer");
+      expect(encounter.participant![0]!.type![0]?.coding?.[0]?.code).toBe("REF");
+      expect(encounter.participant![0]!.type![0]?.text).toBe("referrer");
     });
 
     test("converts PV1-9 Consulting Doctor with type CON", () => {
@@ -210,8 +210,8 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.participant).toHaveLength(1);
-      expect(encounter.participant![0].type?.[0]?.coding?.[0]?.code).toBe("CON");
-      expect(encounter.participant![0].type?.[0]?.text).toBe("consultant");
+      expect(encounter.participant![0]!.type![0]?.coding?.[0]?.code).toBe("CON");
+      expect(encounter.participant![0]!.type![0]?.text).toBe("consultant");
     });
 
     test("converts PV1-17 Admitting Doctor with type ADM", () => {
@@ -228,8 +228,8 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.participant).toHaveLength(1);
-      expect(encounter.participant![0].type?.[0]?.coding?.[0]?.code).toBe("ADM");
-      expect(encounter.participant![0].type?.[0]?.text).toBe("admitter");
+      expect(encounter.participant![0]!.type![0]?.coding?.[0]?.code).toBe("ADM");
+      expect(encounter.participant![0]!.type![0]?.text).toBe("admitter");
     });
 
     test("includes multiple participants from different roles", () => {
@@ -260,8 +260,8 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.location).toHaveLength(1);
-      expect(encounter.location![0].status).toBe("active");
-      expect(encounter.location![0].location.display).toContain("A");
+      expect(encounter.location![0]!.status).toBe("active");
+      expect(encounter.location![0]!.location.display).toContain("A");
     });
 
     test("converts PV1-3 with class P to location status planned", () => {
@@ -274,7 +274,7 @@ describe("convertPV1ToEncounter", () => {
 
       const encounter = convertPV1ToEncounter(pv1);
 
-      expect(encounter.location![0].status).toBe("planned");
+      expect(encounter.location![0]!.status).toBe("planned");
     });
 
     test("converts PV1-6 Prior Patient Location with status completed", () => {
@@ -289,7 +289,7 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.location).toHaveLength(1);
-      expect(encounter.location![0].status).toBe("completed");
+      expect(encounter.location![0]!.status).toBe("completed");
     });
 
     test("converts PV1-11 Temporary Location with status active and extension", () => {
@@ -304,7 +304,7 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.location).toHaveLength(1);
-      expect(encounter.location![0].status).toBe("active");
+      expect(encounter.location![0]!.status).toBe("active");
       const ext = (encounter.location![0] as unknown as { extension: { url: string }[] }).extension;
       expect(ext?.[0]?.url).toBe("http://hl7.org/fhir/StructureDefinition/subject-locationClassification");
     });
@@ -321,7 +321,7 @@ describe("convertPV1ToEncounter", () => {
       const encounter = convertPV1ToEncounter(pv1);
 
       expect(encounter.location).toHaveLength(1);
-      expect(encounter.location![0].status).toBe("reserved");
+      expect(encounter.location![0]!.status).toBe("reserved");
     });
 
     test("includes multiple locations", () => {

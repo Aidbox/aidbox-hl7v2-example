@@ -100,7 +100,7 @@ export function convertXCNToAnnotationAuthor(
 
   // Create authorReference
   const authorReference: Reference<"Practitioner"> = {
-    reference: practitionerId,
+    reference: `Practitioner/${practitionerId}`,
   };
 
   // Add display text if we have name information

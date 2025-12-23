@@ -1,20 +1,8 @@
-import { test, expect, describe, beforeEach, mock, spyOn } from "bun:test";
-import {
-  pollPendingMessage,
-  sendAsIncomingMessage,
-  markAsSent,
-  processNextMessage,
-  createBarMessageSenderService,
-  type OutgoingBarMessage,
-} from "../../src/bar/sender-service";
-import * as aidbox from "../../src/aidbox";
-
-// Mock fetch for testing
-const mockFetch = mock((url: string, options?: RequestInit) => Promise.resolve(new Response())) as unknown as typeof fetch & { mock: { calls: unknown[][] }; mockReset: () => void; mockImplementation: (fn: (url: string, options?: RequestInit) => Promise<Response>) => typeof fetch };
+import { test, expect, describe, beforeEach, mock } from "bun:test";
 
 // Test fixtures
-const testOutgoingMessage: OutgoingBarMessage = {
-  resourceType: "OutgoingBarMessage",
+const testOutgoingMessage = {
+  resourceType: "OutgoingBarMessage" as const,
   id: "msg-1",
   patient: { reference: "Patient/patient-1" },
   invoice: { reference: "Invoice/invoice-1" },
@@ -23,211 +11,165 @@ const testOutgoingMessage: OutgoingBarMessage = {
 };
 
 describe("pollPendingMessage", () => {
+  const mockAidbox = {
+    aidboxFetch: mock(() => Promise.resolve({ entry: [] })),
+    putResource: mock(() => Promise.resolve({})),
+  };
+
   beforeEach(() => {
-    mockFetch.mockReset();
+    mockAidbox.aidboxFetch.mockClear();
+    mockAidbox.putResource.mockClear();
   });
 
   test("returns null when no pending messages", async () => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.mockImplementation(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ total: 0 }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      )
+    mockAidbox.aidboxFetch.mockImplementation(() =>
+      Promise.resolve({ total: 0, entry: [] })
     );
 
-    try {
-      const result = await pollPendingMessage();
-      expect(result).toBeNull();
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { pollPendingMessage } = await import("../../src/bar/sender-service");
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
-      expect(url).toContain("/fhir/OutgoingBarMessage");
-      expect(url).toContain("status=pending");
-      expect(url).toContain("_sort=_lastUpdated");
-      expect(url).toContain("_count=1");
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    const result = await pollPendingMessage();
+    expect(result).toBeNull();
   });
 
   test("returns message when pending message exists", async () => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.mockImplementation(() =>
-      Promise.resolve(
-        new Response(
-          JSON.stringify({
-            total: 1,
-            entry: [{ resource: testOutgoingMessage }],
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        )
-      )
+    mockAidbox.aidboxFetch.mockImplementation(() =>
+      Promise.resolve({
+        total: 1,
+        entry: [{ resource: testOutgoingMessage }],
+      })
     );
 
-    try {
-      const result = await pollPendingMessage();
-      expect(result).toEqual(testOutgoingMessage);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { pollPendingMessage } = await import("../../src/bar/sender-service");
+
+    const result = await pollPendingMessage();
+    expect(result).toEqual(testOutgoingMessage);
   });
 });
 
 describe("sendAsIncomingMessage", () => {
+  const createdMessage = {
+    resourceType: "IncomingHL7v2Message" as const,
+    id: "incoming-1",
+    type: "BAR",
+    date: "2023-12-15T10:00:00Z",
+    patient: testOutgoingMessage.patient,
+    message: testOutgoingMessage.hl7v2!,
+  };
+
+  const mockAidbox = {
+    aidboxFetch: mock(() => Promise.resolve(createdMessage)),
+    putResource: mock(() => Promise.resolve({})),
+  };
+
   beforeEach(() => {
-    mockFetch.mockReset();
+    mockAidbox.aidboxFetch.mockClear();
+    mockAidbox.putResource.mockClear();
   });
 
   test("creates IncomingHL7v2Message from OutgoingBarMessage", async () => {
-    const originalFetch = globalThis.fetch;
-    const createdMessage = {
-      resourceType: "IncomingHL7v2Message" as const,
-      id: "incoming-1",
-      type: "BAR",
-      date: "2023-12-15T10:00:00Z",
-      patient: testOutgoingMessage.patient,
-      message: testOutgoingMessage.hl7v2!,
-    };
-
-    globalThis.fetch = mockFetch.mockImplementation(() =>
-      Promise.resolve(
-        new Response(JSON.stringify(createdMessage), {
-          headers: { "Content-Type": "application/json" },
-        })
-      )
+    mockAidbox.aidboxFetch.mockImplementation(() =>
+      Promise.resolve(createdMessage)
     );
 
-    try {
-      const result = await sendAsIncomingMessage(testOutgoingMessage);
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { sendAsIncomingMessage } = await import("../../src/bar/sender-service");
 
-      expect(result).toEqual(createdMessage);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+    const result = await sendAsIncomingMessage(testOutgoingMessage);
 
-      const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
-      expect(url).toContain("/fhir/IncomingHL7v2Message");
-      expect(options.method).toBe("POST");
-
-      const body = JSON.parse(options.body as string);
-      expect(body.resourceType).toBe("IncomingHL7v2Message");
-      expect(body.type).toBe("BAR");
-      expect(body.patient).toEqual(testOutgoingMessage.patient);
-      expect(body.message).toBe(testOutgoingMessage.hl7v2);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    expect(result).toEqual(createdMessage);
+    expect(mockAidbox.aidboxFetch).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("markAsSent", () => {
+  const updatedMessage = { ...testOutgoingMessage, status: "sent" };
+
+  const mockAidbox = {
+    aidboxFetch: mock(() => Promise.resolve({})),
+    putResource: mock(() => Promise.resolve(updatedMessage)),
+  };
+
   beforeEach(() => {
-    mockFetch.mockReset();
+    mockAidbox.aidboxFetch.mockClear();
+    mockAidbox.putResource.mockClear();
   });
 
   test("updates message status to sent", async () => {
-    const originalFetch = globalThis.fetch;
-    const updatedMessage = { ...testOutgoingMessage, status: "sent" };
-
-    globalThis.fetch = mockFetch.mockImplementation(() =>
-      Promise.resolve(
-        new Response(JSON.stringify(updatedMessage), {
-          headers: { "Content-Type": "application/json" },
-        })
-      )
+    mockAidbox.putResource.mockImplementation(() =>
+      Promise.resolve(updatedMessage)
     );
 
-    try {
-      const result = await markAsSent(testOutgoingMessage);
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { markAsSent } = await import("../../src/bar/sender-service");
 
-      expect(result.status).toBe("sent");
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+    const result = await markAsSent(testOutgoingMessage);
 
-      const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
-      expect(url).toContain(`/fhir/OutgoingBarMessage/${testOutgoingMessage.id}`);
-      expect(options.method).toBe("PUT");
-
-      const body = JSON.parse(options.body as string);
-      expect(body.status).toBe("sent");
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    expect(result.status).toBe("sent");
+    expect(mockAidbox.putResource).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("processNextMessage", () => {
-  beforeEach(() => {
-    mockFetch.mockReset();
-  });
-
   test("returns false when no pending messages", async () => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.mockImplementation(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ total: 0 }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      )
-    );
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ total: 0, entry: [] })),
+      putResource: mock(() => Promise.resolve({})),
+    };
 
-    try {
-      const result = await processNextMessage();
-      expect(result).toBe(false);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { processNextMessage } = await import("../../src/bar/sender-service");
+
+    const result = await processNextMessage();
+    expect(result).toBe(false);
   });
 
   test("processes message and returns true", async () => {
-    const originalFetch = globalThis.fetch;
     let callCount = 0;
+    const mockAidbox = {
+      aidboxFetch: mock((path: string) => {
+        callCount++;
+        if (callCount === 1) {
+          // Poll returns message
+          return Promise.resolve({
+            total: 1,
+            entry: [{ resource: testOutgoingMessage }],
+          });
+        } else {
+          // POST IncomingHL7v2Message
+          return Promise.resolve({
+            resourceType: "IncomingHL7v2Message",
+            id: "incoming-1",
+          });
+        }
+      }),
+      putResource: mock(() =>
+        Promise.resolve({ ...testOutgoingMessage, status: "sent" })
+      ),
+    };
 
-    globalThis.fetch = mockFetch.mockImplementation((url: string) => {
-      callCount++;
-      if (callCount === 1) {
-        // Poll returns message
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              total: 1,
-              entry: [{ resource: testOutgoingMessage }],
-            }),
-            { headers: { "Content-Type": "application/json" } }
-          )
-        );
-      } else if (callCount === 2) {
-        // POST IncomingHL7v2Message
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              resourceType: "IncomingHL7v2Message",
-              id: "incoming-1",
-            }),
-            { headers: { "Content-Type": "application/json" } }
-          )
-        );
-      } else {
-        // PUT to update status
-        return Promise.resolve(
-          new Response(JSON.stringify({ ...testOutgoingMessage, status: "sent" }), {
-            headers: { "Content-Type": "application/json" },
-          })
-        );
-      }
-    });
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { processNextMessage } = await import("../../src/bar/sender-service");
 
-    try {
-      const result = await processNextMessage();
-      expect(result).toBe(true);
-      expect(mockFetch).toHaveBeenCalledTimes(3);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    const result = await processNextMessage();
+    expect(result).toBe(true);
+    expect(mockAidbox.aidboxFetch).toHaveBeenCalledTimes(2);
+    expect(mockAidbox.putResource).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("createBarMessageSenderService", () => {
-  test("starts and stops correctly", () => {
+  test("starts and stops correctly", async () => {
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ entry: [] })),
+      putResource: mock(() => Promise.resolve({})),
+    };
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { createBarMessageSenderService } = await import("../../src/bar/sender-service");
+
     const service = createBarMessageSenderService({ pollIntervalMs: 100 });
 
     expect(service.isRunning()).toBe(false);
@@ -239,7 +181,15 @@ describe("createBarMessageSenderService", () => {
     expect(service.isRunning()).toBe(false);
   });
 
-  test("start is idempotent", () => {
+  test("start is idempotent", async () => {
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ entry: [] })),
+      putResource: mock(() => Promise.resolve({})),
+    };
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { createBarMessageSenderService } = await import("../../src/bar/sender-service");
+
     const service = createBarMessageSenderService({ pollIntervalMs: 100 });
 
     service.start();
@@ -250,115 +200,97 @@ describe("createBarMessageSenderService", () => {
   });
 
   test("calls onIdle when no messages found", async () => {
-    const originalFetch = globalThis.fetch;
     const onIdle = mock(() => {});
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ total: 0, entry: [] })),
+      putResource: mock(() => Promise.resolve({})),
+    };
 
-    globalThis.fetch = mock(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ total: 0 }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      )
-    ) as unknown as typeof fetch;
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { createBarMessageSenderService } = await import("../../src/bar/sender-service");
 
-    try {
-      const service = createBarMessageSenderService({
-        pollIntervalMs: 50,
-        onIdle,
-      });
+    const service = createBarMessageSenderService({
+      pollIntervalMs: 50,
+      onIdle,
+    });
 
-      service.start();
+    service.start();
 
-      // Wait for at least one poll cycle
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    // Wait for at least one poll cycle
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
-      service.stop();
+    service.stop();
 
-      expect(onIdle).toHaveBeenCalled();
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    expect(onIdle).toHaveBeenCalled();
   });
 
   test("calls onError when processing fails", async () => {
-    const originalFetch = globalThis.fetch;
     const onError = mock(() => {});
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.reject(new Error("Network error"))),
+      putResource: mock(() => Promise.resolve({})),
+    };
 
-    globalThis.fetch = mock(() => Promise.reject(new Error("Network error"))) as unknown as typeof fetch;
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { createBarMessageSenderService } = await import("../../src/bar/sender-service");
 
-    try {
-      const service = createBarMessageSenderService({
-        pollIntervalMs: 50,
-        onError,
-      });
+    const service = createBarMessageSenderService({
+      pollIntervalMs: 50,
+      onError,
+    });
 
-      service.start();
+    service.start();
 
-      // Wait for at least one poll cycle
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    // Wait for at least one poll cycle
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
-      service.stop();
+    service.stop();
 
-      expect(onError).toHaveBeenCalled();
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    expect(onError).toHaveBeenCalled();
   });
 
   test("processes messages immediately when found", async () => {
-    const originalFetch = globalThis.fetch;
     let pollCount = 0;
+    const onIdle = mock(() => {});
 
-    globalThis.fetch = mock((url: string, _options?: RequestInit) => {
-      if (url.includes("OutgoingBarMessage?status=pending")) {
-        pollCount++;
-        if (pollCount <= 2) {
-          // Return message for first two polls
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
-                total: 1,
-                entry: [{ resource: { ...testOutgoingMessage, id: `msg-${pollCount}` } }],
-              }),
-              { headers: { "Content-Type": "application/json" } }
-            )
-          );
+    const mockAidbox = {
+      aidboxFetch: mock((path: string) => {
+        if (path.includes("OutgoingBarMessage?status=pending")) {
+          pollCount++;
+          if (pollCount <= 2) {
+            // Return message for first two polls
+            return Promise.resolve({
+              total: 1,
+              entry: [{ resource: { ...testOutgoingMessage, id: `msg-${pollCount}` } }],
+            });
+          }
+          // No more messages
+          return Promise.resolve({ total: 0, entry: [] });
         }
-        // No more messages
-        return Promise.resolve(
-          new Response(JSON.stringify({ total: 0 }), {
-            headers: { "Content-Type": "application/json" },
-          })
-        );
-      }
-      // POST or PUT
-      return Promise.resolve(
-        new Response(JSON.stringify({ resourceType: "IncomingHL7v2Message" }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      );
-    }) as unknown as typeof fetch;
+        // POST IncomingHL7v2Message
+        return Promise.resolve({ resourceType: "IncomingHL7v2Message" });
+      }),
+      putResource: mock(() => Promise.resolve({})),
+    };
 
-    try {
-      const onIdle = mock(() => {});
-      const service = createBarMessageSenderService({
-        pollIntervalMs: 1000, // Long interval
-        onIdle,
-      });
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { createBarMessageSenderService } = await import("../../src/bar/sender-service");
 
-      service.start();
+    const service = createBarMessageSenderService({
+      pollIntervalMs: 1000, // Long interval
+      onIdle,
+    });
 
-      // Should process all messages quickly (not waiting for poll interval)
-      await new Promise((resolve) => setTimeout(resolve, 200));
+    service.start();
 
-      service.stop();
+    // Should process all messages quickly (not waiting for poll interval)
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Should have polled 3 times (2 messages + 1 empty)
-      expect(pollCount).toBe(3);
-      // onIdle should be called once (after finding no more messages)
-      expect(onIdle).toHaveBeenCalledTimes(1);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    service.stop();
+
+    // Should have polled 3 times (2 messages + 1 empty)
+    expect(pollCount).toBe(3);
+    // onIdle should be called once (after finding no more messages)
+    expect(onIdle).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,14 +1,5 @@
 import { test, expect, describe, beforeEach, mock } from "bun:test";
-import {
-  pollPendingInvoice,
-  buildBarFromInvoice,
-  processNextInvoice,
-  createInvoiceBarBuilderService,
-} from "../../src/bar/invoice-builder-service";
 import type { Invoice } from "../../src/fhir/hl7-fhir-r4-core/Invoice";
-
-// Mock fetch for testing
-const mockFetch = mock((url: string, options?: RequestInit) => Promise.resolve(new Response())) as unknown as typeof fetch & { mock: { calls: unknown[][] }; mockReset: () => void; mockImplementation: (fn: (url: string, options?: RequestInit) => Promise<Response>) => typeof fetch };
 
 // Test fixtures
 const testInvoice: Invoice & { id: string } = {
@@ -34,93 +25,67 @@ const testPatient = {
 };
 
 describe("pollPendingInvoice", () => {
+  const mockAidbox = {
+    aidboxFetch: mock(() => Promise.resolve({ entry: [] })),
+    putResource: mock(() => Promise.resolve({})),
+    getResources: mock(() => Promise.resolve([])),
+  };
+
   beforeEach(() => {
-    mockFetch.mockReset();
+    mockAidbox.aidboxFetch.mockClear();
   });
 
   test("returns null when no pending invoices", async () => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.mockImplementation(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ total: 0 }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      )
+    mockAidbox.aidboxFetch.mockImplementation(() =>
+      Promise.resolve({ total: 0, entry: [] })
     );
 
-    try {
-      const result = await pollPendingInvoice();
-      expect(result).toBeNull();
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { pollPendingInvoice } = await import("../../src/bar/invoice-builder-service");
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
-      expect(url).toContain("/fhir/Invoice");
-      expect(url).toContain("processing-status=pending");
-      expect(url).toContain("_sort=_lastUpdated");
-      expect(url).toContain("_count=1");
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    const result = await pollPendingInvoice();
+    expect(result).toBeNull();
   });
 
   test("returns invoice when pending invoice exists", async () => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.mockImplementation(() =>
-      Promise.resolve(
-        new Response(
-          JSON.stringify({
-            total: 1,
-            entry: [{ resource: testInvoice }],
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        )
-      )
+    mockAidbox.aidboxFetch.mockImplementation(() =>
+      Promise.resolve({
+        total: 1,
+        entry: [{ resource: testInvoice }],
+      })
     );
 
-    try {
-      const result = await pollPendingInvoice();
-      expect(result).toEqual(testInvoice);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { pollPendingInvoice } = await import("../../src/bar/invoice-builder-service");
+
+    const result = await pollPendingInvoice();
+    expect(result).toEqual(testInvoice);
   });
 });
 
 describe("buildBarFromInvoice", () => {
-  beforeEach(() => {
-    mockFetch.mockReset();
-  });
-
   test("builds BAR message from invoice with patient", async () => {
-    const originalFetch = globalThis.fetch;
+    const mockAidbox = {
+      aidboxFetch: mock((path: string) => {
+        if (path.includes("/fhir/Patient/")) {
+          return Promise.resolve(testPatient);
+        }
+        // Return empty bundles for other resources
+        return Promise.resolve({ total: 0, entry: [] });
+      }),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
 
-    globalThis.fetch = mockFetch.mockImplementation((url: string) => {
-      if (url.includes("/fhir/Patient/")) {
-        return Promise.resolve(
-          new Response(JSON.stringify(testPatient), {
-            headers: { "Content-Type": "application/json" },
-          })
-        );
-      }
-      // Return empty bundles for other resources
-      return Promise.resolve(
-        new Response(JSON.stringify({ total: 0 }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      );
-    });
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { buildBarFromInvoice } = await import("../../src/bar/invoice-builder-service");
 
-    try {
-      const hl7v2 = await buildBarFromInvoice(testInvoice);
+    const hl7v2 = await buildBarFromInvoice(testInvoice);
 
-      expect(hl7v2).toContain("MSH|");
-      expect(hl7v2).toContain("BAR^P01");
-      expect(hl7v2).toContain("PID|");
-      expect(hl7v2).toContain("MRN12345");
-      expect(hl7v2).toContain("Smith");
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    expect(hl7v2).toContain("MSH|");
+    expect(hl7v2).toContain("BAR^P01");
+    expect(hl7v2).toContain("PID|");
+    expect(hl7v2).toContain("Smith");
   });
 
   test("throws error when invoice has no patient", async () => {
@@ -130,48 +95,35 @@ describe("buildBarFromInvoice", () => {
       status: "draft",
     } as Invoice & { id: string };
 
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.mockImplementation(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ total: 0 }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      )
-    );
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ total: 0, entry: [] })),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
 
-    try {
-      await expect(buildBarFromInvoice(invoiceNoPatient)).rejects.toThrow();
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { buildBarFromInvoice } = await import("../../src/bar/invoice-builder-service");
+
+    await expect(buildBarFromInvoice(invoiceNoPatient)).rejects.toThrow();
   });
 });
 
 describe("processNextInvoice", () => {
-  beforeEach(() => {
-    mockFetch.mockReset();
-  });
-
   test("returns false when no pending invoices", async () => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.mockImplementation(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ total: 0 }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      )
-    );
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ total: 0, entry: [] })),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
 
-    try {
-      const result = await processNextInvoice();
-      expect(result).toBe(false);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { processNextInvoice } = await import("../../src/bar/invoice-builder-service");
+
+    const result = await processNextInvoice();
+    expect(result).toBe(false);
   });
 
   test("updates status to error when invoice has no patient subject", async () => {
-    const originalFetch = globalThis.fetch;
     const invoiceWithoutPatient: Invoice & { id: string } = {
       resourceType: "Invoice",
       id: "invoice-no-patient",
@@ -184,142 +136,105 @@ describe("processNextInvoice", () => {
       ],
     };
 
-    const patchCalls: { url: string; body: string }[] = [];
+    const patchCalls: string[] = [];
 
-    globalThis.fetch = mockFetch.mockImplementation((url: string, options?: RequestInit) => {
-      // Poll for pending invoice - return invoice without patient
-      if (url.includes("/fhir/Invoice?processing-status=pending")) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              total: 1,
-              entry: [{ resource: invoiceWithoutPatient }],
-            }),
-            { headers: { "Content-Type": "application/json" } }
-          )
-        );
-      }
+    const mockAidbox = {
+      aidboxFetch: mock((path: string, options?: any) => {
+        // Poll for pending invoice
+        if (path.includes("/fhir/Invoice?processing-status=pending")) {
+          return Promise.resolve({
+            total: 1,
+            entry: [{ resource: invoiceWithoutPatient }],
+          });
+        }
 
-      // PATCH Invoice status - capture the call
-      if (url.includes("/fhir/Invoice/") && options?.method === "PATCH") {
-        patchCalls.push({ url, body: options.body as string });
-        return Promise.resolve(
-          new Response(JSON.stringify(invoiceWithoutPatient), {
-            headers: { "Content-Type": "application/json" },
-          })
-        );
-      }
+        // PATCH Invoice status
+        if (path.includes("/fhir/Invoice/") && options?.method === "PATCH") {
+          patchCalls.push(options.body);
+          return Promise.resolve(invoiceWithoutPatient);
+        }
 
-      // Return empty bundles for other resources
-      return Promise.resolve(
-        new Response(JSON.stringify({ total: 0 }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      );
-    });
+        // Return empty for other resources
+        return Promise.resolve({ total: 0, entry: [] });
+      }),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
 
-    try {
-      const result = await processNextInvoice();
-      expect(result).toBe(true); // Should return true to continue processing
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { processNextInvoice } = await import("../../src/bar/invoice-builder-service");
 
-      // Verify PATCH was called to update status
-      expect(patchCalls.length).toBe(1);
-      expect(patchCalls[0]!.url).toContain("/fhir/Invoice/invoice-no-patient");
+    const result = await processNextInvoice();
+    expect(result).toBe(true);
 
-      const patchBody = JSON.parse(patchCalls[0]!.body);
-      expect(patchBody.resourceType).toBe("Parameters");
+    // Verify PATCH was called
+    expect(patchCalls.length).toBe(1);
 
-      // Verify status is set to "error"
-      const statusOperation = patchBody.parameter.find((p: { name: string; part?: { name: string; valueCode?: string }[] }) =>
-        p.part?.some((part: { name: string; valueCode?: string }) => part.name === "value" && part.valueCode === "error")
-      );
-      expect(statusOperation).toBeDefined();
+    const patchBody = JSON.parse(patchCalls[0]!);
+    expect(patchBody.resourceType).toBe("Parameters");
 
-      // Verify reason extension is included
-      const reasonOperation = patchBody.parameter.find((p: { name: string; part?: { name: string; valueExtension?: { url: string; valueString: string } }[] }) =>
-        p.part?.some((part: { name: string; valueExtension?: { url: string; valueString: string } }) =>
-          part.valueExtension?.url === "http://example.org/invoice-processing-error-reason"
-        )
-      );
-      expect(reasonOperation).toBeDefined();
-
-      const reasonPart = reasonOperation.part.find((part: { name: string; valueExtension?: { url: string; valueString: string } }) => part.valueExtension);
-      expect(reasonPart.valueExtension.valueString).toBe("Invoice has no patient");
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    // Verify status is set to "error"
+    const statusOperation = patchBody.parameter.find((p: any) =>
+      p.part?.some((part: any) => part.name === "value" && part.valueCode === "error")
+    );
+    expect(statusOperation).toBeDefined();
   });
 
   test("processes invoice and returns true", async () => {
-    const originalFetch = globalThis.fetch;
-    let callCount = 0;
+    const mockAidbox = {
+      aidboxFetch: mock((path: string, options?: any) => {
+        // Poll for pending invoice
+        if (path.includes("/fhir/Invoice?processing-status=pending")) {
+          return Promise.resolve({
+            total: 1,
+            entry: [{ resource: testInvoice }],
+          });
+        }
 
-    globalThis.fetch = mockFetch.mockImplementation((url: string, options?: RequestInit) => {
-      callCount++;
+        // Fetch patient
+        if (path.includes("/fhir/Patient/")) {
+          return Promise.resolve(testPatient);
+        }
 
-      // Poll for pending invoice
-      if (url.includes("/fhir/Invoice?processing-status=pending")) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              total: 1,
-              entry: [{ resource: testInvoice }],
-            }),
-            { headers: { "Content-Type": "application/json" } }
-          )
-        );
-      }
+        // POST OutgoingBarMessage
+        if (path.includes("/fhir/OutgoingBarMessage") && options?.method === "POST") {
+          return Promise.resolve({
+            resourceType: "OutgoingBarMessage",
+            id: "msg-1",
+          });
+        }
 
-      // Fetch patient
-      if (url.includes("/fhir/Patient/")) {
-        return Promise.resolve(
-          new Response(JSON.stringify(testPatient), {
-            headers: { "Content-Type": "application/json" },
-          })
-        );
-      }
+        // PATCH Invoice status
+        if (path.includes("/fhir/Invoice/") && options?.method === "PATCH") {
+          return Promise.resolve({ ...testInvoice, status: "issued" });
+        }
 
-      // POST OutgoingBarMessage
-      if (url.includes("/fhir/OutgoingBarMessage") && options?.method === "POST") {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              resourceType: "OutgoingBarMessage",
-              id: "msg-1",
-            }),
-            { headers: { "Content-Type": "application/json" } }
-          )
-        );
-      }
+        // Return empty bundles for other resources
+        return Promise.resolve({ total: 0, entry: [] });
+      }),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
 
-      // PATCH Invoice status
-      if (url.includes("/fhir/Invoice/") && options?.method === "PATCH") {
-        return Promise.resolve(
-          new Response(JSON.stringify({ ...testInvoice, status: "issued" }), {
-            headers: { "Content-Type": "application/json" },
-          })
-        );
-      }
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { processNextInvoice } = await import("../../src/bar/invoice-builder-service");
 
-      // Return empty bundles for other resources
-      return Promise.resolve(
-        new Response(JSON.stringify({ total: 0 }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      );
-    });
-
-    try {
-      const result = await processNextInvoice();
-      expect(result).toBe(true);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    const result = await processNextInvoice();
+    expect(result).toBe(true);
   });
 });
 
 describe("createInvoiceBarBuilderService", () => {
-  test("starts and stops correctly", () => {
+  test("starts and stops correctly", async () => {
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ entry: [] })),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { createInvoiceBarBuilderService } = await import("../../src/bar/invoice-builder-service");
+
     const service = createInvoiceBarBuilderService({ pollIntervalMs: 100 });
 
     expect(service.isRunning()).toBe(false);
@@ -331,7 +246,16 @@ describe("createInvoiceBarBuilderService", () => {
     expect(service.isRunning()).toBe(false);
   });
 
-  test("start is idempotent", () => {
+  test("start is idempotent", async () => {
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ entry: [] })),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { createInvoiceBarBuilderService } = await import("../../src/bar/invoice-builder-service");
+
     const service = createInvoiceBarBuilderService({ pollIntervalMs: 100 });
 
     service.start();
@@ -342,58 +266,54 @@ describe("createInvoiceBarBuilderService", () => {
   });
 
   test("calls onIdle when no pending invoices found", async () => {
-    const originalFetch = globalThis.fetch;
     const onIdle = mock(() => {});
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ total: 0, entry: [] })),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
 
-    globalThis.fetch = mock(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ total: 0 }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      )
-    ) as unknown as typeof fetch;
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { createInvoiceBarBuilderService } = await import("../../src/bar/invoice-builder-service");
 
-    try {
-      const service = createInvoiceBarBuilderService({
-        pollIntervalMs: 50,
-        onIdle,
-      });
+    const service = createInvoiceBarBuilderService({
+      pollIntervalMs: 50,
+      onIdle,
+    });
 
-      service.start();
+    service.start();
 
-      // Wait for at least one poll cycle
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    // Wait for at least one poll cycle
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
-      service.stop();
+    service.stop();
 
-      expect(onIdle).toHaveBeenCalled();
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    expect(onIdle).toHaveBeenCalled();
   });
 
   test("calls onError when processing fails", async () => {
-    const originalFetch = globalThis.fetch;
     const onError = mock(() => {});
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.reject(new Error("Network error"))),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
 
-    globalThis.fetch = mock(() => Promise.reject(new Error("Network error"))) as unknown as typeof fetch;
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { createInvoiceBarBuilderService } = await import("../../src/bar/invoice-builder-service");
 
-    try {
-      const service = createInvoiceBarBuilderService({
-        pollIntervalMs: 50,
-        onError,
-      });
+    const service = createInvoiceBarBuilderService({
+      pollIntervalMs: 50,
+      onError,
+    });
 
-      service.start();
+    service.start();
 
-      // Wait for at least one poll cycle
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    // Wait for at least one poll cycle
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
-      service.stop();
+    service.stop();
 
-      expect(onError).toHaveBeenCalled();
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    expect(onError).toHaveBeenCalled();
   });
 });

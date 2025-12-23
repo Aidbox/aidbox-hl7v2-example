@@ -1,6 +1,6 @@
 import { test, expect, describe } from "bun:test";
-import { convertXCNToPatient, convertXCNArrayToPatients } from "./xcn-patient";
-import type { XCN } from "../../hl7v2/generated/fields";
+import { convertXCNToPatient, convertXCNArrayToPatients } from "../../../src/v2-to-fhir/datatypes/xcn-patient";
+import type { XCN } from "../../../src/hl7v2/generated/fields";
 
 describe("XCN[Patient] Converter", () => {
   describe("convertXCNToPatient", () => {
@@ -25,12 +25,12 @@ describe("XCN[Patient] Converter", () => {
       const result = convertXCNToPatient(xcn);
 
       expect(result).toBeDefined();
-      expect(result?.resourceType).toBe("Patient");
-      expect(result?.identifier).toBeDefined();
-      expect(result?.identifier?.[0].value).toBe("12345");
-      expect(result?.name).toBeDefined();
-      expect(result?.name?.[0].family).toBe("Smith");
-      expect(result?.name?.[0].given).toEqual(["John"]);
+      expect(result!.resourceType).toBe("Patient");
+      expect(result!.identifier).toBeDefined();
+      expect(result!.identifier![0]!.value).toBe("12345");
+      expect(result!.name).toBeDefined();
+      expect(result!.name![0]!.family).toBe("Smith");
+      expect(result!.name![0]!.given).toEqual(["John"]);
     });
 
     test("converts XCN with full name components", () => {
@@ -47,10 +47,10 @@ describe("XCN[Patient] Converter", () => {
       const result = convertXCNToPatient(xcn);
 
       expect(result).toBeDefined();
-      expect(result?.name?.[0].family).toBe("Jones");
-      expect(result?.name?.[0].given).toEqual(["Mary", "Elizabeth"]);
-      expect(result?.name?.[0].prefix).toEqual(["Dr"]);
-      expect(result?.name?.[0].suffix).toEqual(["Jr", "PhD"]);
+      expect(result!.name![0]!.family).toBe("Jones");
+      expect(result!.name![0]!.given).toEqual(["Mary", "Elizabeth"]);
+      expect(result!.name![0]!.prefix).toEqual(["Dr"]);
+      expect(result!.name![0]!.suffix).toEqual(["Jr", "PhD"]);
     });
 
     test("XCN.7 (degree) maps to name.suffix for Patient", () => {
@@ -66,7 +66,7 @@ describe("XCN[Patient] Converter", () => {
 
       expect(result).toBeDefined();
       // For Patient: XCN.5->suffix[0], XCN.7->suffix[1], XCN.21->suffix[2]
-      expect(result?.name?.[0].suffix).toEqual(["Jr", "MD", "FACP"]);
+      expect(result!.name![0]!.suffix).toEqual(["Jr", "MD", "FACP"]);
       // Patient should NOT have qualification property
       expect((result as any)?.qualification).toBeUndefined();
     });
@@ -84,9 +84,9 @@ describe("XCN[Patient] Converter", () => {
       const result = convertXCNToPatient(xcn);
 
       expect(result).toBeDefined();
-      expect(result?.identifier?.[0].value).toBe("ABC123");
-      expect(result?.identifier?.[0].system).toBe("http://hospital.example.org");
-      expect(result?.identifier?.[0].type?.coding?.[0].code).toBe("MR");
+      expect(result!.identifier![0]!.value).toBe("ABC123");
+      expect(result!.identifier![0]!.system).toBe("http://hospital.example.org");
+      expect(result!.identifier![0]!.type!.coding![0]!.code).toBe("MR");
     });
 
     test("converts XCN with name use code", () => {
@@ -99,7 +99,7 @@ describe("XCN[Patient] Converter", () => {
       const result = convertXCNToPatient(xcn);
 
       expect(result).toBeDefined();
-      expect(result?.name?.[0].use).toBe("official");
+      expect(result!.name![0]!.use).toBe("official");
     });
 
     test("converts XCN with name period (XCN.19, XCN.20)", () => {
@@ -113,8 +113,8 @@ describe("XCN[Patient] Converter", () => {
       const result = convertXCNToPatient(xcn);
 
       expect(result).toBeDefined();
-      expect(result?.name?.[0].period?.start).toBe("2020-01-01T00:00:00Z");
-      expect(result?.name?.[0].period?.end).toBe("2025-12-31T23:59:59Z");
+      expect(result!.name![0]!.period?.start).toBe("2020-01-01T00:00:00Z");
+      expect(result!.name![0]!.period?.end).toBe("2025-12-31T23:59:59Z");
     });
 
     test("converts XCN with check digit extensions", () => {
@@ -128,15 +128,15 @@ describe("XCN[Patient] Converter", () => {
       const result = convertXCNToPatient(xcn);
 
       expect(result).toBeDefined();
-      expect(result?.identifier?.[0].extension).toBeDefined();
-      expect(result?.identifier?.[0].extension?.[0].url).toBe(
+      expect(result!.identifier![0]!.extension).toBeDefined();
+      expect(result!.identifier![0]!.extension![0]!.url).toBe(
         "http://hl7.org/fhir/StructureDefinition/identifier-checkDigit"
       );
-      expect(result?.identifier?.[0].extension?.[0].valueString).toBe("9");
-      expect(result?.identifier?.[0].extension?.[1].url).toBe(
+      expect(result!.identifier![0]!.extension![0]!.valueString).toBe("9");
+      expect(result!.identifier![0]!.extension![1]!.url).toBe(
         "http://hl7.org/fhir/StructureDefinition/namingsystem-checkDigit"
       );
-      expect(result?.identifier?.[0].extension?.[1].valueString).toBe("ISO");
+      expect(result!.identifier![0]!.extension![1]!.valueString).toBe("ISO");
     });
 
     test("converts XCN with name assembly order extension", () => {
@@ -149,11 +149,11 @@ describe("XCN[Patient] Converter", () => {
       const result = convertXCNToPatient(xcn);
 
       expect(result).toBeDefined();
-      expect(result?.name?.[0].extension).toBeDefined();
-      expect(result?.name?.[0].extension?.[0].url).toBe(
+      expect(result!.name![0]!.extension).toBeDefined();
+      expect(result!.name![0]!.extension![0]!.url).toBe(
         "http://hl7.org/fhir/R4/extension-humanname-assembly-order.html"
       );
-      expect(result?.name?.[0].extension?.[0].valueCode).toBe("G");
+      expect(result!.name![0]!.extension![0]!.valueCode).toBe("G");
     });
 
     test("handles XCN with only ID (no name)", () => {
@@ -164,8 +164,8 @@ describe("XCN[Patient] Converter", () => {
       const result = convertXCNToPatient(xcn);
 
       expect(result).toBeDefined();
-      expect(result?.identifier?.[0].value).toBe("ONLY_ID");
-      expect(result?.name).toBeUndefined();
+      expect(result!.identifier![0]!.value).toBe("ONLY_ID");
+      expect(result!.name).toBeUndefined();
     });
 
     test("handles XCN with only name (no ID)", () => {
@@ -177,25 +177,25 @@ describe("XCN[Patient] Converter", () => {
       const result = convertXCNToPatient(xcn);
 
       expect(result).toBeDefined();
-      expect(result?.identifier).toBeUndefined();
-      expect(result?.name?.[0].family).toBe("NameOnly");
-      expect(result?.name?.[0].given).toEqual(["Test"]);
+      expect(result!.identifier).toBeUndefined();
+      expect(result!.name![0]!.family).toBe("NameOnly");
+      expect(result!.name![0]!.given).toEqual(["Test"]);
     });
 
     test("converts all name type codes correctly", () => {
       const testCases = [
-        { code: "A", expected: "usual" },     // Alias
-        { code: "B", expected: "official" },  // Birth name
-        { code: "C", expected: "official" },  // Adopted
-        { code: "D", expected: "usual" },     // Display
-        { code: "L", expected: "official" },  // Legal
-        { code: "M", expected: "maiden" },    // Maiden
-        { code: "N", expected: "nickname" },  // Nickname
-        { code: "P", expected: "official" },  // Partner/Spouse
-        { code: "R", expected: "official" },  // Registered
-        { code: "S", expected: "anonymous" }, // Pseudonym
-        { code: "T", expected: "temp" },      // Temporary
-        { code: "U", expected: "old" },       // Unknown
+        { code: "A", expected: "usual" as const },     // Alias
+        { code: "B", expected: "official" as const },  // Birth name
+        { code: "C", expected: "official" as const },  // Adopted
+        { code: "D", expected: "usual" as const },     // Display
+        { code: "L", expected: "official" as const },  // Legal
+        { code: "M", expected: "maiden" as const },    // Maiden
+        { code: "N", expected: "nickname" as const },  // Nickname
+        { code: "P", expected: "official" as const },  // Partner/Spouse
+        { code: "R", expected: "official" as const },  // Registered
+        { code: "S", expected: "anonymous" as const }, // Pseudonym
+        { code: "T", expected: "temp" as const },      // Temporary
+        { code: "U", expected: "old" as const },       // Unknown
       ];
 
       for (const { code, expected } of testCases) {
@@ -206,7 +206,7 @@ describe("XCN[Patient] Converter", () => {
         };
 
         const result = convertXCNToPatient(xcn);
-        expect(result?.name?.[0].use).toBe(expected);
+        expect(result!.name![0]!.use).toBe(expected);
       }
     });
 
@@ -226,8 +226,8 @@ describe("XCN[Patient] Converter", () => {
 
       expect(result).toBeDefined();
       // XCN.19/20 should be used, not XCN.17
-      expect(result?.name?.[0].period?.start).toBe("2020-01-01T00:00:00Z");
-      expect(result?.name?.[0].period?.end).toBe("2025-12-31T23:59:59Z");
+      expect(result!.name![0]!.period?.start).toBe("2020-01-01T00:00:00Z");
+      expect(result!.name![0]!.period?.end).toBe("2025-12-31T23:59:59Z");
     });
 
     test("uses XCN.17 for period when XCN.19/20 are absent", () => {
@@ -243,8 +243,8 @@ describe("XCN[Patient] Converter", () => {
       const result = convertXCNToPatient(xcn);
 
       expect(result).toBeDefined();
-      expect(result?.name?.[0].period?.start).toBe("2010-01-01");
-      expect(result?.name?.[0].period?.end).toBe("2015-12-31");
+      expect(result!.name![0]!.period?.start).toBe("2010-01-01");
+      expect(result!.name![0]!.period?.end).toBe("2015-12-31");
     });
   });
 
@@ -279,9 +279,9 @@ describe("XCN[Patient] Converter", () => {
 
       expect(result).toBeDefined();
       expect(result).toHaveLength(3);
-      expect(result?.[0].name?.[0].family).toBe("First");
-      expect(result?.[1].name?.[0].family).toBe("Second");
-      expect(result?.[2].name?.[0].family).toBe("Third");
+      expect(result![0]!.name![0]!.family).toBe("First");
+      expect(result![1]!.name![0]!.family).toBe("Second");
+      expect(result![2]!.name![0]!.family).toBe("Third");
     });
 
     test("filters out invalid XCNs", () => {
@@ -301,8 +301,8 @@ describe("XCN[Patient] Converter", () => {
 
       expect(result).toBeDefined();
       expect(result).toHaveLength(2);
-      expect(result?.[0].name?.[0].family).toBe("Valid");
-      expect(result?.[1].name?.[0].family).toBe("AlsoValid");
+      expect(result![0]!.name![0]!.family).toBe("Valid");
+      expect(result![1]!.name![0]!.family).toBe("AlsoValid");
     });
 
     test("returns undefined when all XCNs are invalid", () => {

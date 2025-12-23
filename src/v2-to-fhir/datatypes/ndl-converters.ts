@@ -1,6 +1,6 @@
-import type { CNN, HD } from "../../hl7v2/generated/fields";
+import type { HD } from "../../hl7v2/generated/fields";
 import type { Reference, Period } from "../../fhir/hl7-fhir-r4-core";
-import { convertCNNToPractitioner } from "./cnn-practitioner";
+import { convertCNNToPractitioner, type CNN } from "./cnn-practitioner";
 import { convertHDToIdentifiers } from "./hd-converters";
 
 const LOCATION_PHYSICAL_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/location-physical-type";

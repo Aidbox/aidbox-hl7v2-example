@@ -968,8 +968,8 @@ Bun.serve({
               hasMore = false;
             } else {
               for (const invoice of errorInvoices) {
-                if (invoice.id) {
-                  const currentRetryCount = getRetryCount(invoice);
+                if (invoice?.id && "resourceType" in invoice) {
+                  const currentRetryCount = getRetryCount(invoice as any);
                   const newRetryCount = currentRetryCount + 1;
 
                   if (newRetryCount >= MAX_RETRIES) {

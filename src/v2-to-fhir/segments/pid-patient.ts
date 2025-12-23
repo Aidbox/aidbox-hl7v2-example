@@ -272,7 +272,7 @@ export function convertPIDToPatient(pid: PID): Patient {
   // PID-12: County Code -> address.district
   // Applied to first address if only one address, otherwise to second address slot
   if (pid.$12_countyCode) {
-    if (addresses.length === 1 && !addresses[0].district) {
+    if (addresses.length === 1 && addresses[0] && !addresses[0].district) {
       addresses[0].district = pid.$12_countyCode;
     } else if (addresses.length === 0) {
       addresses.push({ district: pid.$12_countyCode });

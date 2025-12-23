@@ -216,7 +216,7 @@ export function convertXCNToRelatedPerson(
 
   return {
     resourceType: "RelatedPerson",
-    patient: { reference: "" }, // Patient reference must be populated separately
+    patient: { reference: "" as any }, // Patient reference must be populated separately
     ...(identifier && { identifier: [identifier] }),
     ...(name && { name: [name] }),
   };

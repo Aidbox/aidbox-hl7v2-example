@@ -46,7 +46,7 @@ export function convertRIToTiming(ri: RI | undefined): Timing | undefined {
     if (timeOfDay.length > 0) {
       timing.repeat = {
         timeOfDay,
-      };
+      } as any;
     }
   }
 

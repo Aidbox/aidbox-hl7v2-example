@@ -275,11 +275,19 @@ export function convertPV1ToEncounter(pv1: PV1): Encounter {
   // =========================================================================
 
   // PV1-2: Patient Class -> class
-  const classCode = typeof pv1.$2_class === "string"
-    ? pv1.$2_class.toUpperCase()
-    : pv1.$2_class?.toUpperCase?.() || "U";
+  let classCode = "U";
+  if (pv1.$2_class) {
+    if (typeof pv1.$2_class === "string") {
+      classCode = pv1.$2_class.toUpperCase();
+    } else if (typeof (pv1.$2_class as any).toUpperCase === "function") {
+      classCode = (pv1.$2_class as any).toUpperCase();
+    }
+  }
 
-  const classMapping = PATIENT_CLASS_MAP[classCode] || PATIENT_CLASS_MAP["U"];
+  const classMapping = PATIENT_CLASS_MAP[classCode];
+  if (!classMapping) {
+    throw new Error(`Unknown patient class code: ${classCode}`);
+  }
 
   const encounterClass: Coding = {
     system: ENCOUNTER_CLASS_SYSTEM,

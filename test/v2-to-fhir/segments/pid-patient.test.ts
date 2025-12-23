@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { convertPIDToPatient } from "./pid-patient";
-import type { PID } from "../../hl7v2/generated/fields";
+import { convertPIDToPatient } from "../../../src/v2-to-fhir/segments/pid-patient";
+import type { PID } from "../../../src/hl7v2/generated/fields";
 
 describe("convertPIDToPatient", () => {
   describe("identifiers", () => {
@@ -18,9 +18,9 @@ describe("convertPIDToPatient", () => {
       const patient = convertPIDToPatient(pid);
 
       expect(patient.identifier).toHaveLength(1);
-      expect(patient.identifier![0].value).toBe("12345");
-      expect(patient.identifier![0].system).toBe("HOSPITAL");
-      expect(patient.identifier![0].type?.coding?.[0]?.code).toBe("MR");
+      expect(patient.identifier![0]!.value).toBe("12345");
+      expect(patient.identifier![0]!.system).toBe("HOSPITAL");
+      expect(patient.identifier![0]!.type?.coding?.[0]?.code).toBe("MR");
     });
 
     test("converts PID-3 Patient Identifier List to identifiers", () => {
@@ -35,8 +35,8 @@ describe("convertPIDToPatient", () => {
       const patient = convertPIDToPatient(pid);
 
       expect(patient.identifier).toHaveLength(2);
-      expect(patient.identifier![0].value).toBe("MRN001");
-      expect(patient.identifier![1].value).toBe("ACC001");
+      expect(patient.identifier![0]!.value).toBe("MRN001");
+      expect(patient.identifier![1]!.value).toBe("ACC001");
     });
 
     test("converts PID-19 SSN to identifier with correct type and system", () => {
@@ -49,10 +49,10 @@ describe("convertPIDToPatient", () => {
       const patient = convertPIDToPatient(pid);
 
       expect(patient.identifier).toHaveLength(1);
-      expect(patient.identifier![0].value).toBe("123-45-6789");
-      expect(patient.identifier![0].system).toBe("http://hl7.org/fhir/sid/us-ssn");
-      expect(patient.identifier![0].type?.coding?.[0]?.code).toBe("SS");
-      expect(patient.identifier![0].type?.coding?.[0]?.system).toBe(
+      expect(patient.identifier![0]!.value).toBe("123-45-6789");
+      expect(patient.identifier![0]!.system).toBe("http://hl7.org/fhir/sid/us-ssn");
+      expect(patient.identifier![0]!.type?.coding?.[0]?.code).toBe("SS");
+      expect(patient.identifier![0]!.type?.coding?.[0]?.system).toBe(
         "http://terminology.hl7.org/CodeSystem/v2-0203"
       );
     });
@@ -71,10 +71,10 @@ describe("convertPIDToPatient", () => {
       const patient = convertPIDToPatient(pid);
 
       expect(patient.identifier).toHaveLength(1);
-      expect(patient.identifier![0].value).toBe("DL12345");
-      expect(patient.identifier![0].system).toBe("CA");
-      expect(patient.identifier![0].type?.coding?.[0]?.code).toBe("DL");
-      expect(patient.identifier![0].period?.end).toBe("20251231");
+      expect(patient.identifier![0]!.value).toBe("DL12345");
+      expect(patient.identifier![0]!.system).toBe("CA");
+      expect(patient.identifier![0]!.type?.coding?.[0]?.code).toBe("DL");
+      expect(patient.identifier![0]!.period?.end).toBe("20251231");
     });
   });
 
@@ -94,8 +94,8 @@ describe("convertPIDToPatient", () => {
       const patient = convertPIDToPatient(pid);
 
       expect(patient.name).toHaveLength(1);
-      expect(patient.name![0].family).toBe("Smith");
-      expect(patient.name![0].given).toEqual(["John", "Robert"]);
+      expect(patient.name![0]!.family).toBe("Smith");
+      expect(patient.name![0]!.given).toEqual(["John", "Robert"]);
     });
 
     test("converts PID-9 Patient Alias with use=old", () => {
@@ -113,8 +113,8 @@ describe("convertPIDToPatient", () => {
       const patient = convertPIDToPatient(pid);
 
       expect(patient.name).toHaveLength(1);
-      expect(patient.name![0].family).toBe("Doe");
-      expect(patient.name![0].use).toBe("old");
+      expect(patient.name![0]!.family).toBe("Doe");
+      expect(patient.name![0]!.use).toBe("old");
     });
   });
 
@@ -150,10 +150,10 @@ describe("convertPIDToPatient", () => {
 
     test("converts PID-8 Gender", () => {
       const testCases = [
-        { input: "M", expected: "male" },
-        { input: "F", expected: "female" },
-        { input: "O", expected: "other" },
-        { input: "U", expected: "unknown" },
+        { input: "M", expected: "male" as const },
+        { input: "F", expected: "female" as const },
+        { input: "O", expected: "other" as const },
+        { input: "U", expected: "unknown" as const },
       ];
 
       for (const { input, expected } of testCases) {
@@ -164,7 +164,7 @@ describe("convertPIDToPatient", () => {
         };
 
         const patient = convertPIDToPatient(pid);
-        expect(patient.gender).toBe(expected);
+        expect(patient!.gender).toBe(expected);
       }
     });
   });
@@ -188,11 +188,11 @@ describe("convertPIDToPatient", () => {
       const patient = convertPIDToPatient(pid);
 
       expect(patient.address).toHaveLength(1);
-      expect(patient.address![0].line).toEqual(["123 Main St"]);
-      expect(patient.address![0].city).toBe("Anytown");
-      expect(patient.address![0].state).toBe("CA");
-      expect(patient.address![0].postalCode).toBe("12345");
-      expect(patient.address![0].country).toBe("USA");
+      expect(patient.address![0]!.line).toEqual(["123 Main St"]);
+      expect(patient.address![0]!.city).toBe("Anytown");
+      expect(patient.address![0]!.state).toBe("CA");
+      expect(patient.address![0]!.postalCode).toBe("12345");
+      expect(patient.address![0]!.country).toBe("USA");
     });
 
     test("applies PID-12 County Code to first address district", () => {
@@ -209,7 +209,7 @@ describe("convertPIDToPatient", () => {
 
       const patient = convertPIDToPatient(pid);
 
-      expect(patient.address![0].district).toBe("06037");
+      expect(patient.address![0]!.district).toBe("06037");
     });
   });
 
@@ -228,8 +228,8 @@ describe("convertPIDToPatient", () => {
       const patient = convertPIDToPatient(pid);
 
       expect(patient.telecom).toHaveLength(1);
-      expect(patient.telecom![0].value).toBe("(555) 123-4567");
-      expect(patient.telecom![0].use).toBe("home");
+      expect(patient.telecom![0]!.value).toBe("(555) 123-4567");
+      expect(patient.telecom![0]!.use).toBe("home");
     });
 
     test("converts PID-14 Business Phone with use=work", () => {
@@ -246,8 +246,8 @@ describe("convertPIDToPatient", () => {
       const patient = convertPIDToPatient(pid);
 
       expect(patient.telecom).toHaveLength(1);
-      expect(patient.telecom![0].value).toBe("(555) 987-6543");
-      expect(patient.telecom![0].use).toBe("work");
+      expect(patient.telecom![0]!.value).toBe("(555) 987-6543");
+      expect(patient.telecom![0]!.use).toBe("work");
     });
   });
 
@@ -265,9 +265,9 @@ describe("convertPIDToPatient", () => {
       const patient = convertPIDToPatient(pid);
 
       expect(patient.communication).toHaveLength(1);
-      expect(patient.communication![0].language.coding?.[0]?.code).toBe("en");
-      expect(patient.communication![0].language.coding?.[0]?.display).toBe("English");
-      expect(patient.communication![0].preferred).toBe(true);
+      expect(patient.communication![0]!.language.coding?.[0]?.code).toBe("en");
+      expect(patient.communication![0]!.language.coding?.[0]?.display).toBe("English");
+      expect(patient.communication![0]!.preferred).toBe(true);
     });
   });
 
@@ -429,8 +429,8 @@ describe("convertPIDToPatient", () => {
       const ext = patient.extension?.find(
         (e) => e.url === "http://hl7.org/fhir/StructureDefinition/patient-citizenship"
       );
-      expect(ext?.extension?.[0]?.url).toBe("code");
-      expect(ext?.extension?.[0]?.valueCodeableConcept?.coding?.[0]?.code).toBe("USA");
+      expect(ext?.extension![0]?.url).toBe("code");
+      expect(ext?.extension![0]?.valueCodeableConcept?.coding?.[0]?.code).toBe("USA");
     });
 
     test("converts PID-28 Nationality to extension", () => {
@@ -448,8 +448,8 @@ describe("convertPIDToPatient", () => {
       const ext = patient.extension?.find(
         (e) => e.url === "http://hl7.org/fhir/StructureDefinition/patient-nationality"
       );
-      expect(ext?.extension?.[0]?.url).toBe("code");
-      expect(ext?.extension?.[0]?.valueCodeableConcept?.coding?.[0]?.code).toBe("USA");
+      expect(ext?.extension![0]?.url).toBe("code");
+      expect(ext?.extension![0]?.valueCodeableConcept?.coding?.[0]?.code).toBe("USA");
     });
 
     test("converts PID-35/36 Animal (Species/Breed) to extension", () => {
@@ -524,7 +524,7 @@ describe("convertPIDToPatient", () => {
       expect(patient.resourceType).toBe("Patient");
       expect(patient.identifier).toHaveLength(3); // PI, MR, SSN
       expect(patient.name).toHaveLength(1);
-      expect(patient.name![0].family).toBe("Smith");
+      expect(patient.name![0]!.family).toBe("Smith");
       expect(patient.birthDate).toBe("1985-03-15");
       expect(patient.gender).toBe("male");
       expect(patient.address).toHaveLength(1);
