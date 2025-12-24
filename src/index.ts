@@ -19,6 +19,12 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function highlightHL7WithDataTooltip(message: string | undefined): string {
+  const html = highlightHL7Message(message);
+  // Replace title= with data-tooltip= to avoid native browser tooltip
+  return html.replace(/\btitle="/g, 'data-tooltip="');
+}
+
 function formatError(error: string): string {
   // Try to extract and format JSON from error message
   const jsonMatch = error.match(/^(HTTP \d+): (.+)$/s);
@@ -141,14 +147,12 @@ function renderLayout(title: string, nav: string, content: string): string {
   <style>
     ${getHighlightStyles()}
 
-    /* Custom tooltips for HL7 messages (show on hover like title) */
-    .hl7-message-container .hl7-field-wrap,
-    .hl7-message-container .hl7-field {
+    /* Custom tooltips for HL7 messages (show on hover) */
+    .hl7-message-container [data-tooltip] {
       position: relative;
     }
-    .hl7-message-container .hl7-field-wrap::after,
-    .hl7-message-container .hl7-field::after {
-      content: attr(title);
+    .hl7-message-container [data-tooltip]::after {
+      content: attr(data-tooltip);
       position: absolute;
       left: 0;
       top: 100%;
@@ -167,8 +171,7 @@ function renderLayout(title: string, nav: string, content: string): string {
       visibility: hidden;
       transition: opacity 0.15s, visibility 0.15s;
     }
-    .hl7-message-container .hl7-field-wrap:hover::after,
-    .hl7-message-container .hl7-field:hover::after {
+    .hl7-message-container [data-tooltip]:hover::after {
       opacity: 1;
       visibility: visible;
     }
@@ -490,7 +493,7 @@ function renderMessageList(items: MessageListItem[]): string {
               <div class="mt-2 p-3 bg-red-50 border border-red-200 rounded font-mono text-xs overflow-x-auto whitespace-pre">${escapeHtml(formatError(item.error))}</div>
             </details>
           ` : ''}
-          <div class="hl7-message-container p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${highlightHL7Message(item.hl7Message)}</div>
+          <div class="hl7-message-container p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${highlightHL7WithDataTooltip(item.hl7Message)}</div>
           ${item.bundle ? `
             <details class="mt-3">
               <summary class="cursor-pointer text-sm text-gray-600 hover:text-gray-800">FHIR Bundle</summary>
