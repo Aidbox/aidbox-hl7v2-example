@@ -11,6 +11,36 @@ import type { Encounter } from "./fhir/hl7-fhir-r4-core/Encounter";
 import type { Procedure } from "./fhir/hl7-fhir-r4-core/Procedure";
 import type { OutgoingBarMessage, IncomingHL7v2Message } from "./fhir/aidbox-hl7v2-custom";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatError(error: string): string {
+  // Try to extract and format JSON from error message
+  const jsonMatch = error.match(/^(HTTP \d+): (.+)$/s);
+  if (jsonMatch) {
+    const [, prefix, jsonStr] = jsonMatch;
+    try {
+      const parsed = JSON.parse(jsonStr);
+      return `${prefix}:\n${JSON.stringify(parsed, null, 2)}`;
+    } catch {
+      return error;
+    }
+  }
+
+  // Try to parse as pure JSON
+  try {
+    const parsed = JSON.parse(error);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return error;
+  }
+}
+
 const getPatients = () => getResources<Patient>("Patient");
 const getChargeItems = () => getResources<ChargeItem>("ChargeItem", "_sort=-_lastUpdated");
 const getPractitioners = () => getResources<Practitioner>("Practitioner", "_sort=-_lastUpdated");
@@ -395,6 +425,8 @@ interface MessageListItem {
   statusBadge: { text: string; class: string };
   meta: string[];
   hl7Message: string | undefined;
+  error?: string;
+  bundle?: string;
 }
 
 function renderMessageList(items: MessageListItem[]): string {
@@ -418,7 +450,19 @@ function renderMessageList(items: MessageListItem[]): string {
           </div>
         </summary>
         <div class="px-4 pb-4">
+          ${item.error ? `
+            <details class="mb-3" open>
+              <summary class="cursor-pointer text-sm font-medium text-red-700 hover:text-red-800">Error</summary>
+              <div class="mt-2 p-3 bg-red-50 border border-red-200 rounded font-mono text-xs overflow-x-auto whitespace-pre">${escapeHtml(formatError(item.error))}</div>
+            </details>
+          ` : ''}
           <div class="p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${highlightHL7Message(item.hl7Message)}</div>
+          ${item.bundle ? `
+            <details class="mt-3">
+              <summary class="cursor-pointer text-sm text-gray-600 hover:text-gray-800">FHIR Bundle</summary>
+              <div class="mt-2 p-3 bg-blue-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${escapeHtml(item.bundle)}</div>
+            </details>
+          ` : ''}
         </div>
       </details>
     </li>
@@ -679,7 +723,9 @@ function renderIncomingMessagesPage(messages: IncomingHL7v2Message[], statusFilt
       msg.patient?.reference?.replace("Patient/", "") || "-",
       msg.meta?.lastUpdated ? new Date(msg.meta.lastUpdated).toLocaleString() : "-"
     ],
-    hl7Message: msg.message
+    hl7Message: msg.message,
+    error: msg.error,
+    bundle: msg.bundle
   }));
 
   const statuses = ["received", "processed", "error"];

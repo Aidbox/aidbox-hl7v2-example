@@ -139,7 +139,7 @@ describe("convertPV1ToEncounter", () => {
 
       const encounter = convertPV1ToEncounter(pv1);
 
-      expect(encounter.period?.start).toBe("2023-12-01T10:00:00");
+      expect(encounter.period?.start).toBe("2023-12-01T10:00:00Z");
     });
 
     test("converts PV1-45 Discharge Date/Time to period.end", () => {
@@ -151,8 +151,8 @@ describe("convertPV1ToEncounter", () => {
 
       const encounter = convertPV1ToEncounter(pv1);
 
-      expect(encounter.period?.start).toBe("2023-12-01T10:00:00");
-      expect(encounter.period?.end).toBe("2023-12-05T14:30:00");
+      expect(encounter.period?.start).toBe("2023-12-01T10:00:00Z");
+      expect(encounter.period?.end).toBe("2023-12-05T14:30:00Z");
     });
   });
 
@@ -470,8 +470,8 @@ describe("convertPV1ToEncounter", () => {
       expect(encounter.identifier).toHaveLength(1);
       expect(encounter.type).toHaveLength(1);
       expect(encounter.serviceType?.coding?.[0]?.code).toBe("MED");
-      expect(encounter.period?.start).toBe("2023-12-01T10:00:00");
-      expect(encounter.period?.end).toBe("2023-12-05T14:30:00");
+      expect(encounter.period?.start).toBe("2023-12-01T10:00:00Z");
+      expect(encounter.period?.end).toBe("2023-12-05T14:30:00Z");
       expect(encounter.participant).toHaveLength(1);
       expect(encounter.location).toHaveLength(1);
       expect(encounter.hospitalization?.preAdmissionIdentifier?.value).toBe("PRE001");

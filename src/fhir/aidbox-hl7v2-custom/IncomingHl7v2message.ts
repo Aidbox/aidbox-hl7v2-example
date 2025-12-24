@@ -11,7 +11,9 @@ export type { Reference } from "../hl7-fhir-r4-core/Reference";
 export interface IncomingHL7v2Message extends DomainResource {
     resourceType: "IncomingHL7v2Message";
 
+    bundle?: string;
     date?: string;
+    error?: string;
     message: string;
     patient?: Reference<"Patient">;
     status?: string;

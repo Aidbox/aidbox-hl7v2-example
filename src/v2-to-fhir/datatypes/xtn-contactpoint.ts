@@ -55,7 +55,7 @@ const EXTENSION_URL = "http://hl7.org/fhir/StructureDefinition/contactpoint-exte
 // ============================================================================
 
 /**
- * Determine the system from XTN.3 or default to email if XTN.4 is valued
+ * Determine the system from XTN.3 or infer from valued fields
  */
 function mapSystem(xtn: XTN): ContactPoint["system"] | undefined {
   if (xtn.$3_system) {
@@ -65,6 +65,11 @@ function mapSystem(xtn: XTN): ContactPoint["system"] | undefined {
   // If XTN.3 not valued but XTN.4 (email) is valued, default to email
   if (xtn.$4_email) {
     return "email";
+  }
+
+  // If XTN.1, XTN.7, or XTN.12 is valued (phone number fields), default to phone
+  if (xtn.$1_value || xtn.$7_localNumber || xtn.$12_unformatted) {
+    return "phone";
   }
 
   return undefined;

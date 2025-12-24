@@ -13,11 +13,12 @@ describe("convertXTNToContactPoint", () => {
     expect(convertXTNToContactPoint({})).toBeUndefined();
   });
 
-  test("converts XTN with telephone number only", () => {
+  test("converts XTN with telephone number only - defaults to phone system", () => {
     const result = convertXTNToContactPoint({
       $1_value: "555-1234",
     });
     expect(result).toEqual({
+      system: "phone",
       value: "555-1234",
     });
   });

@@ -82,27 +82,47 @@ const LOCATION_CLASSIFICATION_URL = "http://hl7.org/fhir/StructureDefinition/sub
 
 /**
  * Convert HL7v2 DTM to FHIR dateTime
+ * HL7v2 format: YYYY[MM[DD[HH[MM[SS[.S[S[S[S]]]]]]]]][+/-ZZZZ]
+ * FHIR requires timezone when time is present
  */
 function convertDTMToDateTime(dtm: string | undefined): string | undefined {
   if (!dtm) return undefined;
 
-  const year = dtm.substring(0, 4);
-  const month = dtm.substring(4, 6);
-  const day = dtm.substring(6, 8);
-  const hour = dtm.substring(8, 10);
-  const minute = dtm.substring(10, 12);
-  const second = dtm.substring(12, 14);
+  // Extract timezone if present (+/-ZZZZ at the end)
+  const tzMatch = dtm.match(/([+-]\d{4})$/);
+  const timezone = tzMatch ? formatTimezone(tzMatch[1]) : "Z";
+  const dtmWithoutTz = tzMatch ? dtm.slice(0, -5) : dtm;
 
-  if (dtm.length === 4) return year;
-  if (dtm.length === 6) return `${year}-${month}`;
-  if (dtm.length === 8) return `${year}-${month}-${day}`;
-  if (dtm.length >= 12) {
+  const year = dtmWithoutTz.substring(0, 4);
+  const month = dtmWithoutTz.substring(4, 6);
+  const day = dtmWithoutTz.substring(6, 8);
+  const hour = dtmWithoutTz.substring(8, 10);
+  const minute = dtmWithoutTz.substring(10, 12);
+  const second = dtmWithoutTz.substring(12, 14);
+
+  // Date-only formats don't need timezone
+  if (dtmWithoutTz.length === 4) return year;
+  if (dtmWithoutTz.length === 6) return `${year}-${month}`;
+  if (dtmWithoutTz.length === 8) return `${year}-${month}-${day}`;
+
+  // DateTime formats require timezone
+  if (dtmWithoutTz.length >= 12) {
     const base = `${year}-${month}-${day}T${hour}:${minute}`;
-    if (dtm.length >= 14) return `${base}:${second}`;
-    return `${base}:00`;
+    if (dtmWithoutTz.length >= 14) return `${base}:${second}${timezone}`;
+    return `${base}:00${timezone}`;
   }
 
   return dtm;
+}
+
+/**
+ * Format HL7 timezone (+/-ZZZZ) to ISO format (+/-HH:MM)
+ */
+function formatTimezone(tz: string): string {
+  const sign = tz[0];
+  const hours = tz.substring(1, 3);
+  const minutes = tz.substring(3, 5);
+  return `${sign}${hours}:${minutes}`;
 }
 
 /**

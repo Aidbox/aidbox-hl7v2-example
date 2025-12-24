@@ -56,6 +56,20 @@
         "min": 0,
         "max": "1",
         "type": [{ "code": "string" }]
+      },
+      {
+        "id": "IncomingHL7v2Message.error",
+        "path": "IncomingHL7v2Message.error",
+        "min": 0,
+        "max": "1",
+        "type": [{ "code": "string" }]
+      },
+      {
+        "id": "IncomingHL7v2Message.bundle",
+        "path": "IncomingHL7v2Message.bundle",
+        "min": 0,
+        "max": "1",
+        "type": [{ "code": "string" }]
       }
     ]
   }

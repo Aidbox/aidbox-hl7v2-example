@@ -86,17 +86,19 @@ function extractPatientId(bundle: Bundle): string | undefined {
 
 /**
  * Update IncomingHL7v2Message status
- * Optionally links to created Patient resource
+ * Optionally links to created Patient resource, stores error message and bundle
  */
 async function updateMessageStatus(
   message: IncomingHL7v2Message,
   status: "processed" | "error",
-  patientId?: string
+  options?: { patientId?: string; error?: string; bundle?: Bundle }
 ): Promise<void> {
   const updated: IncomingHL7v2Message = {
     ...message,
     status,
-    patient: patientId ? { reference: `Patient/${patientId}` } : message.patient,
+    patient: options?.patientId ? { reference: `Patient/${options.patientId}` } : message.patient,
+    error: options?.error,
+    bundle: options?.bundle ? JSON.stringify(options.bundle, null, 2) : undefined,
   };
 
   await putResource<IncomingHL7v2Message>(
@@ -121,9 +123,11 @@ export async function processNextMessage(): Promise<boolean> {
     return false;
   }
 
+  let bundle: Bundle | undefined;
+
   try {
     // Convert HL7v2 to FHIR
-    const bundle = convertMessage(message);
+    bundle = convertMessage(message);
 
     // Submit to Aidbox as transaction
     await submitBundle(bundle);
@@ -132,13 +136,14 @@ export async function processNextMessage(): Promise<boolean> {
     const patientId = extractPatientId(bundle);
 
     // Update status to processed
-    await updateMessageStatus(message, "processed", patientId);
+    await updateMessageStatus(message, "processed", { patientId, bundle });
 
     return true;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     // Update status to error (best effort - don't fail if update fails)
     try {
-      await updateMessageStatus(message, "error");
+      await updateMessageStatus(message, "error", { error: errorMessage, bundle });
     } catch (updateError) {
       console.error("Failed to update message status:", updateError);
     }
@@ -170,6 +175,7 @@ export function createIncomingHL7v2MessageProcessorService(options: {
     if (!running) return;
 
     let currentMessage: IncomingHL7v2Message | null = null;
+    let bundle: Bundle | undefined;
 
     try {
       currentMessage = await pollReceivedMessage();
@@ -182,22 +188,23 @@ export function createIncomingHL7v2MessageProcessorService(options: {
       }
 
       // Process the message
-      const bundle = convertMessage(currentMessage);
+      bundle = convertMessage(currentMessage);
       await submitBundle(bundle);
       const patientId = extractPatientId(bundle);
-      await updateMessageStatus(currentMessage, "processed", patientId);
+      await updateMessageStatus(currentMessage, "processed", { patientId, bundle });
 
       options.onProcessed?.(currentMessage, patientId);
 
       // Message processed successfully, poll immediately for next
       setImmediate(poll);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       options.onError?.(error as Error, currentMessage ?? undefined);
 
       // Update status to error if we have the message
       if (currentMessage) {
         try {
-          await updateMessageStatus(currentMessage, "error");
+          await updateMessageStatus(currentMessage, "error", { error: errorMessage, bundle });
         } catch (updateError) {
           console.error("Failed to update message status:", updateError);
         }
