@@ -141,7 +141,7 @@ function renderLayout(title: string, nav: string, content: string): string {
   <style>
     ${getHighlightStyles()}
 
-    /* Permanent tooltips for HL7 messages */
+    /* Custom tooltips for HL7 messages (show on hover like title) */
     .hl7-message-container .hl7-field-wrap,
     .hl7-message-container .hl7-field {
       position: relative;
@@ -154,25 +154,23 @@ function renderLayout(title: string, nav: string, content: string): string {
       top: 100%;
       background: #1e293b;
       color: #f8fafc;
-      padding: 2px 6px;
+      padding: 4px 8px;
       border-radius: 4px;
-      font-size: 10px;
+      font-size: 11px;
       white-space: nowrap;
-      z-index: 10;
-      opacity: 0.95;
+      z-index: 100;
       pointer-events: none;
-      margin-top: 2px;
+      margin-top: 4px;
       font-weight: normal;
-      max-width: 300px;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s, visibility 0.15s;
     }
     .hl7-message-container .hl7-field-wrap:hover::after,
     .hl7-message-container .hl7-field:hover::after {
-      background: #3b82f6;
-    }
-    .hl7-message-container {
-      line-height: 4;
+      opacity: 1;
+      visibility: visible;
     }
   </style>
 </head>
