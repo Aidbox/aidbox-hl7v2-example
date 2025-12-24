@@ -1,12 +1,207 @@
 {
-  "type": "batch",
+  "type": "transaction",
   "resourceType": "Bundle",
   "entry": [
     {
-      "request": {
-        "method": "POST",
-        "url": "/$sql"
-      },
+      "request": { "method": "PUT", "url": "StructureDefinition/IncomingHL7v2Message" },
+      "resource": {
+        "resourceType": "StructureDefinition",
+        "id": "IncomingHL7v2Message",
+        "url": "http://example.org/StructureDefinition/IncomingHL7v2Message",
+        "name": "IncomingHL7v2Message",
+        "type": "IncomingHL7v2Message",
+        "status": "active",
+        "kind": "resource",
+        "abstract": false,
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+        "derivation": "specialization",
+        "differential": {
+          "element": [
+            { "id": "IncomingHL7v2Message", "path": "IncomingHL7v2Message", "min": 0, "max": "*" },
+            { "id": "IncomingHL7v2Message.type", "path": "IncomingHL7v2Message.type", "min": 1, "max": "1", "type": [{ "code": "string" }] },
+            { "id": "IncomingHL7v2Message.date", "path": "IncomingHL7v2Message.date", "min": 0, "max": "1", "type": [{ "code": "dateTime" }] },
+            { "id": "IncomingHL7v2Message.patient", "path": "IncomingHL7v2Message.patient", "min": 0, "max": "1", "type": [{ "code": "Reference", "targetProfile": ["http://hl7.org/fhir/StructureDefinition/Patient"] }] },
+            { "id": "IncomingHL7v2Message.message", "path": "IncomingHL7v2Message.message", "min": 1, "max": "1", "type": [{ "code": "string" }] },
+            { "id": "IncomingHL7v2Message.status", "path": "IncomingHL7v2Message.status", "min": 0, "max": "1", "type": [{ "code": "string" }] },
+            { "id": "IncomingHL7v2Message.error", "path": "IncomingHL7v2Message.error", "min": 0, "max": "1", "type": [{ "code": "string" }] },
+            { "id": "IncomingHL7v2Message.bundle", "path": "IncomingHL7v2Message.bundle", "min": 0, "max": "1", "type": [{ "code": "string" }] }
+          ]
+        }
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "StructureDefinition/OutgoingBarMessage" },
+      "resource": {
+        "resourceType": "StructureDefinition",
+        "id": "OutgoingBarMessage",
+        "url": "http://example.org/StructureDefinition/OutgoingBarMessage",
+        "name": "OutgoingBarMessage",
+        "type": "OutgoingBarMessage",
+        "status": "active",
+        "kind": "resource",
+        "abstract": false,
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+        "derivation": "specialization",
+        "differential": {
+          "element": [
+            { "id": "OutgoingBarMessage", "path": "OutgoingBarMessage", "min": 0, "max": "*" },
+            { "id": "OutgoingBarMessage.patient", "path": "OutgoingBarMessage.patient", "min": 1, "max": "1", "type": [{ "code": "Reference", "targetProfile": ["http://hl7.org/fhir/StructureDefinition/Patient"] }] },
+            { "id": "OutgoingBarMessage.invoice", "path": "OutgoingBarMessage.invoice", "min": 1, "max": "1", "type": [{ "code": "Reference", "targetProfile": ["http://hl7.org/fhir/StructureDefinition/Invoice"] }] },
+            { "id": "OutgoingBarMessage.status", "path": "OutgoingBarMessage.status", "min": 1, "max": "1", "type": [{ "code": "string" }] },
+            { "id": "OutgoingBarMessage.hl7v2", "path": "OutgoingBarMessage.hl7v2", "min": 0, "max": "1", "type": [{ "code": "string" }] }
+          ]
+        }
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "StructureDefinition/invoice-processing-status" },
+      "resource": {
+        "resourceType": "StructureDefinition",
+        "id": "invoice-processing-status",
+        "url": "http://example.org/invoice-processing-status",
+        "name": "InvoiceProcessingStatus",
+        "title": "Invoice Processing Status",
+        "status": "active",
+        "kind": "complex-type",
+        "abstract": false,
+        "context": [{ "type": "element", "expression": "Invoice" }],
+        "type": "Extension",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+        "derivation": "constraint",
+        "differential": {
+          "element": [
+            { "id": "Extension", "path": "Extension", "short": "Invoice processing status for BAR message generation", "definition": "Tracks the processing status of an Invoice through the BAR message generation and sending pipeline." },
+            { "id": "Extension.url", "path": "Extension.url", "fixedUri": "http://example.org/invoice-processing-status" },
+            { "id": "Extension.value[x]", "path": "Extension.value[x]", "min": 1, "type": [{ "code": "code" }] }
+          ]
+        }
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "StructureDefinition/invoice-processing-retry-count" },
+      "resource": {
+        "resourceType": "StructureDefinition",
+        "id": "invoice-processing-retry-count",
+        "url": "http://example.org/invoice-processing-retry-count",
+        "name": "InvoiceProcessingRetryCount",
+        "title": "Invoice Processing Retry Count",
+        "status": "active",
+        "kind": "complex-type",
+        "abstract": false,
+        "context": [{ "type": "element", "expression": "Invoice" }],
+        "type": "Extension",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+        "derivation": "constraint",
+        "differential": {
+          "element": [
+            { "id": "Extension", "path": "Extension", "short": "Number of processing retry attempts", "definition": "Tracks how many times the Invoice processing has been retried after failures." },
+            { "id": "Extension.url", "path": "Extension.url", "fixedUri": "http://example.org/invoice-processing-retry-count" },
+            { "id": "Extension.value[x]", "path": "Extension.value[x]", "min": 1, "type": [{ "code": "integer" }] }
+          ]
+        }
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "StructureDefinition/invoice-processing-error-reason" },
+      "resource": {
+        "resourceType": "StructureDefinition",
+        "id": "invoice-processing-error-reason",
+        "url": "http://example.org/invoice-processing-error-reason",
+        "name": "InvoiceProcessingErrorReason",
+        "title": "Invoice Processing Error Reason",
+        "status": "active",
+        "kind": "complex-type",
+        "abstract": false,
+        "context": [{ "type": "element", "expression": "Invoice" }],
+        "type": "Extension",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+        "derivation": "constraint",
+        "differential": {
+          "element": [
+            { "id": "Extension", "path": "Extension", "short": "Reason for Invoice processing failure", "definition": "Describes the reason why Invoice processing failed or was cancelled." },
+            { "id": "Extension.url", "path": "Extension.url", "fixedUri": "http://example.org/invoice-processing-error-reason" },
+            { "id": "Extension.value[x]", "path": "Extension.value[x]", "min": 1, "type": [{ "code": "string" }] }
+          ]
+        }
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "SearchParameter/IncomingHL7v2Message-status" },
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "IncomingHL7v2Message-status",
+        "url": "http://example.org/SearchParameter/IncomingHL7v2Message-status",
+        "name": "status",
+        "status": "active",
+        "description": "Search IncomingHL7v2Message by status",
+        "code": "status",
+        "base": ["IncomingHL7v2Message"],
+        "type": "string",
+        "expression": "IncomingHL7v2Message.status"
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "SearchParameter/IncomingHL7v2Message-type" },
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "IncomingHL7v2Message-type",
+        "url": "http://example.org/SearchParameter/IncomingHL7v2Message-type",
+        "name": "type",
+        "status": "active",
+        "description": "Search IncomingHL7v2Message by type",
+        "code": "type",
+        "base": ["IncomingHL7v2Message"],
+        "type": "string",
+        "expression": "IncomingHL7v2Message.type"
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "SearchParameter/OutgoingBarMessage-status" },
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "OutgoingBarMessage-status",
+        "url": "http://example.org/SearchParameter/OutgoingBarMessage-status",
+        "name": "status",
+        "status": "active",
+        "description": "Search OutgoingBarMessage by status",
+        "code": "status",
+        "base": ["OutgoingBarMessage"],
+        "type": "string",
+        "expression": "OutgoingBarMessage.status"
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "SearchParameter/Invoice-processing-status" },
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Invoice-processing-status",
+        "url": "http://example.org/SearchParameter/Invoice-processing-status",
+        "name": "processing-status",
+        "status": "active",
+        "description": "Search Invoice by processing status extension",
+        "code": "processing-status",
+        "base": ["Invoice"],
+        "type": "token",
+        "expression": "Invoice.extension.where(url='http://example.org/invoice-processing-status').value.as(code)"
+      }
+    },
+    {
+      "request": { "method": "PUT", "url": "SearchParameter/Invoice-retry-count" },
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Invoice-retry-count",
+        "url": "http://example.org/SearchParameter/Invoice-retry-count",
+        "name": "retry-count",
+        "status": "active",
+        "description": "Search Invoice by processing retry count extension",
+        "code": "retry-count",
+        "base": ["Invoice"],
+        "type": "number",
+        "expression": "Invoice.extension.where(url='http://example.org/invoice-processing-retry-count').value.as(integer)"
+      }
+    },
+    {
+      "request": { "method": "POST", "url": "/$sql" },
       "resource": "CREATE INDEX IF NOT EXISTS invoice_pending_ts_idx ON invoice (ts ASC) WHERE resource @> '{\"extension\": [{\"url\": \"http://example.org/invoice-processing-status\", \"value\": {\"code\": \"pending\"}}]}'"
     }
   ]
