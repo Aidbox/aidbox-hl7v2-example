@@ -138,7 +138,46 @@ function renderLayout(title: string, nav: string, content: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>${getHighlightStyles()}</style>
+  <style>
+    ${getHighlightStyles()}
+
+    /* Permanent tooltips for HL7 messages */
+    .hl7-tooltips-visible .hl7-field-wrap,
+    .hl7-tooltips-visible .hl7-field {
+      position: relative;
+    }
+    .hl7-tooltips-visible .hl7-field-wrap::after,
+    .hl7-tooltips-visible .hl7-field::after {
+      content: attr(title);
+      position: absolute;
+      left: 0;
+      top: 100%;
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      white-space: nowrap;
+      z-index: 10;
+      opacity: 0.95;
+      pointer-events: none;
+      margin-top: 2px;
+      font-weight: normal;
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hl7-tooltips-visible .hl7-field-wrap:hover::after,
+    .hl7-tooltips-visible .hl7-field:hover::after {
+      background: #3b82f6;
+    }
+    .hl7-message-container {
+      line-height: 2.5;
+    }
+    .hl7-tooltips-visible .hl7-message-container {
+      line-height: 4;
+    }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
   ${nav}
@@ -456,7 +495,14 @@ function renderMessageList(items: MessageListItem[]): string {
               <div class="mt-2 p-3 bg-red-50 border border-red-200 rounded font-mono text-xs overflow-x-auto whitespace-pre">${escapeHtml(formatError(item.error))}</div>
             </details>
           ` : ''}
-          <div class="p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${highlightHL7Message(item.hl7Message)}</div>
+          <div class="hl7-wrapper mb-3">
+            <div class="flex justify-end mb-2">
+              <button type="button" class="hl7-tooltip-toggle px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded" onclick="this.closest('.hl7-wrapper').classList.toggle('hl7-tooltips-visible')">
+                Toggle Field Labels
+              </button>
+            </div>
+            <div class="hl7-message-container p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${highlightHL7Message(item.hl7Message)}</div>
+          </div>
           ${item.bundle ? `
             <details class="mt-3">
               <summary class="cursor-pointer text-sm text-gray-600 hover:text-gray-800">FHIR Bundle</summary>
