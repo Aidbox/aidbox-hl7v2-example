@@ -142,12 +142,12 @@ function renderLayout(title: string, nav: string, content: string): string {
     ${getHighlightStyles()}
 
     /* Permanent tooltips for HL7 messages */
-    .hl7-tooltips-visible .hl7-field-wrap,
-    .hl7-tooltips-visible .hl7-field {
+    .hl7-message-container .hl7-field-wrap,
+    .hl7-message-container .hl7-field {
       position: relative;
     }
-    .hl7-tooltips-visible .hl7-field-wrap::after,
-    .hl7-tooltips-visible .hl7-field::after {
+    .hl7-message-container .hl7-field-wrap::after,
+    .hl7-message-container .hl7-field::after {
       content: attr(title);
       position: absolute;
       left: 0;
@@ -167,14 +167,11 @@ function renderLayout(title: string, nav: string, content: string): string {
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .hl7-tooltips-visible .hl7-field-wrap:hover::after,
-    .hl7-tooltips-visible .hl7-field:hover::after {
+    .hl7-message-container .hl7-field-wrap:hover::after,
+    .hl7-message-container .hl7-field:hover::after {
       background: #3b82f6;
     }
     .hl7-message-container {
-      line-height: 2.5;
-    }
-    .hl7-tooltips-visible .hl7-message-container {
       line-height: 4;
     }
   </style>
@@ -495,14 +492,7 @@ function renderMessageList(items: MessageListItem[]): string {
               <div class="mt-2 p-3 bg-red-50 border border-red-200 rounded font-mono text-xs overflow-x-auto whitespace-pre">${escapeHtml(formatError(item.error))}</div>
             </details>
           ` : ''}
-          <div class="hl7-wrapper mb-3">
-            <div class="flex justify-end mb-2">
-              <button type="button" class="hl7-tooltip-toggle px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded" onclick="this.closest('.hl7-wrapper').classList.toggle('hl7-tooltips-visible')">
-                Toggle Field Labels
-              </button>
-            </div>
-            <div class="hl7-message-container p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${highlightHL7Message(item.hl7Message)}</div>
-          </div>
+          <div class="hl7-message-container p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${highlightHL7Message(item.hl7Message)}</div>
           ${item.bundle ? `
             <details class="mt-3">
               <summary class="cursor-pointer text-sm text-gray-600 hover:text-gray-800">FHIR Bundle</summary>
