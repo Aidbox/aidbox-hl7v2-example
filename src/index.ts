@@ -583,8 +583,12 @@ interface MLLPClientState {
 function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port: 2575, message: "" }): string {
   const sampleMessages = [
     {
-      name: "ADT^A01 (Admit)",
+      name: "ADT^A01 (Simple)",
       message: `MSH|^~\\&|SENDING_APP|SENDING_FAC|RECEIVING_APP|RECEIVING_FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ADT^A01|MSG${Date.now()}|P|2.4\rEVN|A01|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rPID|1||12345^^^HOSPITAL^MR||Smith^John^A||19800101|M|||123 Main St^^Anytown^CA^12345||555-555-5555\rPV1|1|I|ICU^101^A|E|||12345^Jones^Mary^A|||MED||||1|||12345^Jones^Mary^A|IN||||||||||||||||||||||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}`,
+    },
+    {
+      name: "ADT^A01 (Full)",
+      message: `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ADT^A01^ADT_A01|MSG${Date.now()}|P|2.5.1|||AL|AL\rEVN|A01|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}|||OPERATOR\rPID|1||P12345^^^HOSPITAL^MR||Smith^John^Robert||19850315|M|||123 Main St^^Anytown^CA^12345^USA||^PRN^PH^^1^555^1234567|^WPN^PH^^1^555^9876543||M||P12345\rPV1|1|I|WARD1^ROOM1^BED1||||123^ATTENDING^DOCTOR|||MED||||ADM|||||VN001|||||||||||||||||||||||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rNK1|1|Smith^Jane||456 Oak St^^Othertown^CA^54321^USA|^PRN^PH^^1^555^5551234||||||||||||||||||||||||||||||||\rDG1|1||I10^Essential Hypertension^ICD10||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 8)}|||||||||||001^PHYSICIAN^DIAGNOSING\rAL1|1|DA|PCN^Penicillin^RXNORM|SV|Rash||\rIN1|1|BCBS^Blue Cross Blue Shield|||Blue Cross|||GRP001|Blue Cross Group||20230101|20231231||HMO||18|SEL||||||||||||||POL123`,
     },
     {
       name: "ADT^A08 (Update)",
