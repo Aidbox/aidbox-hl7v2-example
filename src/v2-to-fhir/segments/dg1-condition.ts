@@ -120,6 +120,19 @@ export function convertDG1ToCondition(dg1: DG1): Omit<Condition, "subject"> & { 
   }
 
   // =========================================================================
+  // Clinical Status (default to active)
+  // =========================================================================
+
+  condition.clinicalStatus = {
+    coding: [
+      {
+        system: "http://terminology.hl7.org/CodeSystem/condition-clinical",
+        code: "active",
+      },
+    ],
+  };
+
+  // =========================================================================
   // Onset
   // =========================================================================
 

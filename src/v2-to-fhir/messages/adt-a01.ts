@@ -51,7 +51,7 @@ import { convertIN1ToCoverage } from "../segments/in1-coverage";
 
 function findSegment(
   message: HL7v2Message,
-  name: string
+  name: string,
 ): HL7v2Segment | undefined {
   return message.find((s) => s.segment === name);
 }
@@ -100,7 +100,7 @@ function extractMetaTags(msh: MSH): Coding[] {
  */
 function createBundleEntry(
   resource: Resource,
-  method: "PUT" | "POST" = "PUT"
+  method: "PUT" | "POST" = "PUT",
 ): BundleEntry {
   const resourceType = resource.resourceType;
   const id = (resource as { id?: string }).id;
@@ -112,6 +112,86 @@ function createBundleEntry(
       url: id ? `/${resourceType}/${id}` : `/${resourceType}`,
     },
   };
+}
+
+/**
+ * Convert string to kebab-case
+ * "Essential Hypertension" → "essential-hypertension"
+ */
+function toKebabCase(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "") // Remove special chars
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Collapse multiple hyphens
+    .replace(/^-|-$/g, ""); // Trim leading/trailing hyphens
+}
+
+/**
+ * Deduplicate DG1 segments by diagnosis code+display
+ * When duplicates exist, keep the one with lowest priority (1 < 2 < 3...)
+ * Null priorities are ranked last
+ */
+function prepareDG1ForExtraction(segments: HL7v2Segment[]): HL7v2Segment[] {
+  // Group segments by diagnosis key (code|display)
+  const grouped = new Map<
+    string,
+    { segment: HL7v2Segment; priority: number | null }[]
+  >();
+
+  for (const segment of segments) {
+    const dg1 = fromDG1(segment);
+
+    // Parse priority from DG1.15
+    const priorityStr = dg1.$15_diagnosisPriority;
+    const priority = priorityStr ? parseInt(priorityStr, 10) : null;
+    const validPriority =
+      priority && !isNaN(priority) && priority > 0 ? priority : null;
+
+    // Generate diagnosis key from code + display (or description)
+    const code = dg1.$3_diagnosisCodeDg1?.$1_code || "";
+    const display =
+      dg1.$3_diagnosisCodeDg1?.$2_text || dg1.$4_diagnosisDescription || "";
+    const key = `${code}|${display}`;
+
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+    grouped.get(key)!.push({ segment, priority: validPriority });
+  }
+
+  // For each group, select the one with lowest priority
+  const deduplicated: HL7v2Segment[] = [];
+  for (const items of grouped.values()) {
+    // Sort by priority: null last, then ascending (1 < 2 < 3)
+    items.sort((a, b) => {
+      if (a.priority === null && b.priority === null) return 0;
+      if (a.priority === null) return 1; // null ranks last
+      if (b.priority === null) return -1;
+      return a.priority - b.priority; // ascending
+    });
+
+    deduplicated.push(items[0].segment);
+  }
+
+  return deduplicated;
+}
+
+/**
+ * Generate composite condition ID
+ * Format: {encounterId}-{kebab-case-name}
+ * Encounter ID is mandatory for ADT_A01
+ */
+function generateConditionId(dg1: DG1, encounterId: string): string {
+  // Extract condition name (prefer description, then display, then code)
+  const conditionName =
+    dg1.$4_diagnosisDescription ||
+    dg1.$3_diagnosisCodeDg1?.$2_text ||
+    dg1.$3_diagnosisCodeDg1?.$1_code ||
+    "condition";
+
+  const kebabName = toKebabCase(conditionName);
+  return `${encounterId}-${kebabName}`;
 }
 
 // ============================================================================
@@ -186,9 +266,7 @@ export function convertADT_A01(message: string): Bundle {
     }
   }
 
-  const patientRef = patient.id
-    ? `Patient/${patient.id}`
-    : "Patient/unknown";
+  const patientRef = patient.id ? `Patient/${patient.id}` : "Patient/unknown";
 
   // =========================================================================
   // Extract PV1 -> Encounter
@@ -199,7 +277,9 @@ export function convertADT_A01(message: string): Bundle {
   if (pv1Segment) {
     const pv1 = fromPV1(pv1Segment);
     encounter = convertPV1ToEncounter(pv1);
-    (encounter as { subject: { reference?: string } }).subject = { reference: patientRef };
+    (encounter as { subject: { reference?: string } }).subject = {
+      reference: patientRef,
+    };
 
     // Generate encounter ID
     if (pv1.$19_visitNumber?.$1_value) {
@@ -209,9 +289,7 @@ export function convertADT_A01(message: string): Bundle {
     }
   }
 
-  const encounterRef = encounter?.id
-    ? `Encounter/${encounter.id}`
-    : undefined;
+  const encounterRef = encounter?.id ? `Encounter/${encounter.id}` : undefined;
 
   // =========================================================================
   // Extract NK1[] -> RelatedPerson[]
@@ -223,29 +301,37 @@ export function convertADT_A01(message: string): Bundle {
   for (let i = 0; i < nk1Segments.length; i++) {
     const nk1 = fromNK1(nk1Segments[i]!);
     const relatedPerson = convertNK1ToRelatedPerson(nk1) as RelatedPerson;
-    relatedPerson.patient = { reference: patientRef } as RelatedPerson["patient"];
+    relatedPerson.patient = {
+      reference: patientRef,
+    } as RelatedPerson["patient"];
     relatedPerson.id = generateId("related-person", i + 1, messageControlId);
     relatedPersons.push(relatedPerson);
   }
 
   // =========================================================================
-  // Extract DG1[] -> Condition[]
+  // Extract DG1[] -> Condition[] (with deduplication)
   // =========================================================================
 
   const conditions: Condition[] = [];
   const dg1Segments = findAllSegments(parsed, "DG1");
 
-  for (let i = 0; i < dg1Segments.length; i++) {
-    const dg1 = fromDG1(dg1Segments[i]!);
+  // Deduplicate by diagnosis code+display, keeping lowest priority
+  const deduplicatedDG1 = prepareDG1ForExtraction(dg1Segments);
+
+  for (let i = 0; i < deduplicatedDG1.length; i++) {
+    const dg1 = fromDG1(deduplicatedDG1[i]!);
     const condition = convertDG1ToCondition(dg1) as Condition;
     condition.subject = { reference: patientRef } as Condition["subject"];
 
     // Link to encounter if available
     if (encounterRef) {
-      condition.encounter = { reference: encounterRef } as Condition["encounter"];
+      condition.encounter = {
+        reference: encounterRef,
+      } as Condition["encounter"];
     }
 
-    condition.id = generateId("condition", i + 1, messageControlId);
+    // Generate composite ID (encounter.id is mandatory for ADT_A01)
+    condition.id = generateConditionId(dg1, encounter!.id!);
     conditions.push(condition);
   }
 
@@ -259,11 +345,15 @@ export function convertADT_A01(message: string): Bundle {
   for (let i = 0; i < al1Segments.length; i++) {
     const al1 = fromAL1(al1Segments[i]!);
     const allergy = convertAL1ToAllergyIntolerance(al1) as AllergyIntolerance;
-    allergy.patient = { reference: patientRef } as AllergyIntolerance["patient"];
+    allergy.patient = {
+      reference: patientRef,
+    } as AllergyIntolerance["patient"];
 
     // Link to encounter if available
     if (encounterRef) {
-      allergy.encounter = { reference: encounterRef } as AllergyIntolerance["encounter"];
+      allergy.encounter = {
+        reference: encounterRef,
+      } as AllergyIntolerance["encounter"];
     }
 
     allergy.id = generateId("allergy", i + 1, messageControlId);

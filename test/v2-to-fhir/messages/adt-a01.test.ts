@@ -299,6 +299,7 @@ NK1|2|Doe^Mary||||||||||||||||||||||||||||||||||`;
     test("handles multiple DG1 segments", () => {
       const messageWithMultipleDG1 = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG003|P|2.5.1
 PID|1||P54321^^^HOSPITAL^MR||Doe^Jane
+PV1|1|I|WARD1||||||||||||||||VN003
 DG1|1||I10^Hypertension^ICD10
 DG1|2||E11^Diabetes^ICD10`;
 
@@ -363,6 +364,130 @@ PID|1||P99999^^^HOSPITAL^MR||Minimal^Patient`;
       // Bundle should still have patient entry
       expect(bundle.entry).toHaveLength(1);
       expect(bundle.entry![0].resource?.resourceType).toBe("Patient");
+    });
+  });
+
+  describe("Condition deduplication and composite IDs", () => {
+    test("deduplicates identical diagnoses, keeps lowest priority", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+PV1|1|I|WARD1||||||||||||||||VN001
+DG1|1||I10^Essential Hypertension^ICD10||||||||||2
+DG1|2||I10^Essential Hypertension^ICD10||||||||||1`;
+
+      const bundle = convertADT_A01(message);
+      const conditions = bundle.entry!.filter(e => e.resource?.resourceType === "Condition");
+
+      expect(conditions).toHaveLength(1); // Deduplicated
+    });
+
+    test("generates composite ID with encounter reference", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+PV1|1|I|WARD1||||||||||||||||VN001
+DG1|1||I10^Essential Hypertension^ICD10||||||||||1`;
+
+      const bundle = convertADT_A01(message);
+      const condition = bundle.entry!.find(e => e.resource?.resourceType === "Condition")?.resource as Condition;
+
+      expect(condition.id).toBe("VN001-essential-hypertension");
+    });
+
+    test("uses diagnosis description for ID when available", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+PV1|1|I|WARD1||||||||||||||||VN001
+DG1|1||I10^HTN^ICD10|Essential Primary Hypertension|||||||||1`;
+
+      const bundle = convertADT_A01(message);
+      const condition = bundle.entry!.find(e => e.resource?.resourceType === "Condition")?.resource as Condition;
+
+      expect(condition.id).toBe("VN001-essential-primary-hypertension");
+    });
+
+    test("requires encounter for condition ID generation", () => {
+      // ADT_A01 requires PV1 segment, so encounter ID is always present
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+PV1|1|I|WARD1||||||||||||||||VN001
+DG1|1||I10^Essential Hypertension^ICD10||||||||||1`;
+
+      const bundle = convertADT_A01(message);
+      const condition = bundle.entry!.find(e => e.resource?.resourceType === "Condition")?.resource as Condition;
+
+      expect(condition.id).toBe("VN001-essential-hypertension");
+      expect(condition.encounter?.reference).toBe("Encounter/VN001");
+    });
+
+    test("keeps different diagnoses with same code but different display", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+PV1|1|I|WARD1||||||||||||||||VN001
+DG1|1||I10^Essential Hypertension^ICD10||||||||||1
+DG1|2||I10^Secondary Hypertension^ICD10||||||||||2`;
+
+      const bundle = convertADT_A01(message);
+      const conditions = bundle.entry!.filter(e => e.resource?.resourceType === "Condition");
+
+      expect(conditions).toHaveLength(2);
+      expect(conditions.map(c => (c.resource as Condition).id).sort()).toEqual([
+        "VN001-essential-hypertension",
+        "VN001-secondary-hypertension"
+      ]);
+    });
+
+    test("handles duplicates with no priority - keeps first", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+PV1|1|I|WARD1||||||||||||||||VN001
+DG1|1||I10^Hypertension^ICD10
+DG1|2||I10^Hypertension^ICD10`;
+
+      const bundle = convertADT_A01(message);
+      const conditions = bundle.entry!.filter(e => e.resource?.resourceType === "Condition");
+
+      expect(conditions).toHaveLength(1);
+    });
+
+    test("sets clinicalStatus to active", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+PV1|1|I|WARD1||||||||||||||||VN001
+DG1|1||I10^Hypertension^ICD10||||||||||1`;
+
+      const bundle = convertADT_A01(message);
+      const condition = bundle.entry!.find(e => e.resource?.resourceType === "Condition")?.resource as Condition;
+
+      expect(condition.clinicalStatus?.coding?.[0]?.code).toBe("active");
+      expect(condition.clinicalStatus?.coding?.[0]?.system).toBe(
+        "http://terminology.hl7.org/CodeSystem/condition-clinical"
+      );
+    });
+
+    test("handles special characters in condition names", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+PV1|1|I|WARD1||||||||||||||||VN001
+DG1|1||E11.9^Type 2 Diabetes (uncontrolled)!^ICD10||||||||||1`;
+
+      const bundle = convertADT_A01(message);
+      const condition = bundle.entry!.find(e => e.resource?.resourceType === "Condition")?.resource as Condition;
+
+      expect(condition.id).toBe("VN001-type-2-diabetes-uncontrolled");
+    });
+
+    test("priority 1 wins over priority 2 and 3", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+PV1|1|I|WARD1||||||||||||||||VN001
+DG1|1||I10^Hypertension^ICD10||||||||||3
+DG1|2||I10^Hypertension^ICD10||||||||||1
+DG1|3||I10^Hypertension^ICD10||||||||||2`;
+
+      const bundle = convertADT_A01(message);
+      const conditions = bundle.entry!.filter(e => e.resource?.resourceType === "Condition");
+
+      expect(conditions).toHaveLength(1); // Only one kept
     });
   });
 });
