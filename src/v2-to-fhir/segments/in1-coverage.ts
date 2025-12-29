@@ -61,6 +61,26 @@ function convertCEToIdentifier(ce: CE | undefined): Identifier | undefined {
   return identifier;
 }
 
+/**
+ * Determine coverage status based on expiration date
+ * If coverage has expired, return "cancelled", otherwise "active"
+ */
+function determineCoverageStatus(
+  periodEnd: string | undefined,
+): "active" | "cancelled" {
+  if (!periodEnd) return "active";
+
+  const now = new Date();
+  const endDate = new Date(periodEnd);
+
+  // If end date is in the past, coverage is cancelled
+  if (endDate < now) {
+    return "cancelled";
+  }
+
+  return "active";
+}
+
 // ============================================================================
 // Main Converter Function
 // ============================================================================
@@ -77,10 +97,17 @@ function convertCEToIdentifier(ce: CE | undefined): Identifier | undefined {
  * - IN1-17 -> relationship (Insured's Relationship To Patient)
  * - IN1-36 -> subscriberId (Policy Number)
  */
-export function convertIN1ToCoverage(in1: IN1): Omit<Coverage, "beneficiary" | "payor"> & { beneficiary: { reference?: string }; payor: { display?: string; identifier?: Identifier }[] } {
-  const coverage: Omit<Coverage, "beneficiary" | "payor"> & { beneficiary: { reference?: string }; payor: { display?: string; identifier?: Identifier }[] } = {
+export function convertIN1ToCoverage(
+  in1: IN1,
+): Omit<Coverage, "beneficiary" | "payor"> & {
+  beneficiary: { reference?: string };
+  payor: { display?: string; identifier?: Identifier }[];
+} {
+  const coverage: Omit<Coverage, "beneficiary" | "payor"> & {
+    beneficiary: { reference?: string };
+    payor: { display?: string; identifier?: Identifier }[];
+  } = {
     resourceType: "Coverage",
-    status: "active",
     beneficiary: {}, // Must be set by caller
     payor: [], // Will be populated
   };
@@ -152,6 +179,12 @@ export function convertIN1ToCoverage(in1: IN1): Omit<Coverage, "beneficiary" | "
   }
 
   // =========================================================================
+  // Status (based on expiration date)
+  // =========================================================================
+
+  coverage.status = determineCoverageStatus(periodEnd);
+
+  // =========================================================================
   // Type
   // =========================================================================
 
@@ -173,7 +206,7 @@ export function convertIN1ToCoverage(in1: IN1): Omit<Coverage, "beneficiary" | "
   // IN1-17: Insured's Relationship To Patient -> relationship
   if (in1.$17_insuredsRelationshipToPatient) {
     const relationship = convertCEToCodeableConcept(
-      in1.$17_insuredsRelationshipToPatient
+      in1.$17_insuredsRelationshipToPatient,
     );
     if (relationship) {
       coverage.relationship = relationship;
