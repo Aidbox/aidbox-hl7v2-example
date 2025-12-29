@@ -10,7 +10,7 @@ PV1|1|I|WARD1^ROOM1^BED1||||123^ATTENDING^DOCTOR|||MED||||ADM|||||VN001|||||||||
 NK1|1|Smith^Jane||456 Oak St^^Othertown^CA^54321^USA|^PRN^PH^^1^555^5551234||||||||||||||||||||||||||||||||
 DG1|1||I10^Essential Hypertension^ICD10||20231215|||||||||||001^PHYSICIAN^DIAGNOSING
 AL1|1|DA|PCN^Penicillin^RXNORM|SV|Rash||
-IN1|1|BCBS^Blue Cross Blue Shield|||Blue Cross|||GRP001|Blue Cross Group||20230101|20231231||HMO||18|SEL||||||||||||||POL123`;
+IN1|1|BCBS^Blue Cross Blue Shield||Blue Cross||123 Main St||GRP001|Blue Cross Group|||20230101|20231231||HMO||SEL|||||||||||||||||||POL123`;
 
 describe("convertADT_A01", () => {
   describe("bundle structure", () => {
@@ -328,8 +328,8 @@ AL1|2|FA|PEANUT^Peanuts|MO`;
     test("handles multiple IN1 segments", () => {
       const messageWithMultipleIN1 = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG005|P|2.5.1
 PID|1||P54321^^^HOSPITAL^MR||Doe^Jane
-IN1|1|BCBS|||Blue Cross|||||||||HMO
-IN1|2|AETNA|||Aetna|||||||||PPO`;
+IN1|1|BCBS||Blue Cross|||||||||HMO
+IN1|2|AETNA||Aetna|||||||||PPO`;
 
       const bundle = convertADT_A01(messageWithMultipleIN1);
       const coverages = bundle.entry!.filter(e => e.resource?.resourceType === "Coverage").map(e => e.resource as Coverage);
@@ -488,6 +488,95 @@ DG1|3||I10^Hypertension^ICD10||||||||||2`;
       const conditions = bundle.entry!.filter(e => e.resource?.resourceType === "Condition");
 
       expect(conditions).toHaveLength(1); // Only one kept
+    });
+  });
+
+  describe("Coverage composite IDs and dynamic status", () => {
+    test("generates composite ID with patient and payor identifier", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+IN1|1|BCBS^Blue Cross Blue Shield^PLAN|12345^^^BCBS`;
+
+      const bundle = convertADT_A01(message);
+      const coverage = bundle.entry!.find(e => e.resource?.resourceType === "Coverage")?.resource as Coverage;
+
+      expect(coverage.id).toBe("P12345-12345");
+    });
+
+    test("uses payor organization name for ID when no identifier", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+IN1|1|||Blue Cross Blue Shield`;
+
+      const bundle = convertADT_A01(message);
+      const coverage = bundle.entry!.find(e => e.resource?.resourceType === "Coverage")?.resource as Coverage;
+
+      expect(coverage.id).toBe("P12345-blue-cross-blue-shield");
+    });
+
+    test("sets status to active when no end date", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+IN1|1|||Blue Cross||||||||20230101`;
+
+      const bundle = convertADT_A01(message);
+      const coverage = bundle.entry!.find(e => e.resource?.resourceType === "Coverage")?.resource as Coverage;
+
+      expect(coverage.status).toBe("active");
+    });
+
+    test("sets status to active when end date is in future", () => {
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 1);
+      const futureDateStr = futureDate.toISOString().substring(0, 10).replace(/-/g, "");
+
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+IN1|1|||Blue Cross||||||||20230101|${futureDateStr}`;
+
+      const bundle = convertADT_A01(message);
+      const coverage = bundle.entry!.find(e => e.resource?.resourceType === "Coverage")?.resource as Coverage;
+
+      expect(coverage.status).toBe("active");
+      expect(coverage.period?.end).toBeDefined();
+    });
+
+    test("sets status to cancelled when end date is in past", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+IN1|1|||Blue Cross||||||||20230101|20230630`;
+
+      const bundle = convertADT_A01(message);
+      const coverage = bundle.entry!.find(e => e.resource?.resourceType === "Coverage")?.resource as Coverage;
+
+      expect(coverage.status).toBe("cancelled");
+      expect(coverage.period?.end).toBe("2023-06-30");
+    });
+
+    test("skips IN1 segments without payor information", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+IN1|1|PLAN123
+IN1|2|||Blue Cross`;
+
+      const bundle = convertADT_A01(message);
+      const coverages = bundle.entry!.filter(e => e.resource?.resourceType === "Coverage");
+
+      // Only IN1|2 should be processed (has payor name)
+      expect(coverages).toHaveLength(1);
+      expect((coverages[0].resource as Coverage).id).toBe("P12345-blue-cross");
+    });
+
+    test("processes IN1 with company ID even without name", () => {
+      const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
+PID|1||P12345^^^HOSP^MR||Smith^John
+IN1|1||BCBS123^^^SYSTEM`;
+
+      const bundle = convertADT_A01(message);
+      const coverages = bundle.entry!.filter(e => e.resource?.resourceType === "Coverage");
+
+      expect(coverages).toHaveLength(1);
+      expect((coverages[0].resource as Coverage).id).toBe("P12345-bcbs123");
     });
   });
 });
