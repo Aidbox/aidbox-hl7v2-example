@@ -209,11 +209,6 @@ function generateCoverageId(in1: IN1, patientId: string | undefined): string {
     payorId = in1.$3_insuranceCompanyId[0].$1_value;
   }
 
-  // Fallback to IN1-2 (Insurance Plan ID)
-  if (!payorId && in1.$2_insurancePlanId) {
-    payorId = in1.$2_insurancePlanId.$1_code;
-  }
-
   // Fallback to first payor organization name
   if (
     !payorId &&
