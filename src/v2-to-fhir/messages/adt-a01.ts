@@ -197,7 +197,7 @@ function generateConditionId(dg1: DG1, encounterId: string): string {
 /**
  * Generate composite coverage ID
  * Format: {patientId}-{payor-identifier}
- * Payor identifier extracted from IN1-3 or IN1-2
+ * Payor identifier extracted from IN1-3 or IN1-4
  */
 function generateCoverageId(in1: IN1, patientId: string | undefined): string {
   const prefix = patientId || "unknown";
@@ -249,6 +249,33 @@ function hasValidPayorInfo(in1: IN1): boolean {
   }
 
   return false;
+}
+
+/**
+ * Generate composite allergy ID
+ * Format: {patientId}-{kebab-case-allergen-name}
+ * Patient ID is mandatory for ADT_A01
+ */
+function generateAllergyId(al1: AL1, patientId: string | undefined): string {
+  const prefix = patientId || "unknown";
+
+  // Extract allergen name from AL1.3 (guaranteed to exist by hasValidAllergenInfo filter)
+  const allergenName =
+    al1.$3_allergenCodeMnemonicDescription?.$1_code ||
+    al1.$3_allergenCodeMnemonicDescription?.$2_text!;
+
+  return `${prefix}-${toKebabCase(allergenName)}`;
+}
+
+/**
+ * Check if AL1 segment has valid allergen information
+ * AL1.3 (Allergen Code/Mnemonic/Description) is required per HL7v2 spec
+ */
+function hasValidAllergenInfo(al1: AL1): boolean {
+  return !!(
+    al1.$3_allergenCodeMnemonicDescription?.$1_code ||
+    al1.$3_allergenCodeMnemonicDescription?.$2_text
+  );
 }
 
 // ============================================================================
@@ -393,7 +420,7 @@ export function convertADT_A01(message: string): Bundle {
   }
 
   // =========================================================================
-  // Extract AL1[] -> AllergyIntolerance[]
+  // Extract AL1[] -> AllergyIntolerance[] (with filtering)
   // =========================================================================
 
   const allergies: AllergyIntolerance[] = [];
@@ -401,6 +428,12 @@ export function convertADT_A01(message: string): Bundle {
 
   for (let i = 0; i < al1Segments.length; i++) {
     const al1 = fromAL1(al1Segments[i]!);
+
+    // Skip AL1 segments without valid allergen information
+    if (!hasValidAllergenInfo(al1)) {
+      continue;
+    }
+
     const allergy = convertAL1ToAllergyIntolerance(al1) as AllergyIntolerance;
     allergy.patient = {
       reference: patientRef,
@@ -413,7 +446,8 @@ export function convertADT_A01(message: string): Bundle {
       } as AllergyIntolerance["encounter"];
     }
 
-    allergy.id = generateId("allergy", i + 1, messageControlId);
+    // Generate composite ID
+    allergy.id = generateAllergyId(al1, patient.id);
     allergies.push(allergy);
   }
 

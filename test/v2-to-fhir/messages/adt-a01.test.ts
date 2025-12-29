@@ -215,6 +215,39 @@ describe("convertADT_A01", () => {
 
       expect(allergy.clinicalStatus?.coding?.[0]?.code).toBe("active");
     });
+
+    test("generates composite IDs for allergies", () => {
+      const bundle = convertADT_A01(sampleADT_A01);
+      const allergy = bundle.entry!.find(e => e.resource?.resourceType === "AllergyIntolerance")?.resource as AllergyIntolerance;
+
+      expect(allergy.id).toBe("P12345-pcn");
+    });
+
+    test("handles special characters in allergen names", () => {
+      const messageWithSpecialChars = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG888|P|2.5.1
+PID|1||P88888^^^HOSPITAL^MR||Test^Patient
+PV1|1|I|WARD1||||123^DOCTOR|||MED||||ADM|||||V888|||||||||||||||||||||||||||20231215
+AL1|1|DA|TEST^Penicillin (IV)^RXNORM|SV|Rash`;
+
+      const bundle = convertADT_A01(messageWithSpecialChars);
+      const allergy = bundle.entry!.find(e => e.resource?.resourceType === "AllergyIntolerance")?.resource as AllergyIntolerance;
+
+      expect(allergy.id).toBe("P88888-test");
+    });
+
+    test("skips allergies with missing allergen info", () => {
+      const messageWithInvalidAL1 = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG777|P|2.5.1
+PID|1||P77777^^^HOSPITAL^MR||Test^Patient
+PV1|1|I|WARD1||||123^DOCTOR|||MED||||ADM|||||V777|||||||||||||||||||||||||||20231215
+AL1|1|DA|||SV|Rash
+AL1|2|FA|PEANUT^Peanuts^FOOD|MO|Hives`;
+
+      const bundle = convertADT_A01(messageWithInvalidAL1);
+      const allergies = bundle.entry!.filter(e => e.resource?.resourceType === "AllergyIntolerance").map(e => e.resource as AllergyIntolerance);
+
+      expect(allergies).toHaveLength(1);
+      expect(allergies[0].code?.coding?.[0]?.code).toBe("PEANUT");
+    });
   });
 
   describe("Coverage extraction", () => {
