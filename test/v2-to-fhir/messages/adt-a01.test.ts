@@ -10,7 +10,7 @@ PV1|1|I|WARD1^ROOM1^BED1||||123^ATTENDING^DOCTOR|||MED||||ADM|||||VN001|||||||||
 NK1|1|Smith^Jane||456 Oak St^^Othertown^CA^54321^USA|^PRN^PH^^1^555^5551234||||||||||||||||||||||||||||||||
 DG1|1||I10^Essential Hypertension^ICD10||20231215|||||||||||001^PHYSICIAN^DIAGNOSING
 AL1|1|DA|PCN^Penicillin^RXNORM|SV|Rash||
-IN1|1|BCBS^Blue Cross Blue Shield||Blue Cross||123 Main St||GRP001|Blue Cross Group||20230101|20231231||HMO||18|SEL||||||||||||||POL123`;
+IN1|1|BCBS^Blue Cross Blue Shield||Blue Cross||123 Main St||GRP001|Blue Cross Group|||20230101|20231231||HMO||SEL|||||||||||||||||||POL123`;
 
 describe("convertADT_A01", () => {
   describe("bundle structure", () => {
