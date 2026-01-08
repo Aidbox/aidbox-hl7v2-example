@@ -2,72 +2,150 @@
 
 ## Goal
 
-Convert ORU_R01 messages to FHIR DiagnosticReport + Observation resources.
+Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resources.
 
 ## Key Behaviors
 
-- Patient/Encounter: lookup only, never create
-- OBX-8 interpretation: version-aware (v2.6- string, v2.7+ CWE)
-- Deterministic IDs for idempotency
-- Tag resources with message control ID
+- Patient/Encounter: lookup only, never create (hard error if not found)
 - One DiagnosticReport per OBR (no consolidation)
-- OBX without parent OBR: reject message
-- OBR without OBX: create DiagnosticReport with empty `result`
+- Deterministic IDs from OBR-3 (filler order number) for idempotency via PUT
+- Tag all resources with MSH-10 (message control ID) for audit trail
+- OBX-3 must be LOINC (error if not)
+- OBX-8 interpretation: version-aware (MSH-12: v2.6- string, v2.7+ CWE)
+- Specimen: SPM preferred (v2.5+), OBR-15 for backward compatibility
+- NTE segments (after OBR and OBX) → DiagnosticReport.conclusion
 
 ## Processing Flow
 
 1. MLLP receives ORU_R01 → `IncomingHL7v2Message` with `status=received`
-2. Validate OBX-3 codes are LOINC (error if not)
-3. Convert to FHIR:
-   - PID → Patient (lookup only)
-   - PV1 → Encounter (lookup only)
-   - OBR → DiagnosticReport
-   - OBX → Observation
-   - SPM/OBR-15 → Specimen
-   - NTE → Annotation
-4. Submit bundle, update status to `processed`
+2. Lookup Patient (PID-3) and Encounter (PV1-19) - error if not found
+3. Validate all OBX-3 codes are LOINC
+4. Convert: OBR → DiagnosticReport, OBX → Observation, SPM/OBR-15 → Specimen
+5. Submit transaction bundle, update status to `processed`
 
 ## Resource Mapping
 
-**DiagnosticReport** (from OBR):
-- `id`: `{messageControlId}-{obrSetId}`
-- `status`: OBR-25
-- `code`: OBR-4
-- `subject`: Patient ref
-- `encounter`: Encounter ref
-- `effectiveDateTime`: OBR-7
-- `issued`: OBR-22
-- `performer`: OBR-16
-- `result`: Observation refs
-- `conclusion`: all NTE texts (concatenated with newlines)
-- `conclusionCode`: NTE-2 source of comment
+### DiagnosticReport (from OBR)
 
-**Observation** (from OBX):
-- `id`: `{diagnosticReportId}-obx-{setId}`
-- `status`: OBX-11
-- `code`: OBX-3 (must be LOINC)
-- `value[x]`: OBX-5 per OBX-2 type
-- `interpretation`: OBX-8
-- `referenceRange`: OBX-7
-- `effectiveDateTime`: OBX-14
-- `performer`: OBX-16
+| FHIR field | Source | Notes |
+|------------|--------|-------|
+| id | `{OBR-3}` | Filler order number (stable across updates) |
+| status | OBR-25 | See Appendix A |
+| code | OBR-4 | |
+| subject | PID-3 | Patient lookup |
+| encounter | PV1-19 | Encounter lookup |
+| effectiveDateTime | OBR-7 | |
+| issued | OBR-22 | |
+| performer | OBR-16 | See Open Questions |
+| result | OBX refs | |
+| specimen | SPM/OBR-15 refs | |
+| conclusion | NTE-3 | All NTEs concatenated with newlines |
+| conclusionCode | NTE-2 | See Appendix C |
 
-## OBX Value Types
+### Observation (from OBX)
 
-| OBX-2 | FHIR value[x] |
-|-------|---------------|
-| NM | valueQuantity |
-| ST, TX | valueString |
-| CE, CWE | valueCodeableConcept |
-| SN | valueQuantity/Range/Ratio/String |
-| DT, TS | valueDateTime |
-| TM | valueTime |
+| FHIR field | Source | Notes |
+|------------|--------|-------|
+| id | `{OBR-3}-obx-{OBX-1}` | Deterministic |
+| status | OBX-11 | See Appendix B |
+| code | OBX-3 | Must be LOINC |
+| value[x] | OBX-5 | Type from OBX-2, see Appendix D |
+| interpretation | OBX-8 | Version-aware, see Appendix E |
+| referenceRange | OBX-7 | Parse: `10-20`, `<100`, `>5` |
+| effectiveDateTime | OBX-14 | |
+| performer | OBX-16 | See Open Questions |
+| specimen | SPM ref | |
 
-**SN parsing**: comparator → valueQuantity; range (^-^) → valueRange; ratio (^:^) → valueRatio; fallback → valueString
+### Specimen (from SPM or OBR-15)
 
-## OBX Handling
+| FHIR field | Source | Notes |
+|------------|--------|-------|
+| id | `{OBR-3}-specimen-{SPM-2 or setId}` | Deterministic |
+| type | SPM-4 or OBR-15 | SPM preferred (v2.5+) |
+| subject | PID-3 | Patient lookup |
+| collection.collectedDateTime | SPM-17 | |
+| receivedTime | SPM-18 | |
 
-**OBX-11 Observation Result Status Mapping:**
+## Error Conditions
+
+| Condition | Action |
+|-----------|--------|
+| Missing MSH | Reject message |
+| Missing OBR | Reject message |
+| Missing OBR-3 | Reject message (required for resource IDs) |
+| OBX without parent OBR | Reject message |
+| OBX-3 not LOINC | Reject message |
+| Patient not found (PID-3) | Reject message |
+| Encounter not found (PV1-19) | Reject message |
+| OBR-25 missing or Y/Z | Reject message |
+| OBX-11 missing or N | Reject message |
+| OBR without OBX | Create DiagnosticReport with empty result |
+
+## Test Scenarios
+
+**Approach**: Test-driven development. Write tests first, then implement.
+
+### Happy Path
+- Single OBR with multiple OBX → DiagnosticReport + Observations
+- Multiple OBR groups → Multiple DiagnosticReports
+- OBR without OBX → DiagnosticReport with empty result array
+
+### Version-Aware
+- v2.4 message with OBR-15 → Specimen from OBR-15
+- v2.5+ message with SPM → Specimen from SPM
+- Both SPM and OBR-15 → SPM takes precedence
+- v2.6 OBX-8 string → interpretation with Table 0078 lookup
+- v2.7+ OBX-8 CWE → interpretation from CWE fields
+
+### Value Types (OBX-2)
+- NM with OBX-6 units → valueQuantity
+- ST/TX → valueString
+- CE/CWE → valueCodeableConcept
+- SN with comparator (`<5`) → valueQuantity with comparator
+- SN with range (`10^-^20`) → valueRange
+- SN with ratio (`1^:^128`) → valueRatio
+- DT/TS → valueDateTime
+- TM → valueTime
+
+### Error Cases
+- Missing MSH → error
+- Missing OBR → error
+- Missing OBR-3 → error
+- OBX without OBR → error
+- Non-LOINC OBX-3 → error
+- Patient not found → error
+- Encounter not found → error
+
+### Idempotency
+- Same OBR-3 with different MSH-10 → resources updated (preliminary → final)
+- Same message twice (same MSH-10) → resources overwritten, no duplicates
+
+## Open Questions
+
+- **Performer handling**: Create Practitioner resources, contained resources, or display-only references?
+- **DiagnosticReport.category**: Derive from OBR-24 (Diagnostic Service Section ID)?
+- **Multiple NTE-2 values**: How to handle different source codes in conclusionCode?
+- **OBX-6 units**: Map to UCUM or pass through as-is?
+- **Missing PV1**: Error or proceed without encounter?
+- **ORC segment**: Process for ServiceRequest/order metadata?
+- **Observation.category**: Set "laboratory" based on context?
+- **Timezone handling**: Timestamps without timezone - server default or local time?
+
+---
+
+## Appendix A: OBR-25 Result Status → DiagnosticReport.status
+
+| HL7v2 | FHIR status |
+|-------|-------------|
+| O, I, S | `registered` |
+| P | `preliminary` |
+| A, R, N | `partial` |
+| C, M | `corrected` |
+| F | `final` |
+| X | `cancelled` |
+| Y, Z, (missing) | error |
+
+## Appendix B: OBX-11 Result Status → Observation.status
 
 | HL7v2 | FHIR status |
 |-------|-------------|
@@ -78,24 +156,38 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation resources.
 | A | `amended` |
 | D, W | `entered-in-error` |
 | X | `cancelled` |
-| N | error |
-| (missing) | error |
+| N, (missing) | error |
 
-**OBX-8 Interpretation (version-aware):**
+## Appendix C: NTE-2 Source of Comment (Table 0105)
 
-Version detection via MSH-12:
-- v2.6 and earlier: OBX-8 is ID (string) → look up display from Table 0078
-- v2.7+: OBX-8 is CWE → use provided display/system, fall back to Table 0078 if missing
+| Value | Description |
+|-------|-------------|
+| L | Ancillary (filler) department |
+| O | Other system |
+| P | Orderer (placer) |
 
-Mapping to `Observation.interpretation` (CodeableConcept):
-- `coding.code`: OBX-8 code (or CWE.1)
-- `coding.display`: from Table 0078 lookup (v2.6-) or CWE.2 (v2.7+)
-- `coding.system`: `http://terminology.hl7.org/CodeSystem/v2-0078`
-- `text`: display value
+## Appendix D: OBX-2 Value Type → FHIR value[x]
 
-No code validation - pass through unknown codes with system URI. Aidbox handles validation if configured.
+| OBX-2 | FHIR | Notes |
+|-------|------|-------|
+| NM | valueQuantity | Units from OBX-6 |
+| ST, TX | valueString | |
+| CE, CWE | valueCodeableConcept | |
+| SN | valueQuantity/Range/Ratio/String | Parse comparator/range/ratio |
+| DT, TS | valueDateTime | |
+| TM | valueTime | |
 
-**Table 0078 display values (common codes):**
+**SN parsing**: `<5` → valueQuantity with comparator; `10^-^20` → valueRange; `1^:^128` → valueRatio; else → valueString
+
+## Appendix E: OBX-8 Interpretation (Table 0078)
+
+**Version detection via MSH-12:**
+- v2.6 and earlier: OBX-8 is ID (string) → lookup display from table
+- v2.7+: OBX-8 is CWE → use CWE.1/CWE.2, fallback to table lookup
+
+**Mapping**: `coding.system` = `http://terminology.hl7.org/CodeSystem/v2-0078`
+
+No validation - pass through unknown codes. Common codes:
 
 | Code | Display |
 |------|---------|
@@ -106,115 +198,5 @@ No code validation - pass through unknown codes with system URI. Aidbox handles 
 | HH | Critical high |
 | L | Low |
 | LL | Critical low |
-| > | Above absolute high |
-| < | Below absolute low |
-| S | Susceptible |
-| R | Resistant |
-| I | Intermediate |
-
-## OBR Handling
-
-**OBR-25 Result Status Mapping:**
-
-| HL7v2 | FHIR status |
-|-------|-------------|
-| O, I, S | `registered` |
-| P | `preliminary` |
-| A, R, N | `partial` |
-| C, M | `corrected` |
-| F | `final` |
-| X | `cancelled` |
-| Y, Z | error |
-| (missing) | error |
-
-## NTE Handling
-
-All NTE segments (both after OBR and after OBX) map to the parent DiagnosticReport:
-- `DiagnosticReport.conclusion`: concatenate all NTE-3 (Comment) texts with newlines
-- `DiagnosticReport.conclusionCode`: from NTE-2 (Source of Comment)
-
-**NTE-2 Source of Comment (HL7 Table 0105):**
-
-| Value | Description |
-|-------|-------------|
-| L | Ancillary (filler) department is source of comment |
-| O | Other system is source of comment |
-| P | Orderer (placer) is source of comment |
-
-## Specimen Handling
-
-**Version-aware source selection:**
-- v2.5+: Use SPM segment (preferred)
-- Pre-v2.5: Use OBR-15 (Specimen Source) for backward compatibility
-- If both present: SPM takes precedence
-
-**Specimen** (from SPM or OBR-15):
-- `id`: `{messageControlId}-specimen-{setId}`
-- `type`: SPM-4 or OBR-15 component
-- `subject`: Patient ref
-- `collection.collectedDateTime`: SPM-17
-- `receivedTime`: SPM-18
-
-**References:**
-- `DiagnosticReport.specimen`: refs to Specimen resources
-- `Observation.specimen`: ref to associated Specimen
-
-## Test Cases
-
-**Approach**: Test-driven development. Write tests first, then implement to pass them.
-
-### Message Conversion
-- ORU_R01 → transaction bundle with DiagnosticReport + Observations
-- Deterministic IDs for idempotency
-- Resources tagged with message control ID
-- Multiple OBR/OBX groups handled correctly
-- NTE segments (after OBR and OBX) concatenated to DiagnosticReport.conclusion
-- Missing MSH or OBR throws error
-- OBX without parent OBR throws error
-- OBR without OBX creates DiagnosticReport with empty result array
-
-### Patient/Encounter Lookup
-- Patient resolved from PID-3 (lookup only, error if not found)
-- Encounter resolved from PV1-19 (lookup only, error if not found)
-
-### OBR → DiagnosticReport
-- OBR-4 → code
-- OBR-7 → effectiveDateTime
-- OBR-16 → performer
-- OBR-22 → issued
-- OBR-25 → status (see table above)
-- NTE-2 → conclusionCode (L/O/P mapping)
-
-### OBX → Observation
-- OBX-3 → code (must be LOINC, error if not)
-- OBX-7 → referenceRange (range parsing: `10-20`, `<100`, `>5`)
-- OBX-8 → interpretation (version-aware, see above)
-- OBX-11 → status (see table above)
-- OBX-14 → effectiveDateTime
-- OBX-16 → performer
-
-### OBX Value Types (OBX-2 → value[x])
-- NM: numeric with units from OBX-6
-- ST/TX: string/text
-- CE/CWE: coded values
-- SN: comparator, range, ratio, or fallback string
-- DT/TS: date/datetime
-- TM: time
-
-### Specimen (SPM/OBR-15 → Specimen)
-- v2.5+ message with SPM segment → Specimen from SPM
-- Pre-v2.5 message with OBR-15 → Specimen from OBR-15
-- Both SPM and OBR-15 present → SPM takes precedence
-- DiagnosticReport.specimen references created Specimen
-- Observation.specimen references associated Specimen
-
-## Open Questions
-
-- **Performer handling**: Should OBR-16/OBX-16 create Practitioner resources, use contained resources, or display-only references?
-- **DiagnosticReport.category**: Should we derive category from OBR-24 (Diagnostic Service Section ID) like LAB, RAD, PATH?
-- **Multiple NTE-2 values**: If different NTE segments have different source codes (L, O, P), how to handle conclusionCode?
-- **OBX-6 units system**: Should we map units to UCUM or pass through as-is?
-- **Missing PV1**: Is encounter optional? Error or proceed without encounter reference?
-- **ORC segment**: Should we process ORC (Common Order) for ServiceRequest or order metadata?
-- **Observation.category**: Should we set category (e.g., "laboratory") based on message context?
-- **Timezone handling**: How to handle OBX-14/OBR-7 timestamps without timezone? Use server default or leave as local time?
+| >, < | Above/Below absolute |
+| S, R, I | Susceptible/Resistant/Intermediate |
