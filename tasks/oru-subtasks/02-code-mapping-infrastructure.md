@@ -1,6 +1,6 @@
 # Code Mapping Infrastructure
 
-This document covers the code mapping workflow for handling unknown laboratory codes in ORU_R01 messages, including custom ConceptMap mappings and the LabCodeMappingTask resource.
+This document covers the code mapping workflow for handling unknown laboratory codes in ORU_R01 messages, including custom ConceptMap mappings and the FHIR Task resource.
 
 ## Overview
 
@@ -22,7 +22,7 @@ When ORU_R01 messages contain OBX segments with local codes that cannot be resol
    - ConceptMap lookup returns no match for this sender + local code
 4. Processing stops with `mapping_error` status
 5. For each unmapped code:
-   - Create or update `LabCodeMappingTask` resource (one per unique sender + code combination)
+   - Create or update a `Task` resource (one per unique sender + code combination)
    - Link the task to the affected message
 6. Update `IncomingHL7v2Message` to `status=mapping_error`, store list of unmapped codes
 
@@ -31,7 +31,7 @@ When ORU_R01 messages contain OBX segments with local codes that cannot be resol
 2. User clicks on a task to open the mapping form
 3. User searches for and selects the correct LOINC code
 4. System creates ConceptMap entry for this sender + local code
-5. System marks the LabCodeMappingTask as resolved
+5. System marks the Task as resolved
 6. System queries `GET /IncomingHL7v2Message?status=mapping_error&unmappedCodes.mappingTaskId={taskId}` to find affected messages
 7. For each affected message:
    - Remove the resolved task's entry from `unmappedCodes[]`
@@ -42,7 +42,7 @@ When ORU_R01 messages contain OBX segments with local codes that cannot be resol
 1. User navigates to "Code Mappings" page
 2. User adds a new mapping entry (sender + local code → LOINC)
 3. System creates ConceptMap entry
-4. System queries `LabCodeMappingTask` where sender + localCode matches → marks as resolved
+4. System queries `Task` where sender + localCode matches → marks as resolved
 5. For each resolved task, system finds affected messages and processes them as in Path A steps 6-7
 
 **Key Insight:** One new mapping may resolve multiple messages, but some messages may require multiple mappings before they can be reprocessed.
@@ -51,46 +51,162 @@ When ORU_R01 messages contain OBX segments with local codes that cannot be resol
 
 ## Data Model
 
-### LabCodeMappingTask (Custom Resource)
+### Task (FHIR Resource)
 
-```typescript
-interface LabCodeMappingTask {
-  resourceType: "LabCodeMappingTask";
-  id: string;                          // {senderId}-{localCode-hash}
-  status: "pending" | "resolved";
+Unresolved (requested):
 
-  // Sender identification (from MSH)
-  sendingApplication: string;          // MSH-3
-  sendingFacility: string;             // MSH-4
-
-  // Unmapped code details (from OBX-3)
-  localCode: string;                   // OBX-3.1
-  localDisplay: string;                // OBX-3.2
-  localSystem: string;                 // OBX-3.3
-
-  // Sample context for mapping assistance
-  sampleValue: string;                 // Example OBX-5 value
-  sampleUnits: string;                 // Example OBX-6 units
-  sampleReferenceRange: string;        // Example OBX-7
-
-  // Resolution
-  resolvedLoincCode?: string;          // Target LOINC code when resolved
-  resolvedLoincDisplay?: string;       // Target LOINC display
-  resolvedAt?: string;                 // DateTime of resolution
-  resolvedBy?: string;                 // User who resolved
-
-  // Tracking
-  affectedMessageCount: number;        // Count of messages waiting on this mapping
-  firstEncountered: string;            // DateTime first seen
-  lastEncountered: string;             // DateTime last seen
+```json
+{
+  "resourceType": "Task",
+  "id": "map-acme-lab-k-serum",
+  "status": "requested",
+  "intent": "order",
+  "code": {
+    "coding": [
+      {
+        "system": "http://example.org/task-codes",
+        "code": "local-to-loinc-mapping",
+        "display": "Local code to LOINC mapping"
+      }
+    ],
+    "text": "Map local lab code to LOINC"
+  },
+  "authoredOn": "2025-02-12T14:20:00Z",
+  "lastModified": "2025-02-12T14:20:00Z",
+  "requester": {
+    "display": "ORU Processor"
+  },
+  "owner": {
+    "display": "Mapping Team"
+  },
+  "focus": {
+    "reference": "IncomingHL7v2Message/imh-000045",
+    "display": "ORU_R01 message imh-000045"
+  },
+  "input": [
+    {
+      "type": { "text": "Sending application" },
+      "valueString": "ACME_LAB"
+    },
+    {
+      "type": { "text": "Sending facility" },
+      "valueString": "ACME_HOSP"
+    },
+    {
+      "type": { "text": "Local code" },
+      "valueString": "K_SERUM"
+    },
+    {
+      "type": { "text": "Local display" },
+      "valueString": "Potassium [Serum/Plasma]"
+    },
+    {
+      "type": { "text": "Local system" },
+      "valueString": "ACME-LAB-CODES"
+    },
+    {
+      "type": { "text": "Sample value" },
+      "valueString": "4.2"
+    },
+    {
+      "type": { "text": "Sample units" },
+      "valueString": "mmol/L"
+    },
+    {
+      "type": { "text": "Sample reference range" },
+      "valueString": "3.5-5.1"
+    }
+  ]
 }
 ```
 
-### SenderConceptMap (Standard FHIR ConceptMap)
+Resolved (completed):
+
+```json
+{
+  "resourceType": "Task",
+  "id": "map-acme-lab-k-serum",
+  "status": "completed",
+  "intent": "order",
+  "code": {
+    "coding": [
+      {
+        "system": "http://example.org/task-codes",
+        "code": "local-to-loinc-mapping",
+        "display": "Local code to LOINC mapping"
+      }
+    ],
+    "text": "Map local lab code to LOINC"
+  },
+  "authoredOn": "2025-02-12T14:20:00Z",
+  "lastModified": "2025-02-12T15:05:00Z",
+  "requester": {
+    "display": "ORU Processor"
+  },
+  "owner": {
+    "display": "Mapping Team"
+  },
+  "focus": {
+    "reference": "IncomingHL7v2Message/imh-000045",
+    "display": "ORU_R01 message imh-000045"
+  },
+  "input": [
+    {
+      "type": { "text": "Sending application" },
+      "valueString": "ACME_LAB"
+    },
+    {
+      "type": { "text": "Sending facility" },
+      "valueString": "ACME_HOSP"
+    },
+    {
+      "type": { "text": "Local code" },
+      "valueString": "K_SERUM"
+    },
+    {
+      "type": { "text": "Local display" },
+      "valueString": "Potassium [Serum/Plasma]"
+    },
+    {
+      "type": { "text": "Local system" },
+      "valueString": "ACME-LAB-CODES"
+    },
+    {
+      "type": { "text": "Sample value" },
+      "valueString": "4.2"
+    },
+    {
+      "type": { "text": "Sample units" },
+      "valueString": "mmol/L"
+    },
+    {
+      "type": { "text": "Sample reference range" },
+      "valueString": "3.5-5.1"
+    }
+  ],
+  "output": [
+    {
+      "type": { "text": "Resolved LOINC" },
+      "valueCodeableConcept": {
+        "coding": [
+          {
+            "system": "http://loinc.org",
+            "code": "2823-3",
+            "display": "Potassium [Moles/volume] in Serum or Plasma"
+          }
+        ],
+        "text": "Potassium [Moles/volume] in Serum or Plasma"
+      }
+    }
+  ]
+}
+```
+
+### ConceptMap (Standard FHIR ConceptMap)
 
 ```typescript
 // One ConceptMap per sender, containing all local→LOINC mappings
-interface SenderConceptMap {
+interface ConceptMap {
   resourceType: "ConceptMap";
   id: string;                          // sender-{sendingApplication}-{sendingFacility}
   name: string;                        // "Lab Code Mappings for {sender}"
@@ -133,7 +249,7 @@ interface IncomingHL7v2Message {
 
     // Aidbox reference to the mapping task
     mappingTask: {
-      resourceType: "LabCodeMappingTask";
+      resourceType: "Task";
       id: string;
     };
   }>;
@@ -151,7 +267,7 @@ src/
 │       └── loinc-resolver.ts          # Code resolution logic (imports from code-mapping services)
 ├── code-mapping/                      # Standalone module for mapping management (UI-facing)
 │   ├── concept-map-service.ts         # ConceptMap CRUD operations
-│   └── mapping-task-service.ts        # LabCodeMappingTask management
+│   └── mapping-task-service.ts        # Task management for unmapped codes
 ```
 
 ---
@@ -211,7 +327,7 @@ async function resolveObservationCode(
    - Block processing when unmapped codes are encountered
    - Track unmapped codes as discrete tasks (deduplicated by sender + code)
    - Reset message status to `received` when all unmapped codes are resolved, allowing natural reprocessing by the polling service
-   - Use deterministic IDs for LabCodeMappingTask (`{senderId}-{hash(localCode)}`) with PUT (upsert) to prevent race conditions when multiple workers process messages with the same unmapped code
+   - Use deterministic IDs for Task (`{senderId}-{hash(localCode)}`) with PUT (upsert) to prevent race conditions when multiple workers process messages with the same unmapped code
 
 ### Non-Functional Requirements
 
@@ -239,10 +355,10 @@ async function resolveObservationCode(
     - Resolution while new message with same code arrives
     - ConceptMap entry added before any task exists
 
-- [ ] **2.2** Create LabCodeMappingTask StructureDefinition
-  - Add StructureDefinition to `init-bundle.json` (for Aidbox to accept the resource type)
-  - Manually create `src/fhir/aidbox-hl7v2-custom/LabCodeMappingTask.ts` with TypeScript interface
-  - Run `bun src/migrate.ts` to apply the StructureDefinition
+- [ ] **2.2** Define Task shape for mapping
+  - Task uses `code=local-to-loinc-mapping`
+  - Task uses FHIR reference strings for `focus`
+  - Task resolution stored in `output.valueCodeableConcept` (code + display)
 
 - [ ] **2.3** Implement code resolution service: `loinc-resolver.ts`
   - Check inline LOINC in OBX-3 alternate fields
