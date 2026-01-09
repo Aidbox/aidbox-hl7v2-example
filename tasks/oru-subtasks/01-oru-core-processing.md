@@ -21,11 +21,13 @@ ORU_R01 (Unsolicited Observation Result) messages contain laboratory results and
    - If no LOINC, lookup in sender-specific ConceptMap
    - All codes resolve → continue processing
 4. Convert to FHIR Bundle:
-   - PID → Patient (lookup or create)
+   - PID → Patient (lookup only)
    - PV1 → Encounter (lookup existing visit, do NOT create)
-   - OBR → DiagnosticReport
+   - ORC + OBR → DiagnosticReport
    - OBX → Observation (linked to DiagnosticReport)
-   - NTE → Annotation (attached to Observation or DiagnosticReport)
+   - PRT → PractitionerRole/Device (linked to DiagnosticReport or Observation based on context)
+   - NTE → Observation.note (attached to parent Observation)
+   - SPM/OBR-15 → Specimen
 5. Submit transaction bundle to Aidbox
 6. Update `IncomingHL7v2Message` to `status=processed`
 
@@ -37,19 +39,21 @@ ORU_R01 (Unsolicited Observation Result) messages contain laboratory results and
 
 ```
 DiagnosticReport
-├── id: {messageControlId}-{obrSetId}
+├── id: {OBR-3} (filler order number)
 ├── status: from OBR-25 (mapped to FHIR status)
 ├── code: from OBR-4 (Universal Service Identifier)
 ├── subject: Reference(Patient)
 ├── encounter: Reference(Encounter) - looked up, not created
 ├── effectiveDateTime: from OBR-7 (Observation Date/Time)
 ├── issued: from OBR-22 (Results Report/Status Change)
-├── performer: from OBR-16 (Ordering Provider)
+├── performer: from PRT (ARI/TN/TR roles) → PractitionerRole
+├── resultsInterpreter: from PRT (PRI role) → PractitionerRole
 ├── result: [Reference(Observation), ...]
+├── specimen: [Reference(Specimen), ...]
 └── meta.tag: [{system: "urn:aidbox:hl7v2:message-id", code: "{messageControlId}"}]
 
 Observation
-├── id: {diagnosticReportId}-obx-{setId}
+├── id: {OBR-3}-obx-{OBX-1}
 ├── status: from OBX-11 (Observation Result Status)
 ├── code: CodeableConcept with LOINC (resolved via mapping)
 ├── subject: Reference(Patient)
@@ -58,8 +62,10 @@ Observation
 ├── valueQuantity | valueString | valueCodeableConcept: from OBX-5 based on OBX-2
 ├── interpretation: from OBX-8 (Abnormal Flags)
 ├── referenceRange: from OBX-7 (Reference Range)
-├── performer: from OBX-16 (Responsible Observer)
-└── note: from associated NTE segments
+├── performer: from PRT (PRT-5 valued) → PractitionerRole
+├── device: from PRT (PRT-10 valued) → Device
+├── specimen: Reference(Specimen)
+└── note: from NTE segments following OBX
 ```
 
 ---
@@ -74,7 +80,8 @@ src/
 │   ├── segments/
 │   │   ├── obr-diagnosticreport.ts    # OBR → DiagnosticReport
 │   │   ├── obx-observation.ts         # OBX → Observation
-│   │   └── nte-annotation.ts          # NTE → Annotation
+│   │   ├── prt-practitionerrole.ts    # PRT → PractitionerRole/Device
+│   │   └── nte-annotation.ts          # NTE → Annotation (Observation.note)
 │   └── converter.ts                   # Add ORU_R01 case to router
 ```
 
@@ -117,9 +124,12 @@ src/
 
   **Unit tests - Segment converters:**
   - OBR → DiagnosticReport:
-    - All field mappings (id, status, code, effectiveDateTime, issued, performer)
+    - All field mappings (id, status, code, effectiveDateTime, issued)
     - OBR-25 status mapping (O/I/S→registered, P→preliminary, A/R/N→partial, C/M→corrected, F→final, X→cancelled)
     - Deterministic ID from OBR-3 (filler order number)
+  - PRT → DiagnosticReport fields:
+    - PRT with role ARI/TN/TR → DiagnosticReport.performer (via PractitionerRole)
+    - PRT with role PRI → DiagnosticReport.resultsInterpreter (via PractitionerRole)
   - OBX → Observation:
     - Value type handling:
       - NM with OBX-6 units → valueQuantity (pass through units as-is)
@@ -143,14 +153,18 @@ src/
       - v2.7+: parse as CWE, extract code/display from CWE fields
       - Fallback to string parsing if CWE parsing fails
     - Deterministic ID: `{OBR-3}-obx-{OBX-1}`
+  - PRT → Observation fields:
+    - PRT with PRT-5 valued → Observation.performer (via PractitionerRole)
+    - PRT with PRT-10 valued → Observation.device (via Device)
+    - PRT with PRT-9 or PRT-14 valued → Observation location extension
+  - NTE → Observation.note:
+    - NTE segments following OBX → Observation.note
+    - Multiple NTE segments → concatenated into single note (newline-separated, empty NTE-3 creates paragraph break)
   - SPM → Specimen:
     - Field mappings: type from SPM-4, collectedDateTime from SPM-17, receivedTime from SPM-18
     - Deterministic ID: `{OBR-3}-specimen-{SPM-2 or setId}`
   - OBR-15 → Specimen (fallback for v2.4 and earlier):
     - Specimen source from OBR-15 → Specimen.type
-  - NTE → DiagnosticReport fields:
-    - Concatenate multiple NTE-3 with newlines → DiagnosticReport.conclusion
-    - NTE-2 source code (L/O/P) → DiagnosticReport.conclusionCode
 
   **Integration tests - Full message processing:**
   - Happy path:
@@ -184,17 +198,18 @@ src/
     - Encounter not found (PV1-19) → reject
 
   **Edge cases:**
-  - Missing optional fields (OBX-14, OBX-16, OBR-22, etc.) → proceed with available data
+  - Missing optional fields (OBX-14, OBR-22, etc.) → proceed with available data
   - Invalid/malformed values in OBX-5 → fallback to valueString
   - Empty OBX-5 (no value) → Observation with dataAbsentReason or omit value
-  - Empty NTE segments → skip
-  - Multiple NTE segments after OBR → all concatenated into conclusion
+  - Empty NTE-3 values → skipped (used as paragraph separators in concatenated text)
+  - Multiple NTE segments after OBX → concatenated into single Observation.note
   - OBX-4 (Sub-ID) present → incorporate into Observation ID for uniqueness
+  - No PRT segments → performer/device fields remain empty
 
 - [ ] **1.2** Create segment converter: `obr-diagnosticreport.ts`
   - Extract OBR fields to DiagnosticReport
   - Map OBR-25 status to FHIR DiagnosticReport.status
-  - Generate deterministic ID: `{messageControlId}-{obrSetId}`
+  - Generate deterministic ID from OBR-3 (filler order number)
 
 - [ ] **1.3** Create segment converter: `obx-observation.ts`
   - Extract OBX fields to Observation
@@ -206,20 +221,30 @@ src/
     - For v2.6 and earlier: parse as simple code string (H, L, A, N, etc.)
     - For v2.7+: parse as CWE, extract code from OBX-8.1 and system from OBX-8.3
     - Fallback to simple string parsing if CWE parsing fails
-  - Generate deterministic ID: `{diagnosticReportId}-obx-{setId}`
+  - Generate deterministic ID: `{OBR-3}-obx-{OBX-1}`
 
-- [ ] **1.4** Create segment converter: `nte-annotation.ts`
-  - Convert NTE segments to Annotation
-  - Attach to parent Observation or DiagnosticReport
+- [ ] **1.4** Create segment converter: `prt-practitionerrole.ts`
+  - Convert PRT segments to PractitionerRole (when PRT-5 valued)
+  - Convert PRT segments to Device (when PRT-10 valued)
+  - Handle role-based routing:
+    - ARI/TN/TR roles → DiagnosticReport.performer
+    - PRI role → DiagnosticReport.resultsInterpreter
+    - PRT-5 in OBSERVATION context → Observation.performer
 
-- [ ] **1.5** Create message converter: `oru-r01.ts`
+- [ ] **1.5** Create segment converter: `nte-annotation.ts`
+  - Convert multiple NTE segments to single Annotation (concatenate NTE-3 values with newlines)
+  - Skip empty NTE-3 values (they serve as paragraph separators)
+  - Attach to parent Observation (Observation.note)
+
+- [ ] **1.6** Create message converter: `oru-r01.ts`
   - Parse full ORU_R01 message structure
   - Lookup existing Patient by PID-3 (do NOT create)
   - Lookup existing Encounter by PV1-19 or account number (do NOT create)
   - Assemble DiagnosticReport with linked Observations
+  - Process PRT segments for performer/resultsInterpreter/device references
   - Return FHIR transaction Bundle
 
-- [ ] **1.6** Integrate into converter router
+- [ ] **1.7** Integrate into converter router
   - Add `ORU_R01` case to `src/v2-to-fhir/converter.ts`
 
 ---

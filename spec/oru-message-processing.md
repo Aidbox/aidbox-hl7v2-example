@@ -7,40 +7,45 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 ## Key Behaviors
 
 - Patient/Encounter: lookup only, never create (hard error if not found)
-- One DiagnosticReport per OBR (no consolidation)
+- One DiagnosticReport per ORDER_OBSERVATION group (ORC/OBR pair)
 - Deterministic IDs from OBR-3 (filler order number) for idempotency via PUT
 - Tag all resources with MSH-10 (message control ID) for audit trail
-- OBX-3 must be LOINC (error if not)
+- OBX-3 must contain LOINC code (see Appendix E for detection logic)
 - OBX-8 interpretation: version-aware (MSH-12: v2.6- string, v2.7+ CWE)
-- Specimen: SPM preferred (v2.5+), OBR-15 for backward compatibility
-- NTE segments (after OBR and OBX) → DiagnosticReport.conclusion
+- Specimen: SPM preferred (v2.5+), OBR-15 for backward compatibility (repeating field with `~` separator)
+- NTE segments immediately following OBX → associated Observation.note
 
 ## Processing Flow
 
 1. MLLP receives ORU_R01 → `IncomingHL7v2Message` with `status=received`
-2. Lookup Patient (PID-3) and Encounter (PV1-19) - error if not found
-3. Validate all OBX-3 codes are LOINC
-4. Convert: OBR → DiagnosticReport, OBX → Observation, SPM/OBR-15 → Specimen
-5. Submit transaction bundle, update status to `processed`
+2. Parse message structure; validate MSH, OBR-3, OBR-25, OBX-11 required fields
+3. Validate all OBX-3 codes contain LOINC (Appendix E)
+4. Lookup Patient (PID-3) and Encounter (PV1-19) - error if not found
+5. Convert:
+   - ORC + OBR → DiagnosticReport (one per ORDER_OBSERVATION group)
+   - OBX + trailing NTE → Observation (linked to DiagnosticReport)
+   - SPM or OBR-15 → Specimen (linked to DiagnosticReport and Observations)
+6. Submit transaction bundle via PUT (idempotent), update status to `processed`
 
 ## Resource Mapping
 
-### DiagnosticReport (from OBR)
+### DiagnosticReport (from ORC + OBR)
 
 | FHIR field | Source | Notes |
 |------------|--------|-------|
 | id | `{OBR-3}` | Filler order number (stable across updates) |
+| identifier | OBR-2, OBR-3 | Placer and filler order numbers |
 | status | OBR-25 | See Appendix A |
-| code | OBR-4 | |
+| category | OBR-24 | Diagnostic Service Section ID (if valued) |
+| code | OBR-4 | Universal Service Identifier |
 | subject | PID-3 | Patient lookup |
 | encounter | PV1-19 | Encounter lookup |
-| effectiveDateTime | OBR-7 | |
-| issued | OBR-22 | |
-| performer | OBR-16 | See Open Questions |
-| result | OBX refs | |
-| specimen | SPM/OBR-15 refs | |
-| conclusion | NTE-3 | All NTEs concatenated with newlines |
-| conclusionCode | NTE-2 | See Appendix C |
+| effectiveDateTime | OBR-7 | Observation Date/Time |
+| issued | OBR-22 | Results Rpt/Status Change Date/Time |
+| performer | OBR-16 or PRT | Legacy: OBR-16 (Ordering Provider); Modern: PRT (ARI/TN/TR) |
+| resultsInterpreter | PRT (PRI) | PRT-4.1 = PRI with PRT-4.3 = HL70443 |
+| result | OBX refs | References to Observations |
+| specimen | SPM/OBR-15 refs | References to Specimens |
 
 ### Observation (from OBX)
 
@@ -48,23 +53,30 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 |------------|--------|-------|
 | id | `{OBR-3}-obx-{OBX-1}` | Deterministic |
 | status | OBX-11 | See Appendix B |
-| code | OBX-3 | Must be LOINC |
-| value[x] | OBX-5 | Type from OBX-2, see Appendix D |
-| interpretation | OBX-8 | Version-aware, see Appendix E |
+| category | (fixed) | `laboratory` (http://terminology.hl7.org/CodeSystem/observation-category) |
+| code | OBX-3 | Extract LOINC from CE/CWE (see Appendix E) |
+| subject | PID-3 | Reference to Patient (same as DiagnosticReport) |
+| encounter | PV1-19 | Reference to Encounter (same as DiagnosticReport) |
+| value[x] | OBX-5 | Type from OBX-2, see Appendix C |
+| interpretation | OBX-8 | Version-aware, see Appendix D |
 | referenceRange | OBX-7 | Parse: `10-20`, `<100`, `>5` |
 | effectiveDateTime | OBX-14 | |
-| performer | OBX-16 | See Open Questions |
-| specimen | SPM ref | |
+| performer | OBX-16 or PRT | Legacy: OBX-16 (Responsible Observer); Modern: PRT with PRT-5 |
+| device | PRT (PRT-10) | PRT with PRT-10 valued → Device (optional) |
+| specimen | SPM ref | Reference to Specimen |
+| note | NTE-3 | NTE segments immediately following this OBX |
 
 ### Specimen (from SPM or OBR-15)
 
 | FHIR field | Source | Notes |
 |------------|--------|-------|
-| id | `{OBR-3}-specimen-{SPM-2 or setId}` | Deterministic |
-| type | SPM-4 or OBR-15 | SPM preferred (v2.5+) |
+| id | `{OBR-3}-specimen-{SPM-2 or 1}` | Deterministic; use SPM-2 if present, else sequence number |
+| type | SPM-4 or OBR-15 | SPM preferred; OBR-15 is repeating (`~` separator), use first value |
 | subject | PID-3 | Patient lookup |
 | collection.collectedDateTime | SPM-17 | |
 | receivedTime | SPM-18 | |
+
+**OBR-15 format**: Repeating field with `~` separator (e.g., `BLOOD~Blood`). First component is the specimen source code.
 
 ## Error Conditions
 
@@ -74,23 +86,29 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 | Missing OBR | Reject message |
 | Missing OBR-3 | Reject message (required for resource IDs) |
 | OBX without parent OBR | Reject message |
-| OBX-3 not LOINC | Reject message |
+| OBX-3 has no LOINC code | Reject message (see Appendix E for detection) |
 | Patient not found (PID-3) | Reject message |
-| Encounter not found (PV1-19) | Reject message |
+| Encounter not found (PV1-19) | Reject message (see Open Questions for missing PV1) |
 | OBR-25 missing or Y/Z | Reject message |
 | OBX-11 missing or N | Reject message |
 | OBR without OBX | Create DiagnosticReport with empty result |
 
 ## Open Questions
 
-- **Performer handling**: Create Practitioner resources, contained resources, or display-only references?
+- **Missing PV1**: Error or proceed without encounter? (Examples have PV1 but PV1-19 may be empty)
 - **DiagnosticReport.category**: Derive from OBR-24 (Diagnostic Service Section ID)?
-- **Multiple NTE-2 values**: How to handle different source codes in conclusionCode?
 - **OBX-6 units**: Map to UCUM or pass through as-is?
-- **Missing PV1**: Error or proceed without encounter?
-- **ORC segment**: Process for ServiceRequest/order metadata?
-- **Observation.category**: Set "laboratory" based on context?
 - **Timezone handling**: Timestamps without timezone - server default or local time?
+
+## Design Decisions
+
+Based on HL7 v2-to-FHIR mapping spec and example messages:
+
+- **PRT segment handling**: PRT segments are optional. When absent, use legacy fields (OBR-16, OBX-16). When present, PRT takes precedence.
+- **ORC segment**: Process ORC for DiagnosticReport metadata (ORC-2/3 for identifiers). ServiceRequest creation is out of scope for this phase.
+- **Observation.category**: Set to "laboratory" for all observations in ORU_R01 lab results context.
+- **Legacy performer fields**: OBX-16 (Responsible Observer) used when PRT absent. OBR-16 (Ordering Provider) maps to DiagnosticReport if no PRT.
+- **OBX-3 code handling**: Accept LOINC in either primary identifier (components 1-3) or alternate identifier (components 4-6). See Appendix E.
 
 ---
 
@@ -119,15 +137,7 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 | X | `cancelled` |
 | N, (missing) | error |
 
-## Appendix C: NTE-2 Source of Comment (Table 0105)
-
-| Value | Description |
-|-------|-------------|
-| L | Ancillary (filler) department |
-| O | Other system |
-| P | Orderer (placer) |
-
-## Appendix D: OBX-2 Value Type → FHIR value[x]
+## Appendix C: OBX-2 Value Type → FHIR value[x]
 
 | OBX-2 | FHIR | Notes |
 |-------|------|-------|
@@ -140,7 +150,7 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 
 **SN parsing**: `<5` → valueQuantity with comparator; `10^-^20` → valueRange; `1^:^128` → valueRatio; else → valueString
 
-## Appendix E: OBX-8 Interpretation (Table 0078)
+## Appendix D: OBX-8 Interpretation (Table 0078)
 
 **Version detection via MSH-12:**
 - v2.6 and earlier: OBX-8 is ID (string) → lookup display from table
@@ -161,3 +171,92 @@ No validation - pass through unknown codes. Common codes:
 | LL | Critical low |
 | >, < | Above/Below absolute |
 | S, R, I | Susceptible/Resistant/Intermediate |
+
+## Appendix E: OBX-3 LOINC Code Detection
+
+OBX-3 is a CE (Coded Element) or CWE (Coded With Exceptions) data type with the following structure:
+
+| Component | CE Name | CWE Name |
+|-----------|---------|----------|
+| 1 | Identifier | Identifier |
+| 2 | Text | Text |
+| 3 | Name of Coding System | Name of Coding System |
+| 4 | Alternate Identifier | Alternate Identifier |
+| 5 | Alternate Text | Alternate Text |
+| 6 | Name of Alternate Coding System | Name of Alternate Coding System |
+
+**LOINC detection algorithm:**
+
+1. Check if component 3 (Name of Coding System) = "LN" → use components 1-3 as LOINC
+2. Else check if component 6 (Name of Alternate Coding System) = "LN" → use components 4-6 as LOINC
+3. If neither has "LN", reject the message
+
+**Example:**
+
+```
+12345^Potassium^LOCAL^2823-3^Potassium SerPl-sCnc^LN
+```
+
+- Components 1-3: `12345` / `Potassium` / `LOCAL` (local code)
+- Components 4-6: `2823-3` / `Potassium SerPl-sCnc` / `LN` (LOINC code)
+- Result: Use `2823-3` as the LOINC code
+
+**FHIR Observation.code mapping:**
+
+When both local and LOINC codes are present, include both in CodeableConcept.coding:
+
+```json
+{
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "2823-3",
+        "display": "Potassium SerPl-sCnc"
+      },
+      {
+        "system": "urn:oid:local-system-oid",
+        "code": "12345",
+        "display": "Potassium"
+      }
+    ]
+  }
+}
+```
+
+## Appendix F: NTE Segment Association
+
+NTE (Notes and Comments) segments follow the segment they annotate. In ORU_R01 OBSERVATION groups:
+
+**Association rules:**
+- NTE segments immediately following an OBX belong to that OBX
+- NTE continues until the next OBX, SPM, or end of ORDER_OBSERVATION group
+- Multiple NTE segments are concatenated into a single Observation.note
+
+**Example:**
+
+```
+OBX|1|NM|12345^Glucose^LOCAL^2345-7^Glucose SerPl-mCnc^LN||95|mg/dL|70-99||||F
+NTE|1|L|Fasting specimen required for accurate results.||
+NTE|2|L|||
+NTE|3|L|Values may vary based on time of collection.||
+OBX|2|NM|12346^Sodium^LOCAL^2951-2^Sodium SerPl-sCnc^LN||140|mmol/L|136-145||||F
+```
+
+Result: NTE 1-3 are associated with OBX-1 (Glucose), creating:
+
+```json
+{
+  "note": [
+    {
+      "text": "Fasting specimen required for accurate results.\n\nValues may vary based on time of collection."
+    }
+  ]
+}
+```
+
+**NTE field mapping:**
+- NTE-1: Set ID (for ordering)
+- NTE-2: Source of Comment (L=Lab, etc.) - informational only
+- NTE-3: Comment text → Observation.note.text
+- Empty NTE-3 values are skipped (used as paragraph separators)
