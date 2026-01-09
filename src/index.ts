@@ -640,8 +640,12 @@ function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port
       message: `MSH|^~\\&|ORDER_SYS|HOSPITAL|LAB|LAB_FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORM^O01|MSG${Date.now()}|P|2.4\rPID|1||PAT001^^^HOSP^MR||Johnson^Mary||19900520|F\rORC|NW|ORD001||||||||||12345^Doctor^Test\rOBR|1|ORD001||CBC^Complete Blood Count^L|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}`,
     },
     {
-      name: "ORU^R01 (Lab Result)",
+      name: "ORU^R01 (Lab Result, LOINC)",
       message: `MSH|^~\\&|LAB|HOSPITAL|EMR|DEST|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORU^R01|MSG${Date.now()}|P|2.5.1\rPID|1||TEST-0001^^^HOSPITAL^MR||TESTPATIENT^ALPHA||20000101|M\rPV1|1|O|LAB|||||||||||||||VN${Date.now().toString().slice(-6)}\rORC|RE|ORD001|FIL001\rOBR|1|ORD001|FIL001|LAB100^METABOLIC PANEL^LOCAL|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}|||||||||PROV001^TEST^PROVIDER||||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||Lab|F\rOBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|2|NM|2951-2^Sodium^LN||140|mmol/L|136-145||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|3|NM|2160-0^Creatinine^LN||1.1|mg/dL|0.7-1.3||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rNTE|1|L|All results within normal limits.`,
+    },
+    {
+      name: "ORU^R01 (Lab Result, Missing LOINC)",
+      message: `MSH|^~\\&|ACME_LAB|ACME_HOSP|EMR|DEST|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORU^R01|MSG${Date.now()}|P|2.5.1\rPID|1||TEST-0002^^^HOSPITAL^MR||TESTPATIENT^BETA||19850515|F\rPV1|1|O|LAB|||||||||||||||VN${Date.now().toString().slice(-6)}\rORC|RE|ORD002|FIL002\rOBR|1|ORD002|FIL002|CHEM7^CHEMISTRY PANEL^LOCAL|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}|||||||||PROV002^LAB^DOCTOR||||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||Lab|F\rOBX|1|NM|K_SERUM^Potassium [Serum/Plasma]^LOCAL||4.5|mmol/L|3.5-5.5||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|2|NM|NA_SERUM^Sodium [Serum/Plasma]^LOCAL||142|mmol/L|136-145||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|3|NM|GLU_FASTING^Glucose Fasting^LOCAL||95|mg/dL|70-100||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rNTE|1|L|Local codes used - LOINC mapping required.`,
     },
   ];
 
