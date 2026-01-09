@@ -81,45 +81,6 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 | OBX-11 missing or N | Reject message |
 | OBR without OBX | Create DiagnosticReport with empty result |
 
-## Test Scenarios
-
-**Approach**: Test-driven development. Write tests first, then implement.
-
-### Happy Path
-- Single OBR with multiple OBX → DiagnosticReport + Observations
-- Multiple OBR groups → Multiple DiagnosticReports
-- OBR without OBX → DiagnosticReport with empty result array
-
-### Version-Aware
-- v2.4 message with OBR-15 → Specimen from OBR-15
-- v2.5+ message with SPM → Specimen from SPM
-- Both SPM and OBR-15 → SPM takes precedence
-- v2.6 OBX-8 string → interpretation with Table 0078 lookup
-- v2.7+ OBX-8 CWE → interpretation from CWE fields
-
-### Value Types (OBX-2)
-- NM with OBX-6 units → valueQuantity
-- ST/TX → valueString
-- CE/CWE → valueCodeableConcept
-- SN with comparator (`<5`) → valueQuantity with comparator
-- SN with range (`10^-^20`) → valueRange
-- SN with ratio (`1^:^128`) → valueRatio
-- DT/TS → valueDateTime
-- TM → valueTime
-
-### Error Cases
-- Missing MSH → error
-- Missing OBR → error
-- Missing OBR-3 → error
-- OBX without OBR → error
-- Non-LOINC OBX-3 → error
-- Patient not found → error
-- Encounter not found → error
-
-### Idempotency
-- Same OBR-3 with different MSH-10 → resources updated (preliminary → final)
-- Same message twice (same MSH-10) → resources overwritten, no duplicates
-
 ## Open Questions
 
 - **Performer handling**: Create Practitioner resources, contained resources, or display-only references?

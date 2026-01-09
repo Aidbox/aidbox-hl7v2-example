@@ -111,25 +111,85 @@ src/
 - [ ] **1.0** Add sendingApplication and sendingFacility fields to IncomingHL7v2Message
   - Update StructureDefinition in init-bundle.json
   - Update TypeScript interface in `src/fhir/aidbox-hl7v2-custom/`
+  - Init sendingApplication and sendingFacility fields during the initial message insert (along with messageType)
 
 - [ ] **1.1** Write tests for ORU_R01 processing (TDD - write tests first)
-  - **Unit tests:**
-    - OBR → DiagnosticReport field mapping
-    - OBX → Observation for each value type (NM, ST, TX, CE, CWE, SN)
-    - Reference range parsing (simple "3.5-5.5", comparator ">60", text "negative")
-    - Abnormal flag mapping (version-aware: simple string for v2.6-, CWE for v2.7+)
-  - **Integration tests:**
-    - Full ORU_R01 message → FHIR Bundle conversion
-    - Sample messages from spec (v2.3 and v2.5.1 examples)
-  - **Edge cases:**
-    - Missing optional fields
-    - Multiple OBR groups
-    - NTE attachment to correct parent
-    - Invalid/malformed values
-  - **Error handling:**
-    - Missing required fields
-    - Patient not found
-    - Encounter not found
+
+  **Unit tests - Segment converters:**
+  - OBR → DiagnosticReport:
+    - All field mappings (id, status, code, effectiveDateTime, issued, performer)
+    - OBR-25 status mapping (O/I/S→registered, P→preliminary, A/R/N→partial, C/M→corrected, F→final, X→cancelled)
+    - Deterministic ID from OBR-3 (filler order number)
+  - OBX → Observation:
+    - Value type handling:
+      - NM with OBX-6 units → valueQuantity (pass through units as-is)
+      - ST/TX → valueString
+      - CE/CWE → valueCodeableConcept
+      - SN parsing:
+        - Plain number (`^90`) → valueQuantity
+        - Comparator (`<^5`, `>^90`) → valueQuantity with comparator
+        - Range (`^10^-^20`) → valueRange with low/high
+        - Ratio (`^1^:^128`) → valueRatio with numerator/denominator
+        - Unparseable SN → valueString fallback
+      - DT/TS → valueDateTime
+      - TM → valueTime
+    - OBX-11 status mapping (F/B/V/U→final, P/R/S→preliminary, I/O→registered, C→corrected, A→amended, D/W→entered-in-error, X→cancelled)
+    - Reference range parsing:
+      - Simple range: "3.5-5.5" → low/high
+      - Comparator: ">60", "<5" → text or parsed
+      - Text: "negative", "normal" → text only
+    - OBX-8 interpretation (version-aware via MSH-12):
+      - v2.6 and earlier: parse as simple string, lookup display from Table 0078
+      - v2.7+: parse as CWE, extract code/display from CWE fields
+      - Fallback to string parsing if CWE parsing fails
+    - Deterministic ID: `{OBR-3}-obx-{OBX-1}`
+  - SPM → Specimen:
+    - Field mappings: type from SPM-4, collectedDateTime from SPM-17, receivedTime from SPM-18
+    - Deterministic ID: `{OBR-3}-specimen-{SPM-2 or setId}`
+  - OBR-15 → Specimen (fallback for v2.4 and earlier):
+    - Specimen source from OBR-15 → Specimen.type
+  - NTE → DiagnosticReport fields:
+    - Concatenate multiple NTE-3 with newlines → DiagnosticReport.conclusion
+    - NTE-2 source code (L/O/P) → DiagnosticReport.conclusionCode
+
+  **Integration tests - Full message processing:**
+  - Happy path:
+    - Single OBR with multiple OBX → DiagnosticReport with linked Observations
+    - Multiple OBR groups → Multiple DiagnosticReports (one per OBR)
+    - OBR without OBX → DiagnosticReport with empty result array
+    - Complete ORU_R01 flow: Patient lookup, Encounter lookup, Specimen creation, resource linking
+  - Specimen source selection (version-aware):
+    - v2.4 message with OBR-15 only → Specimen created from OBR-15
+    - v2.5+ message with SPM segment → Specimen created from SPM
+    - Both SPM and OBR-15 present → SPM takes precedence, OBR-15 ignored
+    - No SPM and no OBR-15 → no Specimen created (valid scenario)
+  - Idempotency (via PUT with deterministic IDs):
+    - Same OBR-3, different MSH-10 → resources updated in place (e.g., preliminary → final)
+    - Same message replayed (same MSH-10) → resources overwritten, no duplicates
+  - Resource tagging:
+    - All resources tagged with `meta.tag` containing MSH-10 (message control ID)
+
+  **Error cases:**
+  - Structure errors:
+    - Missing MSH → reject
+    - Missing OBR → reject
+    - Missing OBR-3 (filler order number) → reject
+    - OBX without parent OBR → reject
+  - Validation errors:
+    - OBX-3 not LOINC → reject
+    - OBR-25 missing or Y/Z → reject
+    - OBX-11 missing or N → reject
+  - Lookup failures:
+    - Patient not found (PID-3) → reject
+    - Encounter not found (PV1-19) → reject
+
+  **Edge cases:**
+  - Missing optional fields (OBX-14, OBX-16, OBR-22, etc.) → proceed with available data
+  - Invalid/malformed values in OBX-5 → fallback to valueString
+  - Empty OBX-5 (no value) → Observation with dataAbsentReason or omit value
+  - Empty NTE segments → skip
+  - Multiple NTE segments after OBR → all concatenated into conclusion
+  - OBX-4 (Sub-ID) present → incorporate into Observation ID for uniqueness
 
 - [ ] **1.2** Create segment converter: `obr-diagnosticreport.ts`
   - Extract OBR fields to DiagnosticReport
