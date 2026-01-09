@@ -16,6 +16,8 @@ export interface IncomingHL7v2Message extends DomainResource {
     error?: string;
     message: string;
     patient?: Reference<"Patient">;
+    sendingApplication?: string;
+    sendingFacility?: string;
     status?: string;
     type: string;
 }

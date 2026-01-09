@@ -5,12 +5,12 @@ import type { Patient, Encounter, RelatedPerson, Condition, AllergyIntolerance, 
 // Sample ADT_A01 message for testing
 const sampleADT_A01 = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215143000||ADT^A01^ADT_A01|MSG001|P|2.5.1|||AL|AL
 EVN|A01|20231215143000|||OPERATOR
-PID|1||P12345^^^HOSPITAL^MR||Smith^John^Robert||19850315|M|||123 Main St^^Anytown^CA^12345^USA||^PRN^PH^^1^555^1234567|^WPN^PH^^1^555^9876543||M||P12345
-PV1|1|I|WARD1^ROOM1^BED1||||123^ATTENDING^DOCTOR|||MED||||ADM|||||VN001|||||||||||||||||||||||||||20231215140000
-NK1|1|Smith^Jane||456 Oak St^^Othertown^CA^54321^USA|^PRN^PH^^1^555^5551234||||||||||||||||||||||||||||||||
-DG1|1||I10^Essential Hypertension^ICD10||20231215|||||||||||001^PHYSICIAN^DIAGNOSING
+PID|1||P12345^^^HOSPITAL^MR||TESTPATIENT^ALPHA^A||20000101|M|||100 Test St^^Testcity^TS^00001^USA||^PRN^PH^^1^555^0000001|^WPN^PH^^1^555^0000002||M||P12345
+PV1|1|I|WARD1^ROOM1^BED1||||PROV001^TEST^PROVIDER|||MED||||ADM|||||VN001|||||||||||||||||||||||||||20231215140000
+NK1|1|TESTCONTACT^BETA||200 Test Ave^^Testtown^TS^00002^USA|^PRN^PH^^1^555^0000003||||||||||||||||||||||||||||||||
+DG1|1||I10^Essential Hypertension^ICD10||20231215|||||||||||PROV002^TEST^DIAGNOSTICIAN
 AL1|1|DA|PCN^Penicillin^RXNORM|SV|Rash||
-IN1|1|BCBS^Blue Cross Blue Shield||Blue Cross||123 Main St||GRP001|Blue Cross Group|||20230101|20231231||HMO||SEL|||||||||||||||||||POL123`;
+IN1|1|BCBS^Blue Cross Blue Shield||Blue Cross||100 Test St||GRP001|Blue Cross Group|||20230101|20231231||HMO||SEL|||||||||||||||||||POL123`;
 
 describe("convertADT_A01", () => {
   describe("bundle structure", () => {
@@ -54,8 +54,8 @@ describe("convertADT_A01", () => {
       const patient = bundle.entry!.find(e => e.resource?.resourceType === "Patient")?.resource as Patient;
 
       expect(patient.name).toBeDefined();
-      expect(patient.name![0].family).toBe("Smith");
-      expect(patient.name![0].given).toContain("John");
+      expect(patient.name![0].family).toBe("TESTPATIENT");
+      expect(patient.name![0].given).toContain("ALPHA");
     });
 
     test("sets patient gender", () => {
@@ -120,8 +120,8 @@ describe("convertADT_A01", () => {
       const bundle = convertADT_A01(sampleADT_A01);
       const relatedPerson = bundle.entry!.find(e => e.resource?.resourceType === "RelatedPerson")?.resource as RelatedPerson;
 
-      expect(relatedPerson.name?.[0]?.family).toBe("Smith");
-      expect(relatedPerson.name?.[0]?.given).toContain("Jane");
+      expect(relatedPerson.name?.[0]?.family).toBe("TESTCONTACT");
+      expect(relatedPerson.name?.[0]?.given).toContain("BETA");
     });
 
     test("links related person to patient", () => {
@@ -225,8 +225,8 @@ describe("convertADT_A01", () => {
 
     test("handles special characters in allergen names", () => {
       const messageWithSpecialChars = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG888|P|2.5.1
-PID|1||P88888^^^HOSPITAL^MR||Test^Patient
-PV1|1|I|WARD1||||123^DOCTOR|||MED||||ADM|||||V888|||||||||||||||||||||||||||20231215
+PID|1||P88888^^^HOSPITAL^MR||TESTPATIENT^GAMMA
+PV1|1|I|WARD1||||PROV001^TEST^PROVIDER|||MED||||ADM|||||V888|||||||||||||||||||||||||||20231215
 AL1|1|DA|TEST^Penicillin (IV)^RXNORM|SV|Rash`;
 
       const bundle = convertADT_A01(messageWithSpecialChars);
@@ -237,8 +237,8 @@ AL1|1|DA|TEST^Penicillin (IV)^RXNORM|SV|Rash`;
 
     test("skips allergies with missing allergen info", () => {
       const messageWithInvalidAL1 = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG777|P|2.5.1
-PID|1||P77777^^^HOSPITAL^MR||Test^Patient
-PV1|1|I|WARD1||||123^DOCTOR|||MED||||ADM|||||V777|||||||||||||||||||||||||||20231215
+PID|1||P77777^^^HOSPITAL^MR||TESTPATIENT^DELTA
+PV1|1|I|WARD1||||PROV001^TEST^PROVIDER|||MED||||ADM|||||V777|||||||||||||||||||||||||||20231215
 AL1|1|DA|||SV|Rash
 AL1|2|FA|PEANUT^Peanuts^FOOD|MO|Hives`;
 
@@ -302,7 +302,7 @@ AL1|2|FA|PEANUT^Peanuts^FOOD|MO|Hives`;
 
   describe("error handling", () => {
     test("throws error when MSH segment is missing", () => {
-      const invalidMessage = `PID|1||P12345^^^HOSPITAL^MR||Smith^John`;
+      const invalidMessage = `PID|1||P12345^^^HOSPITAL^MR||TESTPATIENT^EPSILON`;
 
       expect(() => convertADT_A01(invalidMessage)).toThrow();
     });
@@ -319,9 +319,9 @@ AL1|2|FA|PEANUT^Peanuts^FOOD|MO|Hives`;
   describe("multiple segments", () => {
     test("handles multiple NK1 segments", () => {
       const messageWithMultipleNK1 = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG002|P|2.5.1
-PID|1||P54321^^^HOSPITAL^MR||Doe^Jane
-NK1|1|Doe^John||||||||||||||||||||||||||||||||||
-NK1|2|Doe^Mary||||||||||||||||||||||||||||||||||`;
+PID|1||P54321^^^HOSPITAL^MR||TESTPATIENT^ZETA
+NK1|1|TESTCONTACT^ETA||||||||||||||||||||||||||||||||||
+NK1|2|TESTCONTACT^THETA||||||||||||||||||||||||||||||||||`;
 
       const bundle = convertADT_A01(messageWithMultipleNK1);
       const relatedPersons = bundle.entry!.filter(e => e.resource?.resourceType === "RelatedPerson");
@@ -331,7 +331,7 @@ NK1|2|Doe^Mary||||||||||||||||||||||||||||||||||`;
 
     test("handles multiple DG1 segments", () => {
       const messageWithMultipleDG1 = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG003|P|2.5.1
-PID|1||P54321^^^HOSPITAL^MR||Doe^Jane
+PID|1||P54321^^^HOSPITAL^MR||TESTPATIENT^ZETA
 PV1|1|I|WARD1||||||||||||||||VN003
 DG1|1||I10^Hypertension^ICD10
 DG1|2||E11^Diabetes^ICD10`;
@@ -346,7 +346,7 @@ DG1|2||E11^Diabetes^ICD10`;
 
     test("handles multiple AL1 segments", () => {
       const messageWithMultipleAL1 = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG004|P|2.5.1
-PID|1||P54321^^^HOSPITAL^MR||Doe^Jane
+PID|1||P54321^^^HOSPITAL^MR||TESTPATIENT^ZETA
 AL1|1|DA|PCN^Penicillin|SV
 AL1|2|FA|PEANUT^Peanuts|MO`;
 
@@ -360,7 +360,7 @@ AL1|2|FA|PEANUT^Peanuts|MO`;
 
     test("handles multiple IN1 segments", () => {
       const messageWithMultipleIN1 = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG005|P|2.5.1
-PID|1||P54321^^^HOSPITAL^MR||Doe^Jane
+PID|1||P54321^^^HOSPITAL^MR||TESTPATIENT^ZETA
 IN1|1|BCBS||Blue Cross|||||||||HMO
 IN1|2|AETNA||Aetna|||||||||PPO`;
 
@@ -376,7 +376,7 @@ IN1|2|AETNA||Aetna|||||||||PPO`;
   describe("minimal message", () => {
     test("handles message with only required segments", () => {
       const minimalMessage = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215||ADT^A01|MSG006|P|2.5.1
-PID|1||P99999^^^HOSPITAL^MR||Minimal^Patient`;
+PID|1||P99999^^^HOSPITAL^MR||TESTPATIENT^KAPPA`;
 
       const bundle = convertADT_A01(minimalMessage);
 
@@ -403,7 +403,7 @@ PID|1||P99999^^^HOSPITAL^MR||Minimal^Patient`;
   describe("Condition deduplication and composite IDs", () => {
     test("deduplicates identical diagnoses, keeps lowest priority", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 PV1|1|I|WARD1||||||||||||||||VN001
 DG1|1||I10^Essential Hypertension^ICD10||||||||||2
 DG1|2||I10^Essential Hypertension^ICD10||||||||||1`;
@@ -416,7 +416,7 @@ DG1|2||I10^Essential Hypertension^ICD10||||||||||1`;
 
     test("generates composite ID with encounter reference", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 PV1|1|I|WARD1||||||||||||||||VN001
 DG1|1||I10^Essential Hypertension^ICD10||||||||||1`;
 
@@ -428,7 +428,7 @@ DG1|1||I10^Essential Hypertension^ICD10||||||||||1`;
 
     test("uses diagnosis description for ID when available", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 PV1|1|I|WARD1||||||||||||||||VN001
 DG1|1||I10^HTN^ICD10|Essential Primary Hypertension|||||||||1`;
 
@@ -441,7 +441,7 @@ DG1|1||I10^HTN^ICD10|Essential Primary Hypertension|||||||||1`;
     test("requires encounter for condition ID generation", () => {
       // ADT_A01 requires PV1 segment, so encounter ID is always present
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 PV1|1|I|WARD1||||||||||||||||VN001
 DG1|1||I10^Essential Hypertension^ICD10||||||||||1`;
 
@@ -454,7 +454,7 @@ DG1|1||I10^Essential Hypertension^ICD10||||||||||1`;
 
     test("keeps different diagnoses with same code but different display", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 PV1|1|I|WARD1||||||||||||||||VN001
 DG1|1||I10^Essential Hypertension^ICD10||||||||||1
 DG1|2||I10^Secondary Hypertension^ICD10||||||||||2`;
@@ -471,7 +471,7 @@ DG1|2||I10^Secondary Hypertension^ICD10||||||||||2`;
 
     test("handles duplicates with no priority - keeps first", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 PV1|1|I|WARD1||||||||||||||||VN001
 DG1|1||I10^Hypertension^ICD10
 DG1|2||I10^Hypertension^ICD10`;
@@ -484,7 +484,7 @@ DG1|2||I10^Hypertension^ICD10`;
 
     test("sets clinicalStatus to active", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 PV1|1|I|WARD1||||||||||||||||VN001
 DG1|1||I10^Hypertension^ICD10||||||||||1`;
 
@@ -499,7 +499,7 @@ DG1|1||I10^Hypertension^ICD10||||||||||1`;
 
     test("handles special characters in condition names", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 PV1|1|I|WARD1||||||||||||||||VN001
 DG1|1||E11.9^Type 2 Diabetes (uncontrolled)!^ICD10||||||||||1`;
 
@@ -511,7 +511,7 @@ DG1|1||E11.9^Type 2 Diabetes (uncontrolled)!^ICD10||||||||||1`;
 
     test("priority 1 wins over priority 2 and 3", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 PV1|1|I|WARD1||||||||||||||||VN001
 DG1|1||I10^Hypertension^ICD10||||||||||3
 DG1|2||I10^Hypertension^ICD10||||||||||1
@@ -527,7 +527,7 @@ DG1|3||I10^Hypertension^ICD10||||||||||2`;
   describe("Coverage composite IDs and dynamic status", () => {
     test("generates composite ID with patient and payor identifier", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 IN1|1|BCBS^Blue Cross Blue Shield^PLAN|12345^^^BCBS`;
 
       const bundle = convertADT_A01(message);
@@ -538,7 +538,7 @@ IN1|1|BCBS^Blue Cross Blue Shield^PLAN|12345^^^BCBS`;
 
     test("uses payor organization name for ID when no identifier", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 IN1|1|||Blue Cross Blue Shield`;
 
       const bundle = convertADT_A01(message);
@@ -549,7 +549,7 @@ IN1|1|||Blue Cross Blue Shield`;
 
     test("sets status to active when no end date", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 IN1|1|||Blue Cross||||||||20230101`;
 
       const bundle = convertADT_A01(message);
@@ -564,7 +564,7 @@ IN1|1|||Blue Cross||||||||20230101`;
       const futureDateStr = futureDate.toISOString().substring(0, 10).replace(/-/g, "");
 
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 IN1|1|||Blue Cross||||||||20230101|${futureDateStr}`;
 
       const bundle = convertADT_A01(message);
@@ -576,7 +576,7 @@ IN1|1|||Blue Cross||||||||20230101|${futureDateStr}`;
 
     test("sets status to cancelled when end date is in past", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 IN1|1|||Blue Cross||||||||20230101|20230630`;
 
       const bundle = convertADT_A01(message);
@@ -588,7 +588,7 @@ IN1|1|||Blue Cross||||||||20230101|20230630`;
 
     test("skips IN1 segments without payor information", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 IN1|1|PLAN123
 IN1|2|||Blue Cross`;
 
@@ -602,7 +602,7 @@ IN1|2|||Blue Cross`;
 
     test("processes IN1 with company ID even without name", () => {
       const message = `MSH|^~\\&|SENDER|FAC|RECV|DEST|20231215||ADT^A01|MSG001|P|2.5.1
-PID|1||P12345^^^HOSP^MR||Smith^John
+PID|1||P12345^^^HOSP^MR||TESTPATIENT^IOTA
 IN1|1||BCBS123^^^SYSTEM`;
 
       const bundle = convertADT_A01(message);

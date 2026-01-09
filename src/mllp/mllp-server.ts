@@ -12,22 +12,37 @@ interface IncomingHL7v2Message {
   date: string;
   message: string;
   status: string;
+  sendingApplication?: string;
+  sendingFacility?: string;
+}
+
+/**
+ * Extract MSH fields from HL7v2 message
+ */
+function extractMSHFields(hl7Message: string): { messageType: string; sendingApplication?: string; sendingFacility?: string } {
+  const lines = hl7Message.split(/\r?\n|\r/);
+  const mshLine = lines.find((line) => line.startsWith("MSH"));
+  if (!mshLine) return { messageType: "UNKNOWN" };
+
+  const fields = mshLine.split("|");
+  // MSH field positions (0-indexed after split):
+  // fields[0] = "MSH"
+  // fields[1] = "|" is actually empty due to split, encoding chars are in fields[1]
+  // fields[2] = MSH-3 (Sending Application)
+  // fields[3] = MSH-4 (Sending Facility)
+  // fields[8] = MSH-9 (Message Type)
+  const messageType = (fields[8] || "UNKNOWN").replace("^", "_"); // e.g., ADT^A01 -> ADT_A01
+  const sendingApplication = fields[2] || undefined;
+  const sendingFacility = fields[3] || undefined;
+
+  return { messageType, sendingApplication, sendingFacility };
 }
 
 /**
  * Parse HL7v2 message to extract message type from MSH-9
  */
 export function extractMessageType(hl7Message: string): string {
-  const lines = hl7Message.split(/\r?\n|\r/);
-  const mshLine = lines.find((line) => line.startsWith("MSH"));
-  if (!mshLine) return "UNKNOWN";
-
-  const fields = mshLine.split("|");
-  // MSH-9 is the 9th field (0-indexed: field 8 after the initial MSH|^~\&|)
-  // But MSH is special: MSH[0]="MSH", MSH[1]="|" (field separator), MSH[2]="^~\&" (encoding chars)
-  // So MSH-9 = fields[8]
-  const messageType = fields[8] || "UNKNOWN";
-  return messageType.replace("^", "_"); // e.g., ADT^A01 -> ADT_A01
+  return extractMSHFields(hl7Message).messageType;
 }
 
 /**
@@ -90,7 +105,7 @@ export function wrapWithMLLP(message: string): Buffer {
  * Store incoming HL7v2 message in Aidbox
  */
 async function storeMessage(hl7Message: string): Promise<void> {
-  const messageType = extractMessageType(hl7Message);
+  const { messageType, sendingApplication, sendingFacility } = extractMSHFields(hl7Message);
 
   const resource: IncomingHL7v2Message = {
     resourceType: "IncomingHL7v2Message",
@@ -98,6 +113,8 @@ async function storeMessage(hl7Message: string): Promise<void> {
     date: new Date().toISOString(),
     message: hl7Message,
     status: "received",
+    sendingApplication,
+    sendingFacility,
   };
 
   await aidboxFetch<IncomingHL7v2Message>("/fhir/IncomingHL7v2Message", {
@@ -105,7 +122,7 @@ async function storeMessage(hl7Message: string): Promise<void> {
     body: JSON.stringify(resource),
   });
 
-  console.log(`[MLLP] Stored message of type: ${messageType}`);
+  console.log(`[MLLP] Stored message of type: ${messageType} from ${sendingApplication || "unknown"}/${sendingFacility || "unknown"}`);
 }
 
 /**

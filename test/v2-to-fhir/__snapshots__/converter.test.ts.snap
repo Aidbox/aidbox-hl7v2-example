@@ -6,23 +6,23 @@ exports[`convertToFHIR converts ADT^A01 message to FHIR Bundle 1`] = `
     {
       "request": {
         "method": "PUT",
-        "url": "/Patient/P12345",
+        "url": "/Patient/TEST-001",
       },
       "resource": {
         "address": [
           {
-            "city": "Anytown",
+            "city": "Testcity",
             "country": "USA",
             "line": [
-              "123 Main St",
+              "100 Test St",
             ],
-            "postalCode": "12345",
-            "state": "CA",
+            "postalCode": "00001",
+            "state": "TS",
           },
         ],
-        "birthDate": "1985-03-15",
+        "birthDate": "2000-01-01",
         "gender": "male",
-        "id": "P12345",
+        "id": "TEST-001",
         "identifier": [
           {
             "system": "HOSPITAL",
@@ -33,7 +33,7 @@ exports[`convertToFHIR converts ADT^A01 message to FHIR Bundle 1`] = `
                 },
               ],
             },
-            "value": "P12345",
+            "value": "TEST-001",
           },
         ],
         "maritalStatus": {
@@ -61,12 +61,12 @@ exports[`convertToFHIR converts ADT^A01 message to FHIR Bundle 1`] = `
         },
         "name": [
           {
-            "family": "Smith",
+            "family": "TESTPATIENT",
             "given": [
-              "John",
-              "Robert",
+              "ONE",
+              "A",
             ],
-            "text": "John Robert Smith",
+            "text": "ONE A TESTPATIENT",
           },
         ],
         "resourceType": "Patient",
@@ -83,12 +83,12 @@ exports[`convertToFHIR converts ADT^A01 message to FHIR Bundle 1`] = `
               },
               {
                 "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
-                "valueString": "1234567",
+                "valueString": "0000001",
               },
             ],
             "system": "phone",
             "use": "home",
-            "value": "+1 555 1234567",
+            "value": "+1 555 0000001",
           },
           {
             "extension": [
@@ -102,12 +102,12 @@ exports[`convertToFHIR converts ADT^A01 message to FHIR Bundle 1`] = `
               },
               {
                 "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
-                "valueString": "9876543",
+                "valueString": "0000002",
               },
             ],
             "system": "phone",
             "use": "work",
-            "value": "+1 555 9876543",
+            "value": "+1 555 0000002",
           },
         ],
       },
@@ -158,9 +158,9 @@ exports[`convertToFHIR converts ADT^A01 message to FHIR Bundle 1`] = `
         "participant": [
           {
             "individual": {
-              "display": "DOCTOR ATTENDING",
+              "display": "PROVIDER TEST",
               "identifier": {
-                "value": "123",
+                "value": "PROV001",
               },
             },
             "type": [
@@ -187,7 +187,7 @@ exports[`convertToFHIR converts ADT^A01 message to FHIR Bundle 1`] = `
         },
         "status": "in-progress",
         "subject": {
-          "reference": "Patient/P12345",
+          "reference": "Patient/TEST-001",
         },
       },
     },
@@ -334,7 +334,7 @@ exports[`convertToFHIR converts ADT^A08 message to FHIR Bundle 1`] = `
                 },
               ],
             },
-            "value": "877-73-6705",
+            "value": "000-00-0000",
           },
         ],
         "maritalStatus": {

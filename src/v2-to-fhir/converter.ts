@@ -2,7 +2,7 @@
  * HL7v2 to FHIR Converter Router
  *
  * Routes HL7v2 messages to appropriate converters based on message type.
- * Supports: ADT_A01, ADT_A08
+ * Supports: ADT_A01, ADT_A08, ORU_R01
  */
 
 import { parseMessage } from "@atomic-ehr/hl7v2";
@@ -11,6 +11,7 @@ import { fromMSH, type MSH } from "../hl7v2/generated/fields";
 import type { Bundle } from "../fhir/hl7-fhir-r4-core";
 import { convertADT_A01 } from "./messages/adt-a01";
 import { convertADT_A08 } from "./messages/adt-a08";
+import { convertORU_R01 } from "./messages/oru-r01";
 
 // ============================================================================
 // Helper Functions
@@ -61,6 +62,7 @@ function extractMessageType(message: string): string {
  * Reads message type from MSH-9 and routes to appropriate converter:
  * - ADT_A01 -> convertADT_A01
  * - ADT_A08 -> convertADT_A08
+ * - ORU_R01 -> convertORU_R01
  *
  * @param message - Raw HL7v2 message string
  * @returns FHIR R4 Transaction Bundle
@@ -75,6 +77,9 @@ export function convertToFHIR(message: string): Bundle {
 
     case "ADT_A08":
       return convertADT_A08(message);
+
+    case "ORU_R01":
+      return convertORU_R01(message);
 
     default:
       throw new Error(`Unsupported message type: ${messageType}`);
