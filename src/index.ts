@@ -639,6 +639,10 @@ function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port
       name: "ORM^O01 (Order)",
       message: `MSH|^~\\&|ORDER_SYS|HOSPITAL|LAB|LAB_FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORM^O01|MSG${Date.now()}|P|2.4\rPID|1||PAT001^^^HOSP^MR||Johnson^Mary||19900520|F\rORC|NW|ORD001||||||||||12345^Doctor^Test\rOBR|1|ORD001||CBC^Complete Blood Count^L|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}`,
     },
+    {
+      name: "ORU^R01 (Lab Result)",
+      message: `MSH|^~\\&|LAB|HOSPITAL|EMR|DEST|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORU^R01|MSG${Date.now()}|P|2.5.1\rPID|1||TEST-0001^^^HOSPITAL^MR||TESTPATIENT^ALPHA||20000101|M\rPV1|1|O|LAB|||||||||||||||VN${Date.now().toString().slice(-6)}\rORC|RE|ORD001|FIL001\rOBR|1|ORD001|FIL001|LAB100^METABOLIC PANEL^LOCAL|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}|||||||||PROV001^TEST^PROVIDER||||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||Lab|F\rOBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|2|NM|2951-2^Sodium^LN||140|mmol/L|136-145||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|3|NM|2160-0^Creatinine^LN||1.1|mg/dL|0.7-1.3||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rNTE|1|L|All results within normal limits.`,
+    },
   ];
 
   const content = `
