@@ -35,7 +35,10 @@ import type {
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertOBRToDiagnosticReport } from "../segments/obr-diagnosticreport";
-import { convertOBXToObservation } from "../segments/obx-observation";
+import {
+  convertOBXToObservation,
+  hasLoincCode,
+} from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
 
 /**
@@ -78,7 +81,7 @@ interface OBRGroup {
 
 function findSegment(
   message: HL7v2Message,
-  name: string
+  name: string,
 ): HL7v2Segment | undefined {
   return message.find((s) => s.segment === name);
 }
@@ -119,7 +122,7 @@ function extractMetaTags(msh: MSH): Coding[] {
  */
 function createBundleEntry(
   resource: Resource,
-  method: "PUT" | "POST" = "PUT"
+  method: "PUT" | "POST" = "PUT",
 ): BundleEntry {
   const resourceType = resource.resourceType;
   const id = (resource as { id?: string }).id;
@@ -198,12 +201,12 @@ function groupSegmentsByOBR(message: HL7v2Message): OBRGroup[] {
 function convertSPMToSpecimen(
   spm: SPM,
   fillerOrderNumber: string,
-  index: number
+  index: number,
 ): Specimen {
   // Generate ID: {OBR-3}-specimen-{index}
   const id = `${fillerOrderNumber.toLowerCase()}-specimen-${index}`.replace(
     /[^a-z0-9-]/g,
-    "-"
+    "-",
   );
 
   const specimen: Specimen = {
@@ -230,7 +233,7 @@ function convertSPMToSpecimen(
     if (collectionTime.$1_rangeStartDatetime) {
       specimen.collection = {
         collectedDateTime: convertDTMToDateTime(
-          collectionTime.$1_rangeStartDatetime
+          collectionTime.$1_rangeStartDatetime,
         ),
       };
     }
@@ -238,7 +241,9 @@ function convertSPMToSpecimen(
 
   // SPM-18: Specimen Received Date/Time
   if (spm.$18_specimenReceivedDateTime) {
-    specimen.receivedTime = convertDTMToDateTime(spm.$18_specimenReceivedDateTime);
+    specimen.receivedTime = convertDTMToDateTime(
+      spm.$18_specimenReceivedDateTime,
+    );
   }
 
   return specimen;
@@ -249,14 +254,14 @@ function convertSPMToSpecimen(
  */
 function createSpecimenFromOBR15(
   obr: OBR,
-  fillerOrderNumber: string
+  fillerOrderNumber: string,
 ): Specimen | undefined {
   if (!obr.$15_specimenSource) return undefined;
 
   const sps = obr.$15_specimenSource;
   const id = `${fillerOrderNumber.toLowerCase()}-specimen-obr15`.replace(
     /[^a-z0-9-]/g,
-    "-"
+    "-",
   );
 
   const specimen: Specimen = {
@@ -364,7 +369,7 @@ export function convertORU_R01(message: string): Bundle {
     // Validate OBR-3 (Filler Order Number)
     if (!obr.$3_fillerOrderNumber?.$1_value) {
       throw new Error(
-        "OBR-3 (Filler Order Number) is required for deterministic ID generation"
+        "OBR-3 (Filler Order Number) is required for deterministic ID generation",
       );
     }
 
@@ -389,9 +394,20 @@ export function convertORU_R01(message: string): Bundle {
     for (const obsGroup of group.observations) {
       const obx = fromOBX(obsGroup.obx);
 
+      // Validate OBX-3 contains LOINC code (per spec Appendix E)
+      if (!hasLoincCode(obx.$3_observationIdentifier)) {
+        const obxSetId = obx.$1_setIdObx || "unknown";
+        const localCode = obx.$3_observationIdentifier?.$1_code || "empty";
+        throw new Error(
+          `OBX-3 does not contain LOINC code (OBX Set ID: ${obxSetId}, local code: ${localCode}). ` +
+            `LOINC is required in either primary coding (component 3 = LN) or alternate coding (component 6 = LN).`,
+        );
+      }
+
       // Fix SN values that were incorrectly parsed (caret is component separator in SN)
       if (obx.$2_valueType?.toUpperCase() === "SN") {
-        const rawField = (obsGroup.obx as { fields: Record<number, unknown> }).fields[5];
+        const rawField = (obsGroup.obx as { fields: Record<number, unknown> })
+          .fields[5];
         const reconstructed = reconstructSNValue(rawField);
         if (reconstructed) {
           obx.$5_observationValue = [reconstructed];
@@ -447,7 +463,7 @@ export function convertORU_R01(message: string): Bundle {
         (s) =>
           ({
             reference: `Specimen/${s.id}`,
-          }) as Reference<"Specimen">
+          }) as Reference<"Specimen">,
       );
 
       // Link first specimen to all observations

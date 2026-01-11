@@ -13,6 +13,35 @@ import type {
 } from "../../fhir/hl7-fhir-r4-core";
 
 // ============================================================================
+// LOINC Validation
+// ============================================================================
+
+/**
+ * Check if OBX-3 contains a LOINC code per spec Appendix E algorithm.
+ * Returns true if LOINC is found in either primary (1-3) or alternate (4-6) coding.
+ *
+ * LOINC detection algorithm:
+ * 1. Check if component 3 (Name of Coding System) = "LN" → use components 1-3 as LOINC
+ * 2. Else check if component 6 (Name of Alternate Coding System) = "LN" → use components 4-6 as LOINC
+ * 3. If neither has "LN", return false (message should be rejected)
+ */
+export function hasLoincCode(observationIdentifier: CE | undefined): boolean {
+  if (!observationIdentifier) return false;
+
+  // Check primary coding system (component 3)
+  if (observationIdentifier.$3_system?.toUpperCase() === "LN") {
+    return true;
+  }
+
+  // Check alternate coding system (component 6)
+  if (observationIdentifier.$6_altSystem?.toUpperCase() === "LN") {
+    return true;
+  }
+
+  return false;
+}
+
+// ============================================================================
 // Status Mapping
 // ============================================================================
 
@@ -37,7 +66,7 @@ import type {
  * - N = Not asked; used to affirmatively document we did not ask
  */
 export function mapOBXStatusToFHIR(
-  status: string | undefined
+  status: string | undefined,
 ): Observation["status"] {
   if (!status) return "unknown";
 
@@ -83,7 +112,7 @@ export interface ParsedReferenceRange {
  * Examples: "3.5-5.5", ">60", "<5", "negative", "normal"
  */
 export function parseReferenceRange(
-  range: string | undefined
+  range: string | undefined,
 ): ParsedReferenceRange {
   if (!range) return {};
 
@@ -346,7 +375,7 @@ function getInterpretationDisplay(code: string): string {
  */
 export function convertOBXToObservation(
   obx: OBX,
-  obrFillerOrderNumber: string
+  obrFillerOrderNumber: string,
 ): Observation {
   // Generate deterministic ID: {OBR-3}-obx-{OBX-1}[-{OBX-4}]
   let id = `${obrFillerOrderNumber.toLowerCase()}-obx-${obx.$1_setIdObx || "0"}`;
@@ -365,7 +394,7 @@ export function convertOBXToObservation(
   // OBX-14: Date/Time of Observation → effectiveDateTime
   if (obx.$14_observationDateTime) {
     observation.effectiveDateTime = convertDTMToDateTime(
-      obx.$14_observationDateTime
+      obx.$14_observationDateTime,
     );
   }
 

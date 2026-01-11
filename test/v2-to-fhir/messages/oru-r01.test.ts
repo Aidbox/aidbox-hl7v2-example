@@ -1,6 +1,11 @@
 import { describe, test, expect } from "bun:test";
 import { convertORU_R01 } from "../../../src/v2-to-fhir/messages/oru-r01";
-import type { Bundle, DiagnosticReport, Observation, Specimen } from "../../../src/fhir/hl7-fhir-r4-core";
+import type {
+  Bundle,
+  DiagnosticReport,
+  Observation,
+  Specimen,
+} from "../../../src/fhir/hl7-fhir-r4-core";
 
 // Sample ORU_R01 message with single OBR and multiple OBX
 const SIMPLE_ORU_MESSAGE = `MSH|^~\\&|LABSYS|TESTHOSP||RECV|20260106171422||ORU^R01|MSG123|P|2.5.1
@@ -8,8 +13,8 @@ PID|1||TEST-0001^^^HOSPITAL^MR||TESTPATIENT^ALPHA^^^^^D||20000101|F
 PV1|1|I|WARD1^ROOM1^BED1||||PROV001^TEST^PROVIDER|||||||||VN001
 ORC|RE|R26-0002636^External|26H-006MP0004^Beaker
 OBR|1|R26-0002636^External|26H-006MP0004^Beaker|LAB5524^JAK 2 MUTATION^LABBEAP|||20260106154900|||||||Blood|PROV001^TEST^PROVIDER|||||||20260106171411||Lab|F
-OBX|1|ST|1230148171^JAK2 V617F^LABBLRR||Detected||||||F|||20260106154900
-OBX|2|NM|1230148217^VAF %^LABBLRR||1.0|%|||||F|||20260106154900`;
+OBX|1|ST|1230148171^JAK2 V617F^LABBLRR^46342-2^JAK2 gene mutation^LN||Detected||||||F|||20260106154900
+OBX|2|NM|1230148217^VAF %^LABBLRR^81246-9^Variant allelic frequency^LN||1.0|%|||||F|||20260106154900`;
 
 // Message with LOINC codes in alternate coding
 const MESSAGE_WITH_LOINC = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105091743||ORU^R01^ORU_R01|183316|P|2.5.1
@@ -45,12 +50,12 @@ PID|1||TEST-0005^^^HOSPITAL^MR||TESTPATIENT^EPSILON||20000505|F
 PV1|1||ER|||||||||||||||VN005
 ORC|RE|ORD003|FIL003A
 OBR|1|ORD003|FIL003A|LAB100^CBC^LOCAL|||20260107080000|||||||||||||||||20260107090000||Lab|F
-OBX|1|NM|52100^WBC^LOCAL||8.5|10*9/L|4.5-11.0||||F
-OBX|2|NM|52101^RBC^LOCAL||4.8|10*12/L|4.2-5.4||||F
+OBX|1|NM|52100^WBC^LOCAL^6690-2^Leukocytes^LN||8.5|10*9/L|4.5-11.0||||F
+OBX|2|NM|52101^RBC^LOCAL^789-8^Erythrocytes^LN||4.8|10*12/L|4.2-5.4||||F
 ORC|RE|ORD003|FIL003B
 OBR|2|ORD003|FIL003B|LAB101^BMP^LOCAL|||20260107080000|||||||||||||||||20260107091000||Lab|F
-OBX|1|NM|51998^Potassium^LOCAL||4.0|mmol/L|3.5-5.5||||F
-OBX|2|NM|52098^Sodium^LOCAL||140|mmol/L|133-145||||F`;
+OBX|1|NM|51998^Potassium^LOCAL^2823-3^Potassium^LN||4.0|mmol/L|3.5-5.5||||F
+OBX|2|NM|52098^Sodium^LOCAL^2951-2^Sodium^LN||140|mmol/L|133-145||||F`;
 
 describe("convertORU_R01", () => {
   describe("happy path - basic message processing", () => {
@@ -89,7 +94,7 @@ describe("convertORU_R01", () => {
     test("links Observations to DiagnosticReport via result array", () => {
       const bundle = convertORU_R01(SIMPLE_ORU_MESSAGE);
       const diagnosticReport = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "DiagnosticReport"
+        (e) => e.resource?.resourceType === "DiagnosticReport",
       )?.resource as DiagnosticReport;
 
       expect(diagnosticReport.result).toHaveLength(2);
@@ -110,7 +115,8 @@ describe("convertORU_R01", () => {
 
       bundle.entry?.forEach((entry) => {
         const tag = entry.resource?.meta?.tag?.find(
-          (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id"
+          (t: { system?: string }) =>
+            t.system === "urn:aidbox:hl7v2:message-id",
         );
         expect(tag?.code).toBe("MSG123");
       });
@@ -121,11 +127,11 @@ describe("convertORU_R01", () => {
     test("extracts LOINC from OBX-3 alternate coding", () => {
       const bundle = convertORU_R01(MESSAGE_WITH_LOINC);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       const loincCoding = observation.code.coding?.find(
-        (c) => c.system === "http://loinc.org"
+        (c) => c.system === "http://loinc.org",
       );
       expect(loincCoding?.code).toBe("4548-4");
     });
@@ -145,7 +151,7 @@ describe("convertORU_R01", () => {
     test("links Specimen to DiagnosticReport", () => {
       const bundle = convertORU_R01(MESSAGE_WITH_SPM);
       const diagnosticReport = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "DiagnosticReport"
+        (e) => e.resource?.resourceType === "DiagnosticReport",
       )?.resource as DiagnosticReport;
 
       expect(diagnosticReport.specimen).toHaveLength(1);
@@ -155,7 +161,7 @@ describe("convertORU_R01", () => {
     test("links Specimen to Observations", () => {
       const bundle = convertORU_R01(MESSAGE_WITH_SPM);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       expect(observation.specimen?.reference).toContain("Specimen/");
@@ -166,7 +172,7 @@ describe("convertORU_R01", () => {
     test("attaches NTE comments to preceding Observation as notes", () => {
       const bundle = convertORU_R01(MESSAGE_WITH_NTE);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       expect(observation.note).toHaveLength(1);
@@ -176,7 +182,7 @@ describe("convertORU_R01", () => {
     test("creates paragraph breaks for empty NTE-3", () => {
       const bundle = convertORU_R01(MESSAGE_WITH_NTE);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       // Should have paragraph break between first and third NTE
@@ -221,17 +227,21 @@ describe("convertORU_R01", () => {
       const bundle2 = convertORU_R01(message2);
 
       // Same resource IDs
-      const dr1 = bundle1.entry?.find((e) => e.resource?.resourceType === "DiagnosticReport");
-      const dr2 = bundle2.entry?.find((e) => e.resource?.resourceType === "DiagnosticReport");
+      const dr1 = bundle1.entry?.find(
+        (e) => e.resource?.resourceType === "DiagnosticReport",
+      );
+      const dr2 = bundle2.entry?.find(
+        (e) => e.resource?.resourceType === "DiagnosticReport",
+      );
 
       expect(dr1?.resource?.id).toBe(dr2?.resource?.id);
 
       // Different message tags
       const tag1 = dr1?.resource?.meta?.tag?.find(
-        (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id"
+        (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id",
       );
       const tag2 = dr2?.resource?.meta?.tag?.find(
-        (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id"
+        (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id",
       );
       expect(tag1?.code).toBe("MSG001");
       expect(tag2?.code).toBe("MSG002");
@@ -263,7 +273,7 @@ describe("convertORU_R01", () => {
     test("converts SN with comparator to valueQuantity", () => {
       const bundle = convertORU_R01(MESSAGE_WITH_NTE);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       expect(observation?.valueQuantity?.value).toBe(90);
@@ -275,7 +285,7 @@ describe("convertORU_R01", () => {
     test("converts OBX-8 abnormal flag H to interpretation", () => {
       const bundle = convertORU_R01(MESSAGE_WITH_LOINC);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       expect(observation?.interpretation?.[0]?.coding?.[0]?.code).toBe("H");
@@ -284,7 +294,7 @@ describe("convertORU_R01", () => {
     test("converts OBX-7 reference range", () => {
       const bundle = convertORU_R01(MESSAGE_WITH_LOINC);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       expect(observation?.referenceRange?.[0]?.low?.value).toBe(4.0);
@@ -316,5 +326,60 @@ OBR|1|ORD001||LAB123|||20260101
 OBX|1|NM|TEST||100|mg/dL||||F`;
 
     expect(() => convertORU_R01(invalidMessage)).toThrow(/OBR-3/);
+  });
+});
+
+describe("LOINC validation", () => {
+  test("throws error when OBX-3 has no LOINC code (local code only)", () => {
+    const messageWithoutLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+ORC|RE|ORD001|FIL001
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|12345^Potassium^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
+
+    expect(() => convertORU_R01(messageWithoutLoinc)).toThrow(/LOINC/);
+  });
+
+  test("accepts message when OBX-3 has LOINC in primary coding", () => {
+    const messageWithPrimaryLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+ORC|RE|ORD001|FIL001
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+    expect(() => convertORU_R01(messageWithPrimaryLoinc)).not.toThrow();
+  });
+
+  test("accepts message when OBX-3 has LOINC in alternate coding", () => {
+    const messageWithAltLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+ORC|RE|ORD001|FIL001
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+    expect(() => convertORU_R01(messageWithAltLoinc)).not.toThrow();
+  });
+
+  test("error message includes OBX Set ID and local code for debugging", () => {
+    const messageWithoutLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+ORC|RE|ORD001|FIL001
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|3|NM|MYCODE^MyTest^LOCALLAB||100|mg/dL||||F`;
+
+    expect(() => convertORU_R01(messageWithoutLoinc)).toThrow(/OBX Set ID: 3/);
+    expect(() => convertORU_R01(messageWithoutLoinc)).toThrow(/MYCODE/);
+  });
+
+  test("rejects message if any OBX lacks LOINC (first OBX has LOINC, second doesn't)", () => {
+    const mixedMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+ORC|RE|ORD001|FIL001
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium^LN||4.2|mmol/L||||F
+OBX|2|NM|67890^Sodium^LOCAL||140|mmol/L||||F`;
+
+    expect(() => convertORU_R01(mixedMessage)).toThrow(/LOINC/);
+    expect(() => convertORU_R01(mixedMessage)).toThrow(/OBX Set ID: 2/);
   });
 });
