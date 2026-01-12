@@ -40,8 +40,8 @@ export async function pollReceivedMessage(): Promise<IncomingHL7v2Message | null
  * Convert HL7v2 message to FHIR Bundle
  * Uses converter router to automatically detect message type
  */
-function convertMessage(message: IncomingHL7v2Message): Bundle {
-  return convertToFHIR(message.message);
+async function convertMessage(message: IncomingHL7v2Message): Promise<Bundle> {
+  return await convertToFHIR(message.message);
 }
 
 // ============================================================================
@@ -127,7 +127,7 @@ export async function processNextMessage(): Promise<boolean> {
 
   try {
     // Convert HL7v2 to FHIR
-    bundle = convertMessage(message);
+    bundle = await convertMessage(message);
 
     // Submit to Aidbox as transaction
     await submitBundle(bundle);
@@ -188,7 +188,7 @@ export function createIncomingHL7v2MessageProcessorService(options: {
       }
 
       // Process the message
-      bundle = convertMessage(currentMessage);
+      bundle = await convertMessage(currentMessage);
       await submitBundle(bundle);
       const patientId = extractPatientId(bundle);
       await updateMessageStatus(currentMessage, "processed", { patientId, bundle });

@@ -1,4 +1,4 @@
-import { test, expect, describe } from "bun:test";
+import { test, expect, describe, mock } from "bun:test";
 import { convertToFHIR } from "../../src/v2-to-fhir/converter";
 
 const ADT_A01_MESSAGE = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215143000||ADT^A01^ADT_A01|MSG001|P|2.5.1|||AL|AL
@@ -17,24 +17,33 @@ DG1|2|FF||SHMWAPYFA DXFU||W|||||||||1
 IN1|1|0182|95|COMMERCIAL INSURANCE|P O BOX 740800^^ATLANTA^GA^303740800||(401)414-7523|671593|||||||C|CZEGXD^ITODJ^WDJL|S|57817839|207 BFYDE ETQH^MT EYJ 69^HYNOYYZT^PA^77139^US^P^WES^WES|||1||||||||||||||094094615|0.00|||||3^NOT EMPLOYED^HL70066^3^NOT EMPLOYED^99ESC|M
 IN2||000-00-0000|||L|||||||||||||||N|||||||||||||||||||||||||||||||||||||||||||(521)665-9273^PRN^PH^^^151^3942567|^WPN^PH||||||||3`;
 
+// Mock aidbox module to avoid actual API calls
+const mockAidbox = {
+  aidboxFetch: mock(() =>
+    Promise.reject(new Error("HTTP 404: ConceptMap not found"))
+  ),
+};
+
+mock.module("../../src/aidbox", () => mockAidbox);
+
 describe("convertToFHIR", () => {
-  test("converts ADT^A01 message to FHIR Bundle", () => {
-    const bundle = convertToFHIR(ADT_A01_MESSAGE);
+  test("converts ADT^A01 message to FHIR Bundle", async () => {
+    const bundle = await convertToFHIR(ADT_A01_MESSAGE);
     expect(bundle).toMatchSnapshot();
   });
 
-  test("converts ADT^A08 message to FHIR Bundle", () => {
-    const bundle = convertToFHIR(ADT_A08_MESSAGE);
+  test("converts ADT^A08 message to FHIR Bundle", async () => {
+    const bundle = await convertToFHIR(ADT_A08_MESSAGE);
     expect(bundle).toMatchSnapshot();
   });
 
-  test("throws error when MSH segment is missing", () => {
+  test("throws error when MSH segment is missing", async () => {
     const invalidMessage = `PID|1|12345^^^OCCAM^PE|67890^^^CERNER^MR`;
-    expect(() => convertToFHIR(invalidMessage)).toThrow();
+    await expect(convertToFHIR(invalidMessage)).rejects.toThrow();
   });
 
-  test("throws error when PID segment is missing", () => {
+  test("throws error when PID segment is missing", async () => {
     const invalidMessage = `MSH|^~\\&|APP|FAC|||20251109||ADT^A08|123|P|2.5.1`;
-    expect(() => convertToFHIR(invalidMessage)).toThrow("PID segment not found");
+    await expect(convertToFHIR(invalidMessage)).rejects.toThrow("PID segment not found");
   });
 });

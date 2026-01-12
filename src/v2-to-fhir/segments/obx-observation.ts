@@ -11,6 +11,7 @@ import type {
   Range,
   Ratio,
 } from "../../fhir/hl7-fhir-r4-core";
+import { normalizeSystem } from "../code-mapping/coding-systems";
 
 // ============================================================================
 // LOINC Validation
@@ -273,23 +274,6 @@ function convertTMToTime(tm: string | undefined): string | undefined {
 }
 
 /**
- * Normalize HL7 coding system to FHIR URI
- */
-function normalizeSystem(system: string | undefined): string | undefined {
-  if (!system) return undefined;
-
-  const upper = system.toUpperCase();
-  if (upper === "LN" || upper === "LOINC") {
-    return "http://loinc.org";
-  }
-  if (upper === "SCT" || upper === "SNOMED" || upper === "SNOMEDCT") {
-    return "http://snomed.info/sct";
-  }
-
-  return system;
-}
-
-/**
  * Convert CE to CodeableConcept
  */
 function convertCEToCodeableConcept(ce: CE | undefined): CodeableConcept {
@@ -367,15 +351,26 @@ function getInterpretationDisplay(code: string): string {
 // Main Converter Function
 // ============================================================================
 
+export interface ConvertOBXOptions {
+  /**
+   * Pre-resolved CodeableConcept for OBX-3.
+   * When provided, this is used instead of extracting from OBX-3 directly.
+   * This allows the ORU_R01 converter to resolve codes via ConceptMap first.
+   */
+  resolvedCode?: CodeableConcept;
+}
+
 /**
  * Convert OBX segment to FHIR Observation
  *
  * @param obx - The OBX segment to convert
  * @param obrFillerOrderNumber - The filler order number from parent OBR (for deterministic ID)
+ * @param options - Optional conversion options including pre-resolved code
  */
 export function convertOBXToObservation(
   obx: OBX,
   obrFillerOrderNumber: string,
+  options?: ConvertOBXOptions,
 ): Observation {
   // Generate deterministic ID: {OBR-3}-obx-{OBX-1}[-{OBX-4}]
   let id = `${obrFillerOrderNumber.toLowerCase()}-obx-${obx.$1_setIdObx || "0"}`;
@@ -384,11 +379,14 @@ export function convertOBXToObservation(
   }
   id = id.replace(/[^a-z0-9-]/g, "-");
 
+  // Use resolved code if provided, otherwise extract from OBX-3
+  const code = options?.resolvedCode ?? convertCEToCodeableConcept(obx.$3_observationIdentifier);
+
   const observation: Observation = {
     resourceType: "Observation",
     id,
     status: mapOBXStatusToFHIR(obx.$11_observationResultStatus as string),
-    code: convertCEToCodeableConcept(obx.$3_observationIdentifier),
+    code,
   };
 
   // OBX-14: Date/Time of Observation → effectiveDateTime

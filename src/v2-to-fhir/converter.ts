@@ -68,7 +68,7 @@ function extractMessageType(message: string): string {
  * @returns FHIR R4 Transaction Bundle
  * @throws Error if message type is unsupported
  */
-export function convertToFHIR(message: string): Bundle {
+export async function convertToFHIR(message: string): Promise<Bundle> {
   const messageType = extractMessageType(message);
 
   switch (messageType) {
@@ -79,7 +79,7 @@ export function convertToFHIR(message: string): Bundle {
       return convertADT_A08(message);
 
     case "ORU_R01":
-      return convertORU_R01(message);
+      return await convertORU_R01(message);
 
     default:
       throw new Error(`Unsupported message type: ${messageType}`);

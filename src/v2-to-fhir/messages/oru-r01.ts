@@ -35,11 +35,14 @@ import type {
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertOBRToDiagnosticReport } from "../segments/obr-diagnosticreport";
-import {
-  convertOBXToObservation,
-  hasLoincCode,
-} from "../segments/obx-observation";
+import { convertOBXToObservation } from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
+import {
+  resolveToLoinc,
+  buildCodeableConcept,
+  LoincResolutionError,
+  type SenderContext,
+} from "../code-mapping/conceptmap-lookup";
 
 /**
  * Reconstruct SN (Structured Numeric) value from parsed components
@@ -323,7 +326,7 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
  *   SPM - Specimen (0..*)
  * }
  */
-export function convertORU_R01(message: string): Bundle {
+export async function convertORU_R01(message: string): Promise<Bundle> {
   const parsed = parseMessage(message);
 
   // =========================================================================
@@ -336,6 +339,12 @@ export function convertORU_R01(message: string): Bundle {
   }
   const msh = fromMSH(mshSegment);
   const messageControlId = msh.$10_messageControlId;
+
+  // Extract sender context for ConceptMap lookup
+  const senderContext: SenderContext = {
+    sendingApplication: msh.$3_sendingApplication?.$1_namespace || "",
+    sendingFacility: msh.$4_sendingFacility?.$1_namespace || "",
+  };
 
   // Create base meta with tags
   const baseMeta: Meta = {
@@ -394,14 +403,21 @@ export function convertORU_R01(message: string): Bundle {
     for (const obsGroup of group.observations) {
       const obx = fromOBX(obsGroup.obx);
 
-      // Validate OBX-3 contains LOINC code (per spec Appendix E)
-      if (!hasLoincCode(obx.$3_observationIdentifier)) {
-        const obxSetId = obx.$1_setIdObx || "unknown";
-        const localCode = obx.$3_observationIdentifier?.$1_code || "empty";
-        throw new Error(
-          `OBX-3 does not contain LOINC code (OBX Set ID: ${obxSetId}, local code: ${localCode}). ` +
-            `LOINC is required in either primary coding (component 3 = LN) or alternate coding (component 6 = LN).`,
-        );
+      // Resolve OBX-3 to LOINC code (inline or via ConceptMap)
+      // This will throw LoincResolutionError if code cannot be resolved
+      let resolvedCode;
+      try {
+        const resolution = await resolveToLoinc(obx.$3_observationIdentifier, senderContext);
+        resolvedCode = buildCodeableConcept(resolution);
+      } catch (error) {
+        if (error instanceof LoincResolutionError) {
+          const obxSetId = obx.$1_setIdObx || "unknown";
+          throw new Error(
+            `OBX-3 does not contain LOINC code (OBX Set ID: ${obxSetId}, local code: ${error.localCode || "empty"}). ` +
+              error.message,
+          );
+        }
+        throw error;
       }
 
       // Fix SN values that were incorrectly parsed (caret is component separator in SN)
@@ -414,7 +430,7 @@ export function convertORU_R01(message: string): Bundle {
         }
       }
 
-      const observation = convertOBXToObservation(obx, fillerOrderNumber);
+      const observation = convertOBXToObservation(obx, fillerOrderNumber, { resolvedCode });
       observation.meta = { ...observation.meta, ...baseMeta };
 
       // Convert NTE[] → note
