@@ -10,7 +10,7 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 - One DiagnosticReport per ORDER_OBSERVATION group (ORC/OBR pair)
 - Deterministic IDs from OBR-3 (filler order number) for idempotency via PUT
 - Tag all resources with MSH-10 (message control ID) for audit trail
-- OBX-3 must contain LOINC code (see Appendix E for detection logic)
+- OBX-3 must resolve to LOINC code (inline or via sender-specific ConceptMap, see Appendix E)
 - OBX-8 interpretation: version-aware (MSH-12: v2.6- string, v2.7+ CWE)
 - Specimen: SPM preferred (v2.5+), OBR-15 for backward compatibility (repeating field with `~` separator)
 - NTE segments immediately following OBX → associated Observation.note
@@ -19,7 +19,7 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 
 1. MLLP receives ORU_R01 → `IncomingHL7v2Message` with `status=received`
 2. Parse message structure; validate MSH, OBR-3, OBR-25, OBX-11 required fields
-3. Validate all OBX-3 codes contain LOINC (Appendix E)
+3. Resolve all OBX-3 codes to LOINC (inline or via sender-specific ConceptMap, see Appendix E)
 4. Lookup Patient (PID-3) and Encounter (PV1-19) - error if not found
 5. Convert:
    - ORC + OBR → DiagnosticReport (one per ORDER_OBSERVATION group)
@@ -86,7 +86,8 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 | Missing OBR | Reject message |
 | Missing OBR-3 | Reject message (required for resource IDs) |
 | OBX without parent OBR | Reject message |
-| OBX-3 has no LOINC code | Reject message (see Appendix E for detection) |
+| OBX-3 has no LOINC (inline or ConceptMap) | Reject message (see Appendix E for resolution) |
+| ConceptMap not found for sender | Reject message (when OBX-3 has no inline LOINC) |
 | Patient not found (PID-3) | Reject message |
 | Encounter not found (PV1-19) | Reject message (see Open Questions for missing PV1) |
 | OBR-25 missing or Y/Z | Reject message |
@@ -108,7 +109,7 @@ Based on HL7 v2-to-FHIR mapping spec and example messages:
 - **ORC segment**: Process ORC for DiagnosticReport metadata (ORC-2/3 for identifiers). ServiceRequest creation is out of scope for this phase.
 - **Observation.category**: Set to "laboratory" for all observations in ORU_R01 lab results context.
 - **Legacy performer fields**: OBX-16 (Responsible Observer) used when PRT absent. OBR-16 (Ordering Provider) maps to DiagnosticReport if no PRT.
-- **OBX-3 code handling**: Accept LOINC in either primary identifier (components 1-3) or alternate identifier (components 4-6). See Appendix E.
+- **OBX-3 code handling**: Accept LOINC in either primary identifier (components 1-3) or alternate identifier (components 4-6). When no inline LOINC present, lookup local code in sender-specific ConceptMap. See Appendix E.
 
 ---
 
@@ -185,11 +186,14 @@ OBX-3 is a CE (Coded Element) or CWE (Coded With Exceptions) data type with the 
 | 5 | Alternate Text | Alternate Text |
 | 6 | Name of Alternate Coding System | Name of Alternate Coding System |
 
-**LOINC detection algorithm:**
+**LOINC resolution algorithm:**
 
 1. Check if component 3 (Name of Coding System) = "LN" → use components 1-3 as LOINC
 2. Else check if component 6 (Name of Alternate Coding System) = "LN" → use components 4-6 as LOINC
-3. If neither has "LN", reject the message
+3. If neither has "LN", lookup local code (components 1-3) in sender-specific ConceptMap:
+   - ConceptMap ID: `hl7v2-{sendingApplication}-{sendingFacility}-to-loinc`
+   - If ConceptMap exists and mapping found → use mapped LOINC code
+   - If ConceptMap not found or mapping not found → reject the message
 
 **Example:**
 

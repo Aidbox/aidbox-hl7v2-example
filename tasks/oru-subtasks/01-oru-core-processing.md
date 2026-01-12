@@ -19,6 +19,7 @@ ORU_R01 (Unsolicited Observation Result) messages contain laboratory results and
    - Extract local code from OBX-3.1-3 (identifier, text, system)
    - Check if LOINC code exists in OBX-3.4-6 (alternate identifier, text, system)
    - If no LOINC, lookup in sender-specific ConceptMap
+   - If no LOINC and no mapping - stop the mapping with an error
    - All codes resolve → continue processing
 4. Convert to FHIR Bundle:
    - PID → Patient (lookup only)
@@ -246,6 +247,57 @@ src/
 
 - [ ] **1.7** Integrate into converter router
   - Add `ORU_R01` case to `src/v2-to-fhir/converter.ts`
+
+### Phase 2: ConceptMap Code Resolution
+
+- [ ] **1.8** Write tests for ConceptMap code resolution (TDD - write tests first)
+
+  **Unit tests - ConceptMap lookup:**
+  - ConceptMap structure and querying:
+    - Lookup local code by (code, system) pair → returns LOINC mapping
+    - Lookup returns null when no mapping exists
+    - ConceptMap is sender-specific (filtered by sendingApplication + sendingFacility)
+  - Code resolution logic:
+    - OBX-3 with LOINC in alternate fields (OBX-3.4-6) → use inline LOINC, skip ConceptMap lookup
+    - OBX-3 with local code only → lookup in ConceptMap → return resolved LOINC
+    - OBX-3 with local code, no ConceptMap match → throw error with descriptive message
+  - ConceptMap source identification:
+    - Build ConceptMap identifier from sender fields of IncomingHL7v2Message
+
+  **Integration tests - Code resolution in ORU_R01 flow:**
+  - Happy path with inline LOINC:
+    - OBX-3 contains LOINC in alternate fields → Observation.code uses inline LOINC
+  - Happy path with ConceptMap:
+    - OBX-3 contains local code only, ConceptMap has mapping → Observation.code uses mapped LOINC
+    - Multiple OBX segments with mixed codes (some inline, some mapped) → all resolve correctly
+  - Error cases:
+    - OBX-3 contains local code only, no ConceptMap exists for sender → reject with error
+    - OBX-3 contains local code only, ConceptMap exists but code not mapped → reject with error
+    - Error message includes: local code, local system, sendingApplication, sendingFacility
+
+  **Edge cases:**
+  - OBX-3.4-6 partially populated (e.g., code but no system) → treat as no inline LOINC, use ConceptMap
+  - OBX-3.6 is not "LN" (LOINC system) → treat as no inline LOINC, use ConceptMap
+  - ConceptMap has multiple target codes for same source → reject with error
+  - Empty sendingApplication or sendingFacility → reject with error
+
+- [ ] **1.9** Create ConceptMap lookup service: `src/v2-to-fhir/conceptmap-lookup.ts`
+  - Define interface for code resolution input (local code, system, sender info)
+  - Implement `resolveToLoinc()` function:
+    - Accept OBX-3 CWE and sender identifiers (sendingApplication, sendingFacility)
+    - Check if LOINC already present in OBX-3.4-6 (OBX-3.6 = "LN")
+    - If inline LOINC found, return it directly
+    - If no inline LOINC, query Aidbox for sender-specific ConceptMap
+    - Query ConceptMap for local code → LOINC mapping
+    - Return resolved LOINC CodeableConcept or throw descriptive error
+  - ConceptMap ID convention: `hl7v2-{sendingApplication}-{sendingFacility}-to-loinc`
+  - Handle ConceptMap not found (different error from mapping not found)
+
+- [ ] **1.10** Integrate ConceptMap lookup into OBX converter
+  - Update `obx-observation.ts` to accept sender context (sendingApplication, sendingFacility)
+  - Call `resolveToLoinc()` when building Observation.code
+  - Propagate errors with context (which OBX segment failed, what code was unresolvable)
+  - Ensure error stops entire message processing (no partial results)
 
 ---
 
