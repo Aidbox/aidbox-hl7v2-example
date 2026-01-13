@@ -177,21 +177,6 @@ export function lookupInConceptMap(
 // Main Resolution Function
 // ============================================================================
 
-function validateSenderContext(
-  sender: SenderContext,
-  observationIdentifier: CE,
-): asserts sender is { sendingApplication: string; sendingFacility: string } {
-  if (!sender.sendingApplication || !sender.sendingFacility) {
-    throw new LoincResolutionError(
-      "sendingApplication and sendingFacility are required for code resolution",
-      observationIdentifier.$1_code,
-      observationIdentifier.$3_system,
-      sender.sendingApplication || "empty",
-      sender.sendingFacility || "empty",
-    );
-  }
-}
-
 function tryResolveFromInlineLoinc(observationIdentifier: CE): CodeResolutionResult | null {
   if (hasLoincInPrimaryCoding(observationIdentifier)) {
     return { loinc: extractLoincFromPrimary(observationIdentifier) };
@@ -272,8 +257,6 @@ export async function resolveToLoinc(
   observationIdentifier: CE,
   sender: SenderContext,
 ): Promise<CodeResolutionResult> {
-  validateSenderContext(sender, observationIdentifier);
-
   const inlineResult = tryResolveFromInlineLoinc(observationIdentifier);
   if (inlineResult) return inlineResult;
 

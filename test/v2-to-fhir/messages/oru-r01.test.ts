@@ -390,6 +390,30 @@ OBR|1|||LAB123|||20260101`;
     await expect(convertORU_R01(invalidMessage)).rejects.toThrow(/MSH/);
   });
 
+  test("throws error when MSH-3 (sending application) is missing", async () => {
+    const { convertORU_R01 } = await import(
+      "../../../src/v2-to-fhir/messages/oru-r01"
+    );
+    const invalidMessage = `MSH|^~\\&||HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
+PID|1||TEST-ERR||TESTPATIENT^ERROR
+OBR|1||FIL001|LAB123|||20260101
+OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
+
+    await expect(convertORU_R01(invalidMessage)).rejects.toThrow(/MSH-3/);
+  });
+
+  test("throws error when MSH-4 (sending facility) is missing", async () => {
+    const { convertORU_R01 } = await import(
+      "../../../src/v2-to-fhir/messages/oru-r01"
+    );
+    const invalidMessage = `MSH|^~\\&|LAB|||DEST|20260101||ORU^R01|MSG1|P|2.5
+PID|1||TEST-ERR||TESTPATIENT^ERROR
+OBR|1||FIL001|LAB123|||20260101
+OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
+
+    await expect(convertORU_R01(invalidMessage)).rejects.toThrow(/MSH-4/);
+  });
+
   test("throws error when OBR segment is missing", async () => {
     const { convertORU_R01 } = await import(
       "../../../src/v2-to-fhir/messages/oru-r01"

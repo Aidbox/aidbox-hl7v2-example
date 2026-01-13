@@ -308,10 +308,17 @@ function parseMSH(message: HL7v2Message): ParsedMSH {
 
   const msh = fromMSH(mshSegment);
 
-  const senderContext: SenderContext = {
-    sendingApplication: msh.$3_sendingApplication?.$1_namespace || "",
-    sendingFacility: msh.$4_sendingFacility?.$1_namespace || "",
-  };
+  const sendingApplication = msh.$3_sendingApplication?.$1_namespace;
+  const sendingFacility = msh.$4_sendingFacility?.$1_namespace;
+
+  if (!sendingApplication || !sendingFacility) {
+    throw new Error(
+      `MSH-3 (sending application) and MSH-4 (sending facility) are required. ` +
+        `Got: MSH-3="${sendingApplication || ""}", MSH-4="${sendingFacility || ""}"`,
+    );
+  }
+
+  const senderContext: SenderContext = { sendingApplication, sendingFacility };
 
   const baseMeta: Meta = {
     tag: extractMetaTags(msh),

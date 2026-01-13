@@ -411,34 +411,6 @@ describe("resolveToLoinc - error cases", () => {
     mockAidbox.aidboxFetch.mockClear();
   });
 
-  test("throws error when sendingApplication is empty", async () => {
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveToLoinc, LoincResolutionError } = await import(
-      "../../src/v2-to-fhir/code-mapping/conceptmap-lookup"
-    );
-
-    await expect(
-      resolveToLoinc(
-        { $1_code: "TEST", $3_system: "LOCAL" },
-        { sendingApplication: "", sendingFacility: "FAC" }
-      )
-    ).rejects.toThrow(LoincResolutionError);
-  });
-
-  test("throws error when sendingFacility is empty", async () => {
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveToLoinc, LoincResolutionError } = await import(
-      "../../src/v2-to-fhir/code-mapping/conceptmap-lookup"
-    );
-
-    await expect(
-      resolveToLoinc(
-        { $1_code: "TEST", $3_system: "LOCAL" },
-        { sendingApplication: "APP", sendingFacility: "" }
-      )
-    ).rejects.toThrow(LoincResolutionError);
-  });
-
   test("throws error when OBX-3 has no code value", async () => {
     mock.module("../../src/aidbox", () => mockAidbox);
     const { resolveToLoinc, LoincResolutionError } = await import(
