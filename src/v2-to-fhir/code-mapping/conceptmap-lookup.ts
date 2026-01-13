@@ -133,7 +133,12 @@ export async function fetchConceptMap(
 }
 
 /**
- * Look up a local code in a ConceptMap to find its LOINC mapping
+ * Look up a local code in a ConceptMap to find its LOINC mapping.
+ *
+ * @param conceptMap - The ConceptMap to search in
+ * @param localCode - The local code to look up
+ * @param localSystem - The coding system URI (must be pre-normalized by caller using normalizeSystem())
+ * @returns LOINC Coding if found, null otherwise
  */
 export function lookupInConceptMap(
   conceptMap: ConceptMap,
@@ -142,23 +147,18 @@ export function lookupInConceptMap(
 ): Coding | null {
   if (!conceptMap.group) return null;
 
-  for (const group of conceptMap.group) {
-    // Check if this group maps to LOINC
-    if (group.target !== "http://loinc.org") continue;
+  for (const mappingSystem of conceptMap.group) {
+    const mapsToLoinc = mappingSystem.target === "http://loinc.org";
+    const matchingSystem = mappingSystem.source === localSystem;
 
-    // If a source system is specified in the group, check if it matches
-    if (localSystem && group.source && group.source !== localSystem) {
-      // Also try with normalized system
-      if (normalizeSystem(localSystem) !== group.source) {
-        continue;
-      }
-    }
+    if (!mapsToLoinc || !matchingSystem)
+      continue;
 
     // Find matching element
-    for (const element of group.element) {
-      if (element.code === localCode) {
+    for (const mapping of mappingSystem.element) {
+      if (mapping.code === localCode) {
         // Found a match - get the target LOINC code
-        const target = element.target?.[0];
+        const target = mapping.target?.[0];
         if (target && target.code) {
           return {
             code: target.code,
@@ -177,35 +177,10 @@ export function lookupInConceptMap(
 // Main Resolution Function
 // ============================================================================
 
-/**
- * Resolve OBX-3 observation identifier to LOINC code.
- *
- * Resolution algorithm (per spec Appendix E):
- * 1. Check if component 3 (Name of Coding System) = "LN" → use components 1-3 as LOINC
- * 2. Else check if component 6 (Name of Alternate Coding System) = "LN" → use components 4-6 as LOINC
- * 3. If neither has "LN", lookup local code (components 1-3) in sender-specific ConceptMap
- * 4. If ConceptMap not found or mapping not found → throw error
- *
- * @param observationIdentifier - OBX-3 CE/CWE field
- * @param sender - Sender context (application and facility from MSH)
- * @returns CodeResolutionResult with LOINC coding and optional local coding
- * @throws LoincResolutionError if LOINC cannot be resolved
- */
-export async function resolveToLoinc(
-  observationIdentifier: CE | undefined,
+function validateSenderContext(
   sender: SenderContext,
-): Promise<CodeResolutionResult> {
-  if (!observationIdentifier) {
-    throw new LoincResolutionError(
-      "OBX-3 observation identifier is missing",
-      undefined,
-      undefined,
-      sender.sendingApplication,
-      sender.sendingFacility,
-    );
-  }
-
-  // Validate sender context
+  observationIdentifier: CE,
+): asserts sender is { sendingApplication: string; sendingFacility: string } {
   if (!sender.sendingApplication || !sender.sendingFacility) {
     throw new LoincResolutionError(
       "sendingApplication and sendingFacility are required for code resolution",
@@ -215,15 +190,13 @@ export async function resolveToLoinc(
       sender.sendingFacility || "empty",
     );
   }
+}
 
-  // Step 1: Check if LOINC is in primary coding (components 1-3)
+function tryResolveFromInlineLoinc(observationIdentifier: CE): CodeResolutionResult | null {
   if (hasLoincInPrimaryCoding(observationIdentifier)) {
-    return {
-      loinc: extractLoincFromPrimary(observationIdentifier),
-    };
+    return { loinc: extractLoincFromPrimary(observationIdentifier) };
   }
 
-  // Step 2: Check if LOINC is in alternate coding (components 4-6)
   if (hasLoincInAlternateCoding(observationIdentifier)) {
     return {
       loinc: extractLoincFromAlternate(observationIdentifier),
@@ -231,7 +204,13 @@ export async function resolveToLoinc(
     };
   }
 
-  // Step 3: No inline LOINC - lookup in sender-specific ConceptMap
+  return null;
+}
+
+async function resolveFromConceptMap(
+  observationIdentifier: CE,
+  sender: SenderContext,
+): Promise<CodeResolutionResult> {
   const localCode = observationIdentifier.$1_code;
   const localSystem = observationIdentifier.$3_system;
 
@@ -260,7 +239,7 @@ export async function resolveToLoinc(
     );
   }
 
-  const loincCoding = lookupInConceptMap(conceptMap, localCode, localSystem);
+  const loincCoding = lookupInConceptMap(conceptMap, localCode, normalizeSystem(localSystem));
 
   if (!loincCoding) {
     throw new LoincResolutionError(
@@ -278,6 +257,27 @@ export async function resolveToLoinc(
     loinc: loincCoding,
     local: extractLocalFromPrimary(observationIdentifier),
   };
+}
+
+/**
+ * Resolve OBX-3 observation identifier to LOINC code.
+ *
+ * Resolution algorithm (per spec Appendix E):
+ * 1. Check if component 3 (Name of Coding System) = "LN" → use components 1-3 as LOINC
+ * 2. Else check if component 6 (Name of Alternate Coding System) = "LN" → use components 4-6 as LOINC
+ * 3. If neither has "LN", lookup local code (components 1-3) in sender-specific ConceptMap
+ * 4. If ConceptMap not found or mapping not found → throw error
+ */
+export async function resolveToLoinc(
+  observationIdentifier: CE,
+  sender: SenderContext,
+): Promise<CodeResolutionResult> {
+  validateSenderContext(sender, observationIdentifier);
+
+  const inlineResult = tryResolveFromInlineLoinc(observationIdentifier);
+  if (inlineResult) return inlineResult;
+
+  return resolveFromConceptMap(observationIdentifier, sender);
 }
 
 /**

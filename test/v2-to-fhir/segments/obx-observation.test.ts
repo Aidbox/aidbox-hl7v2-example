@@ -4,7 +4,6 @@ import {
   mapOBXStatusToFHIR,
   parseReferenceRange,
   parseStructuredNumeric,
-  hasLoincCode,
 } from "../../../src/v2-to-fhir/segments/obx-observation";
 import type { OBX } from "../../../src/hl7v2/generated/fields";
 
@@ -42,7 +41,7 @@ describe("convertOBXToObservation", () => {
   });
 
   describe("code mapping", () => {
-    test("converts OBX-3 Observation Identifier to code", () => {
+    test("converts OBX-3 Observation Identifier to code without normalization", () => {
       const obx: OBX = {
         ...baseOBX,
         $3_observationIdentifier: {
@@ -59,8 +58,9 @@ describe("convertOBXToObservation", () => {
 
       expect(result.code.coding).toHaveLength(2);
       expect(result.code.coding?.[0]?.code).toBe("51998");
+      expect(result.code.coding?.[0]?.system).toBe("SRL");
       expect(result.code.coding?.[1]?.code).toBe("2823-3");
-      expect(result.code.coding?.[1]?.system).toBe("http://loinc.org");
+      expect(result.code.coding?.[1]?.system).toBe("LN");
     });
   });
 
@@ -599,58 +599,5 @@ describe("referenceRange (OBX-7)", () => {
     const result = convertOBXToObservation(obx, "123");
 
     expect(result.referenceRange?.[0]?.text).toBe("negative");
-  });
-});
-
-describe("hasLoincCode (LOINC validation)", () => {
-  test("returns true when primary coding system is LN", () => {
-    const ce = { $1_code: "2823-3", $2_text: "Potassium", $3_system: "LN" };
-    expect(hasLoincCode(ce)).toBe(true);
-  });
-
-  test("returns true when alternate coding system is LN", () => {
-    const ce = {
-      $1_code: "12345",
-      $2_text: "Potassium",
-      $3_system: "LOCAL",
-      $4_altCode: "2823-3",
-      $5_altDisplay: "Potassium SerPl-sCnc",
-      $6_altSystem: "LN",
-    };
-    expect(hasLoincCode(ce)).toBe(true);
-  });
-
-  test("returns true when LN is lowercase", () => {
-    const ce = { $1_code: "2823-3", $3_system: "ln" };
-    expect(hasLoincCode(ce)).toBe(true);
-  });
-
-  test("returns true when alternate LN is lowercase", () => {
-    const ce = { $1_code: "12345", $3_system: "LOCAL", $6_altSystem: "ln" };
-    expect(hasLoincCode(ce)).toBe(true);
-  });
-
-  test("returns false when neither coding system is LN", () => {
-    const ce = { $1_code: "12345", $3_system: "LOCAL" };
-    expect(hasLoincCode(ce)).toBe(false);
-  });
-
-  test("returns false when observation identifier is undefined", () => {
-    expect(hasLoincCode(undefined)).toBe(false);
-  });
-
-  test("returns false when only local code without system specified", () => {
-    const ce = { $1_code: "12345", $2_text: "Test" };
-    expect(hasLoincCode(ce)).toBe(false);
-  });
-
-  test("returns false when coding systems are non-LOINC", () => {
-    const ce = {
-      $1_code: "12345",
-      $3_system: "99LOCAL",
-      $4_altCode: "67890",
-      $6_altSystem: "SCT",
-    };
-    expect(hasLoincCode(ce)).toBe(false);
   });
 });

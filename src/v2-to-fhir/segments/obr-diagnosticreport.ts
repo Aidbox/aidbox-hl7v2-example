@@ -10,6 +10,7 @@ import type {
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
+import { normalizeSystem } from "../code-mapping/coding-systems";
 
 // ============================================================================
 // Status Mapping
@@ -143,26 +144,6 @@ function convertServiceToCodeableConcept(
     coding: codings,
     text: service.$2_text || service.$5_altDisplay,
   };
-}
-
-/**
- * Normalize HL7 coding system to FHIR URI
- */
-function normalizeSystem(system: string | undefined): string | undefined {
-  if (!system) return undefined;
-
-  const upper = system.toUpperCase();
-  if (upper === "LN" || upper === "LOINC") {
-    return "http://loinc.org";
-  }
-  if (upper === "SCT" || upper === "SNOMED" || upper === "SNOMEDCT") {
-    return "http://snomed.info/sct";
-  }
-  if (upper === "ICD10" || upper === "I10") {
-    return "http://hl7.org/fhir/sid/icd-10";
-  }
-
-  return system;
 }
 
 // ============================================================================

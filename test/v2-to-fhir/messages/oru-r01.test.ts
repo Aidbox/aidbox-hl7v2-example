@@ -5,6 +5,8 @@ import type {
   Observation,
   Specimen,
 } from "../../../src/fhir/hl7-fhir-r4-core";
+import type { OBX } from "../../../src/hl7v2/generated/fields";
+import type { SenderContext } from "../../../src/v2-to-fhir/code-mapping/conceptmap-lookup";
 
 // Sample ORU_R01 message with single OBR and multiple OBX
 const SIMPLE_ORU_MESSAGE = `MSH|^~\\&|LABSYS|TESTHOSP||RECV|20260106171422||ORU^R01|MSG123|P|2.5.1
@@ -545,5 +547,305 @@ OBX|1|NM|12345^Potassium^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
       (c) => c.system === "LOCAL"
     );
     expect(localCoding?.code).toBe("12345");
+  });
+});
+
+describe("convertOBXToObservationResolving", () => {
+  const senderContext: SenderContext = {
+    sendingApplication: "LAB",
+    sendingFacility: "HOSPITAL",
+  };
+
+  const baseOBX: OBX = {
+    $1_setIdObx: "1",
+    $2_valueType: "NM",
+    $5_observationValue: ["4.2"],
+    $6_unit: { $1_code: "mmol/L" },
+    $11_observationResultStatus: "F",
+  };
+
+  describe("with LOINC in primary coding", () => {
+    test("returns observation with LOINC code from primary coding", async () => {
+      const { convertOBXToObservationResolving } = await import(
+        "../../../src/v2-to-fhir/messages/oru-r01"
+      );
+
+      const obx: OBX = {
+        ...baseOBX,
+        $3_observationIdentifier: {
+          $1_code: "2823-3",
+          $2_text: "Potassium SerPl-sCnc",
+          $3_system: "LN",
+        },
+      };
+
+      const observation = await convertOBXToObservationResolving(
+        obx,
+        "FIL001",
+        senderContext,
+      );
+
+      expect(observation.resourceType).toBe("Observation");
+      expect(observation.code.coding).toHaveLength(1);
+      expect(observation.code.coding?.[0]?.code).toBe("2823-3");
+      expect(observation.code.coding?.[0]?.system).toBe("http://loinc.org");
+    });
+
+    test("preserves other observation fields from OBX", async () => {
+      const { convertOBXToObservationResolving } = await import(
+        "../../../src/v2-to-fhir/messages/oru-r01"
+      );
+
+      const obx: OBX = {
+        ...baseOBX,
+        $3_observationIdentifier: {
+          $1_code: "2823-3",
+          $2_text: "Potassium",
+          $3_system: "LN",
+        },
+      };
+
+      const observation = await convertOBXToObservationResolving(
+        obx,
+        "FIL001",
+        senderContext,
+      );
+
+      expect(observation.status).toBe("final");
+      expect(observation.valueQuantity?.value).toBe(4.2);
+      expect(observation.valueQuantity?.unit).toBe("mmol/L");
+    });
+  });
+
+  describe("with LOINC in alternate coding", () => {
+    test("returns observation with LOINC from alternate and local from primary", async () => {
+      const { convertOBXToObservationResolving } = await import(
+        "../../../src/v2-to-fhir/messages/oru-r01"
+      );
+
+      const obx: OBX = {
+        ...baseOBX,
+        $3_observationIdentifier: {
+          $1_code: "51998",
+          $2_text: "Potassium",
+          $3_system: "LOCAL",
+          $4_altCode: "2823-3",
+          $5_altDisplay: "Potassium SerPl-sCnc",
+          $6_altSystem: "LN",
+        },
+      };
+
+      const observation = await convertOBXToObservationResolving(
+        obx,
+        "FIL001",
+        senderContext,
+      );
+
+      expect(observation.code.coding).toHaveLength(2);
+
+      const loincCoding = observation.code.coding?.find(
+        (c) => c.system === "http://loinc.org",
+      );
+      expect(loincCoding?.code).toBe("2823-3");
+      expect(loincCoding?.display).toBe("Potassium SerPl-sCnc");
+
+      const localCoding = observation.code.coding?.find(
+        (c) => c.system === "LOCAL",
+      );
+      expect(localCoding?.code).toBe("51998");
+    });
+
+    test("LOINC coding comes first in the coding array", async () => {
+      const { convertOBXToObservationResolving } = await import(
+        "../../../src/v2-to-fhir/messages/oru-r01"
+      );
+
+      const obx: OBX = {
+        ...baseOBX,
+        $3_observationIdentifier: {
+          $1_code: "51998",
+          $2_text: "Potassium",
+          $3_system: "LOCAL",
+          $4_altCode: "2823-3",
+          $5_altDisplay: "Potassium SerPl-sCnc",
+          $6_altSystem: "LN",
+        },
+      };
+
+      const observation = await convertOBXToObservationResolving(
+        obx,
+        "FIL001",
+        senderContext,
+      );
+
+      expect(observation.code.coding?.[0]?.system).toBe("http://loinc.org");
+      expect(observation.code.coding?.[1]?.system).toBe("LOCAL");
+    });
+  });
+
+  describe("with ConceptMap lookup", () => {
+    test("resolves local code to LOINC via ConceptMap", async () => {
+      const mockConceptMap = {
+        resourceType: "ConceptMap",
+        id: "hl7v2-lab-hospital-to-loinc",
+        status: "active",
+        group: [
+          {
+            source: "LOCALLAB",
+            target: "http://loinc.org",
+            element: [
+              {
+                code: "K123",
+                display: "Potassium Local",
+                target: [
+                  {
+                    code: "2823-3",
+                    display: "Potassium SerPl-sCnc",
+                    equivalence: "equivalent",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      mock.module("../../../src/aidbox", () => ({
+        aidboxFetch: mock(() => Promise.resolve(mockConceptMap)),
+      }));
+
+      const { convertOBXToObservationResolving } = await import(
+        "../../../src/v2-to-fhir/messages/oru-r01"
+      );
+
+      const obx: OBX = {
+        ...baseOBX,
+        $3_observationIdentifier: {
+          $1_code: "K123",
+          $2_text: "Potassium Local",
+          $3_system: "LOCALLAB",
+        },
+      };
+
+      const observation = await convertOBXToObservationResolving(
+        obx,
+        "FIL001",
+        senderContext,
+      );
+
+      expect(observation.code.coding).toHaveLength(2);
+
+      const loincCoding = observation.code.coding?.find(
+        (c) => c.system === "http://loinc.org",
+      );
+      expect(loincCoding?.code).toBe("2823-3");
+
+      const localCoding = observation.code.coding?.find(
+        (c) => c.system === "LOCALLAB",
+      );
+      expect(localCoding?.code).toBe("K123");
+    });
+  });
+
+  describe("error handling", () => {
+    beforeEach(() => {
+      mock.module("../../../src/aidbox", () => ({
+        aidboxFetch: mock(() =>
+          Promise.reject(new Error("HTTP 404: ConceptMap not found")),
+        ),
+      }));
+    });
+
+    test("throws LoincResolutionError when no LOINC and no ConceptMap", async () => {
+      const { convertOBXToObservationResolving } = await import(
+        "../../../src/v2-to-fhir/messages/oru-r01"
+      );
+      const { LoincResolutionError } = await import(
+        "../../../src/v2-to-fhir/code-mapping/conceptmap-lookup"
+      );
+
+      const obx: OBX = {
+        ...baseOBX,
+        $3_observationIdentifier: {
+          $1_code: "UNKNOWN",
+          $2_text: "Unknown Test",
+          $3_system: "LOCAL",
+        },
+      };
+
+      await expect(
+        convertOBXToObservationResolving(obx, "FIL001", senderContext),
+      ).rejects.toBeInstanceOf(LoincResolutionError);
+    });
+
+    test("error includes sender context for debugging", async () => {
+      const { convertOBXToObservationResolving } = await import(
+        "../../../src/v2-to-fhir/messages/oru-r01"
+      );
+
+      const obx: OBX = {
+        ...baseOBX,
+        $3_observationIdentifier: {
+          $1_code: "LOCAL123",
+          $2_text: "Local Test",
+          $3_system: "MYLAB",
+        },
+      };
+
+      await expect(
+        convertOBXToObservationResolving(obx, "FIL001", senderContext),
+      ).rejects.toThrow(/LAB/);
+    });
+  });
+
+  describe("ID generation", () => {
+    test("generates deterministic ID from filler order number and OBX-1", async () => {
+      const { convertOBXToObservationResolving } = await import(
+        "../../../src/v2-to-fhir/messages/oru-r01"
+      );
+
+      const obx: OBX = {
+        ...baseOBX,
+        $1_setIdObx: "5",
+        $3_observationIdentifier: {
+          $1_code: "2823-3",
+          $2_text: "Potassium",
+          $3_system: "LN",
+        },
+      };
+
+      const observation = await convertOBXToObservationResolving(
+        obx,
+        "26H-006MP0004",
+        senderContext,
+      );
+
+      expect(observation.id).toBe("26h-006mp0004-obx-5");
+    });
+
+    test("includes OBX-4 sub-ID in generated ID when present", async () => {
+      const { convertOBXToObservationResolving } = await import(
+        "../../../src/v2-to-fhir/messages/oru-r01"
+      );
+
+      const obx: OBX = {
+        ...baseOBX,
+        $1_setIdObx: "1",
+        $4_observationSubId: "a",
+        $3_observationIdentifier: {
+          $1_code: "2823-3",
+          $2_text: "Potassium",
+          $3_system: "LN",
+        },
+      };
+
+      const observation = await convertOBXToObservationResolving(
+        obx,
+        "FIL001",
+        senderContext,
+      );
+
+      expect(observation.id).toBe("fil001-obx-1-a");
+    });
   });
 });

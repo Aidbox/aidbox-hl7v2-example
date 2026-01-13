@@ -327,3 +327,63 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+
+# Best Code Practices
+
+Prefer readable variable names over comments:
+```typescript
+/* BAD */
+
+// Check if this group maps to LOINC
+if (group.target !== "http://loinc.org") continue;
+
+// If a source system is specified in the group, check if it matches
+if (group.source !== localSystem) {
+  // Also try with normalized system
+  if (normalizeSystem(localSystem) !== group.source) {
+    continue;
+  }
+}
+
+
+/* GOOD */
+
+const mapsToLoinc = mappingSystem.target === "http://loinc.org";
+const matchingSystem = mappingSystem.source === localSystem || mappingSystem.source === normalizeSystem(localSystem);
+
+if (!mapsToLoinc || !matchingSystem)
+  continue;
+```
+
+Prefer functions over big commented blocks:
+```typescript
+/* BAD */
+
+// =========================================================================
+// OBX Parsing
+// =========================================================================
+
+// ... a lot of code
+
+// =========================================================================
+// SPM Parsing
+// =========================================================================
+
+// ... a lot of code
+
+
+/* GOOD */
+
+function parseOBX() {
+  // ... a lot of code
+}
+
+function parseSPM() {
+  // ... a lot of code
+}
+
+const obx = parseOBX();
+const spm = parseSPM();
+```
+
+Don't add error handling, fallbacks, or validation for scenarios that can't happen.

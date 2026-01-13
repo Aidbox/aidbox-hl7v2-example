@@ -12,35 +12,7 @@ import type {
   Ratio,
 } from "../../fhir/hl7-fhir-r4-core";
 import { normalizeSystem } from "../code-mapping/coding-systems";
-
-// ============================================================================
-// LOINC Validation
-// ============================================================================
-
-/**
- * Check if OBX-3 contains a LOINC code per spec Appendix E algorithm.
- * Returns true if LOINC is found in either primary (1-3) or alternate (4-6) coding.
- *
- * LOINC detection algorithm:
- * 1. Check if component 3 (Name of Coding System) = "LN" → use components 1-3 as LOINC
- * 2. Else check if component 6 (Name of Alternate Coding System) = "LN" → use components 4-6 as LOINC
- * 3. If neither has "LN", return false (message should be rejected)
- */
-export function hasLoincCode(observationIdentifier: CE | undefined): boolean {
-  if (!observationIdentifier) return false;
-
-  // Check primary coding system (component 3)
-  if (observationIdentifier.$3_system?.toUpperCase() === "LN") {
-    return true;
-  }
-
-  // Check alternate coding system (component 6)
-  if (observationIdentifier.$6_altSystem?.toUpperCase() === "LN") {
-    return true;
-  }
-
-  return false;
-}
+import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 
 // ============================================================================
 // Status Mapping
@@ -274,38 +246,6 @@ function convertTMToTime(tm: string | undefined): string | undefined {
 }
 
 /**
- * Convert CE to CodeableConcept
- */
-function convertCEToCodeableConcept(ce: CE | undefined): CodeableConcept {
-  if (!ce) return { text: "Unknown" };
-
-  const codings: CodeableConcept["coding"] = [];
-
-  // Primary coding
-  if (ce.$1_code) {
-    codings.push({
-      code: ce.$1_code,
-      display: ce.$2_text,
-      system: normalizeSystem(ce.$3_system),
-    });
-  }
-
-  // Alternate coding (often LOINC)
-  if (ce.$4_altCode) {
-    codings.push({
-      code: ce.$4_altCode,
-      display: ce.$5_altDisplay,
-      system: normalizeSystem(ce.$6_altSystem),
-    });
-  }
-
-  return {
-    coding: codings.length > 0 ? codings : undefined,
-    text: ce.$2_text || ce.$5_altDisplay,
-  };
-}
-
-/**
  * Parse coded value from OBX-5 string (e.g., "260385009^Negative^SCT")
  */
 function parseCodedValue(value: string): CodeableConcept {
@@ -350,16 +290,6 @@ function getInterpretationDisplay(code: string): string {
 // ============================================================================
 // Main Converter Function
 // ============================================================================
-
-export interface ConvertOBXOptions {
-  /**
-   * Pre-resolved CodeableConcept for OBX-3.
-   * When provided, this is used instead of extracting from OBX-3 directly.
-   * This allows the ORU_R01 converter to resolve codes via ConceptMap first.
-   */
-  resolvedCode?: CodeableConcept;
-}
-
 /**
  * Convert OBX segment to FHIR Observation
  *
@@ -370,7 +300,6 @@ export interface ConvertOBXOptions {
 export function convertOBXToObservation(
   obx: OBX,
   obrFillerOrderNumber: string,
-  options?: ConvertOBXOptions,
 ): Observation {
   // Generate deterministic ID: {OBR-3}-obx-{OBX-1}[-{OBX-4}]
   let id = `${obrFillerOrderNumber.toLowerCase()}-obx-${obx.$1_setIdObx || "0"}`;
@@ -379,8 +308,7 @@ export function convertOBXToObservation(
   }
   id = id.replace(/[^a-z0-9-]/g, "-");
 
-  // Use resolved code if provided, otherwise extract from OBX-3
-  const code = options?.resolvedCode ?? convertCEToCodeableConcept(obx.$3_observationIdentifier);
+  const code = convertCEToCodeableConcept(obx.$3_observationIdentifier) ?? { text: "Unknown" };
 
   const observation: Observation = {
     resourceType: "Observation",

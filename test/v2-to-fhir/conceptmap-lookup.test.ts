@@ -411,20 +411,6 @@ describe("resolveToLoinc - error cases", () => {
     mockAidbox.aidboxFetch.mockClear();
   });
 
-  test("throws error when observation identifier is missing", async () => {
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveToLoinc, LoincResolutionError } = await import(
-      "../../src/v2-to-fhir/code-mapping/conceptmap-lookup"
-    );
-
-    await expect(
-      resolveToLoinc(undefined, {
-        sendingApplication: "TEST",
-        sendingFacility: "FAC",
-      })
-    ).rejects.toThrow(LoincResolutionError);
-  });
-
   test("throws error when sendingApplication is empty", async () => {
     mock.module("../../src/aidbox", () => mockAidbox);
     const { resolveToLoinc, LoincResolutionError } = await import(

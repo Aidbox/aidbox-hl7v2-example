@@ -14,7 +14,6 @@ import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
 import {
   fromMSH,
   fromOBR,
-  fromOBX,
   fromNTE,
   fromSPM,
   type MSH,
@@ -23,6 +22,7 @@ import {
   type NTE,
   type SPM,
 } from "../../hl7v2/generated/fields";
+import { fromOBX } from "../../hl7v2/wrappers";
 import type {
   Bundle,
   BundleEntry,
@@ -38,36 +38,26 @@ import { convertOBRToDiagnosticReport } from "../segments/obr-diagnosticreport";
 import { convertOBXToObservation } from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
 import {
-  resolveToLoinc,
   buildCodeableConcept,
   LoincResolutionError,
+  resolveToLoinc,
   type SenderContext,
 } from "../code-mapping/conceptmap-lookup";
 
-/**
- * Reconstruct SN (Structured Numeric) value from parsed components
- * SN uses caret (^) as internal separator, which gets split by the parser
- */
-function reconstructSNValue(rawField: unknown): string | undefined {
-  if (!rawField) return undefined;
-  if (typeof rawField === "string") return rawField;
-  if (typeof rawField === "object" && rawField !== null) {
-    // Reconstruct from components: {1: ">", 2: "90"} -> ">^90"
-    const obj = rawField as Record<string, string>;
-    const parts: string[] = [];
-    let i = 1;
-    while (obj[i] !== undefined) {
-      parts.push(obj[i]);
-      i++;
-    }
-    return parts.join("^");
-  }
-  return undefined;
+export async function convertOBXToObservationResolving(
+  obx: OBX,
+  obrFillerOrderNumber: string,
+  senderContext: SenderContext,
+): Promise<Observation> {
+  const resolution = await resolveToLoinc(
+    obx.$3_observationIdentifier,
+    senderContext,
+  );
+  const resolvedCode = buildCodeableConcept(resolution);
+  const observation = convertOBXToObservation(obx, obrFillerOrderNumber);
+  observation.code = resolvedCode;
+  return observation;
 }
-
-// ============================================================================
-// Types
-// ============================================================================
 
 interface OBRGroup {
   obr: HL7v2Segment;
@@ -78,9 +68,11 @@ interface OBRGroup {
   specimens: HL7v2Segment[];
 }
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
+interface ParsedMSH {
+  msh: MSH;
+  senderContext: SenderContext;
+  baseMeta: Meta;
+}
 
 function findSegment(
   message: HL7v2Message,
@@ -308,9 +300,180 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
   return `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
 }
 
-// ============================================================================
-// Main Converter Function
-// ============================================================================
+function parseMSH(message: HL7v2Message): ParsedMSH {
+  const mshSegment = findSegment(message, "MSH");
+  if (!mshSegment) {
+    throw new Error("MSH segment not found in ORU_R01 message");
+  }
+
+  const msh = fromMSH(mshSegment);
+
+  const senderContext: SenderContext = {
+    sendingApplication: msh.$3_sendingApplication?.$1_namespace || "",
+    sendingFacility: msh.$4_sendingFacility?.$1_namespace || "",
+  };
+
+  const baseMeta: Meta = {
+    tag: extractMetaTags(msh),
+  };
+
+  return { msh, senderContext, baseMeta };
+}
+
+function validateOBRPresence(message: HL7v2Message): void {
+  const obrSegments = findAllSegments(message, "OBR");
+  if (obrSegments.length === 0) {
+    throw new Error("OBR segment not found in ORU_R01 message");
+  }
+}
+
+function getFillerOrderNumber(obr: OBR): string {
+  if (!obr.$3_fillerOrderNumber?.$1_value) {
+    throw new Error(
+      "OBR-3 (Filler Order Number) is required for deterministic ID generation",
+    );
+  }
+  return obr.$3_fillerOrderNumber.$1_value;
+}
+
+async function processObservations(
+  observationGroups: OBRGroup["observations"],
+  fillerOrderNumber: string,
+  senderContext: SenderContext,
+  baseMeta: Meta,
+): Promise<Observation[]> {
+  const observations: Observation[] = [];
+
+  for (const obsGroup of observationGroups) {
+    const obx = fromOBX(obsGroup.obx);
+
+    let observation: Observation;
+    try {
+      observation = await convertOBXToObservationResolving(
+        obx,
+        fillerOrderNumber,
+        senderContext,
+      );
+    } catch (error) {
+      if (error instanceof LoincResolutionError) {
+        const obxSetId = obx.$1_setIdObx || "unknown";
+        throw new Error(
+          `OBX-3 does not contain LOINC code (OBX Set ID: ${obxSetId}, local code: ${error.localCode || "empty"}). ` +
+            error.message,
+        );
+      }
+      throw error;
+    }
+
+    observation.meta = { ...observation.meta, ...baseMeta };
+
+    if (obsGroup.ntes.length > 0) {
+      const ntes = obsGroup.ntes.map((seg) => fromNTE(seg));
+      const annotation = convertNTEsToAnnotation(ntes);
+      if (annotation) {
+        observation.note = [annotation];
+      }
+    }
+
+    observations.push(observation);
+  }
+
+  return observations;
+}
+
+function processSpecimens(
+  specimenSegments: HL7v2Segment[],
+  obr: OBR,
+  fillerOrderNumber: string,
+  baseMeta: Meta,
+): Specimen[] {
+  const specimens: Specimen[] = [];
+
+  if (specimenSegments.length > 0) {
+    for (const [index, segment] of specimenSegments.entries()) {
+      const spm = fromSPM(segment);
+      const specimen = convertSPMToSpecimen(spm, fillerOrderNumber, index + 1);
+      specimen.meta = { ...specimen.meta, ...baseMeta };
+      specimens.push(specimen);
+    }
+  } else {
+    const specimen = createSpecimenFromOBR15(obr, fillerOrderNumber);
+    if (specimen) {
+      specimen.meta = { ...specimen.meta, ...baseMeta };
+      specimens.push(specimen);
+    }
+  }
+
+  return specimens;
+}
+
+function linkSpecimensToResources(
+  specimens: Specimen[],
+  diagnosticReport: DiagnosticReport,
+  observations: Observation[],
+): void {
+  const firstSpecimen = specimens[0];
+  if (!firstSpecimen) return;
+
+  diagnosticReport.specimen = specimens.map(
+    (s) => ({ reference: `Specimen/${s.id}` }) as Reference<"Specimen">,
+  );
+
+  const firstSpecimenRef = {
+    reference: `Specimen/${firstSpecimen.id}`,
+  } as Reference<"Specimen">;
+
+  for (const obs of observations) {
+    obs.specimen = firstSpecimenRef;
+  }
+}
+
+function buildBundleEntries(
+  diagnosticReport: DiagnosticReport,
+  observations: Observation[],
+  specimens: Specimen[],
+): BundleEntry[] {
+  return [
+    createBundleEntry(diagnosticReport),
+    ...observations.map((obs) => createBundleEntry(obs)),
+    ...specimens.map((spec) => createBundleEntry(spec)),
+  ];
+}
+
+async function processOBRGroup(
+  group: OBRGroup,
+  senderContext: SenderContext,
+  baseMeta: Meta,
+): Promise<BundleEntry[]> {
+  const obr = fromOBR(group.obr);
+  const fillerOrderNumber = getFillerOrderNumber(obr);
+
+  const diagnosticReport = convertOBRToDiagnosticReport(obr);
+  diagnosticReport.meta = { ...diagnosticReport.meta, ...baseMeta };
+  diagnosticReport.result = [];
+
+  const observations = await processObservations(
+    group.observations,
+    fillerOrderNumber,
+    senderContext,
+    baseMeta,
+  );
+
+  diagnosticReport.result = observations.map(
+    (obs) => ({ reference: `Observation/${obs.id}` }) as Reference<"Observation">,
+  );
+
+  const specimens = processSpecimens(
+    group.specimens,
+    obr,
+    fillerOrderNumber,
+    baseMeta,
+  );
+
+  linkSpecimensToResources(specimens, diagnosticReport, observations);
+
+  return buildBundleEntries(diagnosticReport, observations, specimens);
+}
 
 /**
  * Convert HL7v2 ORU_R01 message to FHIR Transaction Bundle
@@ -329,195 +492,22 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
 export async function convertORU_R01(message: string): Promise<Bundle> {
   const parsed = parseMessage(message);
 
-  // =========================================================================
-  // Extract and Validate MSH
-  // =========================================================================
-
-  const mshSegment = findSegment(parsed, "MSH");
-  if (!mshSegment) {
-    throw new Error("MSH segment not found in ORU_R01 message");
-  }
-  const msh = fromMSH(mshSegment);
-  const messageControlId = msh.$10_messageControlId;
-
-  // Extract sender context for ConceptMap lookup
-  const senderContext: SenderContext = {
-    sendingApplication: msh.$3_sendingApplication?.$1_namespace || "",
-    sendingFacility: msh.$4_sendingFacility?.$1_namespace || "",
-  };
-
-  // Create base meta with tags
-  const baseMeta: Meta = {
-    tag: extractMetaTags(msh),
-  };
-
-  // =========================================================================
-  // Validate OBR presence
-  // =========================================================================
-
-  const obrSegments = findAllSegments(parsed, "OBR");
-  if (obrSegments.length === 0) {
-    throw new Error("OBR segment not found in ORU_R01 message");
-  }
-
-  // =========================================================================
-  // Group Segments by OBR
-  // =========================================================================
+  const { senderContext, baseMeta } = parseMSH(parsed);
+  validateOBRPresence(parsed);
 
   const obrGroups = groupSegmentsByOBR(parsed);
 
-  // =========================================================================
-  // Process Each OBR Group
-  // =========================================================================
-
   const entries: BundleEntry[] = [];
-
   for (const group of obrGroups) {
-    const obr = fromOBR(group.obr);
-
-    // Validate OBR-3 (Filler Order Number)
-    if (!obr.$3_fillerOrderNumber?.$1_value) {
-      throw new Error(
-        "OBR-3 (Filler Order Number) is required for deterministic ID generation",
-      );
-    }
-
-    const fillerOrderNumber = obr.$3_fillerOrderNumber.$1_value;
-
-    // -----------------------------------------------------------------------
-    // Convert OBR → DiagnosticReport
-    // -----------------------------------------------------------------------
-
-    const diagnosticReport = convertOBRToDiagnosticReport(obr);
-    diagnosticReport.meta = { ...diagnosticReport.meta, ...baseMeta };
-
-    // Initialize result array for observations
-    diagnosticReport.result = [];
-
-    // -----------------------------------------------------------------------
-    // Convert OBX[] → Observation[]
-    // -----------------------------------------------------------------------
-
-    const observations: Observation[] = [];
-
-    for (const obsGroup of group.observations) {
-      const obx = fromOBX(obsGroup.obx);
-
-      // Resolve OBX-3 to LOINC code (inline or via ConceptMap)
-      // This will throw LoincResolutionError if code cannot be resolved
-      let resolvedCode;
-      try {
-        const resolution = await resolveToLoinc(obx.$3_observationIdentifier, senderContext);
-        resolvedCode = buildCodeableConcept(resolution);
-      } catch (error) {
-        if (error instanceof LoincResolutionError) {
-          const obxSetId = obx.$1_setIdObx || "unknown";
-          throw new Error(
-            `OBX-3 does not contain LOINC code (OBX Set ID: ${obxSetId}, local code: ${error.localCode || "empty"}). ` +
-              error.message,
-          );
-        }
-        throw error;
-      }
-
-      // Fix SN values that were incorrectly parsed (caret is component separator in SN)
-      if (obx.$2_valueType?.toUpperCase() === "SN") {
-        const rawField = (obsGroup.obx as { fields: Record<number, unknown> })
-          .fields[5];
-        const reconstructed = reconstructSNValue(rawField);
-        if (reconstructed) {
-          obx.$5_observationValue = [reconstructed];
-        }
-      }
-
-      const observation = convertOBXToObservation(obx, fillerOrderNumber, { resolvedCode });
-      observation.meta = { ...observation.meta, ...baseMeta };
-
-      // Convert NTE[] → note
-      if (obsGroup.ntes.length > 0) {
-        const ntes = obsGroup.ntes.map((seg) => fromNTE(seg));
-        const annotation = convertNTEsToAnnotation(ntes);
-        if (annotation) {
-          observation.note = [annotation];
-        }
-      }
-
-      observations.push(observation);
-
-      // Add reference to DiagnosticReport.result
-      diagnosticReport.result.push({
-        reference: `Observation/${observation.id}`,
-      } as Reference<"Observation">);
-    }
-
-    // -----------------------------------------------------------------------
-    // Convert SPM[] → Specimen[] (or use OBR-15 fallback)
-    // -----------------------------------------------------------------------
-
-    const specimens: Specimen[] = [];
-
-    if (group.specimens.length > 0) {
-      // Use SPM segments
-      for (let i = 0; i < group.specimens.length; i++) {
-        const spm = fromSPM(group.specimens[i]);
-        const specimen = convertSPMToSpecimen(spm, fillerOrderNumber, i + 1);
-        specimen.meta = { ...specimen.meta, ...baseMeta };
-        specimens.push(specimen);
-      }
-    } else {
-      // Fallback to OBR-15
-      const specimen = createSpecimenFromOBR15(obr, fillerOrderNumber);
-      if (specimen) {
-        specimen.meta = { ...specimen.meta, ...baseMeta };
-        specimens.push(specimen);
-      }
-    }
-
-    // Link specimens to DiagnosticReport and Observations
-    if (specimens.length > 0) {
-      diagnosticReport.specimen = specimens.map(
-        (s) =>
-          ({
-            reference: `Specimen/${s.id}`,
-          }) as Reference<"Specimen">,
-      );
-
-      // Link first specimen to all observations
-      const specimenRef = { reference: `Specimen/${specimens[0].id}` };
-      for (const obs of observations) {
-        obs.specimen = specimenRef as Reference<"Specimen">;
-      }
-    }
-
-    // -----------------------------------------------------------------------
-    // Add to Bundle Entries
-    // -----------------------------------------------------------------------
-
-    // Add DiagnosticReport
-    entries.push(createBundleEntry(diagnosticReport));
-
-    // Add Observations
-    for (const obs of observations) {
-      entries.push(createBundleEntry(obs));
-    }
-
-    // Add Specimens
-    for (const spec of specimens) {
-      entries.push(createBundleEntry(spec));
-    }
+    const groupEntries = await processOBRGroup(group, senderContext, baseMeta);
+    entries.push(...groupEntries);
   }
 
-  // =========================================================================
-  // Build Transaction Bundle
-  // =========================================================================
-
-  const bundle: Bundle = {
+  return {
     resourceType: "Bundle",
     type: "transaction",
     entry: entries,
   };
-
-  return bundle;
 }
 
 export default convertORU_R01;
