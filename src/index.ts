@@ -1,5 +1,5 @@
 import * as net from "node:net";
-import { aidboxFetch, getResources, type Bundle } from "./aidbox";
+import { aidboxFetch, getResources, putResource, type Bundle } from "./aidbox";
 import { processNextMessage } from "./bar/sender-service";
 import { processNextInvoice, pollPendingInvoice, updateInvoiceStatus, getRetryCount } from "./bar/invoice-builder-service";
 import { wrapWithMLLP, VT, FS, CR } from "./mllp/mllp-server";
@@ -464,6 +464,7 @@ interface MessageListItem {
   hl7Message: string | undefined;
   error?: string;
   bundle?: string;
+  retryUrl?: string;
 }
 
 function renderMessageList(items: MessageListItem[]): string {
@@ -487,6 +488,16 @@ function renderMessageList(items: MessageListItem[]): string {
           </div>
         </summary>
         <div class="px-4 pb-4">
+          ${item.retryUrl ? `
+            <form method="POST" action="${item.retryUrl}" class="mb-3">
+              <button type="submit" class="px-3 py-1.5 bg-amber-500 text-white rounded text-sm font-medium hover:bg-amber-600 flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Mark for Retry
+              </button>
+            </form>
+          ` : ''}
           ${item.error ? `
             <details class="mb-3" open>
               <summary class="cursor-pointer text-sm font-medium text-red-700 hover:text-red-800">Error</summary>
@@ -647,6 +658,10 @@ function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port
       name: "ORU^R01 (Lab Result, Missing LOINC)",
       message: `MSH|^~\\&|ACME_LAB|ACME_HOSP|EMR|DEST|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORU^R01|MSG${Date.now()}|P|2.5.1\rPID|1||TEST-0002^^^HOSPITAL^MR||TESTPATIENT^BETA||19850515|F\rPV1|1|O|LAB|||||||||||||||VN${Date.now().toString().slice(-6)}\rORC|RE|ORD002|FIL002\rOBR|1|ORD002|FIL002|CHEM7^CHEMISTRY PANEL^LOCAL|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}|||||||||PROV002^LAB^DOCTOR||||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||Lab|F\rOBX|1|NM|K_SERUM^Potassium [Serum/Plasma]^LOCAL||4.5|mmol/L|3.5-5.5||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|2|NM|NA_SERUM^Sodium [Serum/Plasma]^LOCAL||142|mmol/L|136-145||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|3|NM|GLU_FASTING^Glucose Fasting^LOCAL||95|mg/dL|70-100||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rNTE|1|L|Local codes used - LOINC mapping required.`,
     },
+    {
+      name: "ORU^R01 (Lab Result, Unknown LOINC)",
+      message: `MSH|^~\\&|ACME_LAB|ACME_HOSP|EMR|DEST|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORU^R01|MSG${Date.now()}|P|2.5.1\rPID|1||TEST-0003^^^HOSPITAL^MR||TESTPATIENT^GAMMA||19901225|M\rPV1|1|O|LAB|||||||||||||||VN${Date.now().toString().slice(-6)}\rORC|RE|ORD003|FIL003\rOBR|1|ORD003|FIL003|UNKNOWN^UNKNOWN TEST^LOCAL|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}|||||||||PROV003^LAB^DOCTOR||||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||Lab|F\rOBX|1|NM|UNKNOWN_TEST^Unknown Lab Test^LOCAL||123|units|0-200||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rNTE|1|L|This code has no LOINC mapping in ConceptMap.`,
+    },
   ];
 
   const content = `
@@ -774,7 +789,8 @@ function renderIncomingMessagesPage(messages: IncomingHL7v2Message[], statusFilt
     ],
     hl7Message: msg.message,
     error: msg.error,
-    bundle: msg.bundle
+    bundle: msg.bundle,
+    retryUrl: msg.status === "error" && msg.id ? `/mark-for-retry/${msg.id}` : undefined,
   }));
 
   const statuses = ["received", "processed", "error"];
@@ -1103,6 +1119,31 @@ Bun.serve({
         })().catch(console.error);
 
         // Redirect immediately
+        return new Response(null, {
+          status: 302,
+          headers: { Location: "/incoming-messages" },
+        });
+      },
+    },
+    "/mark-for-retry/:id": {
+      POST: async (req) => {
+        const messageId = req.params.id;
+
+        // Fetch current message
+        const message = await aidboxFetch<IncomingHL7v2Message>(
+          `/fhir/IncomingHL7v2Message/${messageId}`
+        );
+
+        // Update status to received and clear error
+        const updated: IncomingHL7v2Message = {
+          ...message,
+          status: "received",
+          error: undefined,
+          bundle: undefined,
+        };
+
+        await putResource("IncomingHL7v2Message", messageId, updated);
+
         return new Response(null, {
           status: 302,
           headers: { Location: "/incoming-messages" },

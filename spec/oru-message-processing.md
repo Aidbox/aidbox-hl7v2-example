@@ -11,6 +11,7 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 - Deterministic IDs from OBR-3 (filler order number) for idempotency via PUT
 - Tag all resources with MSH-10 (message control ID) for audit trail
 - OBX-3 must resolve to LOINC code (inline or via sender-specific ConceptMap, see Appendix E)
+- Unmapped OBX-3 codes block processing with `mapping_error` and create/track mapping Tasks
 - OBX-8 interpretation: version-aware (MSH-12: v2.6- string, v2.7+ CWE)
 - Specimen: SPM preferred (v2.5+), OBR-15 for backward compatibility (repeating field with `~` separator)
 - NTE segments immediately following OBX → associated Observation.note
@@ -20,12 +21,23 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 1. MLLP receives ORU_R01 → `IncomingHL7v2Message` with `status=received`
 2. Parse message structure; validate MSH, OBR-3, OBR-25, OBX-11 required fields
 3. Resolve all OBX-3 codes to LOINC (inline or via sender-specific ConceptMap, see Appendix E)
-4. Lookup Patient (PID-3) and Encounter (PV1-19) - error if not found
-5. Convert:
+4. If any OBX-3 cannot be resolved → set `status=mapping_error`, create mapping Tasks (see Code Mapping), stop processing
+5. Lookup Patient (PID-3) and Encounter (PV1-19) - error if not found
+6. Convert:
    - ORC + OBR → DiagnosticReport (one per ORDER_OBSERVATION group)
    - OBX + trailing NTE → Observation (linked to DiagnosticReport)
    - SPM or OBR-15 → Specimen (linked to DiagnosticReport and Observations)
-6. Submit transaction bundle via PUT (idempotent), update status to `processed`
+7. Submit transaction bundle via PUT (idempotent), update status to `processed`
+
+### Code Mapping Failure Handling
+
+When a message contains OBX codes that cannot be resolved to LOINC, ORU processing is blocked and mapping Tasks are created.
+
+1. Encounter unmapped OBX-3 codes during conversion
+2. Set `IncomingHL7v2Message.status = mapping_error`
+3. Deduplicate unmapped codes by sender + local system + code
+4. Create or update a `Task` per unique code (deterministic ID, PUT/upsert)
+5. Store `unmappedCodes[]` entries with task references on the message
 
 ## Resource Mapping
 
@@ -86,8 +98,8 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 | Missing OBR | Reject message |
 | Missing OBR-3 | Reject message (required for resource IDs) |
 | OBX without parent OBR | Reject message |
-| OBX-3 has no LOINC (inline or ConceptMap) | Reject message (see Appendix E for resolution) |
-| ConceptMap not found for sender | Reject message (when OBX-3 has no inline LOINC) |
+| OBX-3 has no LOINC (inline or ConceptMap) | Set `mapping_error`, create/update mapping Task(s), store `unmappedCodes[]` |
+| ConceptMap not found for sender | Set `mapping_error` when OBX-3 has no inline LOINC |
 | Patient not found (PID-3) | Reject message |
 | Encounter not found (PV1-19) | Reject message (see Open Questions for missing PV1) |
 | OBR-25 missing or Y/Z | Reject message |
@@ -109,7 +121,7 @@ Based on HL7 v2-to-FHIR mapping spec and example messages:
 - **ORC segment**: Process ORC for DiagnosticReport metadata (ORC-2/3 for identifiers). ServiceRequest creation is out of scope for this phase.
 - **Observation.category**: Set to "laboratory" for all observations in ORU_R01 lab results context.
 - **Legacy performer fields**: OBX-16 (Responsible Observer) used when PRT absent. OBR-16 (Ordering Provider) maps to DiagnosticReport if no PRT.
-- **OBX-3 code handling**: Accept LOINC in either primary identifier (components 1-3) or alternate identifier (components 4-6). When no inline LOINC present, lookup local code in sender-specific ConceptMap. See Appendix E.
+- **OBX-3 code handling**: Accept LOINC in either primary identifier (components 1-3) or alternate identifier (components 4-6). When no inline LOINC present, lookup local code in sender-specific ConceptMap. If not found, create mapping Tasks and mark message as `mapping_error`. See Appendix E.
 
 ---
 
@@ -173,7 +185,7 @@ No validation - pass through unknown codes. Common codes:
 | >, < | Above/Below absolute |
 | S, R, I | Susceptible/Resistant/Intermediate |
 
-## Appendix E: OBX-3 LOINC Code Detection
+## Appendix E: OBX-3 LOINC Code Detection and Mapping Tasks
 
 OBX-3 is a CE (Coded Element) or CWE (Coded With Exceptions) data type with the following structure:
 
@@ -193,7 +205,7 @@ OBX-3 is a CE (Coded Element) or CWE (Coded With Exceptions) data type with the 
 3. If neither has "LN", lookup local code (components 1-3) in sender-specific ConceptMap:
    - ConceptMap ID: `hl7v2-{sendingApplication}-{sendingFacility}-to-loinc`
    - If ConceptMap exists and mapping found → use mapped LOINC code
-   - If ConceptMap not found or mapping not found → reject the message
+   - If ConceptMap not found or mapping not found → set `status=mapping_error`, create/update mapping Task(s), and store `unmappedCodes[]`
 
 **Example:**
 

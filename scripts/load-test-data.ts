@@ -83,6 +83,57 @@ const insurers = [
   { id: "org-united", name: "UnitedHealthcare", planCode: "UHC" },
 ];
 
+// ConceptMap for ACME_LAB/ACME_HOSP local codes to LOINC
+// Used by the "ORU^R01 (Lab Result, Missing LOINC)" test message
+const acmeLabConceptMap = {
+  resourceType: "ConceptMap",
+  id: "hl7v2-acme-lab-acme-hosp-to-loinc",
+  status: "active",
+  sourceUri: "http://example.org/fhir/ValueSet/acme-lab-codes",
+  targetUri: "http://loinc.org",
+  group: [
+    {
+      source: "LOCAL",
+      target: "http://loinc.org",
+      element: [
+        {
+          code: "K_SERUM",
+          display: "Potassium [Serum/Plasma]",
+          target: [
+            {
+              code: "2823-3",
+              display: "Potassium [Moles/volume] in Serum or Plasma",
+              equivalence: "equivalent",
+            },
+          ],
+        },
+        {
+          code: "NA_SERUM",
+          display: "Sodium [Serum/Plasma]",
+          target: [
+            {
+              code: "2951-2",
+              display: "Sodium [Moles/volume] in Serum or Plasma",
+              equivalence: "equivalent",
+            },
+          ],
+        },
+        {
+          code: "GLU_FASTING",
+          display: "Glucose Fasting",
+          target: [
+            {
+              code: "1558-6",
+              display: "Fasting glucose [Mass/volume] in Serum or Plasma",
+              equivalence: "equivalent",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
 const practitioners = [
   { id: "practitioner-1", names: [{ family: "Chen", given: ["David", "Wei"]}], npi: "1234567890", specialty: "Internal Medicine"},
   { id: "practitioner-2", names: [{ family: "Patel", given: ["Priya"]}], npi: "2345678901", specialty: "Family Medicine"},
@@ -104,6 +155,10 @@ function formatDateTime(daysAgo: number, hour: number = 9): string {
 
 async function loadTestData() {
   console.log("Loading test data into Aidbox...\n");
+
+  // Create ConceptMap for ACME_LAB/ACME_HOSP
+  await putResource("ConceptMap", acmeLabConceptMap.id, acmeLabConceptMap);
+  console.log(`Created ConceptMap: ${acmeLabConceptMap.id}`);
 
   // Create Organizations (insurers)
   for (const insurer of insurers) {
@@ -252,6 +307,7 @@ async function loadTestData() {
   }
 
   console.log("\n✓ Test data loaded successfully!");
+  console.log(`  - 1 ConceptMap (ACME_LAB/ACME_HOSP to LOINC)`);
   console.log(`  - ${insurers.length} Organizations (insurers)`);
   console.log(`  - ${practitioners.length} Practitioners`);
   console.log(`  - ${testPatients.length} Patients`);
