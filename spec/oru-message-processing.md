@@ -39,6 +39,32 @@ When a message contains OBX codes that cannot be resolved to LOINC, ORU processi
 4. Create or update a `Task` per unique code (deterministic ID, PUT/upsert)
 5. Store `unmappedCodes[]` entries with task references on the message
 
+**Task example (unresolved):**
+
+```json
+{
+  "resourceType": "Task",
+  "status": "requested",
+  "intent": "order",
+  "code": {
+    "coding": [
+      {
+        "system": "http://example.org/task-codes",
+        "code": "local-to-loinc-mapping",
+        "display": "Local code to LOINC mapping"
+      }
+    ]
+  },
+  "input": [
+    { "type": { "text": "Sending application" }, "valueString": "NEXUSLIS" },
+    { "type": { "text": "Sending facility" }, "valueString": "NORTHRIDGE" },
+    { "type": { "text": "Local code" }, "valueString": "K_SERUM" },
+    { "type": { "text": "Local display" }, "valueString": "Potassium [Serum/Plasma]" },
+    { "type": { "text": "Local system" }, "valueString": "NRD-LAB-CODES" }
+  ]
+}
+```
+
 ## Resource Mapping
 
 ### DiagnosticReport (from ORC + OBR)
