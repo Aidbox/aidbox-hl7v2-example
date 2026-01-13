@@ -21,10 +21,10 @@ When ORU_R01 messages contain OBX segments with local codes that cannot be resol
    - Local code found, but no LOINC in alternate fields
    - ConceptMap lookup returns no match for this sender + local code
 4. Processing stops with `mapping_error` status
-5. For each unmapped code:
-   - Create or update a `Task` resource (one per unique sender + code combination)
-   - Link the task to the affected message
-6. Update `IncomingHL7v2Message` to `status=mapping_error`, store list of unmapped codes
+5. Collect all unmapped codes across the message and deduplicate by sender + local system + code
+6. For each unmapped code:
+   - Create or update a `Task` resource (one per unique sender + local system + code combination)
+7. Update `IncomingHL7v2Message` to `status=mapping_error`, store list of unmapped codes (one entry per unresolved code)
 
 **Resolution Path A: Via Mapping Tasks Queue**
 1. User views "Mapping Tasks Queue" showing pending unmapped codes
@@ -33,7 +33,7 @@ When ORU_R01 messages contain OBX segments with local codes that cannot be resol
 4. System creates ConceptMap entry for this sender + local code
 5. System marks the Task as resolved
 6. System queries `GET /IncomingHL7v2Message?status=mapping_error&unmappedCodes.mappingTaskId={taskId}` to find affected messages
-7. For each affected message:
+7. For each affected message (use optimistic concurrency on updates):
    - Remove the resolved task's entry from `unmappedCodes[]`
    - If `unmappedCodes[]` is now empty → change status to `received` for reprocessing
    - If still has entries → message stays in `mapping_error` status
@@ -78,10 +78,6 @@ Unresolved (requested):
   },
   "owner": {
     "display": "Mapping Team"
-  },
-  "focus": {
-    "reference": "IncomingHL7v2Message/imh-000045",
-    "display": "ORU_R01 message imh-000045"
   },
   "input": [
     {
@@ -146,10 +142,6 @@ Resolved (completed):
   "owner": {
     "display": "Mapping Team"
   },
-  "focus": {
-    "reference": "IncomingHL7v2Message/imh-000045",
-    "display": "ORU_R01 message imh-000045"
-  },
   "input": [
     {
       "type": { "text": "Sending application" },
@@ -211,7 +203,7 @@ interface ConceptMap {
   id: string;                          // sender-{sendingApplication}-{sendingFacility}
   name: string;                        // "Lab Code Mappings for {sender}"
   status: "active";
-  sourceUri: string;                   // Sender's code system URI
+  sourceUri: string;                   // Sender's URI
   targetUri: "http://loinc.org";
   group: [{
     source: string;                    // Sender's code system
@@ -256,63 +248,23 @@ interface IncomingHL7v2Message {
 }
 ```
 
+### SearchParameter (Aidbox)
+
+Define a SearchParameter to support querying by mapping task id:
+
+```
+GET /IncomingHL7v2Message?status=mapping_error&unmappedCodes.mappingTaskId={taskId}
+```
+
 ---
 
 ## File Structure
 
 ```
 src/
-├── v2-to-fhir/
-│   └── code-mapping/
-│       └── loinc-resolver.ts          # Code resolution logic (imports from code-mapping services)
 ├── code-mapping/                      # Standalone module for mapping management (UI-facing)
 │   ├── concept-map-service.ts         # ConceptMap CRUD operations
 │   └── mapping-task-service.ts        # Task management for unmapped codes
-```
-
----
-
-## Code Mapping Resolution Algorithm
-
-```typescript
-interface CodeResolutionResult {
-  resolved: boolean;
-  loincCode?: string;
-  loincDisplay?: string;
-  source: "inline" | "conceptmap" | "unresolved";
-}
-
-async function resolveObservationCode(
-  obx3: CWE,
-  sendingApp: string,
-  sendingFacility: string
-): Promise<CodeResolutionResult> {
-  // 1. Check if LOINC provided inline in alternate coding
-  if (obx3.$4_alternateIdentifier && isLoincSystem(obx3.$6_alternateSystem)) {
-    return {
-      resolved: true,
-      loincCode: obx3.$4_alternateIdentifier,
-      loincDisplay: obx3.$5_alternateText,
-      source: "inline"
-    };
-  }
-
-  // 2. Lookup in sender-specific ConceptMap
-  const conceptMapId = `sender-${toKebabCase(sendingApp)}-${toKebabCase(sendingFacility)}`;
-  const mapping = await lookupConceptMap(conceptMapId, obx3.$1_identifier);
-
-  if (mapping) {
-    return {
-      resolved: true,
-      loincCode: mapping.code,
-      loincDisplay: mapping.display,
-      source: "conceptmap"
-    };
-  }
-
-  // 3. Unresolved
-  return { resolved: false, source: "unresolved" };
-}
 ```
 
 ---
@@ -322,12 +274,11 @@ async function resolveObservationCode(
 ### Functional Requirements
 
 1. **Code Mapping**
-   - Support LOINC codes provided in OBX alternate coding fields
-   - Support custom sender-specific mappings via ConceptMap
    - Block processing when unmapped codes are encountered
-   - Track unmapped codes as discrete tasks (deduplicated by sender + code)
+   - Track unmapped codes as discrete tasks (deduplicated by sender + local system + code)
    - Reset message status to `received` when all unmapped codes are resolved, allowing natural reprocessing by the polling service
-   - Use deterministic IDs for Task (`{senderId}-{hash(localCode)}`) with PUT (upsert) to prevent race conditions when multiple workers process messages with the same unmapped code
+   - Use deterministic IDs for Task (`{senderId}-{hash(localSystem)}-{hash(localCode)}`) with PUT (upsert) to prevent race conditions when multiple workers process messages with the same unmapped code
+   - Use `If-Match` with ETag when updating `IncomingHL7v2Message.unmappedCodes[]`
 
 ### Non-Functional Requirements
 
@@ -338,12 +289,10 @@ async function resolveObservationCode(
 
 ## Implementation Tasks
 
-### Phase 2: Code Mapping Infrastructure
+### Phase 1: Code Mapping Infrastructure
 
 - [ ] **2.1** Write tests for code mapping (TDD - write tests first)
   - **Unit tests:**
-    - LOINC inline extraction from OBX-3.4-6
-    - ConceptMap lookup logic
     - Task deduplication (deterministic ID generation)
     - Message status transition rules
   - **Integration tests:**
@@ -357,27 +306,22 @@ async function resolveObservationCode(
 
 - [ ] **2.2** Define Task shape for mapping
   - Task uses `code=local-to-loinc-mapping`
-  - Task uses FHIR reference strings for `focus`
   - Task resolution stored in `output.valueCodeableConcept` (code + display)
 
-- [ ] **2.3** Implement code resolution service: `loinc-resolver.ts`
-  - Check inline LOINC in OBX-3 alternate fields
-  - Lookup in sender-specific ConceptMap
-  - Return resolution result with source
-
-- [ ] **2.4** Implement ConceptMap service: `concept-map-service.ts`
+- [ ] **2.3** Implement ConceptMap service: `concept-map-service.ts`
   - Get or create ConceptMap for sender
   - Add/update/delete entries
   - Search entries by local code, loinc or sender
 
-- [ ] **2.5** Implement mapping task service: `mapping-task-service.ts`
-  - Create task for unmapped code using deterministic ID (`{senderId}-{hash(localCode)}`) with PUT (upsert)
+- [ ] **2.4** Implement mapping task service: `mapping-task-service.ts`
+  - Create task for unmapped code using deterministic ID (`{senderId}-{hash(localSystem)}-{hash(localCode)}`) with PUT (upsert)
   - Update affected message count
   - Mark task as resolved
   - Find affected messages and update their status
 
-- [ ] **2.6** Update IncomingHL7v2Message processing
+- [ ] **2.5** Update IncomingHL7v2Message processing
   - Add `mapping_error` status handling
   - Store unmapped codes list with task references
   - When mapping resolved: remove entry from `unmappedCodes[]`, if empty change status to `received`
   - Add the sender fields (sendingApplication and sendingFacility) to the IncomingHL7v2Message if they're empty (no matter if the parsing was successful or not)
+  - Use `If-Match` with ETag when editing `unmappedCodes[]`
