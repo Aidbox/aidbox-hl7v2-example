@@ -62,7 +62,7 @@ OBX|2|NM|52098^Sodium^LOCAL^2951-2^Sodium^LN||140|mmol/L|133-145||||F`;
 // All test messages have inline LOINC, so ConceptMap lookup is not needed
 const mockAidbox = {
   aidboxFetch: mock(() =>
-    Promise.reject(new Error("HTTP 404: ConceptMap not found"))
+    Promise.reject(new Error("HTTP 404: ConceptMap not found")),
   ),
 };
 
@@ -76,9 +76,8 @@ describe("convertORU_R01", () => {
 
   describe("happy path - basic message processing", () => {
     test("converts simple ORU_R01 to FHIR Bundle", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
 
       expect(bundle.resourceType).toBe("Bundle");
@@ -88,9 +87,8 @@ describe("convertORU_R01", () => {
     });
 
     test("creates DiagnosticReport from OBR segment", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
       const diagnosticReports = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "DiagnosticReport")
@@ -103,9 +101,8 @@ describe("convertORU_R01", () => {
     });
 
     test("creates Observations from OBX segments", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
       const observations = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "Observation")
@@ -117,12 +114,11 @@ describe("convertORU_R01", () => {
     });
 
     test("links Observations to DiagnosticReport via result array", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
       const diagnosticReport = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "DiagnosticReport"
+        (e) => e.resource?.resourceType === "DiagnosticReport",
       )?.resource as DiagnosticReport;
 
       expect(diagnosticReport.result).toHaveLength(2);
@@ -130,9 +126,8 @@ describe("convertORU_R01", () => {
     });
 
     test("uses PUT requests with deterministic IDs for idempotency", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
 
       bundle.entry?.forEach((entry) => {
@@ -142,15 +137,14 @@ describe("convertORU_R01", () => {
     });
 
     test("tags all resources with message control ID", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
 
       bundle.entry?.forEach((entry) => {
         const tag = entry.resource?.meta?.tag?.find(
           (t: { system?: string }) =>
-            t.system === "urn:aidbox:hl7v2:message-id"
+            t.system === "urn:aidbox:hl7v2:message-id",
         );
         expect(tag?.code).toBe("MSG123");
       });
@@ -159,16 +153,15 @@ describe("convertORU_R01", () => {
 
   describe("LOINC code handling", () => {
     test("extracts LOINC from OBX-3 alternate coding", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_WITH_LOINC);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       const loincCoding = observation.code.coding?.find(
-        (c) => c.system === "http://loinc.org"
+        (c) => c.system === "http://loinc.org",
       );
       expect(loincCoding?.code).toBe("4548-4");
     });
@@ -176,9 +169,8 @@ describe("convertORU_R01", () => {
 
   describe("SPM segment handling", () => {
     test("creates Specimen from SPM segment", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_WITH_SPM);
       const specimens = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "Specimen")
@@ -189,12 +181,11 @@ describe("convertORU_R01", () => {
     });
 
     test("links Specimen to DiagnosticReport", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_WITH_SPM);
       const diagnosticReport = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "DiagnosticReport"
+        (e) => e.resource?.resourceType === "DiagnosticReport",
       )?.resource as DiagnosticReport;
 
       expect(diagnosticReport.specimen).toHaveLength(1);
@@ -202,12 +193,11 @@ describe("convertORU_R01", () => {
     });
 
     test("links Specimen to Observations", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_WITH_SPM);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       expect(observation.specimen?.reference).toContain("Specimen/");
@@ -216,12 +206,11 @@ describe("convertORU_R01", () => {
 
   describe("NTE segment handling", () => {
     test("attaches NTE comments to preceding Observation as notes", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_WITH_NTE);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       expect(observation.note).toHaveLength(1);
@@ -229,12 +218,11 @@ describe("convertORU_R01", () => {
     });
 
     test("creates paragraph breaks for empty NTE-3", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_WITH_NTE);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       // Should have paragraph break between first and third NTE
@@ -244,9 +232,8 @@ describe("convertORU_R01", () => {
 
   describe("multiple OBR groups", () => {
     test("creates multiple DiagnosticReports for multiple OBR groups", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_MULTIPLE_OBR);
       const diagnosticReports = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "DiagnosticReport")
@@ -258,9 +245,8 @@ describe("convertORU_R01", () => {
     });
 
     test("links OBX to correct parent OBR", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_MULTIPLE_OBR);
       const observations = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "Observation")
@@ -278,9 +264,8 @@ describe("convertORU_R01", () => {
 
   describe("idempotency", () => {
     test("same OBR-3 with different MSH-10 updates resources in place", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const message1 = SIMPLE_ORU_MESSAGE.replace("MSG123", "MSG001");
       const message2 = SIMPLE_ORU_MESSAGE.replace("MSG123", "MSG002");
 
@@ -289,20 +274,20 @@ describe("convertORU_R01", () => {
 
       // Same resource IDs
       const dr1 = bundle1.entry?.find(
-        (e) => e.resource?.resourceType === "DiagnosticReport"
+        (e) => e.resource?.resourceType === "DiagnosticReport",
       );
       const dr2 = bundle2.entry?.find(
-        (e) => e.resource?.resourceType === "DiagnosticReport"
+        (e) => e.resource?.resourceType === "DiagnosticReport",
       );
 
       expect(dr1?.resource?.id).toBe(dr2?.resource?.id);
 
       // Different message tags
       const tag1 = dr1?.resource?.meta?.tag?.find(
-        (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id"
+        (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id",
       );
       const tag2 = dr2?.resource?.meta?.tag?.find(
-        (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id"
+        (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id",
       );
       expect(tag1?.code).toBe("MSG001");
       expect(tag2?.code).toBe("MSG002");
@@ -311,9 +296,8 @@ describe("convertORU_R01", () => {
 
   describe("OBX value type handling", () => {
     test("converts NM value type to valueQuantity", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
       const observation = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "Observation")
@@ -325,9 +309,8 @@ describe("convertORU_R01", () => {
     });
 
     test("converts ST value type to valueString", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
       const observation = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "Observation")
@@ -338,12 +321,11 @@ describe("convertORU_R01", () => {
     });
 
     test("converts SN with comparator to valueQuantity", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_WITH_NTE);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       expect(observation?.valueQuantity?.value).toBe(90);
@@ -353,24 +335,22 @@ describe("convertORU_R01", () => {
 
   describe("interpretation and reference range", () => {
     test("converts OBX-8 abnormal flag H to interpretation", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_WITH_LOINC);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       expect(observation?.interpretation?.[0]?.coding?.[0]?.code).toBe("H");
     });
 
     test("converts OBX-7 reference range", async () => {
-      const { convertORU_R01 } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = await convertORU_R01(MESSAGE_WITH_LOINC);
       const observation = bundle.entry?.find(
-        (e) => e.resource?.resourceType === "Observation"
+        (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
 
       expect(observation?.referenceRange?.[0]?.low?.value).toBe(4.0);
@@ -381,9 +361,8 @@ describe("convertORU_R01", () => {
 
 describe("error handling", () => {
   test("throws error when MSH segment is missing", async () => {
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const invalidMessage = `PID|1||TEST-ERR1||TESTPATIENT^ERROR
 OBR|1|||LAB123|||20260101`;
 
@@ -391,9 +370,8 @@ OBR|1|||LAB123|||20260101`;
   });
 
   test("throws error when MSH-3 (sending application) is missing", async () => {
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const invalidMessage = `MSH|^~\\&||HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR||TESTPATIENT^ERROR
 OBR|1||FIL001|LAB123|||20260101
@@ -403,9 +381,8 @@ OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
   });
 
   test("throws error when MSH-4 (sending facility) is missing", async () => {
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const invalidMessage = `MSH|^~\\&|LAB|||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR||TESTPATIENT^ERROR
 OBR|1||FIL001|LAB123|||20260101
@@ -415,9 +392,8 @@ OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
   });
 
   test("throws error when OBR segment is missing", async () => {
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const invalidMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR2||TESTPATIENT^ERROR
 OBX|1|NM|TEST||100|mg/dL||||F`;
@@ -426,9 +402,8 @@ OBX|1|NM|TEST||100|mg/dL||||F`;
   });
 
   test("throws error when OBR-3 filler order number is missing", async () => {
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const invalidMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR3||TESTPATIENT^ERROR
 OBR|1|ORD001||LAB123|||20260101
@@ -439,36 +414,39 @@ OBX|1|NM|TEST||100|mg/dL||||F`;
 });
 
 describe("LOINC validation", () => {
-  test("throws error when OBX-3 has no LOINC code (local code only)", async () => {
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+  test("throws MappingErrorCollection when OBX-3 has no LOINC code (local code only)", async () => {
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
+    const { MappingErrorCollection } =
+      await import("../../../src/v2-to-fhir/code-mapping/conceptmap-lookup");
     const messageWithoutLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
 OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
 OBX|1|NM|12345^Potassium^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
 
-    await expect(convertORU_R01(messageWithoutLoinc)).rejects.toThrow(/LOINC/);
+    await expect(convertORU_R01(messageWithoutLoinc)).rejects.toThrow(
+      MappingErrorCollection,
+    );
   });
 
   test("accepts message when OBX-3 has LOINC in primary coding", async () => {
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const messageWithPrimaryLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
 OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
 OBX|1|NM|2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.5||||F`;
 
-    await expect(convertORU_R01(messageWithPrimaryLoinc)).resolves.toBeDefined();
+    await expect(
+      convertORU_R01(messageWithPrimaryLoinc),
+    ).resolves.toBeDefined();
   });
 
   test("accepts message when OBX-3 has LOINC in alternate coding", async () => {
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const messageWithAltLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
@@ -478,26 +456,33 @@ OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.
     await expect(convertORU_R01(messageWithAltLoinc)).resolves.toBeDefined();
   });
 
-  test("error message includes OBX Set ID and local code for debugging", async () => {
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+  test("MappingErrorCollection contains local code for debugging", async () => {
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
+    const { MappingErrorCollection } =
+      await import("../../../src/v2-to-fhir/code-mapping/conceptmap-lookup");
     const messageWithoutLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
 OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
 OBX|3|NM|MYCODE^MyTest^LOCALLAB||100|mg/dL||||F`;
 
-    await expect(convertORU_R01(messageWithoutLoinc)).rejects.toThrow(
-      /OBX Set ID: 3/
-    );
-    await expect(convertORU_R01(messageWithoutLoinc)).rejects.toThrow(/MYCODE/);
+    try {
+      await convertORU_R01(messageWithoutLoinc);
+      expect.unreachable("Should have thrown MappingErrorCollection");
+    } catch (error) {
+      expect(error).toBeInstanceOf(MappingErrorCollection);
+      const collection = error as InstanceType<typeof MappingErrorCollection>;
+      expect(collection.errors).toHaveLength(1);
+      expect(collection.errors[0].localCode).toBe("MYCODE");
+    }
   });
 
-  test("rejects message if any OBX lacks LOINC (first OBX has LOINC, second doesn't)", async () => {
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+  test("collects all unmapped codes when multiple OBX lack LOINC", async () => {
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
+    const { MappingErrorCollection } =
+      await import("../../../src/v2-to-fhir/code-mapping/conceptmap-lookup");
     const mixedMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
@@ -505,8 +490,15 @@ OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
 OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium^LN||4.2|mmol/L||||F
 OBX|2|NM|67890^Sodium^LOCAL||140|mmol/L||||F`;
 
-    await expect(convertORU_R01(mixedMessage)).rejects.toThrow(/LOINC/);
-    await expect(convertORU_R01(mixedMessage)).rejects.toThrow(/OBX Set ID: 2/);
+    try {
+      await convertORU_R01(mixedMessage);
+      expect.unreachable("Should have thrown MappingErrorCollection");
+    } catch (error) {
+      expect(error).toBeInstanceOf(MappingErrorCollection);
+      const collection = error as InstanceType<typeof MappingErrorCollection>;
+      expect(collection.errors).toHaveLength(1);
+      expect(collection.errors[0].localCode).toBe("67890");
+    }
   });
 });
 
@@ -545,9 +537,8 @@ describe("ConceptMap code resolution", () => {
     mock.module("../../../src/aidbox", () => mockAidboxWithMapping);
 
     // Re-import to use new mock
-    const { convertORU_R01 } = await import(
-      "../../../src/v2-to-fhir/messages/oru-r01"
-    );
+    const { convertORU_R01 } =
+      await import("../../../src/v2-to-fhir/messages/oru-r01");
 
     const messageWithLocalCode = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
@@ -557,18 +548,18 @@ OBX|1|NM|12345^Potassium^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
 
     const bundle = await convertORU_R01(messageWithLocalCode);
     const observation = bundle.entry?.find(
-      (e) => e.resource?.resourceType === "Observation"
+      (e) => e.resource?.resourceType === "Observation",
     )?.resource as Observation;
 
     // Should have resolved to LOINC
     const loincCoding = observation.code.coding?.find(
-      (c) => c.system === "http://loinc.org"
+      (c) => c.system === "http://loinc.org",
     );
     expect(loincCoding?.code).toBe("2823-3");
 
     // Should also include local coding
     const localCoding = observation.code.coding?.find(
-      (c) => c.system === "LOCAL"
+      (c) => c.system === "LOCAL",
     );
     expect(localCoding?.code).toBe("12345");
   });
@@ -590,9 +581,8 @@ describe("convertOBXToObservationResolving", () => {
 
   describe("with LOINC in primary coding", () => {
     test("returns observation with LOINC code from primary coding", async () => {
-      const { convertOBXToObservationResolving } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertOBXToObservationResolving } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -616,9 +606,8 @@ describe("convertOBXToObservationResolving", () => {
     });
 
     test("preserves other observation fields from OBX", async () => {
-      const { convertOBXToObservationResolving } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertOBXToObservationResolving } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -643,9 +632,8 @@ describe("convertOBXToObservationResolving", () => {
 
   describe("with LOINC in alternate coding", () => {
     test("returns observation with LOINC from alternate and local from primary", async () => {
-      const { convertOBXToObservationResolving } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertOBXToObservationResolving } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -680,9 +668,8 @@ describe("convertOBXToObservationResolving", () => {
     });
 
     test("LOINC coding comes first in the coding array", async () => {
-      const { convertOBXToObservationResolving } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertOBXToObservationResolving } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -738,9 +725,8 @@ describe("convertOBXToObservationResolving", () => {
         aidboxFetch: mock(() => Promise.resolve(mockConceptMap)),
       }));
 
-      const { convertOBXToObservationResolving } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertOBXToObservationResolving } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -781,12 +767,10 @@ describe("convertOBXToObservationResolving", () => {
     });
 
     test("throws LoincResolutionError when no LOINC and no ConceptMap", async () => {
-      const { convertOBXToObservationResolving } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
-      const { LoincResolutionError } = await import(
-        "../../../src/v2-to-fhir/code-mapping/conceptmap-lookup"
-      );
+      const { convertOBXToObservationResolving } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+      const { LoincResolutionError } =
+        await import("../../../src/v2-to-fhir/code-mapping/conceptmap-lookup");
 
       const obx: OBX = {
         ...baseOBX,
@@ -803,9 +787,8 @@ describe("convertOBXToObservationResolving", () => {
     });
 
     test("error includes sender context for debugging", async () => {
-      const { convertOBXToObservationResolving } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertOBXToObservationResolving } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -824,9 +807,8 @@ describe("convertOBXToObservationResolving", () => {
 
   describe("ID generation", () => {
     test("generates deterministic ID from filler order number and OBX-1", async () => {
-      const { convertOBXToObservationResolving } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertOBXToObservationResolving } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -848,9 +830,8 @@ describe("convertOBXToObservationResolving", () => {
     });
 
     test("includes OBX-4 sub-ID in generated ID when present", async () => {
-      const { convertOBXToObservationResolving } = await import(
-        "../../../src/v2-to-fhir/messages/oru-r01"
-      );
+      const { convertOBXToObservationResolving } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,

@@ -1,15 +1,26 @@
 import * as net from "node:net";
 import { aidboxFetch, getResources, putResource, type Bundle } from "./aidbox";
 import { processNextMessage } from "./bar/sender-service";
-import { processNextInvoice, pollPendingInvoice, updateInvoiceStatus, getRetryCount } from "./bar/invoice-builder-service";
+import {
+  processNextInvoice,
+  pollPendingInvoice,
+  updateInvoiceStatus,
+  getRetryCount,
+} from "./bar/invoice-builder-service";
 import { wrapWithMLLP, VT, FS, CR } from "./mllp/mllp-server";
-import { highlightHL7Message, getHighlightStyles } from "@atomic-ehr/hl7v2/src/hl7v2/highlight";
+import {
+  highlightHL7Message,
+  getHighlightStyles,
+} from "@atomic-ehr/hl7v2/src/hl7v2/highlight";
 import type { Patient } from "./fhir/hl7-fhir-r4-core/Patient";
 import type { ChargeItem } from "./fhir/hl7-fhir-r4-core/ChargeItem";
 import type { Practitioner } from "./fhir/hl7-fhir-r4-core/Practitioner";
 import type { Encounter } from "./fhir/hl7-fhir-r4-core/Encounter";
 import type { Procedure } from "./fhir/hl7-fhir-r4-core/Procedure";
-import type { OutgoingBarMessage, IncomingHL7v2Message } from "./fhir/aidbox-hl7v2-custom";
+import type {
+  OutgoingBarMessage,
+  IncomingHL7v2Message,
+} from "./fhir/aidbox-hl7v2-custom";
 
 function escapeHtml(str: string): string {
   return str
@@ -48,10 +59,14 @@ function formatError(error: string): string {
 }
 
 const getPatients = () => getResources<Patient>("Patient");
-const getChargeItems = () => getResources<ChargeItem>("ChargeItem", "_sort=-_lastUpdated");
-const getPractitioners = () => getResources<Practitioner>("Practitioner", "_sort=-_lastUpdated");
-const getEncounters = () => getResources<Encounter>("Encounter", "_sort=-_lastUpdated");
-const getProcedures = () => getResources<Procedure>("Procedure", "_sort=-_lastUpdated");
+const getChargeItems = () =>
+  getResources<ChargeItem>("ChargeItem", "_sort=-_lastUpdated");
+const getPractitioners = () =>
+  getResources<Practitioner>("Practitioner", "_sort=-_lastUpdated");
+const getEncounters = () =>
+  getResources<Encounter>("Encounter", "_sort=-_lastUpdated");
+const getProcedures = () =>
+  getResources<Procedure>("Procedure", "_sort=-_lastUpdated");
 
 interface Invoice {
   id: string;
@@ -59,29 +74,41 @@ interface Invoice {
   subject?: { reference: string };
   date?: string;
   totalGross?: { value: number; currency: string };
-  extension?: Array<{ url: string; valueCode?: string; valueString?: string; valueInteger?: number }>;
+  extension?: Array<{
+    url: string;
+    valueCode?: string;
+    valueString?: string;
+    valueInteger?: number;
+  }>;
 }
 
 function getProcessingStatus(invoice: Invoice): string {
-  const ext = invoice.extension?.find(e => e.url === "http://example.org/invoice-processing-status");
+  const ext = invoice.extension?.find(
+    (e) => e.url === "http://example.org/invoice-processing-status",
+  );
   return ext?.valueCode || "unknown";
 }
 
 function getErrorReason(invoice: Invoice): string | undefined {
-  const ext = invoice.extension?.find(e => e.url === "http://example.org/invoice-processing-error-reason");
+  const ext = invoice.extension?.find(
+    (e) => e.url === "http://example.org/invoice-processing-error-reason",
+  );
   return ext?.valueString;
 }
 
 function getInvoiceRetryCount(invoice: Invoice): number {
-  const ext = invoice.extension?.find(e => e.url === "http://example.org/invoice-processing-retry-count");
+  const ext = invoice.extension?.find(
+    (e) => e.url === "http://example.org/invoice-processing-retry-count",
+  );
   return ext?.valueInteger ?? 0;
 }
 
-
-
 const PAGE_SIZE = 20;
 
-const getInvoices = async (processingStatus?: string, page = 1): Promise<{ invoices: Invoice[]; total: number }> => {
+const getInvoices = async (
+  processingStatus?: string,
+  page = 1,
+): Promise<{ invoices: Invoice[]; total: number }> => {
   const params = new URLSearchParams({
     _sort: "-lastUpdated",
     _count: String(PAGE_SIZE),
@@ -96,18 +123,28 @@ const getInvoices = async (processingStatus?: string, page = 1): Promise<{ invoi
   };
 };
 const getPendingInvoiceCount = async (): Promise<number> => {
-  const bundle = await aidboxFetch<Bundle<Invoice>>("/fhir/Invoice?processing-status=pending&_count=0");
+  const bundle = await aidboxFetch<Bundle<Invoice>>(
+    "/fhir/Invoice?processing-status=pending&_count=0",
+  );
   return bundle.total ?? 0;
 };
 const getErrorInvoiceCount = async (): Promise<number> => {
-  const bundle = await aidboxFetch<Bundle<Invoice>>("/fhir/Invoice?processing-status=error&_count=0");
+  const bundle = await aidboxFetch<Bundle<Invoice>>(
+    "/fhir/Invoice?processing-status=error&_count=0",
+  );
   return bundle.total ?? 0;
 };
 
 const getOutgoingMessages = (status?: string) =>
-  getResources<OutgoingBarMessage>("OutgoingBarMessage", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
+  getResources<OutgoingBarMessage>(
+    "OutgoingBarMessage",
+    `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`,
+  );
 const getIncomingMessages = (status?: string) =>
-  getResources<IncomingHL7v2Message>("IncomingHL7v2Message", `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`);
+  getResources<IncomingHL7v2Message>(
+    "IncomingHL7v2Message",
+    `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`,
+  );
 
 type NavTab = "invoices" | "outgoing" | "incoming" | "mllp-client";
 
@@ -128,7 +165,7 @@ function renderNav(active: NavTab): string {
             (tab) => `
         <a href="${tab.href}" class="py-4 px-2 border-b-2 ${active === tab.id ? "border-blue-500 text-blue-600 font-semibold" : "border-transparent text-gray-600 hover:text-gray-800"}">
           ${tab.label}
-        </a>`
+        </a>`,
           )
           .join("")}
       </div>
@@ -196,7 +233,7 @@ function renderInvoicesPage(
   currentPage = 1,
   total = 0,
   pendingCount = 0,
-  errorCount = 0
+  errorCount = 0,
 ): string {
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const invoiceItems = invoices
@@ -204,15 +241,16 @@ function renderInvoicesPage(
       const processingStatus = getProcessingStatus(inv);
       const errorReason = getErrorReason(inv);
       const retryCount = getInvoiceRetryCount(inv);
-      const statusClass = processingStatus === "completed"
-        ? "bg-green-100 text-green-800"
-        : processingStatus === "pending"
-          ? "bg-yellow-100 text-yellow-800"
-          : processingStatus === "error"
-            ? "bg-red-100 text-red-800"
-            : processingStatus === "failed"
-              ? "bg-red-200 text-red-900"
-              : "bg-gray-100 text-gray-800";
+      const statusClass =
+        processingStatus === "completed"
+          ? "bg-green-100 text-green-800"
+          : processingStatus === "pending"
+            ? "bg-yellow-100 text-yellow-800"
+            : processingStatus === "error"
+              ? "bg-red-100 text-red-800"
+              : processingStatus === "failed"
+                ? "bg-red-200 text-red-900"
+                : "bg-gray-100 text-gray-800";
 
       return `
       <li class="bg-white rounded-lg shadow">
@@ -284,11 +322,15 @@ function renderInvoicesPage(
       <a href="/invoices" class="px-3 py-1.5 rounded-lg text-sm font-medium ${!statusFilter ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
         All
       </a>
-      ${processingStatuses.map((s) => `
+      ${processingStatuses
+        .map(
+          (s) => `
         <a href="/invoices?processing-status=${s}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
           ${s.charAt(0).toUpperCase() + s.slice(1)}
         </a>
-      `).join("")}
+      `,
+        )
+        .join("")}
     </div>
 
     <div id="add-invoice-form" class="hidden mb-6 bg-white rounded-lg shadow p-6">
@@ -298,11 +340,15 @@ function renderInvoicesPage(
           <label class="block text-sm font-medium text-gray-700 mb-1">Subject (Patient)</label>
           <select name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             <option value="">No subject</option>
-            ${patients.map((p) => {
-              const name = p.name?.[0];
-              const displayName = name ? `${name.given?.join(" ") || ""} ${name.family || ""}`.trim() : p.id;
-              return `<option value="Patient/${p.id}">${displayName} (${p.id})</option>`;
-            }).join("")}
+            ${patients
+              .map((p) => {
+                const name = p.name?.[0];
+                const displayName = name
+                  ? `${name.given?.join(" ") || ""} ${name.family || ""}`.trim()
+                  : p.id;
+                return `<option value="Patient/${p.id}">${displayName} (${p.id})</option>`;
+              })
+              .join("")}
           </select>
         </div>
         <div class="grid grid-cols-3 gap-4">
@@ -327,34 +373,44 @@ function renderInvoicesPage(
           <label class="block text-sm font-medium text-gray-700 mb-1">Practitioner</label>
           <select name="practitioner" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             <option value="">No practitioner</option>
-            ${practitioners.map((pr) => {
-              const name = pr.name?.[0];
-              const displayName = name ? `${name.given?.join(" ") || ""} ${name.family || ""}`.trim() : pr.id;
-              return `<option value="Practitioner/${pr.id}">${displayName} (${pr.id})</option>`;
-            }).join("")}
+            ${practitioners
+              .map((pr) => {
+                const name = pr.name?.[0];
+                const displayName = name
+                  ? `${name.given?.join(" ") || ""} ${name.family || ""}`.trim()
+                  : pr.id;
+                return `<option value="Practitioner/${pr.id}">${displayName} (${pr.id})</option>`;
+              })
+              .join("")}
           </select>
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Encounters</label>
             <select name="encounters" id="encounters-select" multiple class="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              ${encounters.map((e) => {
-                const patientRef = e.subject?.reference || "";
-                const classDisplay = e.class?.code || "";
-                const period = e.period?.start ? new Date(e.period.start).toLocaleDateString() : "";
-                return `<option value="Encounter/${e.id}" data-patient="${patientRef}">${e.id} - ${classDisplay} ${period}</option>`;
-              }).join("")}
+              ${encounters
+                .map((e) => {
+                  const patientRef = e.subject?.reference || "";
+                  const classDisplay = e.class?.code || "";
+                  const period = e.period?.start
+                    ? new Date(e.period.start).toLocaleDateString()
+                    : "";
+                  return `<option value="Encounter/${e.id}" data-patient="${patientRef}">${e.id} - ${classDisplay} ${period}</option>`;
+                })
+                .join("")}
             </select>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Procedures</label>
             <select name="procedures" id="procedures-select" multiple class="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              ${procedures.map((proc) => {
-                const patientRef = proc.subject?.reference || "";
-                const code = proc.code?.coding?.[0];
-                const display = code?.display || code?.code || proc.id;
-                return `<option value="Procedure/${proc.id}" data-patient="${patientRef}">${display} (${proc.id})</option>`;
-              }).join("")}
+              ${procedures
+                .map((proc) => {
+                  const patientRef = proc.subject?.reference || "";
+                  const code = proc.code?.coding?.[0];
+                  const display = code?.display || code?.code || proc.id;
+                  return `<option value="Procedure/${proc.id}" data-patient="${patientRef}">${display} (${proc.id})</option>`;
+                })
+                .join("")}
             </select>
           </div>
         </div>
@@ -408,31 +464,35 @@ function renderInvoicesPage(
     </ul>
     <div class="mt-4 flex items-center justify-between">
       <p class="text-sm text-gray-500">Total: ${total} invoices</p>
-      ${totalPages > 1 ? `
+      ${
+        totalPages > 1
+          ? `
         <div class="flex items-center gap-1">
           <a href="/invoices?_page=1${statusFilter ? `&processing-status=${statusFilter}` : ""}"
-             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
-             ${currentPage === 1 ? 'aria-disabled="true"' : ''}>
+             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === 1 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}"
+             ${currentPage === 1 ? 'aria-disabled="true"' : ""}>
             First
           </a>
           <a href="/invoices?_page=${currentPage - 1}${statusFilter ? `&processing-status=${statusFilter}` : ""}"
-             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
-             ${currentPage === 1 ? 'aria-disabled="true"' : ''}>
+             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === 1 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}"
+             ${currentPage === 1 ? 'aria-disabled="true"' : ""}>
             Prev
           </a>
           <span class="px-3 py-1.5 text-sm text-gray-600">${currentPage} / ${totalPages}</span>
           <a href="/invoices?_page=${currentPage + 1}${statusFilter ? `&processing-status=${statusFilter}` : ""}"
-             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
-             ${currentPage === totalPages ? 'aria-disabled="true"' : ''}>
+             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === totalPages ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}"
+             ${currentPage === totalPages ? 'aria-disabled="true"' : ""}>
             Next
           </a>
           <a href="/invoices?_page=${totalPages}${statusFilter ? `&processing-status=${statusFilter}` : ""}"
-             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
-             ${currentPage === totalPages ? 'aria-disabled="true"' : ''}>
+             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === totalPages ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}"
+             ${currentPage === totalPages ? 'aria-disabled="true"' : ""}>
             Last
           </a>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
     </div>
 
     <script>
@@ -456,7 +516,6 @@ function renderInvoicesPage(
   return renderLayout("Invoices", renderNav("invoices"), content);
 }
 
-
 interface MessageListItem {
   id: string;
   statusBadge: { text: string; class: string };
@@ -472,7 +531,9 @@ function renderMessageList(items: MessageListItem[]): string {
     return '<li class="bg-white rounded-lg shadow p-8 text-center text-gray-500">No messages found</li>';
   }
 
-  return items.map(item => `
+  return items
+    .map(
+      (item) => `
     <li class="bg-white rounded-lg shadow">
       <details class="group">
         <summary class="cursor-pointer list-none p-4 flex items-center justify-between hover:bg-gray-50 rounded-lg">
@@ -484,11 +545,13 @@ function renderMessageList(items: MessageListItem[]): string {
             <span class="px-2 py-1 rounded-full text-xs font-medium ${item.statusBadge.class}">${item.statusBadge.text}</span>
           </div>
           <div class="flex items-center gap-4 text-sm text-gray-500">
-            ${item.meta.map(m => `<span>${m}</span>`).join('')}
+            ${item.meta.map((m) => `<span>${m}</span>`).join("")}
           </div>
         </summary>
         <div class="px-4 pb-4">
-          ${item.retryUrl ? `
+          ${
+            item.retryUrl
+              ? `
             <form method="POST" action="${item.retryUrl}" class="mb-3">
               <button type="submit" class="px-3 py-1.5 bg-amber-500 text-white rounded text-sm font-medium hover:bg-amber-600 flex items-center gap-1.5">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -497,45 +560,65 @@ function renderMessageList(items: MessageListItem[]): string {
                 Mark for Retry
               </button>
             </form>
-          ` : ''}
-          ${item.error ? `
+          `
+              : ""
+          }
+          ${
+            item.error
+              ? `
             <details class="mb-3" open>
               <summary class="cursor-pointer text-sm font-medium text-red-700 hover:text-red-800">Error</summary>
               <div class="mt-2 p-3 bg-red-50 border border-red-200 rounded font-mono text-xs overflow-x-auto whitespace-pre">${escapeHtml(formatError(item.error))}</div>
             </details>
-          ` : ''}
+          `
+              : ""
+          }
           <div class="hl7-message-container p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${highlightHL7WithDataTooltip(item.hl7Message)}</div>
-          ${item.bundle ? `
+          ${
+            item.bundle
+              ? `
             <details class="mt-3">
               <summary class="cursor-pointer text-sm text-gray-600 hover:text-gray-800">FHIR Bundle</summary>
               <div class="mt-2 p-3 bg-blue-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${escapeHtml(item.bundle)}</div>
             </details>
-          ` : ''}
+          `
+              : ""
+          }
         </div>
       </details>
     </li>
-  `).join('');
+  `,
+    )
+    .join("");
 }
 
-function renderOutgoingMessagesPage(messages: OutgoingBarMessage[], patients: Patient[], invoices: Invoice[], statusFilter?: string): string {
-  const listItems: MessageListItem[] = messages.map(msg => ({
+function renderOutgoingMessagesPage(
+  messages: OutgoingBarMessage[],
+  patients: Patient[],
+  invoices: Invoice[],
+  statusFilter?: string,
+): string {
+  const listItems: MessageListItem[] = messages.map((msg) => ({
     id: msg.id ?? "",
     statusBadge: {
       text: msg.status,
-      class: msg.status === "sent"
-        ? "bg-green-100 text-green-800"
-        : msg.status === "pending"
-          ? "bg-yellow-100 text-yellow-800"
-          : msg.status === "error"
-            ? "bg-red-100 text-red-800"
-            : "bg-gray-100 text-gray-800"
+      class:
+        msg.status === "sent"
+          ? "bg-green-100 text-green-800"
+          : msg.status === "pending"
+            ? "bg-yellow-100 text-yellow-800"
+            : msg.status === "error"
+              ? "bg-red-100 text-red-800"
+              : "bg-gray-100 text-gray-800",
     },
     meta: [
       msg.patient?.reference?.replace("Patient/", "") || "-",
       msg.invoice?.reference?.replace("Invoice/", "") || "-",
-      msg.meta?.lastUpdated ? new Date(msg.meta.lastUpdated).toLocaleString() : "-"
+      msg.meta?.lastUpdated
+        ? new Date(msg.meta.lastUpdated).toLocaleString()
+        : "-",
     ],
-    hl7Message: msg.hl7v2
+    hl7Message: msg.hl7v2,
   }));
 
   const pendingCount = messages.filter((m) => m.status === "pending").length;
@@ -567,11 +650,15 @@ function renderOutgoingMessagesPage(messages: OutgoingBarMessage[], patients: Pa
       <a href="/outgoing-messages" class="px-3 py-1.5 rounded-lg text-sm font-medium ${!statusFilter ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
         All
       </a>
-      ${statuses.map((s) => `
+      ${statuses
+        .map(
+          (s) => `
         <a href="/outgoing-messages?status=${s}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
           ${s.charAt(0).toUpperCase() + s.slice(1)}
         </a>
-      `).join("")}
+      `,
+        )
+        .join("")}
     </div>
 
     <div id="add-form" class="hidden mb-6 bg-white rounded-lg shadow p-6">
@@ -581,11 +668,15 @@ function renderOutgoingMessagesPage(messages: OutgoingBarMessage[], patients: Pa
           <label class="block text-sm font-medium text-gray-700 mb-1">Patient</label>
           <select name="patient" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             <option value="">Select a patient...</option>
-            ${patients.map((p) => {
-              const name = p.name?.[0];
-              const displayName = name ? `${name.given?.join(" ") || ""} ${name.family || ""}`.trim() : p.id;
-              return `<option value="Patient/${p.id}">${displayName} (${p.id})</option>`;
-            }).join("")}
+            ${patients
+              .map((p) => {
+                const name = p.name?.[0];
+                const displayName = name
+                  ? `${name.given?.join(" ") || ""} ${name.family || ""}`.trim()
+                  : p.id;
+                return `<option value="Patient/${p.id}">${displayName} (${p.id})</option>`;
+              })
+              .join("")}
           </select>
         </div>
         <div>
@@ -628,7 +719,9 @@ interface MLLPClientState {
   sent?: boolean;
 }
 
-function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port: 2575, message: "" }): string {
+function renderMLLPClientPage(
+  state: MLLPClientState = { host: "localhost", port: 2575, message: "" },
+): string {
   const sampleMessages = [
     {
       name: "ADT^A01 (Admit - Simple)",
@@ -672,7 +765,9 @@ function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port
       </div>
     </div>
 
-    ${state.error ? `
+    ${
+      state.error
+        ? `
       <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
         <div class="flex items-center gap-2 text-red-800">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -682,9 +777,13 @@ function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port
         </div>
         <p class="mt-1 text-sm text-red-700">${state.error}</p>
       </div>
-    ` : ""}
+    `
+        : ""
+    }
 
-    ${state.sent && state.response ? `
+    ${
+      state.sent && state.response
+        ? `
       <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
         <div class="flex items-center gap-2 text-green-800">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -697,7 +796,9 @@ function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port
           <pre class="p-2 bg-white rounded text-xs font-mono overflow-x-auto">${state.response.replace(/\r/g, "\n")}</pre>
         </div>
       </div>
-    ` : ""}
+    `
+        : ""
+    }
 
     <div class="grid grid-cols-3 gap-6">
       <div class="col-span-2">
@@ -743,12 +844,16 @@ function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port
         <div class="bg-white rounded-lg shadow p-6">
           <h2 class="text-lg font-semibold text-gray-800 mb-4">Sample Messages</h2>
           <div class="space-y-2">
-            ${sampleMessages.map((sample, i) => `
+            ${sampleMessages
+              .map(
+                (sample, i) => `
               <button type="button" onclick="document.querySelector('textarea[name=message]').value = decodeURIComponent('${encodeURIComponent(sample.message)}')"
                 class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors">
                 ${sample.name}
               </button>
-            `).join("")}
+            `,
+              )
+              .join("")}
           </div>
         </div>
 
@@ -771,29 +876,51 @@ function renderMLLPClientPage(state: MLLPClientState = { host: "localhost", port
   return renderLayout("MLLP Test Client", renderNav("mllp-client"), content);
 }
 
-function renderIncomingMessagesPage(messages: IncomingHL7v2Message[], statusFilter?: string): string {
-  const listItems: MessageListItem[] = messages.map(msg => ({
+function renderIncomingMessagesPage(
+  messages: IncomingHL7v2Message[],
+  statusFilter?: string,
+): string {
+  const getStatusBadgeClass = (status: string | undefined) => {
+    switch (status) {
+      case "processed":
+        return "bg-green-100 text-green-800";
+      case "error":
+        return "bg-red-100 text-red-800";
+      case "mapping_error":
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-blue-100 text-blue-800";
+    }
+  };
+
+  const formatStatusLabel = (status: string) => {
+    if (status === "mapping_error") return "Mapping Error";
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const listItems: MessageListItem[] = messages.map((msg) => ({
     id: msg.id ?? "",
     statusBadge: {
-      text: msg.status || "received",
-      class: msg.status === "processed"
-        ? "bg-green-100 text-green-800"
-        : msg.status === "error"
-          ? "bg-red-100 text-red-800"
-          : "bg-blue-100 text-blue-800"
+      text: formatStatusLabel(msg.status || "received"),
+      class: getStatusBadgeClass(msg.status),
     },
     meta: [
       msg.type,
       msg.patient?.reference?.replace("Patient/", "") || "-",
-      msg.meta?.lastUpdated ? new Date(msg.meta.lastUpdated).toLocaleString() : "-"
+      msg.meta?.lastUpdated
+        ? new Date(msg.meta.lastUpdated).toLocaleString()
+        : "-",
     ],
     hl7Message: msg.message,
     error: msg.error,
     bundle: msg.bundle,
-    retryUrl: msg.status === "error" && msg.id ? `/mark-for-retry/${msg.id}` : undefined,
+    retryUrl:
+      msg.status === "error" && msg.id
+        ? `/mark-for-retry/${msg.id}`
+        : undefined,
   }));
 
-  const statuses = ["received", "processed", "error"];
+  const statuses = ["received", "processed", "mapping_error", "error"];
 
   const content = `
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Incoming Messages</h1>
@@ -803,11 +930,15 @@ function renderIncomingMessagesPage(messages: IncomingHL7v2Message[], statusFilt
         <a href="/incoming-messages" class="px-3 py-1.5 rounded-lg text-sm font-medium ${!statusFilter ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
           All
         </a>
-        ${statuses.map(s => `
+        ${statuses
+          .map(
+            (s) => `
           <a href="/incoming-messages?status=${s}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
-            ${s.charAt(0).toUpperCase() + s.slice(1)}
+            ${formatStatusLabel(s)}
           </a>
-        `).join("")}
+        `,
+          )
+          .join("")}
       </div>
       <form method="POST" action="/process-incoming-messages" class="spinner-form">
         <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center gap-2">
@@ -836,9 +967,18 @@ Bun.serve({
   routes: {
     "/": async (req) => {
       const url = new URL(req.url);
-      const statusFilter = url.searchParams.get("processing-status") || undefined;
+      const statusFilter =
+        url.searchParams.get("processing-status") || undefined;
       const page = parseInt(url.searchParams.get("_page") || "1", 10);
-      const [invoicesResult, patients, encounters, procedures, practitioners, pendingCount, errorCount] = await Promise.all([
+      const [
+        invoicesResult,
+        patients,
+        encounters,
+        procedures,
+        practitioners,
+        pendingCount,
+        errorCount,
+      ] = await Promise.all([
         getInvoices(statusFilter, page),
         getPatients(),
         getEncounters(),
@@ -847,16 +987,39 @@ Bun.serve({
         getPendingInvoiceCount(),
         getErrorInvoiceCount(),
       ]);
-      return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total, pendingCount, errorCount), {
-        headers: { "Content-Type": "text/html" },
-      });
+      return new Response(
+        renderInvoicesPage(
+          invoicesResult.invoices,
+          patients,
+          encounters,
+          procedures,
+          practitioners,
+          statusFilter,
+          page,
+          invoicesResult.total,
+          pendingCount,
+          errorCount,
+        ),
+        {
+          headers: { "Content-Type": "text/html" },
+        },
+      );
     },
     "/invoices": {
       GET: async (req) => {
         const url = new URL(req.url);
-        const statusFilter = url.searchParams.get("processing-status") || undefined;
+        const statusFilter =
+          url.searchParams.get("processing-status") || undefined;
         const page = parseInt(url.searchParams.get("_page") || "1", 10);
-        const [invoicesResult, patients, encounters, procedures, practitioners, pendingCount, errorCount] = await Promise.all([
+        const [
+          invoicesResult,
+          patients,
+          encounters,
+          procedures,
+          practitioners,
+          pendingCount,
+          errorCount,
+        ] = await Promise.all([
           getInvoices(statusFilter, page),
           getPatients(),
           getEncounters(),
@@ -865,9 +1028,23 @@ Bun.serve({
           getPendingInvoiceCount(),
           getErrorInvoiceCount(),
         ]);
-        return new Response(renderInvoicesPage(invoicesResult.invoices, patients, encounters, procedures, practitioners, statusFilter, page, invoicesResult.total, pendingCount, errorCount), {
-          headers: { "Content-Type": "text/html" },
-        });
+        return new Response(
+          renderInvoicesPage(
+            invoicesResult.invoices,
+            patients,
+            encounters,
+            procedures,
+            practitioners,
+            statusFilter,
+            page,
+            invoicesResult.total,
+            pendingCount,
+            errorCount,
+          ),
+          {
+            headers: { "Content-Type": "text/html" },
+          },
+        );
       },
       POST: async (req) => {
         const formData = await req.formData();
@@ -888,7 +1065,13 @@ Bun.serve({
             resourceType: "ChargeItem",
             status: "billable",
             code: {
-              coding: [{ system: "http://example.org/charge-codes", code: "invoice-item", display: "Invoice Item" }],
+              coding: [
+                {
+                  system: "http://example.org/charge-codes",
+                  code: "invoice-item",
+                  display: "Invoice Item",
+                },
+              ],
             },
             subject: { reference: subject },
           };
@@ -900,13 +1083,18 @@ Bun.serve({
 
           // Link to procedures via service array
           if (procedureRefs.length > 0) {
-            chargeItem.service = procedureRefs.map((ref) => ({ reference: ref }));
+            chargeItem.service = procedureRefs.map((ref) => ({
+              reference: ref,
+            }));
           }
 
-          const chargeItemResponse = await aidboxFetch<{ id: string }>("/fhir/ChargeItem", {
-            method: "POST",
-            body: JSON.stringify(chargeItem),
-          });
+          const chargeItemResponse = await aidboxFetch<{ id: string }>(
+            "/fhir/ChargeItem",
+            {
+              method: "POST",
+              body: JSON.stringify(chargeItem),
+            },
+          );
 
           if (chargeItemResponse.id) {
             chargeItemRefs.push(`ChargeItem/${chargeItemResponse.id}`);
@@ -918,16 +1106,25 @@ Bun.serve({
               resourceType: "ChargeItem",
               status: "billable",
               code: {
-                coding: [{ system: "http://example.org/charge-codes", code: "invoice-item", display: "Invoice Item" }],
+                coding: [
+                  {
+                    system: "http://example.org/charge-codes",
+                    code: "invoice-item",
+                    display: "Invoice Item",
+                  },
+                ],
               },
               subject: { reference: subject },
               context: { reference: encounterRefs[i] },
             };
 
-            const additionalResponse = await aidboxFetch<{ id: string }>("/fhir/ChargeItem", {
-              method: "POST",
-              body: JSON.stringify(additionalChargeItem),
-            });
+            const additionalResponse = await aidboxFetch<{ id: string }>(
+              "/fhir/ChargeItem",
+              {
+                method: "POST",
+                body: JSON.stringify(additionalChargeItem),
+              },
+            );
 
             if (additionalResponse.id) {
               chargeItemRefs.push(`ChargeItem/${additionalResponse.id}`);
@@ -996,9 +1193,17 @@ Bun.serve({
           getPatients(),
           getInvoices(),
         ]);
-        return new Response(renderOutgoingMessagesPage(messages, patients, invoicesResult.invoices, statusFilter), {
-          headers: { "Content-Type": "text/html" },
-        });
+        return new Response(
+          renderOutgoingMessagesPage(
+            messages,
+            patients,
+            invoicesResult.invoices,
+            statusFilter,
+          ),
+          {
+            headers: { "Content-Type": "text/html" },
+          },
+        );
       },
       POST: async (req) => {
         const formData = await req.formData();
@@ -1072,7 +1277,9 @@ Bun.serve({
           // Update all error invoices to pending or failed using pagination
           let hasMore = true;
           while (hasMore) {
-            const bundle = await aidboxFetch<Bundle<Invoice>>("/fhir/Invoice?processing-status=error&_count=100");
+            const bundle = await aidboxFetch<Bundle<Invoice>>(
+              "/fhir/Invoice?processing-status=error&_count=100",
+            );
             const errorInvoices = bundle.entry?.map((e) => e.resource) || [];
 
             if (errorInvoices.length === 0) {
@@ -1085,10 +1292,14 @@ Bun.serve({
 
                   if (newRetryCount >= MAX_RETRIES) {
                     // Max retries exceeded - mark as failed
-                    await updateInvoiceStatus(invoice.id, "failed", { retryCount: newRetryCount });
+                    await updateInvoiceStatus(invoice.id, "failed", {
+                      retryCount: newRetryCount,
+                    });
                   } else {
                     // Retry - set to pending with incremented count
-                    await updateInvoiceStatus(invoice.id, "pending", { retryCount: newRetryCount });
+                    await updateInvoiceStatus(invoice.id, "pending", {
+                      retryCount: newRetryCount,
+                    });
                   }
                 }
               }
@@ -1112,7 +1323,8 @@ Bun.serve({
       POST: async () => {
         // Run processing in background
         (async () => {
-          const { processNextMessage } = await import("./v2-to-fhir/processor-service");
+          const { processNextMessage } =
+            await import("./v2-to-fhir/processor-service");
           while (await processNextMessage()) {
             // Process until queue empty
           }
@@ -1131,7 +1343,7 @@ Bun.serve({
 
         // Fetch current message
         const message = await aidboxFetch<IncomingHL7v2Message>(
-          `/fhir/IncomingHL7v2Message/${messageId}`
+          `/fhir/IncomingHL7v2Message/${messageId}`,
         );
 
         // Update status to received and clear error
@@ -1172,7 +1384,8 @@ Bun.serve({
           state.response = response;
           state.sent = true;
         } catch (error) {
-          state.error = error instanceof Error ? error.message : "Unknown error";
+          state.error =
+            error instanceof Error ? error.message : "Unknown error";
         }
 
         return new Response(renderMLLPClientPage(state), {
@@ -1186,7 +1399,11 @@ Bun.serve({
 /**
  * Send HL7v2 message via MLLP protocol and wait for ACK
  */
-async function sendMLLPMessage(host: string, port: number, message: string): Promise<string> {
+async function sendMLLPMessage(
+  host: string,
+  port: number,
+  message: string,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const client = net.createConnection({ host, port }, () => {
       client.write(wrapWithMLLP(message));

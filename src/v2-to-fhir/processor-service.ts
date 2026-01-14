@@ -5,11 +5,23 @@
  * converts them to FHIR resources, submits to Aidbox, and updates status.
  */
 
-import { aidboxFetch, putResource, type Bundle as AidboxBundle } from "../aidbox";
-import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
+import {
+  aidboxFetch,
+  putResource,
+  type Bundle as AidboxBundle,
+} from "../aidbox";
+import type {
+  IncomingHL7v2Message,
+  UnmappedCode,
+} from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import type { Patient } from "../fhir/hl7-fhir-r4-core/Patient";
 import type { Bundle } from "../fhir/hl7-fhir-r4-core/Bundle";
 import { convertToFHIR } from "./converter";
+import { MappingErrorCollection } from "./code-mapping/conceptmap-lookup";
+import {
+  createOrUpdateMappingTask,
+  generateMappingTaskId,
+} from "../code-mapping/mapping-task-service";
 
 // ============================================================================
 // Constants
@@ -27,7 +39,7 @@ const POLL_INTERVAL_MS = 60_000; // 1 minute
  */
 export async function pollReceivedMessage(): Promise<IncomingHL7v2Message | null> {
   const bundle = await aidboxFetch<AidboxBundle<IncomingHL7v2Message>>(
-    "/fhir/IncomingHL7v2Message?status=received&_sort=_lastUpdated&_count=1"
+    "/fhir/IncomingHL7v2Message?status=received&_sort=_lastUpdated&_count=1",
   );
   return bundle.entry?.[0]?.resource ?? null;
 }
@@ -70,7 +82,7 @@ async function submitBundle(bundle: Bundle): Promise<void> {
 function extractPatientId(bundle: Bundle): string | undefined {
   // Extract from first Patient in bundle
   const patientEntry = bundle.entry?.find(
-    (e) => e.resource?.resourceType === "Patient"
+    (e) => e.resource?.resourceType === "Patient",
   );
 
   if (patientEntry?.resource) {
@@ -90,22 +102,83 @@ function extractPatientId(bundle: Bundle): string | undefined {
  */
 async function updateMessageStatus(
   message: IncomingHL7v2Message,
-  status: "processed" | "error",
-  options?: { patientId?: string; error?: string; bundle?: Bundle }
+  status: "processed" | "error" | "mapping_error",
+  options?: {
+    patientId?: string;
+    error?: string;
+    bundle?: Bundle;
+    unmappedCodes?: UnmappedCode[];
+  },
 ): Promise<void> {
   const updated: IncomingHL7v2Message = {
     ...message,
     status,
-    patient: options?.patientId ? { reference: `Patient/${options.patientId}` } : message.patient,
+    patient: options?.patientId
+      ? { reference: `Patient/${options.patientId}` }
+      : message.patient,
     error: options?.error,
-    bundle: options?.bundle ? JSON.stringify(options.bundle, null, 2) : undefined,
+    bundle: options?.bundle
+      ? JSON.stringify(options.bundle, null, 2)
+      : undefined,
   };
+
+  if (options?.unmappedCodes) {
+    updated.unmappedCodes = options.unmappedCodes;
+  }
 
   await putResource<IncomingHL7v2Message>(
     "IncomingHL7v2Message",
     message.id!,
-    updated
+    updated,
   );
+}
+
+/**
+ * Handle mapping error by creating tasks for unmapped codes and updating message status
+ */
+async function handleMappingError(
+  message: IncomingHL7v2Message,
+  errorCollection: MappingErrorCollection,
+): Promise<void> {
+  const sender = {
+    sendingApplication: errorCollection.sendingApplication,
+    sendingFacility: errorCollection.sendingFacility,
+  };
+
+  const seenTaskIds = new Set<string>();
+  const unmappedCodes: UnmappedCode[] = [];
+
+  for (const error of errorCollection.errors) {
+    if (!error.localCode || !error.localSystem) continue;
+
+    const taskId = generateMappingTaskId(
+      sender,
+      error.localSystem,
+      error.localCode,
+    );
+
+    if (seenTaskIds.has(taskId)) continue;
+    seenTaskIds.add(taskId);
+
+    await createOrUpdateMappingTask({
+      sender,
+      localCode: error.localCode,
+      localDisplay: error.localDisplay || "",
+      localSystem: error.localSystem,
+    });
+
+    unmappedCodes.push({
+      localCode: error.localCode,
+      localDisplay: error.localDisplay,
+      localSystem: error.localSystem,
+      mappingTask: { reference: `Task/${taskId}` },
+    });
+  }
+
+  await updateMessageStatus(message, "mapping_error", {
+    error: errorCollection.message,
+    unmappedCodes,
+  });
 }
 
 // ============================================================================
@@ -140,10 +213,23 @@ export async function processNextMessage(): Promise<boolean> {
 
     return true;
   } catch (error) {
+    // Handle mapping errors specially - create tasks and update status
+    if (error instanceof MappingErrorCollection) {
+      try {
+        await handleMappingError(message, error);
+      } catch (updateError) {
+        console.error("Failed to handle mapping error:", updateError);
+      }
+      return true;
+    }
+
     const errorMessage = error instanceof Error ? error.message : String(error);
     // Update status to error (best effort - don't fail if update fails)
     try {
-      await updateMessageStatus(message, "error", { error: errorMessage, bundle });
+      await updateMessageStatus(message, "error", {
+        error: errorMessage,
+        bundle,
+      });
     } catch (updateError) {
       console.error("Failed to update message status:", updateError);
     }
@@ -161,12 +247,14 @@ export async function processNextMessage(): Promise<boolean> {
  * Create IncomingHL7v2Message processor service
  * Returns object with start(), stop(), isRunning() methods
  */
-export function createIncomingHL7v2MessageProcessorService(options: {
-  pollIntervalMs?: number;
-  onError?: (error: Error, message?: IncomingHL7v2Message) => void;
-  onProcessed?: (message: IncomingHL7v2Message, patientId?: string) => void;
-  onIdle?: () => void;
-} = {}) {
+export function createIncomingHL7v2MessageProcessorService(
+  options: {
+    pollIntervalMs?: number;
+    onError?: (error: Error, message?: IncomingHL7v2Message) => void;
+    onProcessed?: (message: IncomingHL7v2Message, patientId?: string) => void;
+    onIdle?: () => void;
+  } = {},
+) {
   const pollIntervalMs = options.pollIntervalMs ?? POLL_INTERVAL_MS;
   let running = false;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -191,20 +279,39 @@ export function createIncomingHL7v2MessageProcessorService(options: {
       bundle = await convertMessage(currentMessage);
       await submitBundle(bundle);
       const patientId = extractPatientId(bundle);
-      await updateMessageStatus(currentMessage, "processed", { patientId, bundle });
+      await updateMessageStatus(currentMessage, "processed", {
+        patientId,
+        bundle,
+      });
 
       options.onProcessed?.(currentMessage, patientId);
 
       // Message processed successfully, poll immediately for next
       setImmediate(poll);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Handle mapping errors specially - create tasks and update status
+      if (error instanceof MappingErrorCollection && currentMessage) {
+        try {
+          await handleMappingError(currentMessage, error);
+        } catch (updateError) {
+          console.error("Failed to handle mapping error:", updateError);
+        }
+        // Continue polling immediately for mapping errors (message handled)
+        setImmediate(poll);
+        return;
+      }
+
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       options.onError?.(error as Error, currentMessage ?? undefined);
 
       // Update status to error if we have the message
       if (currentMessage) {
         try {
-          await updateMessageStatus(currentMessage, "error", { error: errorMessage, bundle });
+          await updateMessageStatus(currentMessage, "error", {
+            error: errorMessage,
+            bundle,
+          });
         } catch (updateError) {
           console.error("Failed to update message status:", updateError);
         }
@@ -242,18 +349,20 @@ export function createIncomingHL7v2MessageProcessorService(options: {
 
 if (import.meta.main) {
   console.log("Starting HL7v2 Message Processor Service...");
-  console.log("Polling for IncomingHL7v2Message with status=received every minute.");
+  console.log(
+    "Polling for IncomingHL7v2Message with status=received every minute.",
+  );
 
   const service = createIncomingHL7v2MessageProcessorService({
     onError: (error, message) => {
       console.error(
         `Error processing message ${message?.id || "unknown"}:`,
-        error.message
+        error.message,
       );
     },
     onProcessed: (message, patientId) => {
       console.log(
-        `✓ Processed ${message.type} message ${message.id} → Patient ${patientId || "unknown"}`
+        `✓ Processed ${message.type} message ${message.id} → Patient ${patientId || "unknown"}`,
       );
     },
     onIdle: () => {

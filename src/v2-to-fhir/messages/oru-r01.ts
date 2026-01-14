@@ -40,6 +40,7 @@ import { convertNTEsToAnnotation } from "../segments/nte-annotation";
 import {
   buildCodeableConcept,
   LoincResolutionError,
+  MappingErrorCollection,
   resolveToLoinc,
   type SenderContext,
 } from "../code-mapping/conceptmap-lookup";
@@ -350,6 +351,7 @@ async function processObservations(
   baseMeta: Meta,
 ): Promise<Observation[]> {
   const observations: Observation[] = [];
+  const mappingErrors: LoincResolutionError[] = [];
 
   for (const obsGroup of observationGroups) {
     const obx = fromOBX(obsGroup.obx);
@@ -363,11 +365,8 @@ async function processObservations(
       );
     } catch (error) {
       if (error instanceof LoincResolutionError) {
-        const obxSetId = obx.$1_setIdObx || "unknown";
-        throw new Error(
-          `OBX-3 does not contain LOINC code (OBX Set ID: ${obxSetId}, local code: ${error.localCode || "empty"}). ` +
-            error.message,
-        );
+        mappingErrors.push(error);
+        continue;
       }
       throw error;
     }
@@ -383,6 +382,14 @@ async function processObservations(
     }
 
     observations.push(observation);
+  }
+
+  if (mappingErrors.length > 0) {
+    throw new MappingErrorCollection(
+      mappingErrors,
+      senderContext.sendingApplication,
+      senderContext.sendingFacility,
+    );
   }
 
   return observations;
@@ -467,7 +474,8 @@ async function processOBRGroup(
   );
 
   diagnosticReport.result = observations.map(
-    (obs) => ({ reference: `Observation/${obs.id}` }) as Reference<"Observation">,
+    (obs) =>
+      ({ reference: `Observation/${obs.id}` }) as Reference<"Observation">,
   );
 
   const specimens = processSpecimens(

@@ -7,7 +7,10 @@
 
 import type { CE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
-import type { ConceptMap, ConceptMapGroup } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
+import type {
+  ConceptMap,
+  ConceptMapGroup,
+} from "../../fhir/hl7-fhir-r4-core/ConceptMap";
 import { aidboxFetch } from "../../aidbox";
 import { normalizeSystem } from "./coding-systems";
 
@@ -29,12 +32,25 @@ export class LoincResolutionError extends Error {
   constructor(
     message: string,
     public readonly localCode: string | undefined,
+    public readonly localDisplay: string | undefined,
     public readonly localSystem: string | undefined,
     public readonly sendingApplication: string,
     public readonly sendingFacility: string,
   ) {
     super(message);
     this.name = "LoincResolutionError";
+  }
+}
+
+export class MappingErrorCollection extends Error {
+  constructor(
+    public readonly errors: LoincResolutionError[],
+    public readonly sendingApplication: string,
+    public readonly sendingFacility: string,
+  ) {
+    const codes = errors.map((e) => e.localCode || "unknown").join(", ");
+    super(`Multiple unmapped codes found: ${codes}`);
+    this.name = "MappingErrorCollection";
   }
 }
 
@@ -151,8 +167,7 @@ export function lookupInConceptMap(
     const mapsToLoinc = mappingSystem.target === "http://loinc.org";
     const matchingSystem = mappingSystem.source === localSystem;
 
-    if (!mapsToLoinc || !matchingSystem)
-      continue;
+    if (!mapsToLoinc || !matchingSystem) continue;
 
     // Find matching element
     for (const mapping of mappingSystem.element) {
@@ -177,7 +192,9 @@ export function lookupInConceptMap(
 // Main Resolution Function
 // ============================================================================
 
-function tryResolveFromInlineLoinc(observationIdentifier: CE): CodeResolutionResult | null {
+function tryResolveFromInlineLoinc(
+  observationIdentifier: CE,
+): CodeResolutionResult | null {
   if (hasLoincInPrimaryCoding(observationIdentifier)) {
     return { loinc: extractLoincFromPrimary(observationIdentifier) };
   }
@@ -197,11 +214,13 @@ async function resolveFromConceptMap(
   sender: SenderContext,
 ): Promise<CodeResolutionResult> {
   const localCode = observationIdentifier.$1_code;
+  const localDisplay = observationIdentifier.$2_text;
   const localSystem = observationIdentifier.$3_system;
 
   if (!localCode) {
     throw new LoincResolutionError(
       "OBX-3 has no code value",
+      undefined,
       undefined,
       localSystem,
       sender.sendingApplication,
@@ -218,13 +237,18 @@ async function resolveFromConceptMap(
         `No LOINC code in OBX-3 and no ConceptMap exists for sender ` +
         `${sender.sendingApplication}/${sender.sendingFacility}.`,
       localCode,
+      localDisplay,
       localSystem,
       sender.sendingApplication,
       sender.sendingFacility,
     );
   }
 
-  const loincCoding = lookupInConceptMap(conceptMap, localCode, normalizeSystem(localSystem));
+  const loincCoding = lookupInConceptMap(
+    conceptMap,
+    localCode,
+    normalizeSystem(localSystem),
+  );
 
   if (!loincCoding) {
     throw new LoincResolutionError(
@@ -232,6 +256,7 @@ async function resolveFromConceptMap(
         `in ConceptMap ${conceptMapId}. ` +
         `Sender: ${sender.sendingApplication}/${sender.sendingFacility}.`,
       localCode,
+      localDisplay,
       localSystem,
       sender.sendingApplication,
       sender.sendingFacility,
@@ -267,7 +292,9 @@ export async function resolveToLoinc(
  * Build CodeableConcept from resolution result.
  * LOINC coding comes first, followed by optional local coding.
  */
-export function buildCodeableConcept(result: CodeResolutionResult): CodeableConcept {
+export function buildCodeableConcept(
+  result: CodeResolutionResult,
+): CodeableConcept {
   const codings: Coding[] = [result.loinc];
 
   if (result.local) {

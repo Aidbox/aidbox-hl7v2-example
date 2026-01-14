@@ -7,20 +7,35 @@ import type { Reference } from "../hl7-fhir-r4-core/Reference";
 
 export type { Reference } from "../hl7-fhir-r4-core/Reference";
 
+export interface UnmappedCode {
+  localCode: string;
+  localDisplay?: string;
+  localSystem?: string;
+  mappingTask: Reference<"Task">;
+}
+
 // CanonicalURL: http://example.org/StructureDefinition/IncomingHL7v2Message
 export interface IncomingHL7v2Message extends DomainResource {
-    resourceType: "IncomingHL7v2Message";
+  resourceType: "IncomingHL7v2Message";
 
-    bundle?: string;
-    date?: string;
-    error?: string;
-    message: string;
-    patient?: Reference<"Patient">;
-    sendingApplication?: string;
-    sendingFacility?: string;
-    status?: string;
-    type: string;
+  bundle?: string;
+  date?: string;
+  error?: string;
+  message: string;
+  patient?: Reference<"Patient">;
+  sendingApplication?: string;
+  sendingFacility?: string;
+  status?: "received" | "processed" | "error" | "mapping_error";
+  type: string;
+  unmappedCodes?: UnmappedCode[];
 }
-export const isIncomingHL7v2Message = (resource: unknown): resource is IncomingHL7v2Message => {
-    return resource !== null && typeof resource === "object" && (resource as {resourceType: string}).resourceType === "IncomingHL7v2Message";
-}
+export const isIncomingHL7v2Message = (
+  resource: unknown,
+): resource is IncomingHL7v2Message => {
+  return (
+    resource !== null &&
+    typeof resource === "object" &&
+    (resource as { resourceType: string }).resourceType ===
+      "IncomingHL7v2Message"
+  );
+};
