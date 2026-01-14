@@ -44,32 +44,6 @@ const sampleConceptMap: ConceptMap = {
   ],
 };
 
-// Sample ConceptMap for sender "4MEDICA" / "Sentara Reference Lab"
-const sampleConceptMap4Medica: ConceptMap = {
-  resourceType: "ConceptMap",
-  id: "hl7v2-4medica-sentara-reference-lab-solutions-epic-beaker-to-loinc",
-  status: "active",
-  group: [
-    {
-      source: "SRL",
-      target: "http://loinc.org",
-      element: [
-        {
-          code: "51998",
-          display: "Potassium",
-          target: [
-            {
-              code: "2823-3",
-              display: "Potassium SerPl-sCnc",
-              equivalence: "equivalent",
-            },
-          ],
-        },
-      ],
-    },
-  ],
-};
-
 // ============================================================================
 // Unit Tests: generateConceptMapId
 // ============================================================================
@@ -94,12 +68,12 @@ describe("generateConceptMapId", () => {
     );
 
     const result = generateConceptMapId({
-      sendingApplication: "4MEDICA",
+      sendingApplication: "SENdr10",
       sendingFacility: "Sentara Reference Lab Solutions (Epic Beaker)",
     });
 
     expect(result).toBe(
-      "hl7v2-4medica-sentara-reference-lab-solutions-epic-beaker-to-loinc"
+      "hl7v2-sendr10-sentara-reference-lab-solutions-epic-beaker-to-loinc"
     );
   });
 
@@ -518,7 +492,7 @@ describe("edge cases", () => {
     );
 
     // Alternate system is SCT, not LN
-    const result = await resolveToLoinc(
+    await resolveToLoinc(
       {
         $1_code: "1230148171",
         $2_text: "JAK2 V617F",
