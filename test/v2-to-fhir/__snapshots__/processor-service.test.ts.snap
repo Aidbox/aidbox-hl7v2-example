@@ -395,7 +395,6 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
   ]
 }"
 ,
-  "error": undefined,
   "id": "test-msg-001",
   "message": 
 "MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215143000||ADT^A01^ADT_A01|MSG001|P|2.5.1|||AL|AL
@@ -645,7 +644,6 @@ exports[`processor-service processes ADT_A08 message and returns correct Bundle 
   ]
 }"
 ,
-  "error": undefined,
   "id": "test-msg-002",
   "message": 
 "MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215143000||ADT^A08^ADT_A08|MSG002|P|2.5.1|||AL|AL
@@ -671,7 +669,6 @@ exports[`processor-service handles conversion errors and updates status to error
   "error": "HL7v2 message must start with MSH segment",
   "id": "test-msg-003",
   "message": "INVALID|MESSAGE",
-  "patient": undefined,
   "resourceType": "IncomingHL7v2Message",
   "status": "error",
   "type": "ADT_A01",

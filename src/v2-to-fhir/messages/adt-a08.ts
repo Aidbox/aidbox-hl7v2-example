@@ -7,8 +7,8 @@
  * - Patient from PID
  */
 
-import { parseMessage } from "@atomic-ehr/hl7v2";
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
+import type { ConversionResult } from "../converter";
 import {
   fromMSH,
   fromPID,
@@ -34,7 +34,7 @@ import { convertPIDToPatient } from "../segments/pid-patient";
 
 function findSegment(
   message: HL7v2Message,
-  name: string
+  name: string,
 ): HL7v2Segment | undefined {
   return message.find((s) => s.segment === name);
 }
@@ -95,10 +95,7 @@ function createBundleEntry(resource: Patient): BundleEntry {
  * EVN - Event Type (1)
  * PID - Patient Identification (1)
  */
-export function convertADT_A08(message: string): Bundle {
-  // TODO refactor: move parsing out of the converter function
-  const parsed = parseMessage(message);
-
+export function convertADT_A08(parsed: HL7v2Message): ConversionResult {
   // =========================================================================
   // Extract MSH
   // =========================================================================
@@ -170,7 +167,13 @@ export function convertADT_A08(message: string): Bundle {
     entry: [entry],
   };
 
-  return bundle;
+  return {
+    bundle,
+    messageUpdate: {
+      status: "processed",
+      patient: { reference: `Patient/${patient.id}` },
+    },
+  };
 }
 
 export default convertADT_A08;

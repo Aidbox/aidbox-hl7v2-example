@@ -10,18 +10,9 @@ import {
   putResource,
   type Bundle as AidboxBundle,
 } from "../aidbox";
-import type {
-  IncomingHL7v2Message,
-  UnmappedCode,
-} from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
-import type { Patient } from "../fhir/hl7-fhir-r4-core/Patient";
+import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import type { Bundle } from "../fhir/hl7-fhir-r4-core/Bundle";
-import { convertToFHIR } from "./converter";
-import { MappingErrorCollection } from "./code-mapping/conceptmap-lookup";
-import {
-  createOrUpdateMappingTask,
-  generateMappingTaskId,
-} from "../code-mapping/mapping-task-service";
+import { convertToFHIR, type ConversionResult } from "./converter";
 
 // ============================================================================
 // Constants
@@ -49,11 +40,12 @@ export async function pollReceivedMessage(): Promise<IncomingHL7v2Message | null
 // ============================================================================
 
 /**
- * Convert HL7v2 message to FHIR Bundle
+ * Convert HL7v2 message to FHIR Bundle with message update
  * Uses converter router to automatically detect message type
  */
-async function convertMessage(message: IncomingHL7v2Message): Promise<Bundle> {
-  // TODO refactor: move parsing here, so actual convertors are not responsible for parsing
+async function convertMessage(
+  message: IncomingHL7v2Message,
+): Promise<ConversionResult> {
   return await convertToFHIR(message.message);
 }
 
@@ -73,116 +65,29 @@ async function submitBundle(bundle: Bundle): Promise<void> {
 }
 
 // ============================================================================
-// Patient ID Extraction
-// ============================================================================
-
-/**
- * Extract patient ID from bundle
- * Returns undefined if no patient found
- */
-function extractPatientId(bundle: Bundle): string | undefined {
-  // Extract from first Patient in bundle
-  const patientEntry = bundle.entry?.find(
-    (e) => e.resource?.resourceType === "Patient",
-  );
-
-  if (patientEntry?.resource) {
-    return (patientEntry.resource as Patient).id;
-  }
-
-  return undefined;
-}
-
-// ============================================================================
 // Status Management
 // ============================================================================
 
 /**
- * Update IncomingHL7v2Message status
- * Optionally links to created Patient resource, stores error message and bundle
+ * Apply message update from conversion result
+ * Merges update fields with existing message and saves to Aidbox
  */
-async function updateMessageStatus(
+async function applyMessageUpdate(
   message: IncomingHL7v2Message,
-  status: "processed" | "error" | "mapping_error",
-  // TODO refactor: passing options doesn't seem like a best practice. Consider using more composable functions
-  options?: {
-    patientId?: string;
-    error?: string;
-    bundle?: Bundle;
-    unmappedCodes?: UnmappedCode[];
-  },
+  update: Partial<IncomingHL7v2Message>,
+  bundle?: Bundle,
 ): Promise<void> {
   const updated: IncomingHL7v2Message = {
     ...message,
-    status,
-    patient: options?.patientId
-      ? { reference: `Patient/${options.patientId}` }
-      : message.patient,
-    error: options?.error,
-    bundle: options?.bundle
-      ? JSON.stringify(options.bundle, null, 2)
-      : undefined,
+    ...update,
+    bundle: bundle ? JSON.stringify(bundle, null, 2) : undefined,
   };
-
-  if (options?.unmappedCodes) {
-    updated.unmappedCodes = options.unmappedCodes;
-  }
 
   await putResource<IncomingHL7v2Message>(
     "IncomingHL7v2Message",
     message.id!,
     updated,
   );
-}
-
-/**
- * Handle mapping error by creating tasks for unmapped codes and updating message status
- */
-// TODO refactor: remove this function entirely after converter returns messageUpdate.
-//                Processor should just: const { bundle, messageUpdate } = await convert(); submit(bundle); applyUpdate(message, messageUpdate);
-async function handleMappingError(
-  message: IncomingHL7v2Message,
-  errorCollection: MappingErrorCollection,
-): Promise<void> {
-  const sender = {
-    sendingApplication: errorCollection.sendingApplication,
-    sendingFacility: errorCollection.sendingFacility,
-  };
-
-  const seenTaskIds = new Set<string>();
-  const unmappedCodes: UnmappedCode[] = [];
-
-  for (const error of errorCollection.errors) {
-    if (!error.localCode || !error.localSystem) continue;
-
-    const taskId = generateMappingTaskId(
-      sender,
-      error.localSystem,
-      error.localCode,
-    );
-
-    if (seenTaskIds.has(taskId)) continue;
-    seenTaskIds.add(taskId);
-
-    await createOrUpdateMappingTask({
-      sender,
-      localCode: error.localCode,
-      localDisplay: error.localDisplay || "",
-      localSystem: error.localSystem,
-    });
-
-    unmappedCodes.push({
-      localCode: error.localCode,
-      localDisplay: error.localDisplay,
-      localSystem: error.localSystem,
-      mappingTask: { reference: `Task/${taskId}` },
-    });
-  }
-
-  await updateMessageStatus(message, "mapping_error", {
-    error: errorCollection.message,
-    unmappedCodes,
-  });
 }
 
 // ============================================================================
@@ -200,46 +105,21 @@ export async function processNextMessage(): Promise<boolean> {
     return false;
   }
 
-  let bundle: Bundle | undefined;
-
   try {
-    // Convert HL7v2 to FHIR
-    bundle = await convertMessage(message);
-
-    // Submit to Aidbox as transaction
+    const { bundle, messageUpdate } = await convertMessage(message);
     await submitBundle(bundle);
-
-    // Extract patient ID for linking
-    // TODO refactor: processor-service shouldn't know about this and especially about the message structure
-    const patientId = extractPatientId(bundle);
-
-    // Update status to processed
-    await updateMessageStatus(message, "processed", { patientId, bundle });
-
+    await applyMessageUpdate(message, messageUpdate, bundle);
     return true;
   } catch (error) {
-    // Handle mapping errors specially - create tasks and update status
-    if (error instanceof MappingErrorCollection) {
-      try {
-        await handleMappingError(message, error);
-      } catch (updateError) {
-        console.error("Failed to handle mapping error:", updateError);
-      }
-      return true;
-    }
-
     const errorMessage = error instanceof Error ? error.message : String(error);
-    // Update status to error (best effort - don't fail if update fails)
     try {
-      await updateMessageStatus(message, "error", {
+      await applyMessageUpdate(message, {
+        status: "error",
         error: errorMessage,
-        bundle,
       });
     } catch (updateError) {
       console.error("Failed to update message status:", updateError);
     }
-
-    // Re-throw error to be handled by caller
     throw error;
   }
 }
@@ -256,7 +136,7 @@ export function createIncomingHL7v2MessageProcessorService(
   options: {
     pollIntervalMs?: number;
     onError?: (error: Error, message?: IncomingHL7v2Message) => void;
-    onProcessed?: (message: IncomingHL7v2Message, patientId?: string) => void;
+    onProcessed?: (message: IncomingHL7v2Message) => void;
     onIdle?: () => void;
   } = {},
 ) {
@@ -268,61 +148,38 @@ export function createIncomingHL7v2MessageProcessorService(
     if (!running) return;
 
     let currentMessage: IncomingHL7v2Message | null = null;
-    let bundle: Bundle | undefined;
 
     try {
       currentMessage = await pollReceivedMessage();
 
       if (!currentMessage) {
-        // No message found, wait for poll interval
         options.onIdle?.();
         timeoutId = setTimeout(poll, pollIntervalMs);
         return;
       }
 
-      // Process the message
-      bundle = await convertMessage(currentMessage);
+      const { bundle, messageUpdate } = await convertMessage(currentMessage);
       await submitBundle(bundle);
-      const patientId = extractPatientId(bundle);
-      await updateMessageStatus(currentMessage, "processed", {
-        patientId,
-        bundle,
-      });
+      await applyMessageUpdate(currentMessage, messageUpdate, bundle);
 
-      options.onProcessed?.(currentMessage, patientId);
-
-      // Message processed successfully, poll immediately for next
+      options.onProcessed?.(currentMessage);
       setImmediate(poll);
     } catch (error) {
-      // Handle mapping errors specially - create tasks and update status
-      if (error instanceof MappingErrorCollection && currentMessage) {
-        try {
-          await handleMappingError(currentMessage, error);
-        } catch (updateError) {
-          console.error("Failed to handle mapping error:", updateError);
-        }
-        // Continue polling immediately for mapping errors (message handled)
-        setImmediate(poll);
-        return;
-      }
-
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       options.onError?.(error as Error, currentMessage ?? undefined);
 
-      // Update status to error if we have the message
       if (currentMessage) {
         try {
-          await updateMessageStatus(currentMessage, "error", {
+          await applyMessageUpdate(currentMessage, {
+            status: "error",
             error: errorMessage,
-            bundle,
           });
         } catch (updateError) {
           console.error("Failed to update message status:", updateError);
         }
       }
 
-      // On error, continue polling after interval
       timeoutId = setTimeout(poll, pollIntervalMs);
     }
   }
@@ -365,9 +222,10 @@ if (import.meta.main) {
         error.message,
       );
     },
-    onProcessed: (message, patientId) => {
+    onProcessed: (message) => {
+      const patientRef = message.patient?.reference || "unknown";
       console.log(
-        `✓ Processed ${message.type} message ${message.id} → Patient ${patientId || "unknown"}`,
+        `✓ Processed ${message.type} message ${message.id} → ${patientRef}`,
       );
     },
     onIdle: () => {

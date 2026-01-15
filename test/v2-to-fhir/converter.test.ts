@@ -20,7 +20,7 @@ IN2||000-00-0000|||L|||||||||||||||N|||||||||||||||||||||||||||||||||||||||||||(
 // Mock aidbox module to avoid actual API calls
 const mockAidbox = {
   aidboxFetch: mock(() =>
-    Promise.reject(new Error("HTTP 404: ConceptMap not found"))
+    Promise.reject(new Error("HTTP 404: ConceptMap not found")),
   ),
 };
 
@@ -28,13 +28,17 @@ mock.module("../../src/aidbox", () => mockAidbox);
 
 describe("convertToFHIR", () => {
   test("converts ADT^A01 message to FHIR Bundle", async () => {
-    const bundle = await convertToFHIR(ADT_A01_MESSAGE);
-    expect(bundle).toMatchSnapshot();
+    const result = await convertToFHIR(ADT_A01_MESSAGE);
+    expect(result.bundle).toMatchSnapshot();
+    expect(result.messageUpdate.status).toBe("processed");
+    expect(result.messageUpdate.patient?.reference).toBe("Patient/TEST-001");
   });
 
   test("converts ADT^A08 message to FHIR Bundle", async () => {
-    const bundle = await convertToFHIR(ADT_A08_MESSAGE);
-    expect(bundle).toMatchSnapshot();
+    const result = await convertToFHIR(ADT_A08_MESSAGE);
+    expect(result.bundle).toMatchSnapshot();
+    expect(result.messageUpdate.status).toBe("processed");
+    expect(result.messageUpdate.patient?.reference).toBe("Patient/11467314");
   });
 
   test("throws error when MSH segment is missing", async () => {
@@ -44,6 +48,8 @@ describe("convertToFHIR", () => {
 
   test("throws error when PID segment is missing", async () => {
     const invalidMessage = `MSH|^~\\&|APP|FAC|||20251109||ADT^A08|123|P|2.5.1`;
-    await expect(convertToFHIR(invalidMessage)).rejects.toThrow("PID segment not found");
+    await expect(convertToFHIR(invalidMessage)).rejects.toThrow(
+      "PID segment not found",
+    );
   });
 });

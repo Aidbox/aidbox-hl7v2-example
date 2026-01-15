@@ -37,9 +37,8 @@ describe("getOrCreateConceptMap", () => {
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { getOrCreateConceptMap } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { getOrCreateConceptMap } =
+      await import("../../src/code-mapping/concept-map");
 
     const result = await getOrCreateConceptMap({
       sendingApplication: "ACME_LAB",
@@ -48,25 +47,23 @@ describe("getOrCreateConceptMap", () => {
 
     expect(result.id).toBe("hl7v2-acme-lab-acme-hosp-to-loinc");
     expect(mockAidbox.aidboxFetch).toHaveBeenCalledWith(
-      "/fhir/ConceptMap/hl7v2-acme-lab-acme-hosp-to-loinc"
+      "/fhir/ConceptMap/hl7v2-acme-lab-acme-hosp-to-loinc",
     );
     expect(mockAidbox.putResource).not.toHaveBeenCalled();
   });
 
   test("creates new ConceptMap when not found", async () => {
     const mockAidbox = {
-      aidboxFetch: mock(() =>
-        Promise.reject(new Error("HTTP 404: Not Found"))
-      ),
-      putResource: mock((resourceType: string, id: string, resource: ConceptMap) =>
-        Promise.resolve(resource)
+      aidboxFetch: mock(() => Promise.reject(new Error("HTTP 404: Not Found"))),
+      putResource: mock(
+        (resourceType: string, id: string, resource: ConceptMap) =>
+          Promise.resolve(resource),
       ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { getOrCreateConceptMap } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { getOrCreateConceptMap } =
+      await import("../../src/code-mapping/concept-map");
 
     const result = await getOrCreateConceptMap({
       sendingApplication: "NEW_LAB",
@@ -83,7 +80,7 @@ describe("getOrCreateConceptMap", () => {
       expect.objectContaining({
         resourceType: "ConceptMap",
         status: "active",
-      })
+      }),
     );
   });
 });
@@ -92,17 +89,19 @@ describe("addMapping", () => {
   test("adds mapping to existing group with matching source system", async () => {
     let savedConceptMap: ConceptMap | null = null;
     const mockAidbox = {
-      aidboxFetch: mock(() => Promise.resolve(structuredClone(sampleConceptMap))),
-      putResource: mock((resourceType: string, id: string, resource: ConceptMap) => {
-        savedConceptMap = resource;
-        return Promise.resolve(resource);
-      }),
+      aidboxFetch: mock(() =>
+        Promise.resolve(structuredClone(sampleConceptMap)),
+      ),
+      putResource: mock(
+        (resourceType: string, id: string, resource: ConceptMap) => {
+          savedConceptMap = resource;
+          return Promise.resolve(resource);
+        },
+      ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { addMapping } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { addMapping } = await import("../../src/code-mapping/concept-map");
 
     await addMapping(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
@@ -110,33 +109,39 @@ describe("addMapping", () => {
       "ACME-LAB-CODES",
       "Sodium [Serum/Plasma]",
       "2951-2",
-      "Sodium [Moles/volume] in Serum or Plasma"
+      "Sodium [Moles/volume] in Serum or Plasma",
     );
 
     expect(savedConceptMap).not.toBeNull();
-    const group = savedConceptMap!.group?.find((g) => g.source === "ACME-LAB-CODES");
+    const group = savedConceptMap!.group?.find(
+      (g) => g.source === "ACME-LAB-CODES",
+    );
     expect(group?.element).toHaveLength(2);
 
     const newElement = group?.element?.find((e) => e.code === "NA_SERUM");
     expect(newElement?.display).toBe("Sodium [Serum/Plasma]");
     expect(newElement?.target?.[0]?.code).toBe("2951-2");
-    expect(newElement?.target?.[0]?.display).toBe("Sodium [Moles/volume] in Serum or Plasma");
+    expect(newElement?.target?.[0]?.display).toBe(
+      "Sodium [Moles/volume] in Serum or Plasma",
+    );
   });
 
   test("creates new group when source system doesn't exist", async () => {
     let savedConceptMap: ConceptMap | null = null;
     const mockAidbox = {
-      aidboxFetch: mock(() => Promise.resolve(structuredClone(sampleConceptMap))),
-      putResource: mock((resourceType: string, id: string, resource: ConceptMap) => {
-        savedConceptMap = resource;
-        return Promise.resolve(resource);
-      }),
+      aidboxFetch: mock(() =>
+        Promise.resolve(structuredClone(sampleConceptMap)),
+      ),
+      putResource: mock(
+        (resourceType: string, id: string, resource: ConceptMap) => {
+          savedConceptMap = resource;
+          return Promise.resolve(resource);
+        },
+      ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { addMapping } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { addMapping } = await import("../../src/code-mapping/concept-map");
 
     await addMapping(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
@@ -144,11 +149,13 @@ describe("addMapping", () => {
       "OTHER-SYSTEM",
       "Glucose",
       "2345-7",
-      "Glucose [Mass/volume] in Serum or Plasma"
+      "Glucose [Mass/volume] in Serum or Plasma",
     );
 
     expect(savedConceptMap!.group).toHaveLength(2);
-    const newGroup = savedConceptMap!.group?.find((g) => g.source === "OTHER-SYSTEM");
+    const newGroup = savedConceptMap!.group?.find(
+      (g) => g.source === "OTHER-SYSTEM",
+    );
     expect(newGroup?.target).toBe("http://loinc.org");
     expect(newGroup?.element?.[0]?.code).toBe("GLU");
   });
@@ -156,17 +163,19 @@ describe("addMapping", () => {
   test("updates existing mapping when code already exists", async () => {
     let savedConceptMap: ConceptMap | null = null;
     const mockAidbox = {
-      aidboxFetch: mock(() => Promise.resolve(structuredClone(sampleConceptMap))),
-      putResource: mock((resourceType: string, id: string, resource: ConceptMap) => {
-        savedConceptMap = resource;
-        return Promise.resolve(resource);
-      }),
+      aidboxFetch: mock(() =>
+        Promise.resolve(structuredClone(sampleConceptMap)),
+      ),
+      putResource: mock(
+        (resourceType: string, id: string, resource: ConceptMap) => {
+          savedConceptMap = resource;
+          return Promise.resolve(resource);
+        },
+      ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { addMapping } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { addMapping } = await import("../../src/code-mapping/concept-map");
 
     await addMapping(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
@@ -174,13 +183,17 @@ describe("addMapping", () => {
       "ACME-LAB-CODES",
       "Potassium Updated",
       "2823-3",
-      "Potassium Updated Display"
+      "Potassium Updated Display",
     );
 
-    const group = savedConceptMap!.group?.find((g) => g.source === "ACME-LAB-CODES");
+    const group = savedConceptMap!.group?.find(
+      (g) => g.source === "ACME-LAB-CODES",
+    );
     expect(group?.element).toHaveLength(1);
     expect(group?.element?.[0]?.display).toBe("Potassium Updated");
-    expect(group?.element?.[0]?.target?.[0]?.display).toBe("Potassium Updated Display");
+    expect(group?.element?.[0]?.target?.[0]?.display).toBe(
+      "Potassium Updated Display",
+    );
   });
 });
 
@@ -188,45 +201,52 @@ describe("deleteMapping", () => {
   test("removes mapping from ConceptMap", async () => {
     let savedConceptMap: ConceptMap | null = null;
     const mockAidbox = {
-      aidboxFetch: mock(() => Promise.resolve(structuredClone(sampleConceptMap))),
-      putResource: mock((resourceType: string, id: string, resource: ConceptMap) => {
-        savedConceptMap = resource;
-        return Promise.resolve(resource);
-      }),
+      aidboxFetch: mock(() =>
+        Promise.resolve(structuredClone(sampleConceptMap)),
+      ),
+      putResource: mock(
+        (resourceType: string, id: string, resource: ConceptMap) => {
+          savedConceptMap = resource;
+          return Promise.resolve(resource);
+        },
+      ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { deleteMapping } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { deleteMapping } =
+      await import("../../src/code-mapping/concept-map");
 
     await deleteMapping(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
       "K_SERUM",
-      "ACME-LAB-CODES"
+      "ACME-LAB-CODES",
     );
 
-    const group = savedConceptMap!.group?.find((g) => g.source === "ACME-LAB-CODES");
+    const group = savedConceptMap!.group?.find(
+      (g) => g.source === "ACME-LAB-CODES",
+    );
     expect(group?.element).toHaveLength(0);
   });
 
   test("does nothing when mapping doesn't exist", async () => {
     const mockAidbox = {
-      aidboxFetch: mock(() => Promise.resolve(structuredClone(sampleConceptMap))),
-      putResource: mock((resourceType: string, id: string, resource: ConceptMap) =>
-        Promise.resolve(resource)
+      aidboxFetch: mock(() =>
+        Promise.resolve(structuredClone(sampleConceptMap)),
+      ),
+      putResource: mock(
+        (resourceType: string, id: string, resource: ConceptMap) =>
+          Promise.resolve(resource),
       ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { deleteMapping } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { deleteMapping } =
+      await import("../../src/code-mapping/concept-map");
 
     await deleteMapping(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
       "NONEXISTENT",
-      "ACME-LAB-CODES"
+      "ACME-LAB-CODES",
     );
 
     expect(mockAidbox.putResource).toHaveBeenCalled();
@@ -240,9 +260,8 @@ describe("searchMappings", () => {
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchMappings } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { searchMappings } =
+      await import("../../src/code-mapping/concept-map");
 
     const results = await searchMappings({
       sendingApplication: "ACME_LAB",
@@ -281,13 +300,12 @@ describe("searchMappings", () => {
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchMappings } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { searchMappings } =
+      await import("../../src/code-mapping/concept-map");
 
     const results = await searchMappings(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
-      { localCode: "K_SERUM" }
+      { localCode: "K_SERUM" },
     );
 
     expect(results).toHaveLength(1);
@@ -322,13 +340,12 @@ describe("searchMappings", () => {
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchMappings } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { searchMappings } =
+      await import("../../src/code-mapping/concept-map");
 
     const results = await searchMappings(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
-      { loincCode: "2951-2" }
+      { loincCode: "2951-2" },
     );
 
     expect(results).toHaveLength(1);
@@ -337,15 +354,12 @@ describe("searchMappings", () => {
 
   test("returns empty array when ConceptMap not found", async () => {
     const mockAidbox = {
-      aidboxFetch: mock(() =>
-        Promise.reject(new Error("HTTP 404: Not Found"))
-      ),
+      aidboxFetch: mock(() => Promise.reject(new Error("HTTP 404: Not Found"))),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchMappings } = await import(
-      "../../src/code-mapping/concept-map-service"
-    );
+    const { searchMappings } =
+      await import("../../src/code-mapping/concept-map");
 
     const results = await searchMappings({
       sendingApplication: "NONEXISTENT",

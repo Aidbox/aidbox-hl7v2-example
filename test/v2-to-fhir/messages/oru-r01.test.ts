@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { parseMessage } from "@atomic-ehr/hl7v2";
 import type {
   Bundle,
   DiagnosticReport,
@@ -6,7 +7,7 @@ import type {
   Specimen,
 } from "../../../src/fhir/hl7-fhir-r4-core";
 import type { OBX } from "../../../src/hl7v2/generated/fields";
-import type { SenderContext } from "../../../src/v2-to-fhir/code-mapping/conceptmap-lookup";
+import type { SenderContext } from "../../../src/code-mapping/concept-map";
 
 // Sample ORU_R01 message with single OBR and multiple OBX
 const SIMPLE_ORU_MESSAGE = `MSH|^~\\&|LABSYS|TESTHOSP||RECV|20260106171422||ORU^R01|MSG123|P|2.5.1
@@ -78,7 +79,8 @@ describe("convertORU_R01", () => {
     test("converts simple ORU_R01 to FHIR Bundle", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
+      const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
+        .bundle;
 
       expect(bundle.resourceType).toBe("Bundle");
       expect(bundle.type).toBe("transaction");
@@ -89,7 +91,8 @@ describe("convertORU_R01", () => {
     test("creates DiagnosticReport from OBR segment", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
+      const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
+        .bundle;
       const diagnosticReports = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "DiagnosticReport")
         .map((e) => e.resource as DiagnosticReport);
@@ -103,7 +106,8 @@ describe("convertORU_R01", () => {
     test("creates Observations from OBX segments", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
+      const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
+        .bundle;
       const observations = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "Observation")
         .map((e) => e.resource as Observation);
@@ -116,7 +120,8 @@ describe("convertORU_R01", () => {
     test("links Observations to DiagnosticReport via result array", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
+      const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
+        .bundle;
       const diagnosticReport = bundle.entry?.find(
         (e) => e.resource?.resourceType === "DiagnosticReport",
       )?.resource as DiagnosticReport;
@@ -128,7 +133,8 @@ describe("convertORU_R01", () => {
     test("uses PUT requests with deterministic IDs for idempotency", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
+      const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
+        .bundle;
 
       bundle.entry?.forEach((entry) => {
         expect(entry.request?.method).toBe("PUT");
@@ -139,7 +145,8 @@ describe("convertORU_R01", () => {
     test("tags all resources with message control ID", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
+      const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
+        .bundle;
 
       bundle.entry?.forEach((entry) => {
         const tag = entry.resource?.meta?.tag?.find(
@@ -155,7 +162,8 @@ describe("convertORU_R01", () => {
     test("extracts LOINC from OBX-3 alternate coding", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_WITH_LOINC);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_LOINC)))
+        .bundle;
       const observation = bundle.entry?.find(
         (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
@@ -171,7 +179,8 @@ describe("convertORU_R01", () => {
     test("creates Specimen from SPM segment", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_WITH_SPM);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_SPM)))
+        .bundle;
       const specimens = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "Specimen")
         .map((e) => e.resource as Specimen);
@@ -183,7 +192,8 @@ describe("convertORU_R01", () => {
     test("links Specimen to DiagnosticReport", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_WITH_SPM);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_SPM)))
+        .bundle;
       const diagnosticReport = bundle.entry?.find(
         (e) => e.resource?.resourceType === "DiagnosticReport",
       )?.resource as DiagnosticReport;
@@ -195,7 +205,8 @@ describe("convertORU_R01", () => {
     test("links Specimen to Observations", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_WITH_SPM);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_SPM)))
+        .bundle;
       const observation = bundle.entry?.find(
         (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
@@ -208,7 +219,8 @@ describe("convertORU_R01", () => {
     test("attaches NTE comments to preceding Observation as notes", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_WITH_NTE);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_NTE)))
+        .bundle;
       const observation = bundle.entry?.find(
         (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
@@ -220,7 +232,8 @@ describe("convertORU_R01", () => {
     test("creates paragraph breaks for empty NTE-3", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_WITH_NTE);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_NTE)))
+        .bundle;
       const observation = bundle.entry?.find(
         (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
@@ -234,7 +247,8 @@ describe("convertORU_R01", () => {
     test("creates multiple DiagnosticReports for multiple OBR groups", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_MULTIPLE_OBR);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_MULTIPLE_OBR)))
+        .bundle;
       const diagnosticReports = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "DiagnosticReport")
         .map((e) => e.resource as DiagnosticReport);
@@ -247,7 +261,8 @@ describe("convertORU_R01", () => {
     test("links OBX to correct parent OBR", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_MULTIPLE_OBR);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_MULTIPLE_OBR)))
+        .bundle;
       const observations = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "Observation")
         .map((e) => e.resource as Observation);
@@ -269,8 +284,8 @@ describe("convertORU_R01", () => {
       const message1 = SIMPLE_ORU_MESSAGE.replace("MSG123", "MSG001");
       const message2 = SIMPLE_ORU_MESSAGE.replace("MSG123", "MSG002");
 
-      const bundle1 = await convertORU_R01(message1);
-      const bundle2 = await convertORU_R01(message2);
+      const bundle1 = (await convertORU_R01(parseMessage(message1))).bundle;
+      const bundle2 = (await convertORU_R01(parseMessage(message2))).bundle;
 
       // Same resource IDs
       const dr1 = bundle1.entry?.find(
@@ -298,7 +313,8 @@ describe("convertORU_R01", () => {
     test("converts NM value type to valueQuantity", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
+      const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
+        .bundle;
       const observation = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "Observation")
         .map((e) => e.resource as Observation)
@@ -311,7 +327,8 @@ describe("convertORU_R01", () => {
     test("converts ST value type to valueString", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(SIMPLE_ORU_MESSAGE);
+      const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
+        .bundle;
       const observation = bundle.entry
         ?.filter((e) => e.resource?.resourceType === "Observation")
         .map((e) => e.resource as Observation)
@@ -323,7 +340,8 @@ describe("convertORU_R01", () => {
     test("converts SN with comparator to valueQuantity", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_WITH_NTE);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_NTE)))
+        .bundle;
       const observation = bundle.entry?.find(
         (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
@@ -337,7 +355,8 @@ describe("convertORU_R01", () => {
     test("converts OBX-8 abnormal flag H to interpretation", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_WITH_LOINC);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_LOINC)))
+        .bundle;
       const observation = bundle.entry?.find(
         (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
@@ -348,7 +367,8 @@ describe("convertORU_R01", () => {
     test("converts OBX-7 reference range", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const bundle = await convertORU_R01(MESSAGE_WITH_LOINC);
+      const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_LOINC)))
+        .bundle;
       const observation = bundle.entry?.find(
         (e) => e.resource?.resourceType === "Observation",
       )?.resource as Observation;
@@ -360,13 +380,12 @@ describe("convertORU_R01", () => {
 });
 
 describe("error handling", () => {
-  test("throws error when MSH segment is missing", async () => {
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
+  test("throws error when MSH segment is missing", () => {
     const invalidMessage = `PID|1||TEST-ERR1||TESTPATIENT^ERROR
 OBR|1|||LAB123|||20260101`;
 
-    await expect(convertORU_R01(invalidMessage)).rejects.toThrow(/MSH/);
+    // parseMessage throws when message doesn't start with MSH
+    expect(() => parseMessage(invalidMessage)).toThrow(/MSH/);
   });
 
   test("throws error when MSH-3 (sending application) is missing", async () => {
@@ -377,7 +396,9 @@ PID|1||TEST-ERR||TESTPATIENT^ERROR
 OBR|1||FIL001|LAB123|||20260101
 OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
 
-    await expect(convertORU_R01(invalidMessage)).rejects.toThrow(/MSH-3/);
+    await expect(convertORU_R01(parseMessage(invalidMessage))).rejects.toThrow(
+      /MSH-3/,
+    );
   });
 
   test("throws error when MSH-4 (sending facility) is missing", async () => {
@@ -388,7 +409,9 @@ PID|1||TEST-ERR||TESTPATIENT^ERROR
 OBR|1||FIL001|LAB123|||20260101
 OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
 
-    await expect(convertORU_R01(invalidMessage)).rejects.toThrow(/MSH-4/);
+    await expect(convertORU_R01(parseMessage(invalidMessage))).rejects.toThrow(
+      /MSH-4/,
+    );
   });
 
   test("throws error when OBR segment is missing", async () => {
@@ -398,7 +421,9 @@ OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
 PID|1||TEST-ERR2||TESTPATIENT^ERROR
 OBX|1|NM|TEST||100|mg/dL||||F`;
 
-    await expect(convertORU_R01(invalidMessage)).rejects.toThrow(/OBR/);
+    await expect(convertORU_R01(parseMessage(invalidMessage))).rejects.toThrow(
+      /OBR/,
+    );
   });
 
   test("throws error when OBR-3 filler order number is missing", async () => {
@@ -409,25 +434,26 @@ PID|1||TEST-ERR3||TESTPATIENT^ERROR
 OBR|1|ORD001||LAB123|||20260101
 OBX|1|NM|TEST||100|mg/dL||||F`;
 
-    await expect(convertORU_R01(invalidMessage)).rejects.toThrow(/OBR-3/);
+    await expect(convertORU_R01(parseMessage(invalidMessage))).rejects.toThrow(
+      /OBR-3/,
+    );
   });
 });
 
 describe("LOINC validation", () => {
-  test("throws MappingErrorCollection when OBX-3 has no LOINC code (local code only)", async () => {
+  test("returns mapping_error status when OBX-3 has no LOINC code (local code only)", async () => {
     const { convertORU_R01 } =
       await import("../../../src/v2-to-fhir/messages/oru-r01");
-    const { MappingErrorCollection } =
-      await import("../../../src/v2-to-fhir/code-mapping/conceptmap-lookup");
     const messageWithoutLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
 OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
 OBX|1|NM|12345^Potassium^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
 
-    await expect(convertORU_R01(messageWithoutLoinc)).rejects.toThrow(
-      MappingErrorCollection,
-    );
+    const result = await convertORU_R01(parseMessage(messageWithoutLoinc));
+    expect(result.messageUpdate.status).toBe("mapping_error");
+    expect(result.messageUpdate.unmappedCodes).toBeDefined();
+    expect(result.messageUpdate.unmappedCodes!.length).toBe(1);
   });
 
   test("accepts message when OBX-3 has LOINC in primary coding", async () => {
@@ -439,9 +465,8 @@ ORC|RE|ORD001|FIL001
 OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
 OBX|1|NM|2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.5||||F`;
 
-    await expect(
-      convertORU_R01(messageWithPrimaryLoinc),
-    ).resolves.toBeDefined();
+    const result = await convertORU_R01(parseMessage(messageWithPrimaryLoinc));
+    expect(result.messageUpdate.status).toBe("processed");
   });
 
   test("accepts message when OBX-3 has LOINC in alternate coding", async () => {
@@ -453,36 +478,28 @@ ORC|RE|ORD001|FIL001
 OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
 OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.5||||F`;
 
-    await expect(convertORU_R01(messageWithAltLoinc)).resolves.toBeDefined();
+    const result = await convertORU_R01(parseMessage(messageWithAltLoinc));
+    expect(result.messageUpdate.status).toBe("processed");
   });
 
-  test("MappingErrorCollection contains local code for debugging", async () => {
+  test("unmappedCodes contains local code for debugging", async () => {
     const { convertORU_R01 } =
       await import("../../../src/v2-to-fhir/messages/oru-r01");
-    const { MappingErrorCollection } =
-      await import("../../../src/v2-to-fhir/code-mapping/conceptmap-lookup");
     const messageWithoutLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
 OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
 OBX|3|NM|MYCODE^MyTest^LOCALLAB||100|mg/dL||||F`;
 
-    try {
-      await convertORU_R01(messageWithoutLoinc);
-      expect.unreachable("Should have thrown MappingErrorCollection");
-    } catch (error) {
-      expect(error).toBeInstanceOf(MappingErrorCollection);
-      const collection = error as InstanceType<typeof MappingErrorCollection>;
-      expect(collection.errors).toHaveLength(1);
-      expect(collection.errors[0].localCode).toBe("MYCODE");
-    }
+    const result = await convertORU_R01(parseMessage(messageWithoutLoinc));
+    expect(result.messageUpdate.status).toBe("mapping_error");
+    expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
+    expect(result.messageUpdate.unmappedCodes![0].localCode).toBe("MYCODE");
   });
 
   test("collects all unmapped codes when multiple OBX lack LOINC", async () => {
     const { convertORU_R01 } =
       await import("../../../src/v2-to-fhir/messages/oru-r01");
-    const { MappingErrorCollection } =
-      await import("../../../src/v2-to-fhir/code-mapping/conceptmap-lookup");
     const mixedMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
@@ -490,15 +507,10 @@ OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
 OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium^LN||4.2|mmol/L||||F
 OBX|2|NM|67890^Sodium^LOCAL||140|mmol/L||||F`;
 
-    try {
-      await convertORU_R01(mixedMessage);
-      expect.unreachable("Should have thrown MappingErrorCollection");
-    } catch (error) {
-      expect(error).toBeInstanceOf(MappingErrorCollection);
-      const collection = error as InstanceType<typeof MappingErrorCollection>;
-      expect(collection.errors).toHaveLength(1);
-      expect(collection.errors[0].localCode).toBe("67890");
-    }
+    const result = await convertORU_R01(parseMessage(mixedMessage));
+    expect(result.messageUpdate.status).toBe("mapping_error");
+    expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
+    expect(result.messageUpdate.unmappedCodes![0].localCode).toBe("67890");
   });
 });
 
@@ -546,7 +558,8 @@ ORC|RE|ORD001|FIL001
 OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
 OBX|1|NM|12345^Potassium^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
 
-    const bundle = await convertORU_R01(messageWithLocalCode);
+    const bundle = (await convertORU_R01(parseMessage(messageWithLocalCode)))
+      .bundle;
     const observation = bundle.entry?.find(
       (e) => e.resource?.resourceType === "Observation",
     )?.resource as Observation;
@@ -770,7 +783,7 @@ describe("convertOBXToObservationResolving", () => {
       const { convertOBXToObservationResolving } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
       const { LoincResolutionError } =
-        await import("../../../src/v2-to-fhir/code-mapping/conceptmap-lookup");
+        await import("../../../src/code-mapping/concept-map");
 
       const obx: OBX = {
         ...baseOBX,

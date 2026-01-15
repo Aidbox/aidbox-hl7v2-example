@@ -5,4 +5,14 @@
  */
 
 export * from "./coding-systems";
-export * from "./conceptmap-lookup";
+
+// Re-export from consolidated concept-map module
+export {
+  generateConceptMapId,
+  lookupInConceptMap,
+  resolveToLoinc,
+  buildCodeableConcept,
+  LoincResolutionError,
+  type SenderContext,
+  type CodeResolutionResult,
+} from "../../code-mapping/concept-map";

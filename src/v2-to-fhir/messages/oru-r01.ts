@@ -9,8 +9,8 @@
  * - Specimen from SPM (or OBR-15 fallback)
  */
 
-import { parseMessage } from "@atomic-ehr/hl7v2";
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
+import type { ConversionResult } from "../converter";
 import {
   fromMSH,
   fromOBR,
@@ -33,21 +33,21 @@ import type {
   Meta,
   Resource,
   Reference,
+  Task,
+  TaskInput,
 } from "../../fhir/hl7-fhir-r4-core";
+import type { UnmappedCode } from "../../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { convertOBRToDiagnosticReport } from "../segments/obr-diagnosticreport";
 import { convertOBXToObservation } from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
-// TODO refactor: instead of throwing MappingErrorCollection, handle mapping errors internally:
-//                1. Create Task resources for unmapped codes (add to bundle with PUT + If-None-Match: * to avoid overwriting existing Tasks)
-//                2. Return { bundle: tasksBundle, messageUpdate: { status: "mapping_error", unmappedCodes: [...] } }
-//                This removes the need for special error handling in processor-service
 import {
   buildCodeableConcept,
   LoincResolutionError,
-  MappingErrorCollection,
   resolveToLoinc,
+  fetchConceptMap,
+  generateConceptMapId,
   type SenderContext,
-} from "../code-mapping/conceptmap-lookup";
+} from "../../code-mapping/concept-map";
 
 export async function convertOBXToObservationResolving(
   obx: OBX,
@@ -57,6 +57,7 @@ export async function convertOBXToObservationResolving(
   const resolution = await resolveToLoinc(
     obx.$3_observationIdentifier,
     senderContext,
+    fetchConceptMap,
   );
   const resolvedCode = buildCodeableConcept(resolution);
   const observation = convertOBXToObservation(obx, obrFillerOrderNumber);
@@ -133,6 +134,88 @@ function createBundleEntry(
       method,
       url: id ? `${resourceType}/${id}` : `${resourceType}`,
     },
+  };
+}
+
+/**
+ * Create a bundle entry for a Task with conditional create (If-None-Match)
+ */
+function createTaskBundleEntry(task: Task): BundleEntry {
+  return {
+    resource: task,
+    request: {
+      method: "PUT",
+      url: `Task/${task.id}`,
+      ifNoneMatch: "*",
+    },
+  };
+}
+
+function simpleHash(str: string): string {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function generateMappingTaskId(
+  sender: SenderContext,
+  localSystem: string,
+  localCode: string,
+): string {
+  const conceptMapId = generateConceptMapId(sender);
+  const systemHash = simpleHash(localSystem);
+  const codeHash = simpleHash(localCode);
+  return `map-${conceptMapId}-${systemHash}-${codeHash}`;
+}
+
+function createMappingTask(
+  sender: SenderContext,
+  error: LoincResolutionError,
+): Task {
+  const taskId = generateMappingTaskId(
+    sender,
+    error.localSystem || "",
+    error.localCode || "",
+  );
+
+  const inputs: TaskInput[] = [
+    {
+      type: { text: "Sending application" },
+      valueString: sender.sendingApplication,
+    },
+    {
+      type: { text: "Sending facility" },
+      valueString: sender.sendingFacility,
+    },
+    { type: { text: "Local code" }, valueString: error.localCode || "" },
+    { type: { text: "Local display" }, valueString: error.localDisplay || "" },
+    { type: { text: "Local system" }, valueString: error.localSystem || "" },
+  ];
+
+  const now = new Date().toISOString();
+
+  return {
+    resourceType: "Task",
+    id: taskId,
+    status: "requested",
+    intent: "order",
+    code: {
+      coding: [
+        {
+          system: "http://example.org/task-codes",
+          code: "local-to-loinc-mapping",
+          display: "Local code to LOINC mapping",
+        },
+      ],
+      text: "Map local lab code to LOINC",
+    },
+    authoredOn: now,
+    lastModified: now,
+    requester: { display: "ORU Processor" },
+    owner: { display: "Mapping Team" },
+    input: inputs,
   };
 }
 
@@ -348,12 +431,17 @@ function getFillerOrderNumber(obr: OBR): string {
   return obr.$3_fillerOrderNumber.$1_value;
 }
 
+interface ProcessObservationsResult {
+  observations: Observation[];
+  mappingErrors: LoincResolutionError[];
+}
+
 async function processObservations(
   observationGroups: OBRGroup["observations"],
   fillerOrderNumber: string,
   senderContext: SenderContext,
   baseMeta: Meta,
-): Promise<Observation[]> {
+): Promise<ProcessObservationsResult> {
   const observations: Observation[] = [];
   const mappingErrors: LoincResolutionError[] = [];
 
@@ -388,15 +476,7 @@ async function processObservations(
     observations.push(observation);
   }
 
-  if (mappingErrors.length > 0) {
-    throw new MappingErrorCollection(
-      mappingErrors,
-      senderContext.sendingApplication,
-      senderContext.sendingFacility,
-    );
-  }
-
-  return observations;
+  return { observations, mappingErrors };
 }
 
 function processSpecimens(
@@ -458,11 +538,16 @@ function buildBundleEntries(
   ];
 }
 
+interface ProcessOBRGroupResult {
+  entries: BundleEntry[];
+  mappingErrors: LoincResolutionError[];
+}
+
 async function processOBRGroup(
   group: OBRGroup,
   senderContext: SenderContext,
   baseMeta: Meta,
-): Promise<BundleEntry[]> {
+): Promise<ProcessOBRGroupResult> {
   const obr = fromOBR(group.obr);
   const fillerOrderNumber = getFillerOrderNumber(obr);
 
@@ -470,7 +555,7 @@ async function processOBRGroup(
   diagnosticReport.meta = { ...diagnosticReport.meta, ...baseMeta };
   diagnosticReport.result = [];
 
-  const observations = await processObservations(
+  const { observations, mappingErrors } = await processObservations(
     group.observations,
     fillerOrderNumber,
     senderContext,
@@ -491,7 +576,8 @@ async function processOBRGroup(
 
   linkSpecimensToResources(specimens, diagnosticReport, observations);
 
-  return buildBundleEntries(diagnosticReport, observations, specimens);
+  const entries = buildBundleEntries(diagnosticReport, observations, specimens);
+  return { entries, mappingErrors };
 }
 
 /**
@@ -508,25 +594,88 @@ async function processOBRGroup(
  *   SPM - Specimen (0..*)
  * }
  */
-export async function convertORU_R01(message: string): Promise<Bundle> {
-  // TODO refactor: move parsing out of the converter function
-  const parsed = parseMessage(message);
-
+export async function convertORU_R01(
+  parsed: HL7v2Message,
+): Promise<ConversionResult> {
   const { senderContext, baseMeta } = parseMSH(parsed);
   validateOBRPresence(parsed);
 
   const obrGroups = groupSegmentsByOBR(parsed);
 
   const entries: BundleEntry[] = [];
+  const allMappingErrors: LoincResolutionError[] = [];
+
   for (const group of obrGroups) {
-    const groupEntries = await processOBRGroup(group, senderContext, baseMeta);
+    const { entries: groupEntries, mappingErrors } = await processOBRGroup(
+      group,
+      senderContext,
+      baseMeta,
+    );
     entries.push(...groupEntries);
+    allMappingErrors.push(...mappingErrors);
   }
 
-  return {
+  if (allMappingErrors.length > 0) {
+    return buildMappingErrorResult(senderContext, allMappingErrors);
+  }
+
+  const bundle: Bundle = {
     resourceType: "Bundle",
     type: "transaction",
     entry: entries,
+  };
+
+  return {
+    bundle,
+    messageUpdate: {
+      status: "processed",
+    },
+  };
+}
+
+function buildMappingErrorResult(
+  senderContext: SenderContext,
+  mappingErrors: LoincResolutionError[],
+): ConversionResult {
+  const seenTaskIds = new Set<string>();
+  const taskEntries: BundleEntry[] = [];
+  const unmappedCodes: UnmappedCode[] = [];
+
+  for (const error of mappingErrors) {
+    if (!error.localCode || !error.localSystem) continue;
+
+    const taskId = generateMappingTaskId(
+      senderContext,
+      error.localSystem,
+      error.localCode,
+    );
+
+    if (seenTaskIds.has(taskId)) continue;
+    seenTaskIds.add(taskId);
+
+    const task = createMappingTask(senderContext, error);
+    taskEntries.push(createTaskBundleEntry(task));
+
+    unmappedCodes.push({
+      localCode: error.localCode,
+      localDisplay: error.localDisplay,
+      localSystem: error.localSystem,
+      mappingTask: { reference: `Task/${taskId}` },
+    });
+  }
+
+  const bundle: Bundle = {
+    resourceType: "Bundle",
+    type: "transaction",
+    entry: taskEntries,
+  };
+
+  return {
+    bundle,
+    messageUpdate: {
+      status: "mapping_error",
+      unmappedCodes,
+    },
   };
 }
 

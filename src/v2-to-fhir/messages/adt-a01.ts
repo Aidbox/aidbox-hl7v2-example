@@ -13,8 +13,8 @@
  * - Coverage[] from IN1[]
  */
 
-import { parseMessage } from "@atomic-ehr/hl7v2";
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
+import type { ConversionResult } from "../converter";
 import {
   fromMSH,
   fromPID,
@@ -295,10 +295,7 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  * AL1 - Allergy Information (0..*)
  * IN1 - Insurance (0..*)
  */
-export function convertADT_A01(message: string): Bundle {
-  // TODO refactor: move parsing out of the converter function
-  const parsed = parseMessage(message);
-
+export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
   // =========================================================================
   // Extract MSH
   // =========================================================================
@@ -515,7 +512,13 @@ export function convertADT_A01(message: string): Bundle {
     entry: entries,
   };
 
-  return bundle;
+  return {
+    bundle,
+    messageUpdate: {
+      status: "processed",
+      patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
+    },
+  };
 }
 
 export default convertADT_A01;

@@ -10,7 +10,15 @@ export {
   addMapping,
   deleteMapping,
   searchMappings,
-} from "./concept-map-service";
+  fetchConceptMap,
+  generateConceptMapId,
+  lookupInConceptMap,
+  resolveToLoinc,
+  buildCodeableConcept,
+  LoincResolutionError,
+  type SenderContext,
+  type CodeResolutionResult,
+} from "./concept-map";
 
 export {
   generateMappingTaskId,

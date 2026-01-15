@@ -5,20 +5,10 @@
  * ConceptMap ID convention: hl7v2-{sendingApplication}-{sendingFacility}-to-loinc
  */
 
-// TODO refactor: this module should become a sub-module in src/code-mapping/concept-map (concept map should become a folder with concept-map-lookup.ts in it)
-
 import type { CE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
-import type {
-  ConceptMap,
-  ConceptMapGroup,
-} from "../../fhir/hl7-fhir-r4-core/ConceptMap";
-import { aidboxFetch } from "../../aidbox";
-import { normalizeSystem } from "./coding-systems";
-
-// ============================================================================
-// Types
-// ============================================================================
+import type { ConceptMap } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
+import { normalizeSystem } from "../../v2-to-fhir/code-mapping/coding-systems";
 
 export interface SenderContext {
   sendingApplication: string;
@@ -44,7 +34,6 @@ export class LoincResolutionError extends Error {
   }
 }
 
-// TODO refactor: MappingErrorCollection may become unnecessary after oru-r01.ts handles errors internally
 export class MappingErrorCollection extends Error {
   constructor(
     public readonly errors: LoincResolutionError[],
@@ -56,10 +45,6 @@ export class MappingErrorCollection extends Error {
     this.name = "MappingErrorCollection";
   }
 }
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
 
 /**
  * Convert string to kebab-case for use in ConceptMap IDs
@@ -129,29 +114,6 @@ function extractLocalFromPrimary(ce: CE): Coding | undefined {
   };
 }
 
-// ============================================================================
-// ConceptMap Fetching
-// ============================================================================
-
-/**
- * Fetch ConceptMap from Aidbox by ID
- * Returns null if ConceptMap doesn't exist
- */
-// TODO refactor: duplicate of fetchConceptMap in concept-map-service !!!
-export async function fetchConceptMap(
-  conceptMapId: string,
-): Promise<ConceptMap | null> {
-  try {
-    return await aidboxFetch<ConceptMap>(`/fhir/ConceptMap/${conceptMapId}`);
-  } catch (error) {
-    // Check if it's a 404 (not found)
-    if (error instanceof Error && error.message.includes("404")) {
-      return null;
-    }
-    throw error;
-  }
-}
-
 /**
  * Look up a local code in a ConceptMap to find its LOINC mapping.
  *
@@ -173,10 +135,8 @@ export function lookupInConceptMap(
 
     if (!mapsToLoinc || !matchingSystem) continue;
 
-    // Find matching element
     for (const mapping of mappingSystem.element) {
       if (mapping.code === localCode) {
-        // Found a match - get the target LOINC code
         const target = mapping.target?.[0];
         if (target && target.code) {
           return {
@@ -191,10 +151,6 @@ export function lookupInConceptMap(
 
   return null;
 }
-
-// ============================================================================
-// Main Resolution Function
-// ============================================================================
 
 function tryResolveFromInlineLoinc(
   observationIdentifier: CE,
@@ -216,6 +172,7 @@ function tryResolveFromInlineLoinc(
 async function resolveFromConceptMap(
   observationIdentifier: CE,
   sender: SenderContext,
+  fetchConceptMap: (id: string) => Promise<ConceptMap | null>,
 ): Promise<CodeResolutionResult> {
   const localCode = observationIdentifier.$1_code;
   const localDisplay = observationIdentifier.$2_text;
@@ -285,11 +242,12 @@ async function resolveFromConceptMap(
 export async function resolveToLoinc(
   observationIdentifier: CE,
   sender: SenderContext,
+  fetchConceptMap: (id: string) => Promise<ConceptMap | null>,
 ): Promise<CodeResolutionResult> {
   const inlineResult = tryResolveFromInlineLoinc(observationIdentifier);
   if (inlineResult) return inlineResult;
 
-  return resolveFromConceptMap(observationIdentifier, sender);
+  return resolveFromConceptMap(observationIdentifier, sender, fetchConceptMap);
 }
 
 /**

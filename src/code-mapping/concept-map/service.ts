@@ -4,14 +4,11 @@
  * Manages sender-specific ConceptMaps for local code to LOINC mappings.
  */
 
-// TODO refactor: this module should be a core/main/index module of new concept-map folder: src/code-mapping/concept-map/
+import type { ConceptMap, ConceptMapGroupElement } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
+import { aidboxFetch, putResource } from "../../aidbox";
+import { generateConceptMapId, type SenderContext } from "./lookup";
 
-import type { ConceptMap, ConceptMapGroupElement } from "../fhir/hl7-fhir-r4-core/ConceptMap";
-import { aidboxFetch, putResource } from "../aidbox";
-// TODO refactor: this function should belong to this namespace!
-import { generateConceptMapId, type SenderContext } from "../v2-to-fhir/code-mapping/conceptmap-lookup";
-
-async function fetchConceptMap(conceptMapId: string): Promise<ConceptMap | null> {
+export async function fetchConceptMap(conceptMapId: string): Promise<ConceptMap | null> {
   try {
     return await aidboxFetch<ConceptMap>(`/fhir/ConceptMap/${conceptMapId}`);
   } catch (error) {
