@@ -400,5 +400,36 @@ If ownership is unclear or refactoring is risky:
 - Keep the duplication for now.
 - Add a short comment explaining why and where the related code lives, so it can be consolidated later.
 
+## Avoid cyclic dependencies
+
+Never create circular imports between modules. If module A imports from module B, then module B must not import from module A (directly or indirectly).
+
+To avoid cycles:
+- Place shared utilities, types, and constants in a dedicated `shared/` module that other modules can import from
+- Keep dependencies flowing in one direction (e.g., services → utilities, not utilities → services)
+- If two modules need each other's functionality, extract the shared part into a third module
+
+```typescript
+/* BAD - creates a cycle */
+
+// src/bar/generator.ts
+import { something } from "../oru/processor";
+
+// src/oru/processor.ts
+import { somethingElse } from "../bar/generator";
+
+
+/* GOOD - shared module breaks the cycle */
+
+// src/shared/utils.ts
+export function sharedFunction() { ... }
+
+// src/bar/generator.ts
+import { sharedFunction } from "../shared/utils";
+
+// src/oru/processor.ts
+import { sharedFunction } from "../shared/utils";
+```
+
 ## Other
 Don't add error handling, fallbacks, or validation for scenarios that can't happen.
