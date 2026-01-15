@@ -48,6 +48,7 @@ import {
   generateConceptMapId,
   type SenderContext,
 } from "../../code-mapping/concept-map";
+import { simpleHash } from "../../utils/string";
 
 export async function convertOBXToObservationResolving(
   obx: OBX,
@@ -149,14 +150,6 @@ function createTaskBundleEntry(task: Task): BundleEntry {
       ifNoneMatch: "*",
     },
   };
-}
-
-function simpleHash(str: string): string {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
-  }
-  return Math.abs(hash).toString(36);
 }
 
 function generateMappingTaskId(

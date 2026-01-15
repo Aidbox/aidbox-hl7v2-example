@@ -18,14 +18,7 @@ import {
   type Bundle,
 } from "../aidbox";
 import { generateConceptMapId, type SenderContext } from "./concept-map";
-
-function simpleHash(str: string): string {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
-  }
-  return Math.abs(hash).toString(36);
-}
+import { simpleHash } from "../utils/string";
 
 export function generateMappingTaskId(
   sender: SenderContext,

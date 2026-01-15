@@ -44,6 +44,7 @@ import { convertNK1ToRelatedPerson } from "../segments/nk1-relatedperson";
 import { convertDG1ToCondition } from "../segments/dg1-condition";
 import { convertAL1ToAllergyIntolerance } from "../segments/al1-allergyintolerance";
 import { convertIN1ToCoverage } from "../segments/in1-coverage";
+import { toKebabCase } from "../../utils/string";
 
 // ============================================================================
 // Helper Functions
@@ -112,19 +113,6 @@ function createBundleEntry(
       url: id ? `/${resourceType}/${id}` : `/${resourceType}`,
     },
   };
-}
-
-/**
- * Convert string to kebab-case
- * "Essential Hypertension" → "essential-hypertension"
- */
-function toKebabCase(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "") // Remove special chars
-    .replace(/\s+/g, "-") // Replace spaces with hyphens
-    .replace(/-+/g, "-") // Collapse multiple hyphens
-    .replace(/^-|-$/g, ""); // Trim leading/trailing hyphens
 }
 
 /**

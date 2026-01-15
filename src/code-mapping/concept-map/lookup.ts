@@ -9,6 +9,7 @@ import type { CE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
 import type { ConceptMap } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
 import { normalizeSystem } from "../../v2-to-fhir/code-mapping/coding-systems";
+import { toKebabCase } from "../../utils/string";
 
 export interface SenderContext {
   sendingApplication: string;
@@ -44,16 +45,6 @@ export class MappingErrorCollection extends Error {
     super(`Multiple unmapped codes found: ${codes}`);
     this.name = "MappingErrorCollection";
   }
-}
-
-/**
- * Convert string to kebab-case for use in ConceptMap IDs
- */
-function toKebabCase(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }
 
 /**
