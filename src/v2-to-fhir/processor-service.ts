@@ -53,6 +53,7 @@ export async function pollReceivedMessage(): Promise<IncomingHL7v2Message | null
  * Uses converter router to automatically detect message type
  */
 async function convertMessage(message: IncomingHL7v2Message): Promise<Bundle> {
+  // TODO refactor: move parsing here, so actual convertors are not responsible for parsing
   return await convertToFHIR(message.message);
 }
 
@@ -103,6 +104,7 @@ function extractPatientId(bundle: Bundle): string | undefined {
 async function updateMessageStatus(
   message: IncomingHL7v2Message,
   status: "processed" | "error" | "mapping_error",
+  // TODO refactor: passing options doesn't seem like a best practice. Consider using more composable functions
   options?: {
     patientId?: string;
     error?: string;
@@ -136,6 +138,8 @@ async function updateMessageStatus(
 /**
  * Handle mapping error by creating tasks for unmapped codes and updating message status
  */
+// TODO refactor: remove this function entirely after converter returns messageUpdate.
+//                Processor should just: const { bundle, messageUpdate } = await convert(); submit(bundle); applyUpdate(message, messageUpdate);
 async function handleMappingError(
   message: IncomingHL7v2Message,
   errorCollection: MappingErrorCollection,
@@ -206,6 +210,7 @@ export async function processNextMessage(): Promise<boolean> {
     await submitBundle(bundle);
 
     // Extract patient ID for linking
+    // TODO refactor: processor-service shouldn't know about this and especially about the message structure
     const patientId = extractPatientId(bundle);
 
     // Update status to processed

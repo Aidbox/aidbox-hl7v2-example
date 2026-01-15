@@ -96,6 +96,7 @@ function createBundleEntry(resource: Patient): BundleEntry {
  * PID - Patient Identification (1)
  */
 export function convertADT_A08(message: string): Bundle {
+  // TODO refactor: move parsing out of the converter function
   const parsed = parseMessage(message);
 
   // =========================================================================

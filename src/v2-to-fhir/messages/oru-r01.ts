@@ -37,6 +37,10 @@ import type {
 import { convertOBRToDiagnosticReport } from "../segments/obr-diagnosticreport";
 import { convertOBXToObservation } from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
+// TODO refactor: instead of throwing MappingErrorCollection, handle mapping errors internally:
+//                1. Create Task resources for unmapped codes (add to bundle with PUT + If-None-Match: * to avoid overwriting existing Tasks)
+//                2. Return { bundle: tasksBundle, messageUpdate: { status: "mapping_error", unmappedCodes: [...] } }
+//                This removes the need for special error handling in processor-service
 import {
   buildCodeableConcept,
   LoincResolutionError,
@@ -505,6 +509,7 @@ async function processOBRGroup(
  * }
  */
 export async function convertORU_R01(message: string): Promise<Bundle> {
+  // TODO refactor: move parsing out of the converter function
   const parsed = parseMessage(message);
 
   const { senderContext, baseMeta } = parseMSH(parsed);

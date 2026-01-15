@@ -56,6 +56,10 @@ function extractMessageType(message: string): string {
 // Main Converter Function
 // ============================================================================
 
+// TODO refactor: change return type to { bundle: Bundle; messageUpdate: Partial<IncomingHL7v2Message> }
+//                messageUpdate should contain status and any additional fields (patient, unmappedCodes, etc.) - check processor-service/updateMessageStatus for the details.
+//                This way processor-service stays domain-agnostic - just applies the update
+
 /**
  * Convert HL7v2 message to FHIR Bundle
  *

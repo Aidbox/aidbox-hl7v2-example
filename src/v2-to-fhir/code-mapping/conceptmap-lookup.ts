@@ -5,6 +5,8 @@
  * ConceptMap ID convention: hl7v2-{sendingApplication}-{sendingFacility}-to-loinc
  */
 
+// TODO refactor: this module should become a sub-module in src/code-mapping/concept-map (concept map should become a folder with concept-map-lookup.ts in it)
+
 import type { CE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
 import type {
@@ -42,6 +44,7 @@ export class LoincResolutionError extends Error {
   }
 }
 
+// TODO refactor: MappingErrorCollection may become unnecessary after oru-r01.ts handles errors internally
 export class MappingErrorCollection extends Error {
   constructor(
     public readonly errors: LoincResolutionError[],
@@ -134,6 +137,7 @@ function extractLocalFromPrimary(ce: CE): Coding | undefined {
  * Fetch ConceptMap from Aidbox by ID
  * Returns null if ConceptMap doesn't exist
  */
+// TODO refactor: duplicate of fetchConceptMap in concept-map-service !!!
 export async function fetchConceptMap(
   conceptMapId: string,
 ): Promise<ConceptMap | null> {

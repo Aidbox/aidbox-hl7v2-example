@@ -296,6 +296,7 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  * IN1 - Insurance (0..*)
  */
 export function convertADT_A01(message: string): Bundle {
+  // TODO refactor: move parsing out of the converter function
   const parsed = parseMessage(message);
 
   // =========================================================================

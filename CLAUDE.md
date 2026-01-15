@@ -330,6 +330,7 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 
 # Best Code Practices
 
+## Readable code
 Prefer readable variable names over comments:
 ```typescript
 /* BAD */
@@ -386,4 +387,18 @@ const obx = parseOBX();
 const spm = parseSPM();
 ```
 
+## Separation of concerns
+
+Ideally, each module should own one primary responsibility. Before adding new logic, check if a
+module already owns that responsibility; if yes, extend or reuse it instead of duplicating code.
+
+If new logic overlaps with another module’s responsibility:
+- Consider moving shared logic into a single module and call it from both places.
+- Prefer refactoring when the overlap is more than small glue code.
+
+If ownership is unclear or refactoring is risky:
+- Keep the duplication for now.
+- Add a short comment explaining why and where the related code lives, so it can be consolidated later.
+
+## Other
 Don't add error handling, fallbacks, or validation for scenarios that can't happen.
