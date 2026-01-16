@@ -184,20 +184,18 @@ async function resolveFromConceptMap(
     );
   }
 
-  const loincCoding = lookupInConceptMap(
-    conceptMap,
-    localCode,
-    normalizeSystem(localSystem),
-  );
+  const localSystemNormalized = normalizeSystem(localSystem);
+
+  const loincCoding = lookupInConceptMap(conceptMap, localCode, localSystemNormalized);
 
   if (!loincCoding) {
     throw new LoincResolutionError(
-      `No LOINC mapping found for local code "${localCode}" (system: ${localSystem || "none"}) ` +
+      `No LOINC mapping found for local code "${localCode}" (system: ${localSystemNormalized || "none"}) ` +
         `in ConceptMap ${conceptMapId}. ` +
         `Sender: ${sender.sendingApplication}/${sender.sendingFacility}.`,
       localCode,
       localDisplay,
-      localSystem,
+      localSystemNormalized,
       sender.sendingApplication,
       sender.sendingFacility,
     );
