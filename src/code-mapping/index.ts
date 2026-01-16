@@ -28,3 +28,10 @@ export {
   removeResolvedTaskFromMessage,
   type CreateMappingTaskParams,
 } from "./mapping-task-service";
+
+export {
+  searchLoincCodes,
+  validateLoincCode,
+  type LoincSearchResult,
+  type LoincValidationResult,
+} from "./terminology-api";
