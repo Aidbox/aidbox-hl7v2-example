@@ -139,15 +139,15 @@ function createBundleEntry(
 }
 
 /**
- * Create a bundle entry for a Task with conditional create (If-None-Match)
+ * Create a bundle entry for a Task (conditional create - skips if exists)
  */
 function createTaskBundleEntry(task: Task): BundleEntry {
   return {
     resource: task,
     request: {
-      method: "PUT",
-      url: `Task/${task.id}`,
-      ifNoneMatch: "*",
+      method: "POST",
+      url: "Task",
+      ifNoneExist: `_id=${task.id}`,
     },
   };
 }
