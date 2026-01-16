@@ -130,11 +130,11 @@ GET /api/terminology/loinc/:code      # Validate code
 - Search: `GET /fhir/ValueSet/$expand?url=http://loinc.org/vs&filter={query}&count=10`
 - Validate: `GET /fhir/CodeSystem/$lookup?system=http://loinc.org&code={code}`
 
-**Implemented (direct call to tx.health-samurai.io):**
-- Search: `GET https://tx.health-samurai.io/fhir/ValueSet/$expand?url=http://loinc.org/vs&filter={query}&count=10`
-- Validate: `GET https://tx.health-samurai.io/fhir/CodeSystem/$lookup?system=http://loinc.org&code={code}`
+**Implemented:**
+- Search: Direct call to `https://tx.health-samurai.io/fhir/ValueSet/$expand?url=http://loinc.org/vs&filter={query}&count=10` (Aidbox hybrid mode doesn't route implicit ValueSets correctly)
+- Validate: Via Aidbox hybrid mode `GET /fhir/CodeSystem/$lookup?system=http://loinc.org&code={code}`
 
-Note: Aidbox Hybrid Mode was configured but didn't route ValueSet/$expand correctly. Direct calls used as a temporary workaround.
+Note: Aidbox Hybrid Mode was configured but didn't route ValueSet/$expand correctly. Direct call used as a temporary workaround.
 
 Auto-retry 2-3 times on server unavailability.
 

@@ -201,17 +201,18 @@ describe("validateLoincCode", () => {
   });
 
   test("returns code details when valid", async () => {
-    const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(() =>
-      mockFetchResponse(sampleCodeSystemLookup)
-    );
+    const mockAidbox = {
+      aidboxFetch: mock((path: string) => {
+        expect(path).toContain("CodeSystem/$lookup");
+        expect(path).toContain("system=http://loinc.org");
+        expect(path).toContain("code=2823-3");
+        return Promise.resolve(sampleCodeSystemLookup);
+      }),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { validateLoincCode } = await import("../../src/code-mapping/terminology-api");
     const result = await validateLoincCode("2823-3");
-
-    const calledUrl = fetchSpy.mock.calls[0][0].toString();
-    expect(calledUrl).toContain("CodeSystem/$lookup");
-    expect(calledUrl).toContain("system=http://loinc.org");
-    expect(calledUrl).toContain("code=2823-3");
 
     expect(result).toBeDefined();
     expect(result!.code).toBe("2823-3");
@@ -219,10 +220,11 @@ describe("validateLoincCode", () => {
   });
 
   test("returns null for invalid code", async () => {
-    spyOn(globalThis, "fetch").mockImplementation(() =>
-      mockFetchResponse({}, false, 404)
-    );
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.reject(new Error("HTTP 404: Not Found"))),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { validateLoincCode } = await import("../../src/code-mapping/terminology-api");
     const result = await validateLoincCode("INVALID-CODE");
 
@@ -231,14 +233,17 @@ describe("validateLoincCode", () => {
 
   test("retries on transient failure", async () => {
     let callCount = 0;
-    spyOn(globalThis, "fetch").mockImplementation(() => {
-      callCount++;
-      if (callCount < 2) {
-        return mockFetchResponse({}, false, 503);
-      }
-      return mockFetchResponse(sampleCodeSystemLookup);
-    });
+    const mockAidbox = {
+      aidboxFetch: mock(() => {
+        callCount++;
+        if (callCount < 2) {
+          return Promise.reject(new Error("HTTP 503: Service Unavailable"));
+        }
+        return Promise.resolve(sampleCodeSystemLookup);
+      }),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { validateLoincCode } = await import("../../src/code-mapping/terminology-api");
     const result = await validateLoincCode("2823-3");
 
@@ -247,10 +252,11 @@ describe("validateLoincCode", () => {
   });
 
   test("throws after max retries on non-404 errors", async () => {
-    spyOn(globalThis, "fetch").mockImplementation(() =>
-      mockFetchResponse({}, false, 500)
-    );
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.reject(new Error("HTTP 500: Internal Server Error"))),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { validateLoincCode } = await import("../../src/code-mapping/terminology-api");
 
     await expect(validateLoincCode("2823-3")).rejects.toThrow("500");

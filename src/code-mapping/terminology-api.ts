@@ -1,8 +1,11 @@
 /**
  * Terminology API - LOINC search and validation
  *
- * Calls external terminology server for LOINC operations.
+ * - Search ($expand): Direct call to external server (Aidbox hybrid mode is not working for implicit ValueSets)
+ * - Validation ($lookup): Via Aidbox hybrid mode
  */
+
+import { aidboxFetch } from "../aidbox";
 
 const TERMINOLOGY_SERVER = "https://tx.health-samurai.io/fhir";
 
@@ -117,11 +120,11 @@ export interface LoincValidationResult {
 export async function validateLoincCode(
   code: string
 ): Promise<LoincValidationResult | null> {
-  const path = `/CodeSystem/$lookup?system=http://loinc.org&code=${encodeURIComponent(code)}`;
+  const path = `/fhir/CodeSystem/$lookup?system=http://loinc.org&code=${encodeURIComponent(code)}`;
 
   try {
     const response = await withRetry(() =>
-      terminologyFetch<CodeSystemLookupResult>(path)
+      aidboxFetch<CodeSystemLookupResult>(path)
     );
 
     const displayParam = response.parameter?.find((p) => p.name === "display");
