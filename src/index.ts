@@ -55,7 +55,7 @@ function highlightHL7WithDataTooltip(message: string | undefined): string {
 function formatError(error: string): string {
   // Try to extract and format JSON from error message
   const jsonMatch = error.match(/^(HTTP \d+): (.+)$/s);
-  if (jsonMatch) {
+  if (jsonMatch && jsonMatch[2]) {
     const [, prefix, jsonStr] = jsonMatch;
     try {
       const parsed = JSON.parse(jsonStr);
@@ -1506,6 +1506,10 @@ Bun.serve({
     "/api/mapping/tasks/:id/resolve": {
       POST: async (req) => {
         const taskId = req.params.id;
+
+        if (!taskId) {
+          return new Response("Task ID is required", { status: 400 });
+        }
 
         const formData = await req.formData();
         const loincCode = formData.get("loincCode")?.toString();

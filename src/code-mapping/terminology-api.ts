@@ -15,7 +15,7 @@ async function terminologyFetch<T>(path: string): Promise<T> {
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
-  return response.json();
+  return response.json() as T;
 }
 
 export interface LoincSearchResult {

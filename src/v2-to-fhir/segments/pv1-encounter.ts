@@ -90,7 +90,7 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
 
   // Extract timezone if present (+/-ZZZZ at the end)
   const tzMatch = dtm.match(/([+-]\d{4})$/);
-  const timezone = tzMatch ? formatTimezone(tzMatch[1]) : "Z";
+  const timezone = tzMatch && tzMatch[1] ? formatTimezone(tzMatch[1]) : "Z";
   const dtmWithoutTz = tzMatch ? dtm.slice(0, -5) : dtm;
 
   const year = dtmWithoutTz.substring(0, 4);

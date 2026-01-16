@@ -24,6 +24,11 @@ import {
   fromAL1,
   fromIN1,
   type MSH,
+  type DG1,
+  type IN1,
+  type AL1,
+  type XON,
+  type CX,
 } from "../../hl7v2/generated/fields";
 import type {
   Bundle,
@@ -159,7 +164,8 @@ function prepareDG1ForExtraction(segments: HL7v2Segment[]): HL7v2Segment[] {
       return a.priority - b.priority; // ascending
     });
 
-    deduplicated.push(items[0].segment);
+    const first = items[0];
+    if (first) deduplicated.push(first.segment);
   }
 
   return deduplicated;
@@ -194,7 +200,7 @@ function generateCoverageId(in1: IN1, patientId: string | undefined): string {
   let payorId: string | undefined;
 
   if (in1.$3_insuranceCompanyId && in1.$3_insuranceCompanyId.length > 0) {
-    payorId = in1.$3_insuranceCompanyId[0].$1_value;
+    payorId = in1.$3_insuranceCompanyId[0]?.$1_value;
   }
 
   // Fallback to first payor organization name
@@ -203,7 +209,7 @@ function generateCoverageId(in1: IN1, patientId: string | undefined): string {
     in1.$4_insuranceCompanyName &&
     in1.$4_insuranceCompanyName.length > 0
   ) {
-    const orgName = in1.$4_insuranceCompanyName[0].$1_name;
+    const orgName = in1.$4_insuranceCompanyName[0]?.$1_name;
     if (orgName) {
       payorId = toKebabCase(orgName);
     }
@@ -226,13 +232,13 @@ function generateCoverageId(in1: IN1, patientId: string | undefined): string {
 function hasValidPayorInfo(in1: IN1): boolean {
   // Check for Insurance Company Name (IN1-4)
   if (in1.$4_insuranceCompanyName && in1.$4_insuranceCompanyName.length > 0) {
-    const hasName = in1.$4_insuranceCompanyName.some((xon) => xon.$1_name);
+    const hasName = in1.$4_insuranceCompanyName.some((xon: XON) => xon.$1_name);
     if (hasName) return true;
   }
 
   // Check for Insurance Company ID (IN1-3)
   if (in1.$3_insuranceCompanyId && in1.$3_insuranceCompanyId.length > 0) {
-    const hasId = in1.$3_insuranceCompanyId.some((cx) => cx.$1_value);
+    const hasId = in1.$3_insuranceCompanyId.some((cx: CX) => cx.$1_value);
     if (hasId) return true;
   }
 

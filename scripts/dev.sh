@@ -19,9 +19,16 @@ if [ -f "$PID_FILE" ]; then
   rm -f "$PID_FILE"
 fi
 
+# Type check before starting
+echo "Running type check..."
+cd "$PROJECT_DIR"
+if ! bun run typecheck; then
+  echo "Type check failed! Fix errors before starting server."
+  exit 1
+fi
+
 # Start server with hot reload
 echo "Starting server with hot reload..."
-cd "$PROJECT_DIR"
 nohup bun --hot src/index.ts >> "$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
 

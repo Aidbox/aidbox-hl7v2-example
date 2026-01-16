@@ -27,9 +27,11 @@ function reconstructSNValue(rawField: unknown): string | undefined {
     const obj = rawField as Record<string, string>;
     const parts: string[] = [];
     let i = 1;
-    while (obj[i] !== undefined) {
-      parts.push(obj[i]);
+    let val = obj[i];
+    while (val !== undefined) {
+      parts.push(val);
       i++;
+      val = obj[i];
     }
     return parts.join("^");
   }

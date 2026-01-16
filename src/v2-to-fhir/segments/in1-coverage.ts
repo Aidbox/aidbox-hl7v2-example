@@ -99,17 +99,20 @@ function determineCoverageStatus(
  */
 export function convertIN1ToCoverage(
   in1: IN1,
-): Omit<Coverage, "beneficiary" | "payor"> & {
+): Omit<Coverage, "beneficiary" | "payor" | "status"> & {
   beneficiary: { reference?: string };
   payor: { display?: string; identifier?: Identifier }[];
+  status: Coverage["status"];
 } {
-  const coverage: Omit<Coverage, "beneficiary" | "payor"> & {
+  const coverage: Omit<Coverage, "beneficiary" | "payor" | "status"> & {
     beneficiary: { reference?: string };
     payor: { display?: string; identifier?: Identifier }[];
+    status: Coverage["status"];
   } = {
     resourceType: "Coverage",
+    status: "active", // Will be updated based on period.end
     beneficiary: {}, // Must be set by caller
-    payor: [], // Will be populated
+    payor: [] as { display?: string; identifier?: Identifier }[], // Will be populated
   };
 
   // =========================================================================

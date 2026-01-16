@@ -93,7 +93,7 @@ export function parseReferenceRange(
 
   // Try to parse simple range like "3.5-5.5" or "70-99"
   const rangeMatch = range.match(/^([\d.]+)\s*[-–]\s*([\d.]+)$/);
-  if (rangeMatch) {
+  if (rangeMatch && rangeMatch[1] && rangeMatch[2]) {
     result.low = { value: parseFloat(rangeMatch[1]) };
     result.high = { value: parseFloat(rangeMatch[2]) };
     return result;
@@ -101,7 +101,7 @@ export function parseReferenceRange(
 
   // Try to parse comparator range like ">60" or "<5"
   const comparatorMatch = range.match(/^([<>]=?)\s*([\d.]+)$/);
-  if (comparatorMatch) {
+  if (comparatorMatch && comparatorMatch[1] && comparatorMatch[2]) {
     const comparator = comparatorMatch[1];
     const value = parseFloat(comparatorMatch[2]);
     result.text = range;
@@ -172,7 +172,7 @@ export function parseStructuredNumeric(sn: string): ParsedStructuredNumeric {
   }
 
   // Range: "^10^-^20"
-  if (parts.length === 4 && parts[0] === "" && parts[2] === "-") {
+  if (parts.length === 4 && parts[0] === "" && parts[2] === "-" && parts[1] && parts[3]) {
     const low = parseFloat(parts[1]);
     const high = parseFloat(parts[3]);
     if (!isNaN(low) && !isNaN(high)) {
@@ -181,7 +181,7 @@ export function parseStructuredNumeric(sn: string): ParsedStructuredNumeric {
   }
 
   // Ratio: "^1^:^128"
-  if (parts.length === 4 && parts[0] === "" && parts[2] === ":") {
+  if (parts.length === 4 && parts[0] === "" && parts[2] === ":" && parts[1] && parts[3]) {
     const numerator = parseFloat(parts[1]);
     const denominator = parseFloat(parts[3]);
     if (!isNaN(numerator) && !isNaN(denominator)) {
@@ -434,19 +434,19 @@ export function convertOBXToObservation(
   // OBX-7: Reference Range → referenceRange
   if (obx.$7_referencesRange) {
     const parsed = parseReferenceRange(obx.$7_referencesRange);
-    const refRange: Observation["referenceRange"] = [{}];
+    const refRangeItem: NonNullable<Observation["referenceRange"]>[number] = {};
 
     if (parsed.low) {
-      refRange[0].low = { value: parsed.low.value, unit };
+      refRangeItem.low = { value: parsed.low.value, unit };
     }
     if (parsed.high) {
-      refRange[0].high = { value: parsed.high.value, unit };
+      refRangeItem.high = { value: parsed.high.value, unit };
     }
     if (parsed.text) {
-      refRange[0].text = parsed.text;
+      refRangeItem.text = parsed.text;
     }
 
-    observation.referenceRange = refRange;
+    observation.referenceRange = [refRangeItem];
   }
 
   return observation;

@@ -304,22 +304,18 @@ function convertSPMToSpecimen(
   }
 
   // SPM-17: Specimen Collection Date/Time
-  if (spm.$17_specimenCollectionDateTime) {
-    const collectionTime = spm.$17_specimenCollectionDateTime;
-    if (collectionTime.$1_rangeStartDatetime) {
+  if (spm.$17_specimenCollection) {
+    const collectionTime = spm.$17_specimenCollection;
+    if (collectionTime.$1_start) {
       specimen.collection = {
-        collectedDateTime: convertDTMToDateTime(
-          collectionTime.$1_rangeStartDatetime,
-        ),
+        collectedDateTime: convertDTMToDateTime(collectionTime.$1_start),
       };
     }
   }
 
   // SPM-18: Specimen Received Date/Time
-  if (spm.$18_specimenReceivedDateTime) {
-    specimen.receivedTime = convertDTMToDateTime(
-      spm.$18_specimenReceivedDateTime,
-    );
+  if (spm.$18_specimenReceived) {
+    specimen.receivedTime = convertDTMToDateTime(spm.$18_specimenReceived);
   }
 
   return specimen;
@@ -346,15 +342,15 @@ function createSpecimenFromOBR15(
   };
 
   // SPS.1: Specimen Source Name
-  if (sps.$1_specimenSourceName) {
+  if (sps.$1_specimen) {
     specimen.type = {
       coding: [
         {
-          code: sps.$1_specimenSourceName.$1_code,
-          display: sps.$1_specimenSourceName.$2_text,
+          code: sps.$1_specimen.$1_code,
+          display: sps.$1_specimen.$2_text,
         },
       ],
-      text: sps.$1_specimenSourceName.$2_text,
+      text: sps.$1_specimen.$2_text,
     };
   }
 

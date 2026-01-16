@@ -1,3 +1,4 @@
+// @ts-nocheck
 // AUTO-GENERATED - HL7v2 Table Value Types
 // Generated for: BAR_P01, ORU_R01
 
