@@ -35,18 +35,6 @@ export class LoincResolutionError extends Error {
   }
 }
 
-export class MappingErrorCollection extends Error {
-  constructor(
-    public readonly errors: LoincResolutionError[],
-    public readonly sendingApplication: string,
-    public readonly sendingFacility: string,
-  ) {
-    const codes = errors.map((e) => e.localCode || "unknown").join(", ");
-    super(`Multiple unmapped codes found: ${codes}`);
-    this.name = "MappingErrorCollection";
-  }
-}
-
 /**
  * Generate ConceptMap ID from sender context
  * Format: hl7v2-{sendingApplication}-{sendingFacility}-to-loinc
