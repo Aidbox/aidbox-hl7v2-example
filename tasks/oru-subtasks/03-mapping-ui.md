@@ -126,11 +126,17 @@ GET /api/terminology/loinc?q={query}  # Search (returns up to 10 results)
 GET /api/terminology/loinc/:code      # Validate code
 ```
 
-Proxies to Aidbox:
-- Search: `GET /fhir/ValueSet/$expand?url=http://loinc.org&filter={query}&count=10`
+**Expected (via Aidbox Hybrid Mode):**
+- Search: `GET /fhir/ValueSet/$expand?url=http://loinc.org/vs&filter={query}&count=10`
 - Validate: `GET /fhir/CodeSystem/$lookup?system=http://loinc.org&code={code}`
 
-Auto-retry 2-3 times on Aidbox unavailability.
+**Implemented (direct call to tx.health-samurai.io):**
+- Search: `GET https://tx.health-samurai.io/fhir/ValueSet/$expand?url=http://loinc.org/vs&filter={query}&count=10`
+- Validate: `GET https://tx.health-samurai.io/fhir/CodeSystem/$lookup?system=http://loinc.org&code={code}`
+
+Note: Aidbox Hybrid Mode was configured but didn't route ValueSet/$expand correctly. Direct calls used as a temporary workaround.
+
+Auto-retry 2-3 times on server unavailability.
 
 ## Implementation Tasks
 

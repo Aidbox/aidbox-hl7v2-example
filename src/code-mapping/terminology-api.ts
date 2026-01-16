@@ -1,10 +1,19 @@
 /**
- * Terminology API - LOINC search and validation proxy
+ * Terminology API - LOINC search and validation
  *
- * Proxies requests to Aidbox for LOINC terminology operations.
+ * Calls external terminology server for LOINC operations.
  */
 
-import { aidboxFetch } from "../aidbox";
+const TERMINOLOGY_SERVER = "https://tx.health-samurai.io/fhir";
+
+// FIXME: should use Aidbox's Hybrid mode instead of direct request
+async function terminologyFetch<T>(path: string): Promise<T> {
+  const response = await fetch(`${TERMINOLOGY_SERVER}${path}`);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  return response.json();
+}
 
 export interface LoincSearchResult {
   code: string;
@@ -82,10 +91,10 @@ export async function searchLoincCodes(
   query: string
 ): Promise<LoincSearchResult[]> {
   const encodedQuery = encodeURIComponent(query);
-  const path = `/fhir/ValueSet/$expand?url=http://loinc.org&filter=${encodedQuery}&count=10`;
+  const path = `/ValueSet/$expand?url=http://loinc.org/vs&filter=${encodedQuery}&count=10`;
 
   const response = await withRetry(() =>
-    aidboxFetch<ValueSetExpansion>(path)
+    terminologyFetch<ValueSetExpansion>(path)
   );
 
   const contains = response.expansion?.contains || [];
@@ -108,11 +117,11 @@ export interface LoincValidationResult {
 export async function validateLoincCode(
   code: string
 ): Promise<LoincValidationResult | null> {
-  const path = `/fhir/CodeSystem/$lookup?system=http://loinc.org&code=${encodeURIComponent(code)}`;
+  const path = `/CodeSystem/$lookup?system=http://loinc.org&code=${encodeURIComponent(code)}`;
 
   try {
     const response = await withRetry(() =>
-      aidboxFetch<CodeSystemLookupResult>(path)
+      terminologyFetch<CodeSystemLookupResult>(path)
     );
 
     const displayParam = response.parameter?.find((p) => p.name === "display");
