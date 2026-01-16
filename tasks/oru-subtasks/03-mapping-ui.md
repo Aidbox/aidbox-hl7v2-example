@@ -14,6 +14,8 @@ Both use collapsible `<details>` panels (same pattern as Incoming Messages page)
 ## Shared: LOINC Search Autocomplete
 
 Used in task resolution and mapping forms:
+- Vanilla JS with custom dropdown (JSON API returns results, JS renders dropdown)
+- Searches all LOINC codes (not limited to a specific ValueSet)
 - Debounced search (300-500ms) on keystroke
 - Searches both code and display text
 - Dropdown shows up to 10 results with: code, display, component, property, timing, scale
@@ -32,7 +34,7 @@ Tabs are URL-based (server-rendered).
 
 ### Pending Tab
 
-**Panel Summary:** Chevron, Sender ("App | Facility"), local code/display, "Pending" badge (yellow), affected messages count, first seen date
+**Panel Summary:** Chevron, Sender ("App | Facility"), local code/display, "Pending" badge (yellow), first seen date
 
 **Panel Expanded:**
 - Read-only context: sender info, local code/display/system, sample value/units/range (from Task.input)
@@ -43,13 +45,17 @@ Tabs are URL-based (server-rendered).
 2. Panel collapses, task moves to History
 3. Affected messages: remove from `unmappedCodes[]`, change status to `received` if empty
 
-**Sort:** By affected message count (highest first).
+**Sort:** By creation date (oldest first).
 
 **Pagination:** 50/page.
 
 ### History Tab
 
 Read-only view of completed tasks. Panel shows resolved LOINC code/display (from Task.output).
+
+**Sort:** By Task.lastModified (latest first).
+
+**Pagination:** 50/page.
 
 ## Code Mappings Page (`/mapping/table`)
 
@@ -69,7 +75,7 @@ Read-only view of completed tasks. Panel shows resolved LOINC code/display (from
 **Panel Summary:** Local code/display → LOINC code/display
 
 **Panel Expanded (Edit Form):**
-- Editable: local code/display/system, LOINC search
+- Editable: LOINC search
 - Sender is read-only
 - Duplicate check on save (sender + local system + local code)
 
@@ -86,7 +92,9 @@ Read-only view of completed tasks. Panel shows resolved LOINC code/display (from
 ```
 src/ui/
 ├── mapping-tasks-queue.ts    # Tasks queue UI + handlers
-├── code-mappings.ts          # Mappings page UI + handlers
+└── code-mappings.ts          # Mappings page UI + handlers
+
+src/code-mapping/
 └── terminology-api.ts        # LOINC search/lookup API
 ```
 
@@ -124,57 +132,50 @@ Proxies to Aidbox:
 
 Auto-retry 2-3 times on Aidbox unavailability.
 
-## Data Behavior
-
-- **Reprocessing:** Batched - set message status to `received`, processor picks them up
-- **Concurrency:** If-Match with ETag for Task and message updates
-- **Local system:** Store as-is (no normalization)
-- **Duplicates:** Block with inline error
-
 ## Implementation Tasks
 
-### Phase 3: Mapping Tasks Queue UI
+### Phase 1: Mapping Tasks Queue UI
 
-- [ ] **3.0** Write tests (TDD)
+- [ ] **1.0** Write tests (TDD)
   - Terminology API: search (by code/display), validation, retry logic, 10-item limit
   - Task resolution: atomic bundle (Task + ConceptMap), ETag concurrency
   - Integration: resolve flow, message updates, edge cases (already completed, no affected messages)
 
-- [ ] **3.1** Create mapping tasks queue page
+- [ ] **1.1** Create mapping tasks queue page
   - `/mapping/tasks` route with URL-based tabs
   - Collapsible panels with summary info
-  - Sort by affected message count, pagination 50/page
+  - Sort by creation date (oldest first), pagination 50/page
 
-- [ ] **3.2** Implement task resolution form
+- [ ] **1.2** Implement task resolution form
   - Read-only context + LOINC search autocomplete
   - Atomic resolution, panel auto-collapse
 
-- [ ] **3.3** Implement LOINC terminology API proxy
+- [ ] **1.3** Implement LOINC terminology API proxy
   - Search and validation endpoints with retry logic
 
-- [ ] **3.4** Implement task resolution handler
+- [ ] **1.4** Implement task resolution handler
   - `POST /api/mapping/tasks/:id/resolve`
   - Atomic transaction, ETag control, message updates
 
-- [ ] **3.5** Add navigation badge
+- [ ] **1.5** Add navigation badge
   - Query pending count, render on nav item
 
-### Phase 4: Code Mappings Management UI
+### Phase 2: Code Mappings Management UI
 
-- [ ] **4.0** Write tests (TDD)
+- [ ] **2.0** Write tests (TDD)
   - ConceptMap CRUD: create/update/delete entries, duplicate detection
   - Integration: create/edit/delete flows, Task completion, message updates
 
-- [ ] **4.1** Create code mappings page
+- [ ] **2.1** Create code mappings page
   - `/mapping/table` route with sender filter
   - Collapsible panels, pagination 50/page
 
-- [ ] **4.2** Implement edit mapping form
+- [ ] **2.2** Implement edit mapping form
   - LOINC autocomplete, duplicate detection, in-place update
 
-- [ ] **4.3** Implement create mapping form
+- [ ] **2.3** Implement create mapping form
   - "Add Mapping" button (requires sender filter)
   - Mark matching Task completed, update messages
 
-- [ ] **4.4** Implement ConceptMap entry endpoints
+- [ ] **2.4** Implement ConceptMap entry endpoints
   - POST/PUT/DELETE handlers with message updates
