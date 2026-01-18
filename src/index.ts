@@ -22,6 +22,13 @@ import type {
   IncomingHL7v2Message,
 } from "./fhir/aidbox-hl7v2-custom";
 import type { Task } from "./fhir/hl7-fhir-r4-core/Task";
+import {
+  PAGE_SIZE,
+  type PaginationData,
+  parsePageParam,
+  createPagination,
+  renderPaginationControls,
+} from "./ui/pagination";
 
 function escapeHtml(str: string): string {
   return str
@@ -103,8 +110,6 @@ function getInvoiceRetryCount(invoice: Invoice): number {
   );
   return ext?.valueInteger ?? 0;
 }
-
-const PAGE_SIZE = 20;
 
 const getInvoices = async (
   processingStatus?: string,
@@ -454,13 +459,11 @@ function renderInvoicesPage(
   encounters: Encounter[],
   procedures: Procedure[],
   practitioners: Practitioner[],
-  statusFilter?: string,
-  currentPage = 1,
-  total = 0,
-  pendingCount = 0,
-  errorCount = 0,
+  statusFilter: string | undefined,
+  pagination: PaginationData,
+  pendingCount: number,
+  errorCount: number,
 ): string {
-  const totalPages = Math.ceil(total / PAGE_SIZE);
   const invoiceItems = invoices
     .map((inv) => {
       const processingStatus = getProcessingStatus(inv);
@@ -688,36 +691,14 @@ function renderInvoicesPage(
       ${invoiceItems || '<li class="bg-white rounded-lg shadow p-8 text-center text-gray-500">No invoices found</li>'}
     </ul>
     <div class="mt-4 flex items-center justify-between">
-      <p class="text-sm text-gray-500">Total: ${total} invoices</p>
-      ${
-        totalPages > 1
-          ? `
-        <div class="flex items-center gap-1">
-          <a href="/invoices?_page=1${statusFilter ? `&processing-status=${statusFilter}` : ""}"
-             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === 1 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}"
-             ${currentPage === 1 ? 'aria-disabled="true"' : ""}>
-            First
-          </a>
-          <a href="/invoices?_page=${currentPage - 1}${statusFilter ? `&processing-status=${statusFilter}` : ""}"
-             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === 1 ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}"
-             ${currentPage === 1 ? 'aria-disabled="true"' : ""}>
-            Prev
-          </a>
-          <span class="px-3 py-1.5 text-sm text-gray-600">${currentPage} / ${totalPages}</span>
-          <a href="/invoices?_page=${currentPage + 1}${statusFilter ? `&processing-status=${statusFilter}` : ""}"
-             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === totalPages ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}"
-             ${currentPage === totalPages ? 'aria-disabled="true"' : ""}>
-            Next
-          </a>
-          <a href="/invoices?_page=${totalPages}${statusFilter ? `&processing-status=${statusFilter}` : ""}"
-             class="px-3 py-1.5 rounded-lg text-sm font-medium ${currentPage === totalPages ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}"
-             ${currentPage === totalPages ? 'aria-disabled="true"' : ""}>
-            Last
-          </a>
-        </div>
-      `
-          : ""
-      }
+      <p class="text-sm text-gray-500">Total: ${pagination.total} invoices</p>
+      ${renderPaginationControls({
+        pagination,
+        baseUrl: "/invoices",
+        filterParams: statusFilter
+          ? { "processing-status": statusFilter }
+          : undefined,
+      })}
     </div>
 
     <script>
@@ -1223,14 +1204,18 @@ function getTaskOutputLoinc(
 
 async function getMappingTasks(
   status: "requested" | "completed",
-): Promise<Task[]> {
+  page = 1,
+): Promise<{ tasks: Task[]; total: number }> {
   // Sort pending tasks by oldest first, completed by newest first
   const sortOrder =
     status === "requested" ? "_sort=_lastUpdated" : "_sort=-_lastUpdated";
-  return getResources<Task>(
-    "Task",
-    `code=local-to-loinc-mapping&status=${status}&${sortOrder}&_count=50`,
+  const bundle = await aidboxFetch<Bundle<Task>>(
+    `/fhir/Task?code=local-to-loinc-mapping&status=${status}&${sortOrder}&_count=${PAGE_SIZE}&_page=${page}`,
   );
+  return {
+    tasks: bundle.entry?.map((e) => e.resource) || [],
+    total: bundle.total ?? 0,
+  };
 }
 
 async function getPendingTasksCount(): Promise<number> {
@@ -1249,6 +1234,7 @@ function renderMappingTasksPage(
   navData: NavData,
   tasks: Task[],
   statusFilter: "requested" | "completed",
+  pagination: PaginationData,
 ): string {
   const isPending = statusFilter === "requested";
   const pendingCount = navData.pendingMappingTasksCount;
@@ -1274,7 +1260,14 @@ function renderMappingTasksPage(
               .join("")
       }
     </ul>
-    <p class="mt-4 text-sm text-gray-500">Total: ${tasks.length} tasks</p>`;
+    <div class="mt-4 flex items-center justify-between">
+      <p class="text-sm text-gray-500">Total: ${pagination.total} tasks</p>
+      ${renderPaginationControls({
+        pagination,
+        baseUrl: "/mapping/tasks",
+        filterParams: { status: statusFilter },
+      })}
+    </div>`;
 
   return renderLayout(
     "Mapping Tasks",
@@ -1394,7 +1387,7 @@ Bun.serve({
       const url = new URL(req.url);
       const statusFilter =
         url.searchParams.get("processing-status") || undefined;
-      const page = parseInt(url.searchParams.get("_page") || "1", 10);
+      const requestedPage = parsePageParam(url.searchParams);
       const [
         invoicesResult,
         patients,
@@ -1405,7 +1398,7 @@ Bun.serve({
         errorCount,
         navData,
       ] = await Promise.all([
-        getInvoices(statusFilter, page),
+        getInvoices(statusFilter, requestedPage),
         getPatients(),
         getEncounters(),
         getProcedures(),
@@ -1414,6 +1407,7 @@ Bun.serve({
         getErrorInvoiceCount(),
         getNavData(),
       ]);
+      const pagination = createPagination(requestedPage, invoicesResult.total);
       return new Response(
         renderInvoicesPage(
           navData,
@@ -1423,8 +1417,7 @@ Bun.serve({
           procedures,
           practitioners,
           statusFilter,
-          page,
-          invoicesResult.total,
+          pagination,
           pendingCount,
           errorCount,
         ),
@@ -1438,7 +1431,7 @@ Bun.serve({
         const url = new URL(req.url);
         const statusFilter =
           url.searchParams.get("processing-status") || undefined;
-        const page = parseInt(url.searchParams.get("_page") || "1", 10);
+        const requestedPage = parsePageParam(url.searchParams);
         const [
           invoicesResult,
           patients,
@@ -1449,7 +1442,7 @@ Bun.serve({
           errorCount,
           navData,
         ] = await Promise.all([
-          getInvoices(statusFilter, page),
+          getInvoices(statusFilter, requestedPage),
           getPatients(),
           getEncounters(),
           getProcedures(),
@@ -1458,6 +1451,10 @@ Bun.serve({
           getErrorInvoiceCount(),
           getNavData(),
         ]);
+        const pagination = createPagination(
+          requestedPage,
+          invoicesResult.total,
+        );
         return new Response(
           renderInvoicesPage(
             navData,
@@ -1467,8 +1464,7 @@ Bun.serve({
             procedures,
             practitioners,
             statusFilter,
-            page,
-            invoicesResult.total,
+            pagination,
             pendingCount,
             errorCount,
           ),
@@ -1684,12 +1680,19 @@ Bun.serve({
       const status = url.searchParams.get("status");
       const statusFilter: "requested" | "completed" =
         status === "completed" ? "completed" : "requested";
-      const [tasks, navData] = await Promise.all([
-        getMappingTasks(statusFilter),
+      const requestedPage = parsePageParam(url.searchParams);
+      const [tasksResult, navData] = await Promise.all([
+        getMappingTasks(statusFilter, requestedPage),
         getNavData(),
       ]);
+      const pagination = createPagination(requestedPage, tasksResult.total);
       return new Response(
-        renderMappingTasksPage(navData, tasks, statusFilter),
+        renderMappingTasksPage(
+          navData,
+          tasksResult.tasks,
+          statusFilter,
+          pagination,
+        ),
         { headers: { "Content-Type": "text/html" } },
       );
     },
