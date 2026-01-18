@@ -7,7 +7,11 @@
  * - Integration: resolve flow, message updates, edge cases
  */
 import { describe, test, expect, beforeEach, mock, afterEach } from "bun:test";
-import type { Task, TaskInput, TaskOutput } from "../../src/fhir/hl7-fhir-r4-core/Task";
+import type {
+  Task,
+  TaskInput,
+  TaskOutput,
+} from "../../src/fhir/hl7-fhir-r4-core/Task";
 import type { ConceptMap } from "../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 
@@ -39,7 +43,10 @@ const samplePendingTask: Task = {
     { type: { text: "Sending application" }, valueString: "ACME_LAB" },
     { type: { text: "Sending facility" }, valueString: "ACME_HOSP" },
     { type: { text: "Local code" }, valueString: "K_SERUM" },
-    { type: { text: "Local display" }, valueString: "Potassium [Serum/Plasma]" },
+    {
+      type: { text: "Local display" },
+      valueString: "Potassium [Serum/Plasma]",
+    },
     { type: { text: "Local system" }, valueString: "ACME-LAB-CODES" },
     { type: { text: "Sample value" }, valueString: "4.2" },
     { type: { text: "Sample units" }, valueString: "mmol/L" },
@@ -140,20 +147,23 @@ describe("resolveTaskWithMapping", () => {
         }
         return Promise.resolve({ resource: {}, etag: '""' });
       }),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
-      updateResourceWithETag: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveTaskWithMapping } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { resolveTaskWithMapping } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(
       samplePendingTask.id!,
       "2823-3",
-      "Potassium [Moles/volume] in Serum or Plasma"
+      "Potassium [Moles/volume] in Serum or Plasma",
     );
 
     expect(executedBundle).not.toBeNull();
@@ -161,19 +171,19 @@ describe("resolveTaskWithMapping", () => {
     expect(executedBundle.entry).toHaveLength(2);
 
     const taskEntry = executedBundle.entry.find(
-      (e: any) => e.resource?.resourceType === "Task"
+      (e: any) => e.resource?.resourceType === "Task",
     );
     expect(taskEntry).toBeDefined();
     expect(taskEntry.resource.status).toBe("completed");
     expect(taskEntry.resource.output).toBeDefined();
-    expect(taskEntry.resource.output[0].valueCodeableConcept.coding[0].code).toBe(
-      "2823-3"
-    );
+    expect(
+      taskEntry.resource.output[0].valueCodeableConcept.coding[0].code,
+    ).toBe("2823-3");
     expect(taskEntry.request.method).toBe("PUT");
     expect(taskEntry.request.ifMatch).toBe('"task-v1"');
 
     const conceptMapEntry = executedBundle.entry.find(
-      (e: any) => e.resource?.resourceType === "ConceptMap"
+      (e: any) => e.resource?.resourceType === "ConceptMap",
     );
     expect(conceptMapEntry).toBeDefined();
     expect(conceptMapEntry.request.method).toBe("PUT");
@@ -232,27 +242,32 @@ describe("resolveTaskWithMapping", () => {
         }
         return Promise.resolve({ resource: {}, etag: '""' });
       }),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
-      updateResourceWithETag: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveTaskWithMapping } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { resolveTaskWithMapping } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
 
     const conceptMapEntry = executedBundle.entry.find(
-      (e: any) => e.resource?.resourceType === "ConceptMap"
+      (e: any) => e.resource?.resourceType === "ConceptMap",
     );
     const group = conceptMapEntry.resource.group.find(
-      (g: any) => g.source === "ACME-LAB-CODES"
+      (g: any) => g.source === "ACME-LAB-CODES",
     );
 
     expect(group.element).toHaveLength(2);
-    expect(group.element.some((e: any) => e.code === "EXISTING_CODE")).toBe(true);
+    expect(group.element.some((e: any) => e.code === "EXISTING_CODE")).toBe(
+      true,
+    );
     expect(group.element.some((e: any) => e.code === "K_SERUM")).toBe(true);
   });
 
@@ -282,20 +297,23 @@ describe("resolveTaskWithMapping", () => {
         }
         return Promise.resolve({ resource: {}, etag: '""' });
       }),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
-      updateResourceWithETag: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveTaskWithMapping } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { resolveTaskWithMapping } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
 
     const conceptMapEntry = executedBundle.entry.find(
-      (e: any) => e.resource?.resourceType === "ConceptMap"
+      (e: any) => e.resource?.resourceType === "ConceptMap",
     );
 
     expect(conceptMapEntry.resource.group).toHaveLength(1);
@@ -328,20 +346,23 @@ describe("resolveTaskWithMapping", () => {
         }
         return Promise.resolve({ resource: {}, etag: '""' });
       }),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
-      updateResourceWithETag: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveTaskWithMapping } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { resolveTaskWithMapping } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
 
     const conceptMapEntry = executedBundle.entry.find(
-      (e: any) => e.resource?.resourceType === "ConceptMap"
+      (e: any) => e.resource?.resourceType === "ConceptMap",
     );
 
     expect(conceptMapEntry).toBeDefined();
@@ -367,9 +388,13 @@ describe("resolveTaskWithMapping", () => {
           etag: '"v1"',
         });
       }),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
-      updateResourceWithETag: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       PreconditionFailedError: class extends Error {
         constructor(msg: string) {
           super(msg);
@@ -379,12 +404,11 @@ describe("resolveTaskWithMapping", () => {
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveTaskWithMapping } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { resolveTaskWithMapping } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await expect(
-      resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium")
+      resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium"),
     ).rejects.toThrow("412");
   });
 
@@ -414,20 +438,23 @@ describe("resolveTaskWithMapping", () => {
         }
         return Promise.resolve({ resource: {}, etag: '""' });
       }),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
-      updateResourceWithETag: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveTaskWithMapping } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { resolveTaskWithMapping } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
 
     const conceptMapEntry = executedBundle.entry.find(
-      (e: any) => e.resource?.resourceType === "ConceptMap"
+      (e: any) => e.resource?.resourceType === "ConceptMap",
     );
 
     expect(conceptMapEntry.resource.id).toContain("acme");
@@ -448,7 +475,11 @@ describe("resolveTaskWithMapping - already completed task", () => {
           type: { text: "Resolved LOINC" },
           valueCodeableConcept: {
             coding: [
-              { system: "http://loinc.org", code: "12345-6", display: "Already mapped" },
+              {
+                system: "http://loinc.org",
+                code: "12345-6",
+                display: "Already mapped",
+              },
             ],
           },
         },
@@ -461,20 +492,23 @@ describe("resolveTaskWithMapping - already completed task", () => {
         Promise.resolve({
           resource: completedTask,
           etag: '"v1"',
-        })
+        }),
       ),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
-      updateResourceWithETag: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveTaskWithMapping } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { resolveTaskWithMapping } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await expect(
-      resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium")
+      resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium"),
     ).rejects.toThrow(/already completed/i);
   });
 });
@@ -500,32 +534,33 @@ describe("updateAffectedMessages", () => {
         Promise.resolve({
           resource: structuredClone(sampleMessage),
           etag: '"msg-v1"',
-        })
+        }),
       ),
       updateResourceWithETag: mock(
         (
           resourceType: string,
           id: string,
           resource: IncomingHL7v2Message,
-          etag: string
+          etag: string,
         ) => {
           updatedMessage = resource;
           return Promise.resolve(resource);
-        }
+        },
       ),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { updateAffectedMessages } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { updateAffectedMessages } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await updateAffectedMessages(samplePendingTask.id!);
 
     expect(updatedMessage).not.toBeNull();
-    expect(updatedMessage!.unmappedCodes).toHaveLength(0);
+    expect(updatedMessage!.unmappedCodes).toBeUndefined();
     expect(updatedMessage!.status).toBe("received");
   });
 
@@ -536,31 +571,32 @@ describe("updateAffectedMessages", () => {
       aidboxFetch: mock(() =>
         Promise.resolve({
           entry: [{ resource: structuredClone(sampleMessage) }],
-        })
+        }),
       ),
       getResourceWithETag: mock(() =>
         Promise.resolve({
           resource: structuredClone(sampleMessage),
           etag: '"v1"',
-        })
+        }),
       ),
       updateResourceWithETag: mock(
         (rt: string, id: string, resource: IncomingHL7v2Message) => {
           updatedMessage = resource;
           return Promise.resolve(resource);
-        }
+        },
       ),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { updateAffectedMessages } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { updateAffectedMessages } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await updateAffectedMessages(
-      "map-hl7v2-acme-lab-acme-hosp-to-loinc-1a2b3c-4d5e6f"
+      "map-hl7v2-acme-lab-acme-hosp-to-loinc-1a2b3c-4d5e6f",
     );
 
     expect(updatedMessage!.status).toBe("received");
@@ -572,32 +608,35 @@ describe("updateAffectedMessages", () => {
     const mockAidbox = {
       aidboxFetch: mock(() =>
         Promise.resolve({
-          entry: [{ resource: structuredClone(sampleMessageWithMultipleUnmapped) }],
-        })
+          entry: [
+            { resource: structuredClone(sampleMessageWithMultipleUnmapped) },
+          ],
+        }),
       ),
       getResourceWithETag: mock(() =>
         Promise.resolve({
           resource: structuredClone(sampleMessageWithMultipleUnmapped),
           etag: '"v1"',
-        })
+        }),
       ),
       updateResourceWithETag: mock(
         (rt: string, id: string, resource: IncomingHL7v2Message) => {
           updatedMessage = resource;
           return Promise.resolve(resource);
-        }
+        },
       ),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { updateAffectedMessages } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { updateAffectedMessages } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await updateAffectedMessages(
-      "map-hl7v2-acme-lab-acme-hosp-to-loinc-1a2b3c-4d5e6f"
+      "map-hl7v2-acme-lab-acme-hosp-to-loinc-1a2b3c-4d5e6f",
     );
 
     expect(updatedMessage!.unmappedCodes).toHaveLength(1);
@@ -610,23 +649,24 @@ describe("updateAffectedMessages", () => {
       aidboxFetch: mock(() =>
         Promise.resolve({
           entry: [{ resource: structuredClone(sampleMessage) }],
-        })
+        }),
       ),
       getResourceWithETag: mock(() =>
         Promise.resolve({
           resource: structuredClone(sampleMessage),
           etag: '"specific-etag"',
-        })
+        }),
       ),
       updateResourceWithETag: mock(() => Promise.resolve(sampleMessage)),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { updateAffectedMessages } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { updateAffectedMessages } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await updateAffectedMessages(samplePendingTask.id!);
 
@@ -634,7 +674,7 @@ describe("updateAffectedMessages", () => {
       "IncomingHL7v2Message",
       "msg-001",
       expect.any(Object),
-      '"specific-etag"'
+      '"specific-etag"',
     );
   });
 
@@ -643,18 +683,19 @@ describe("updateAffectedMessages", () => {
       aidboxFetch: mock(() =>
         Promise.resolve({
           entry: [],
-        })
+        }),
       ),
       getResourceWithETag: mock(),
       updateResourceWithETag: mock(),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { updateAffectedMessages } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { updateAffectedMessages } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     // Should not throw when no affected messages
     await updateAffectedMessages("nonexistent-task");
@@ -675,32 +716,33 @@ describe("updateAffectedMessages", () => {
       aidboxFetch: mock(() =>
         Promise.resolve({
           entry: [{ resource: structuredClone(messageWithoutUnmapped) }],
-        })
+        }),
       ),
       getResourceWithETag: mock(() =>
         Promise.resolve({
           resource: structuredClone(messageWithoutUnmapped),
           etag: '"v1"',
-        })
+        }),
       ),
       updateResourceWithETag: mock(
         (rt: string, id: string, resource: IncomingHL7v2Message) => {
           updatedMessage = resource;
           return Promise.resolve(resource);
-        }
+        },
       ),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
       getResources: mock(() => Promise.resolve([])),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { updateAffectedMessages } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { updateAffectedMessages } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await updateAffectedMessages(samplePendingTask.id!);
 
-    expect(updatedMessage!.unmappedCodes).toHaveLength(0);
+    expect(updatedMessage!.unmappedCodes).toBeUndefined();
     expect(updatedMessage!.status).toBe("received");
   });
 });
@@ -712,17 +754,22 @@ describe("getTaskInputValue - helper function", () => {
 
   const mockAidboxBase = {
     aidboxFetch: mock(() => Promise.resolve({})),
-    getResourceWithETag: mock(() => Promise.resolve({ resource: {}, etag: '""' })),
-    putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+    getResourceWithETag: mock(() =>
+      Promise.resolve({ resource: {}, etag: '""' }),
+    ),
+    putResource: mock((rt: string, id: string, resource: any) =>
+      Promise.resolve(resource),
+    ),
     getResources: mock(() => Promise.resolve([])),
-    updateResourceWithETag: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
+    updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
+      Promise.resolve(resource),
+    ),
   };
 
   test("extracts input value by type text", async () => {
     mock.module("../../src/aidbox", () => mockAidboxBase);
-    const { getTaskInputValue } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { getTaskInputValue } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     const result = getTaskInputValue(samplePendingTask, "Local code");
     expect(result).toBe("K_SERUM");
@@ -730,9 +777,8 @@ describe("getTaskInputValue - helper function", () => {
 
   test("returns undefined for missing input type", async () => {
     mock.module("../../src/aidbox", () => mockAidboxBase);
-    const { getTaskInputValue } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { getTaskInputValue } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     const result = getTaskInputValue(samplePendingTask, "Nonexistent");
     expect(result).toBeUndefined();
@@ -740,9 +786,8 @@ describe("getTaskInputValue - helper function", () => {
 
   test("returns undefined when task has no inputs", async () => {
     mock.module("../../src/aidbox", () => mockAidboxBase);
-    const { getTaskInputValue } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { getTaskInputValue } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     const taskWithoutInputs: Task = {
       ...samplePendingTask,
@@ -800,47 +845,46 @@ describe("full resolution flow integration", () => {
         }
         return Promise.resolve({ resource: {}, etag: '""' });
       }),
-      updateResourceWithETag: mock(
-        (rt: string, id: string, resource: any) => {
-          calls.push(`updateResourceWithETag:${rt}/${id}`);
-          if (rt === "IncomingHL7v2Message") {
-            updatedMessage = resource;
-          }
-          return Promise.resolve(resource);
+      updateResourceWithETag: mock((rt: string, id: string, resource: any) => {
+        calls.push(`updateResourceWithETag:${rt}/${id}`);
+        if (rt === "IncomingHL7v2Message") {
+          updatedMessage = resource;
         }
+        return Promise.resolve(resource);
+      }),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
       ),
-      putResource: mock((rt: string, id: string, resource: any) => Promise.resolve(resource)),
       getResources: mock(() => Promise.resolve([])),
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
-    const { resolveTaskAndUpdateMessages } = await import(
-      "../../src/ui/mapping-tasks-queue"
-    );
+    const { resolveTaskAndUpdateMessages } =
+      await import("../../src/ui/mapping-tasks-queue");
 
     await resolveTaskAndUpdateMessages(
       samplePendingTask.id!,
       "2823-3",
-      "Potassium [Moles/volume] in Serum or Plasma"
+      "Potassium [Moles/volume] in Serum or Plasma",
     );
 
     expect(executedBundle).not.toBeNull();
     expect(executedBundle.type).toBe("transaction");
 
     const taskInBundle = executedBundle.entry.find(
-      (e: any) => e.resource?.resourceType === "Task"
+      (e: any) => e.resource?.resourceType === "Task",
     );
     expect(taskInBundle.resource.status).toBe("completed");
 
     expect(updatedMessage).not.toBeNull();
-    expect(updatedMessage!.unmappedCodes).toHaveLength(0);
+    expect(updatedMessage!.unmappedCodes).toBeUndefined();
     expect(updatedMessage!.status).toBe("received");
 
     const bundleCallIndex = calls.findIndex((c) =>
-      c.includes("aidboxFetch:/fhir")
+      c.includes("aidboxFetch:/fhir"),
     );
     const messageUpdateIndex = calls.findIndex((c) =>
-      c.includes("updateResourceWithETag:IncomingHL7v2Message")
+      c.includes("updateResourceWithETag:IncomingHL7v2Message"),
     );
     expect(bundleCallIndex).toBeLessThan(messageUpdateIndex);
   });
