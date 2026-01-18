@@ -155,7 +155,11 @@ type NavTab =
   | "mapping-tasks"
   | "code-mappings";
 
-function renderNav(active: NavTab, pendingTasksCount?: number): string {
+interface NavData {
+  pendingMappingTasksCount: number;
+}
+
+function renderNav(active: NavTab, navData: NavData): string {
   const tabs: Array<{
     id: NavTab;
     href: string;
@@ -169,7 +173,7 @@ function renderNav(active: NavTab, pendingTasksCount?: number): string {
       id: "mapping-tasks",
       href: "/mapping/tasks",
       label: "Mapping Tasks",
-      badge: pendingTasksCount,
+      badge: navData.pendingMappingTasksCount,
     },
     { id: "code-mappings", href: "/mapping/table", label: "Code Mappings" },
     { id: "mllp-client", href: "/mllp-client", label: "MLLP Test Client" },
@@ -444,6 +448,7 @@ function renderLayout(title: string, nav: string, content: string): string {
 }
 
 function renderInvoicesPage(
+  navData: NavData,
   invoices: Invoice[],
   patients: Patient[],
   encounters: Encounter[],
@@ -733,7 +738,7 @@ function renderInvoicesPage(
       });
     </script>`;
 
-  return renderLayout("Invoices", renderNav("invoices"), content);
+  return renderLayout("Invoices", renderNav("invoices", navData), content);
 }
 
 interface MessageListItem {
@@ -813,6 +818,7 @@ function renderMessageList(items: MessageListItem[]): string {
 }
 
 function renderOutgoingMessagesPage(
+  navData: NavData,
   messages: OutgoingBarMessage[],
   patients: Patient[],
   invoices: Invoice[],
@@ -927,7 +933,11 @@ function renderOutgoingMessagesPage(
     </ul>
     <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
 
-  return renderLayout("Outgoing Messages", renderNav("outgoing"), content);
+  return renderLayout(
+    "Outgoing Messages",
+    renderNav("outgoing", navData),
+    content,
+  );
 }
 
 interface MLLPClientState {
@@ -940,6 +950,7 @@ interface MLLPClientState {
 }
 
 function renderMLLPClientPage(
+  navData: NavData,
   state: MLLPClientState = { host: "localhost", port: 2575, message: "" },
 ): string {
   const sampleMessages = [
@@ -1093,10 +1104,15 @@ function renderMLLPClientPage(
       </div>
     </div>`;
 
-  return renderLayout("MLLP Test Client", renderNav("mllp-client"), content);
+  return renderLayout(
+    "MLLP Test Client",
+    renderNav("mllp-client", navData),
+    content,
+  );
 }
 
 function renderIncomingMessagesPage(
+  navData: NavData,
   messages: IncomingHL7v2Message[],
   statusFilter?: string,
 ): string {
@@ -1179,7 +1195,11 @@ function renderIncomingMessagesPage(
     </ul>
     <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
 
-  return renderLayout("Incoming Messages", renderNav("incoming"), content);
+  return renderLayout(
+    "Incoming Messages",
+    renderNav("incoming", navData),
+    content,
+  );
 }
 
 // =========================================================================
@@ -1220,12 +1240,18 @@ async function getPendingTasksCount(): Promise<number> {
   return bundle.total || 0;
 }
 
+async function getNavData(): Promise<NavData> {
+  const pendingMappingTasksCount = await getPendingTasksCount();
+  return { pendingMappingTasksCount };
+}
+
 function renderMappingTasksPage(
+  navData: NavData,
   tasks: Task[],
   statusFilter: "requested" | "completed",
-  pendingCount: number,
 ): string {
   const isPending = statusFilter === "requested";
+  const pendingCount = navData.pendingMappingTasksCount;
 
   const content = `
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Mapping Tasks</h1>
@@ -1252,7 +1278,7 @@ function renderMappingTasksPage(
 
   return renderLayout(
     "Mapping Tasks",
-    renderNav("mapping-tasks", pendingCount),
+    renderNav("mapping-tasks", navData),
     content,
   );
 }
@@ -1377,6 +1403,7 @@ Bun.serve({
         practitioners,
         pendingCount,
         errorCount,
+        navData,
       ] = await Promise.all([
         getInvoices(statusFilter, page),
         getPatients(),
@@ -1385,9 +1412,11 @@ Bun.serve({
         getPractitioners(),
         getPendingInvoiceCount(),
         getErrorInvoiceCount(),
+        getNavData(),
       ]);
       return new Response(
         renderInvoicesPage(
+          navData,
           invoicesResult.invoices,
           patients,
           encounters,
@@ -1418,6 +1447,7 @@ Bun.serve({
           practitioners,
           pendingCount,
           errorCount,
+          navData,
         ] = await Promise.all([
           getInvoices(statusFilter, page),
           getPatients(),
@@ -1426,9 +1456,11 @@ Bun.serve({
           getPractitioners(),
           getPendingInvoiceCount(),
           getErrorInvoiceCount(),
+          getNavData(),
         ]);
         return new Response(
           renderInvoicesPage(
+            navData,
             invoicesResult.invoices,
             patients,
             encounters,
@@ -1587,13 +1619,17 @@ Bun.serve({
       GET: async (req) => {
         const url = new URL(req.url);
         const statusFilter = url.searchParams.get("status") || undefined;
-        const [messages, patients, invoicesResult] = await Promise.all([
-          getOutgoingMessages(statusFilter),
-          getPatients(),
-          getInvoices(),
-        ]);
+        const [messages, patients, invoicesResult, navData] = await Promise.all(
+          [
+            getOutgoingMessages(statusFilter),
+            getPatients(),
+            getInvoices(),
+            getNavData(),
+          ],
+        );
         return new Response(
           renderOutgoingMessagesPage(
+            navData,
             messages,
             patients,
             invoicesResult.invoices,
@@ -1632,28 +1668,34 @@ Bun.serve({
     "/incoming-messages": async (req) => {
       const url = new URL(req.url);
       const statusFilter = url.searchParams.get("status") || undefined;
-      const messages = await getIncomingMessages(statusFilter);
-      return new Response(renderIncomingMessagesPage(messages, statusFilter), {
-        headers: { "Content-Type": "text/html" },
-      });
+      const [messages, navData] = await Promise.all([
+        getIncomingMessages(statusFilter),
+        getNavData(),
+      ]);
+      return new Response(
+        renderIncomingMessagesPage(navData, messages, statusFilter),
+        {
+          headers: { "Content-Type": "text/html" },
+        },
+      );
     },
     "/mapping/tasks": async (req) => {
       const url = new URL(req.url);
       const status = url.searchParams.get("status");
       const statusFilter: "requested" | "completed" =
         status === "completed" ? "completed" : "requested";
-      const [tasks, pendingCount] = await Promise.all([
+      const [tasks, navData] = await Promise.all([
         getMappingTasks(statusFilter),
-        getPendingTasksCount(),
+        getNavData(),
       ]);
       return new Response(
-        renderMappingTasksPage(tasks, statusFilter, pendingCount),
+        renderMappingTasksPage(navData, tasks, statusFilter),
         { headers: { "Content-Type": "text/html" } },
       );
     },
     "/mapping/table": async () => {
       // Placeholder for Code Mappings page - to be implemented in Phase 2
-      const pendingCount = await getPendingTasksCount();
+      const navData = await getNavData();
       const content = `
         <h1 class="text-3xl font-bold text-gray-800 mb-6">Code Mappings</h1>
         <p class="text-gray-500">Coming soon - manage ConceptMap entries</p>
@@ -1661,7 +1703,7 @@ Bun.serve({
       return new Response(
         renderLayout(
           "Code Mappings",
-          renderNav("code-mappings", pendingCount),
+          renderNav("code-mappings", navData),
           content,
         ),
         { headers: { "Content-Type": "text/html" } },
@@ -1870,8 +1912,9 @@ Bun.serve({
       },
     },
     "/mllp-client": {
-      GET: () => {
-        return new Response(renderMLLPClientPage(), {
+      GET: async () => {
+        const navData = await getNavData();
+        return new Response(renderMLLPClientPage(navData), {
           headers: { "Content-Type": "text/html" },
         });
       },
@@ -1895,7 +1938,8 @@ Bun.serve({
             error instanceof Error ? error.message : "Unknown error";
         }
 
-        return new Response(renderMLLPClientPage(state), {
+        const navData = await getNavData();
+        return new Response(renderMLLPClientPage(navData, state), {
           headers: { "Content-Type": "text/html" },
         });
       },
