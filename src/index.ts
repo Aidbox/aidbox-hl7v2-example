@@ -147,14 +147,30 @@ const getIncomingMessages = (status?: string) =>
     `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`,
   );
 
-type NavTab = "invoices" | "outgoing" | "incoming" | "mllp-client" | "mapping-tasks" | "code-mappings";
+type NavTab =
+  | "invoices"
+  | "outgoing"
+  | "incoming"
+  | "mllp-client"
+  | "mapping-tasks"
+  | "code-mappings";
 
 function renderNav(active: NavTab, pendingTasksCount?: number): string {
-  const tabs: Array<{ id: NavTab; href: string; label: string; badge?: number }> = [
+  const tabs: Array<{
+    id: NavTab;
+    href: string;
+    label: string;
+    badge?: number;
+  }> = [
     { id: "invoices", href: "/invoices", label: "Invoices" },
     { id: "outgoing", href: "/outgoing-messages", label: "Outgoing Messages" },
     { id: "incoming", href: "/incoming-messages", label: "Incoming Messages" },
-    { id: "mapping-tasks", href: "/mapping/tasks", label: "Mapping Tasks", badge: pendingTasksCount },
+    {
+      id: "mapping-tasks",
+      href: "/mapping/tasks",
+      label: "Mapping Tasks",
+      badge: pendingTasksCount,
+    },
     { id: "code-mappings", href: "/mapping/table", label: "Code Mappings" },
     { id: "mllp-client", href: "/mllp-client", label: "MLLP Test Client" },
   ];
@@ -1174,7 +1190,9 @@ function getTaskInputValue(task: Task, typeText: string): string | undefined {
   return task.input?.find((i) => i.type?.text === typeText)?.valueString;
 }
 
-function getTaskOutputLoinc(task: Task): { code: string; display: string } | undefined {
+function getTaskOutputLoinc(
+  task: Task,
+): { code: string; display: string } | undefined {
   const output = task.output?.find((o) => o.type?.text === "Resolved LOINC");
   const coding = output?.valueCodeableConcept?.coding?.[0];
   if (coding?.code) {
@@ -1183,9 +1201,12 @@ function getTaskOutputLoinc(task: Task): { code: string; display: string } | und
   return undefined;
 }
 
-async function getMappingTasks(status: "requested" | "completed"): Promise<Task[]> {
+async function getMappingTasks(
+  status: "requested" | "completed",
+): Promise<Task[]> {
   // Sort pending tasks by oldest first, completed by newest first
-  const sortOrder = status === "requested" ? "_sort=_lastUpdated" : "_sort=-_lastUpdated";
+  const sortOrder =
+    status === "requested" ? "_sort=_lastUpdated" : "_sort=-_lastUpdated";
   return getResources<Task>(
     "Task",
     `code=local-to-loinc-mapping&status=${status}&${sortOrder}&_count=50`,
@@ -1219,13 +1240,21 @@ function renderMappingTasksPage(
     </div>
 
     <ul class="space-y-2">
-      ${tasks.length === 0
-        ? '<li class="bg-white rounded-lg shadow p-8 text-center text-gray-500">No tasks found</li>'
-        : tasks.map((task) => renderMappingTaskPanel(task, isPending)).join("")}
+      ${
+        tasks.length === 0
+          ? '<li class="bg-white rounded-lg shadow p-8 text-center text-gray-500">No tasks found</li>'
+          : tasks
+              .map((task) => renderMappingTaskPanel(task, isPending))
+              .join("")
+      }
     </ul>
     <p class="mt-4 text-sm text-gray-500">Total: ${tasks.length} tasks</p>`;
 
-  return renderLayout("Mapping Tasks", renderNav("mapping-tasks", pendingCount), content);
+  return renderLayout(
+    "Mapping Tasks",
+    renderNav("mapping-tasks", pendingCount),
+    content,
+  );
 }
 
 function renderMappingTaskPanel(task: Task, isPending: boolean): string {
@@ -1279,20 +1308,30 @@ function renderMappingTaskPanel(task: Task, isPending: boolean): string {
               <span class="text-gray-500">Local Display:</span>
               <span class="ml-2">${escapeHtml(localDisplay || "-")}</span>
             </div>
-            ${sampleValue ? `
+            ${
+              sampleValue
+                ? `
             <div>
               <span class="text-gray-500">Sample Value:</span>
               <span class="ml-2 font-mono">${escapeHtml(sampleValue)}${sampleUnits ? ` ${escapeHtml(sampleUnits)}` : ""}</span>
             </div>
-            ` : ""}
-            ${sampleRange ? `
+            `
+                : ""
+            }
+            ${
+              sampleRange
+                ? `
             <div>
               <span class="text-gray-500">Reference Range:</span>
               <span class="ml-2 font-mono">${escapeHtml(sampleRange)}</span>
             </div>
-            ` : ""}
+            `
+                : ""
+            }
           </div>
-          ${isPending ? `
+          ${
+            isPending
+              ? `
           <div class="mt-3 pt-3 border-t border-gray-100">
             <form method="POST" action="/api/mapping/tasks/${task.id}/resolve" class="flex items-end gap-3">
               <div class="flex-1">
@@ -1307,13 +1346,15 @@ function renderMappingTaskPanel(task: Task, isPending: boolean): string {
               </button>
             </form>
           </div>
-          ` : `
+          `
+              : `
           <div class="mt-3 pt-3 border-t border-gray-100">
             <span class="text-gray-500 text-sm">Resolved to:</span>
             <span class="ml-2 font-mono text-sm font-medium text-green-700">${resolvedLoinc ? escapeHtml(resolvedLoinc.code) : "-"}</span>
             ${resolvedLoinc?.display ? `<span class="ml-2 text-sm text-gray-600">${escapeHtml(resolvedLoinc.display)}</span>` : ""}
           </div>
-          `}
+          `
+          }
         </div>
       </details>
     </li>
@@ -1618,7 +1659,11 @@ Bun.serve({
         <p class="text-gray-500">Coming soon - manage ConceptMap entries</p>
       `;
       return new Response(
-        renderLayout("Code Mappings", renderNav("code-mappings", pendingCount), content),
+        renderLayout(
+          "Code Mappings",
+          renderNav("code-mappings", pendingCount),
+          content,
+        ),
         { headers: { "Content-Type": "text/html" } },
       );
     },
@@ -1631,7 +1676,8 @@ Bun.serve({
       if (!query || query.length < 2) {
         return Response.json({ results: [] });
       }
-      const { searchLoincCodes } = await import("./code-mapping/terminology-api");
+      const { searchLoincCodes } =
+        await import("./code-mapping/terminology-api");
       try {
         const results = await searchLoincCodes(query);
         return Response.json({ results });
@@ -1646,7 +1692,8 @@ Bun.serve({
       if (!code) {
         return Response.json({ error: "Code required" }, { status: 400 });
       }
-      const { validateLoincCode } = await import("./code-mapping/terminology-api");
+      const { validateLoincCode } =
+        await import("./code-mapping/terminology-api");
       try {
         const result = await validateLoincCode(code);
         if (result) {
@@ -1676,7 +1723,8 @@ Bun.serve({
         }
 
         try {
-          const { resolveTaskAndUpdateMessages } = await import("./ui/mapping-tasks-queue");
+          const { resolveTaskAndUpdateMessages } =
+            await import("./ui/mapping-tasks-queue");
           await resolveTaskAndUpdateMessages(taskId, loincCode, loincDisplay);
 
           return new Response(null, {
@@ -1685,11 +1733,14 @@ Bun.serve({
           });
         } catch (error) {
           console.error("Task resolution error:", error);
-          const message = error instanceof Error ? error.message : "Resolution failed";
+          const message =
+            error instanceof Error ? error.message : "Resolution failed";
           // Redirect back with error (could also render error page)
           return new Response(null, {
             status: 302,
-            headers: { Location: `/mapping/tasks?error=${encodeURIComponent(message)}` },
+            headers: {
+              Location: `/mapping/tasks?error=${encodeURIComponent(message)}`,
+            },
           });
         }
       },
