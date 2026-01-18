@@ -31,13 +31,14 @@ export function generateConceptMapId(sender: SenderContext): string {
 
 export function getTaskInputValue(
   task: Task,
-  typeText: string
+  typeText: string,
 ): string | undefined {
   return task.input?.find((i) => i.type?.text === typeText)?.valueString;
 }
 
 function extractSenderFromTask(task: Task): SenderContext {
-  const sendingApplication = getTaskInputValue(task, "Sending application") || "";
+  const sendingApplication =
+    getTaskInputValue(task, "Sending application") || "";
   const sendingFacility = getTaskInputValue(task, "Sending facility") || "";
   return { sendingApplication, sendingFacility };
 }
@@ -61,7 +62,7 @@ function addMappingToConceptMap(
   localCode: string,
   localDisplay: string,
   loincCode: string,
-  loincDisplay: string
+  loincDisplay: string,
 ): ConceptMap {
   const updated = { ...conceptMap };
 
@@ -109,11 +110,11 @@ function addMappingToConceptMap(
 export async function resolveTaskWithMapping(
   taskId: string,
   loincCode: string,
-  loincDisplay: string
+  loincDisplay: string,
 ): Promise<void> {
   const { resource: task, etag: taskEtag } = await getResourceWithETag<Task>(
     "Task",
-    taskId
+    taskId,
   );
 
   if (task.status === "completed") {
@@ -134,7 +135,7 @@ export async function resolveTaskWithMapping(
   try {
     const result = await getResourceWithETag<ConceptMap>(
       "ConceptMap",
-      conceptMapId
+      conceptMapId,
     );
     conceptMap = result.resource;
     conceptMapEtag = result.etag;
@@ -154,7 +155,7 @@ export async function resolveTaskWithMapping(
     localCode,
     localDisplay,
     loincCode,
-    loincDisplay
+    loincDisplay,
   );
 
   const output: TaskOutput = {
@@ -211,7 +212,7 @@ export async function resolveTaskWithMapping(
 
 export async function updateAffectedMessages(taskId: string): Promise<void> {
   const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(
-    `/fhir/IncomingHL7v2Message?status=mapping_error&unmapped-task=Task/${taskId}`
+    `/fhir/IncomingHL7v2Message?status=mapping_error&unmapped-task=Task/${taskId}`,
   );
 
   const messages = bundle.entry?.map((e) => e.resource) || [];
@@ -226,16 +227,17 @@ export async function updateAffectedMessages(taskId: string): Promise<void> {
     const { resource: currentMessage, etag } =
       await getResourceWithETag<IncomingHL7v2Message>(
         "IncomingHL7v2Message",
-        message.id!
+        message.id!,
       );
 
     const updatedUnmappedCodes = (currentMessage.unmappedCodes || []).filter(
-      (code) => code.mappingTask.reference !== taskReference
+      (code) => code.mappingTask.reference !== taskReference,
     );
 
     const updatedMessage: IncomingHL7v2Message = {
       ...currentMessage,
-      unmappedCodes: updatedUnmappedCodes,
+      unmappedCodes:
+        updatedUnmappedCodes.length > 0 ? updatedUnmappedCodes : undefined,
       status: updatedUnmappedCodes.length === 0 ? "received" : "mapping_error",
     };
 
@@ -243,7 +245,7 @@ export async function updateAffectedMessages(taskId: string): Promise<void> {
       "IncomingHL7v2Message",
       message.id!,
       updatedMessage,
-      etag
+      etag,
     );
   }
 }
@@ -251,7 +253,7 @@ export async function updateAffectedMessages(taskId: string): Promise<void> {
 export async function resolveTaskAndUpdateMessages(
   taskId: string,
   loincCode: string,
-  loincDisplay: string
+  loincDisplay: string,
 ): Promise<void> {
   await resolveTaskWithMapping(taskId, loincCode, loincDisplay);
   await updateAffectedMessages(taskId);
