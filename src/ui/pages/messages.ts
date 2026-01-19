@@ -11,6 +11,7 @@ import {
 import type {
   OutgoingBarMessage,
   IncomingHL7v2Message,
+  UnmappedCode,
 } from "../../fhir/aidbox-hl7v2-custom";
 import type { Patient } from "../../fhir/hl7-fhir-r4-core/Patient";
 import { aidboxFetch, getResources, type Bundle } from "../../aidbox";
@@ -36,6 +37,7 @@ interface MessageListItem {
   error?: string;
   bundle?: string;
   retryUrl?: string;
+  unmappedCodes?: UnmappedCode[];
 }
 
 // ============================================================================
@@ -199,6 +201,33 @@ function renderMessageList(items: MessageListItem[]): string {
             <details class="mb-3" open>
               <summary class="cursor-pointer text-sm font-medium text-red-700 hover:text-red-800">Error</summary>
               <div class="mt-2 p-3 bg-red-50 border border-red-200 rounded font-mono text-xs overflow-x-auto whitespace-pre">${escapeHtml(formatError(item.error))}</div>
+            </details>
+          `
+              : ""
+          }
+          ${
+            item.unmappedCodes?.length
+              ? `
+            <details class="mb-3" open>
+              <summary class="cursor-pointer text-sm font-medium text-yellow-700 hover:text-yellow-800">Unmapped Codes (${item.unmappedCodes.length})</summary>
+              <div class="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                <ul class="space-y-1 text-sm">
+                  ${item.unmappedCodes
+                    .map(
+                      (code) => `
+                    <li class="flex items-center justify-between">
+                      <span>
+                        <code class="font-mono text-yellow-800">${escapeHtml(code.localCode)}</code>
+                        ${code.localDisplay ? `<span class="text-gray-600">(${escapeHtml(code.localDisplay)})</span>` : ""}
+                        ${code.localSystem ? `<span class="text-gray-400">- ${escapeHtml(code.localSystem)}</span>` : ""}
+                      </span>
+                      <a href="/mapping/tasks" class="text-blue-600 hover:text-blue-800 text-xs">View Tasks →</a>
+                    </li>
+                  `,
+                    )
+                    .join("")}
+                </ul>
+              </div>
             </details>
           `
               : ""
@@ -388,6 +417,7 @@ function renderIncomingMessagesPage(
       msg.status === "error" && msg.id
         ? `/mark-for-retry/${msg.id}`
         : undefined,
+    unmappedCodes: msg.unmappedCodes,
   }));
 
   const statuses = ["received", "processed", "mapping_error", "error"];
