@@ -4,10 +4,7 @@
  * Displays and manages ConceptMap entries for local-to-LOINC mappings.
  */
 
-import type {
-  ConceptMap,
-  ConceptMapGroupElement,
-} from "../fhir/hl7-fhir-r4-core/ConceptMap";
+import type { ConceptMap } from "../fhir/hl7-fhir-r4-core/ConceptMap";
 import type { Task, TaskOutput } from "../fhir/hl7-fhir-r4-core/Task";
 import {
   aidboxFetch,
@@ -18,6 +15,7 @@ import {
 } from "../aidbox";
 import { escapeHtml } from "../utils/html";
 import { generateMappingTaskId } from "../code-mapping/mapping-task-service";
+import { addMappingToConceptMap } from "../code-mapping/concept-map";
 import {
   PAGE_SIZE,
   renderPaginationControls,
@@ -118,113 +116,38 @@ function checkDuplicateEntry(
 }
 
 /**
- * Add entry to ConceptMap (mutates the object)
+ * Build a completed Task with LOINC resolution output
  */
-function addEntryToConceptMap(
-  conceptMap: ConceptMap,
-  localSystem: string,
-  localCode: string,
-  localDisplay: string,
+function buildCompletedTask(
+  task: Task,
   loincCode: string,
   loincDisplay: string,
-): void {
-  if (!conceptMap.group) {
-    conceptMap.group = [];
-  }
-
-  let group = conceptMap.group.find((g) => g.source === localSystem);
-
-  if (!group) {
-    group = {
-      source: localSystem,
-      target: "http://loinc.org",
-      element: [],
-    };
-    conceptMap.group.push(group);
-  }
-
-  if (!group.element) {
-    group.element = [];
-  }
-
-  const newElement: ConceptMapGroupElement = {
-    code: localCode,
-    display: localDisplay,
-    target: [
-      {
-        code: loincCode,
-        display: loincDisplay,
-        equivalence: "equivalent",
-      },
-    ],
+): Task {
+  const output: TaskOutput = {
+    type: { text: "Resolved LOINC" },
+    valueCodeableConcept: {
+      coding: [
+        {
+          system: "http://loinc.org",
+          code: loincCode,
+          display: loincDisplay,
+        },
+      ],
+      text: loincDisplay,
+    },
   };
 
-  group.element.push(newElement);
+  return {
+    ...task,
+    status: "completed",
+    lastModified: new Date().toISOString(),
+    output: [output],
+  };
 }
 
 /**
- * Complete a matching Task and update affected messages
- */
-async function completeMatchingTaskAndUpdateMessages(
-  conceptMapId: string,
-  localSystem: string,
-  localCode: string,
-  loincCode: string,
-  loincDisplay: string,
-): Promise<void> {
-  const taskId = generateMappingTaskId(conceptMapId, localSystem, localCode);
-
-  try {
-    const { resource: task, etag } = await getResourceWithETag<Task>(
-      "Task",
-      taskId,
-    );
-
-    if (task.status === "requested") {
-      const output: TaskOutput = {
-        type: { text: "Resolved LOINC" },
-        valueCodeableConcept: {
-          coding: [
-            {
-              system: "http://loinc.org",
-              code: loincCode,
-              display: loincDisplay,
-            },
-          ],
-          text: loincDisplay,
-        },
-      };
-
-      const completedTask: Task = {
-        ...task,
-        status: "completed",
-        lastModified: new Date().toISOString(),
-        output: [output],
-      };
-
-      await updateResourceWithETag("Task", taskId, completedTask, etag);
-
-      // Update affected messages - log warning if this fails
-      // (Task completion is the primary action, messages can be retried later)
-      try {
-        await updateAffectedMessages(taskId);
-      } catch (updateError) {
-        console.warn(
-          `Failed to update affected messages for task ${taskId}:`,
-          updateError,
-        );
-      }
-    }
-  } catch (error) {
-    // Task doesn't exist - that's fine, no action needed
-    if (!(error instanceof NotFoundError)) {
-      throw error;
-    }
-  }
-}
-
-/**
- * Add a new entry to a ConceptMap
+ * Add a new entry to a ConceptMap.
+ * Uses atomic transaction when a matching Task exists.
  */
 export async function addConceptMapEntry(
   conceptMapId: string,
@@ -234,10 +157,8 @@ export async function addConceptMapEntry(
   loincCode: string,
   loincDisplay: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const { resource: conceptMap, etag } = await getResourceWithETag<ConceptMap>(
-    "ConceptMap",
-    conceptMapId,
-  );
+  const { resource: conceptMap, etag: conceptMapEtag } =
+    await getResourceWithETag<ConceptMap>("ConceptMap", conceptMapId);
 
   // Check for duplicate
   if (checkDuplicateEntry(conceptMap, localSystem, localCode)) {
@@ -247,8 +168,8 @@ export async function addConceptMapEntry(
     };
   }
 
-  // Add entry
-  addEntryToConceptMap(
+  // Prepare updated ConceptMap
+  const updatedConceptMap = addMappingToConceptMap(
     conceptMap,
     localSystem,
     localCode,
@@ -257,17 +178,74 @@ export async function addConceptMapEntry(
     loincDisplay,
   );
 
-  // Save
-  await updateResourceWithETag("ConceptMap", conceptMapId, conceptMap, etag);
+  // Check if a matching Task exists
+  const taskId = generateMappingTaskId(conceptMapId, localSystem, localCode);
+  let task: Task | null = null;
+  let taskEtag: string = "";
 
-  // Complete matching Task if exists
-  await completeMatchingTaskAndUpdateMessages(
-    conceptMapId,
-    localSystem,
-    localCode,
-    loincCode,
-    loincDisplay,
-  );
+  try {
+    const result = await getResourceWithETag<Task>("Task", taskId);
+    if (result.resource.status === "requested") {
+      task = result.resource;
+      taskEtag = result.etag;
+    }
+  } catch (error) {
+    if (!(error instanceof NotFoundError)) {
+      throw error;
+    }
+    // Task doesn't exist - that's fine
+  }
+
+  if (task) {
+    // Atomic transaction: update ConceptMap AND complete Task together
+    const completedTask = buildCompletedTask(task, loincCode, loincDisplay);
+
+    const bundle = {
+      resourceType: "Bundle",
+      type: "transaction",
+      entry: [
+        {
+          resource: updatedConceptMap,
+          request: {
+            method: "PUT",
+            url: `ConceptMap/${conceptMapId}`,
+            ifMatch: conceptMapEtag,
+          },
+        },
+        {
+          resource: completedTask,
+          request: {
+            method: "PUT",
+            url: `Task/${taskId}`,
+            ifMatch: taskEtag,
+          },
+        },
+      ],
+    };
+
+    await aidboxFetch("/fhir", {
+      method: "POST",
+      body: JSON.stringify(bundle),
+    });
+
+    // Update affected messages (non-critical, log warning if fails)
+    try {
+      await updateAffectedMessages(taskId);
+    } catch (updateError) {
+      console.warn(
+        `Failed to update affected messages for task ${taskId}:`,
+        updateError,
+      );
+    }
+  } else {
+    // No matching Task - just update ConceptMap
+    await updateResourceWithETag(
+      "ConceptMap",
+      conceptMapId,
+      updatedConceptMap,
+      conceptMapEtag,
+    );
+  }
 
   return { success: true };
 }

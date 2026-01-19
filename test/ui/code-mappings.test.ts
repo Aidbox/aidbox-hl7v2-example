@@ -440,11 +440,24 @@ describe("addConceptMapEntry", () => {
     expect(mockAidbox.updateResourceWithETag).not.toHaveBeenCalled();
   });
 
-  test("completes matching Task when entry added", async () => {
+  test("completes matching Task when entry added (atomic transaction)", async () => {
     let completedTask: Task | null = null;
 
     const mockAidbox = createMockAidbox({
-      aidboxFetch: mock((path: string) => {
+      aidboxFetch: mock((path: string, options?: RequestInit) => {
+        // Handle transaction bundle POST to /fhir
+        if (path === "/fhir" && options?.method === "POST") {
+          const bundle = JSON.parse(options.body as string);
+          // Extract Task from transaction bundle
+          const taskEntry = bundle.entry?.find(
+            (e: { resource?: { resourceType?: string } }) =>
+              e.resource?.resourceType === "Task",
+          );
+          if (taskEntry) {
+            completedTask = taskEntry.resource as Task;
+          }
+          return Promise.resolve({ type: "transaction-response", entry: [] });
+        }
         if (path.includes("IncomingHL7v2Message?")) {
           return Promise.resolve({ entry: [] });
         }
@@ -467,9 +480,6 @@ describe("addConceptMapEntry", () => {
       }),
       updateResourceWithETag: mock(
         (rt: string, id: string, resource: Task | ConceptMap) => {
-          if (rt === "Task") {
-            completedTask = resource as Task;
-          }
           return Promise.resolve(resource);
         },
       ),
@@ -718,12 +728,25 @@ describe("integration: add mapping flow", () => {
     mock.restore();
   });
 
-  test("add mapping -> Task completed -> message updated", async () => {
+  test("add mapping -> Task completed (atomic) -> message updated", async () => {
     let completedTask: Task | null = null;
     let updatedMessage: IncomingHL7v2Message | null = null;
 
     const mockAidbox = createMockAidbox({
-      aidboxFetch: mock((path: string) => {
+      aidboxFetch: mock((path: string, options?: RequestInit) => {
+        // Handle transaction bundle POST to /fhir
+        if (path === "/fhir" && options?.method === "POST") {
+          const bundle = JSON.parse(options.body as string);
+          // Extract Task from transaction bundle
+          const taskEntry = bundle.entry?.find(
+            (e: { resource?: { resourceType?: string } }) =>
+              e.resource?.resourceType === "Task",
+          );
+          if (taskEntry) {
+            completedTask = taskEntry.resource as Task;
+          }
+          return Promise.resolve({ type: "transaction-response", entry: [] });
+        }
         if (path.includes("IncomingHL7v2Message?")) {
           return Promise.resolve({
             entry: [{ resource: structuredClone(sampleMessage) }],
@@ -758,9 +781,6 @@ describe("integration: add mapping flow", () => {
           id: string,
           resource: Task | ConceptMap | IncomingHL7v2Message,
         ) => {
-          if (rt === "Task") {
-            completedTask = resource as Task;
-          }
           if (rt === "IncomingHL7v2Message") {
             updatedMessage = resource as IncomingHL7v2Message;
           }
@@ -781,7 +801,7 @@ describe("integration: add mapping flow", () => {
       "Sodium [Moles/volume] in Serum or Plasma",
     );
 
-    // Task should be completed
+    // Task should be completed (via atomic transaction)
     expect(completedTask).not.toBeNull();
     expect(completedTask!.status).toBe("completed");
 

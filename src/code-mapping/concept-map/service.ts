@@ -28,7 +28,7 @@ export async function fetchConceptMap(
   }
 }
 
-function createEmptyConceptMap(sender: SenderContext): ConceptMap {
+export function createEmptyConceptMap(sender: SenderContext): ConceptMap {
   const id = generateConceptMapId(sender);
   return {
     resourceType: "ConceptMap",
@@ -40,6 +40,60 @@ function createEmptyConceptMap(sender: SenderContext): ConceptMap {
     targetUri: "http://loinc.org",
     group: [],
   };
+}
+
+/**
+ * Add or update a mapping in a ConceptMap (pure function, non-mutating).
+ * If an element with the same localCode exists in the group, it will be replaced.
+ */
+export function addMappingToConceptMap(
+  conceptMap: ConceptMap,
+  localSystem: string,
+  localCode: string,
+  localDisplay: string,
+  loincCode: string,
+  loincDisplay: string,
+): ConceptMap {
+  const updated: ConceptMap = {
+    ...conceptMap,
+    group: conceptMap.group ? [...conceptMap.group] : [],
+  };
+
+  let groupIndex = updated.group!.findIndex((g) => g.source === localSystem);
+
+  if (groupIndex === -1) {
+    updated.group!.push({
+      source: localSystem,
+      target: "http://loinc.org",
+      element: [],
+    });
+    groupIndex = updated.group!.length - 1;
+  }
+
+  const group = { ...updated.group![groupIndex] };
+  group.element = group.element ? [...group.element] : [];
+  updated.group![groupIndex] = group;
+
+  const newElement: ConceptMapGroupElement = {
+    code: localCode,
+    display: localDisplay,
+    target: [
+      {
+        code: loincCode,
+        display: loincDisplay,
+        equivalence: "equivalent",
+      },
+    ],
+  };
+
+  const existingIndex = group.element.findIndex((e) => e.code === localCode);
+  if (existingIndex >= 0) {
+    group.element[existingIndex] = newElement;
+  } else {
+    group.element.push(newElement);
+  }
+
+  return updated;
 }
 
 export async function getOrCreateConceptMap(
@@ -66,48 +120,16 @@ export async function addMapping(
 ): Promise<void> {
   const conceptMap = await getOrCreateConceptMap(sender);
 
-  if (!conceptMap.group) {
-    conceptMap.group = [];
-  }
-
-  let group = conceptMap.group.find((g) => g.source === localSystem);
-
-  if (!group) {
-    group = {
-      source: localSystem,
-      target: "http://loinc.org",
-      element: [],
-    };
-    conceptMap.group.push(group);
-  }
-
-  if (!group.element) {
-    group.element = [];
-  }
-
-  const existingElementIndex = group.element.findIndex(
-    (e) => e.code === localCode,
+  const updatedConceptMap = addMappingToConceptMap(
+    conceptMap,
+    localSystem,
+    localCode,
+    localDisplay,
+    loincCode,
+    loincDisplay,
   );
 
-  const newElement: ConceptMapGroupElement = {
-    code: localCode,
-    display: localDisplay,
-    target: [
-      {
-        code: loincCode,
-        display: loincDisplay,
-        equivalence: "equivalent",
-      },
-    ],
-  };
-
-  if (existingElementIndex >= 0) {
-    group.element[existingElementIndex] = newElement;
-  } else {
-    group.element.push(newElement);
-  }
-
-  await putResource("ConceptMap", conceptMap.id!, conceptMap);
+  await putResource("ConceptMap", updatedConceptMap.id!, updatedConceptMap);
 }
 
 export async function deleteMapping(

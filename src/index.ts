@@ -943,12 +943,23 @@ function renderMappingTasksPage(
   tasks: Task[],
   statusFilter: "requested" | "completed",
   pagination: PaginationData,
+  errorMessage: string | null,
 ): string {
   const isPending = statusFilter === "requested";
   const pendingCount = navData.pendingMappingTasksCount;
 
   const content = `
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Mapping Tasks</h1>
+
+    ${
+      errorMessage
+        ? `
+      <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        ${escapeHtml(errorMessage)}
+      </div>
+    `
+        : ""
+    }
 
     <div class="mb-4 flex gap-2">
       <a href="/mapping/tasks?status=requested" class="px-3 py-1.5 rounded-lg text-sm font-medium ${isPending ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
@@ -1386,6 +1397,7 @@ Bun.serve({
     "/mapping/tasks": async (req) => {
       const url = new URL(req.url);
       const status = url.searchParams.get("status");
+      const errorParam = url.searchParams.get("error");
       const statusFilter: "requested" | "completed" =
         status === "completed" ? "completed" : "requested";
       const requestedPage = parsePageParam(url.searchParams);
@@ -1400,6 +1412,7 @@ Bun.serve({
           tasksResult.tasks,
           statusFilter,
           pagination,
+          errorParam,
         ),
         { headers: { "Content-Type": "text/html" } },
       );

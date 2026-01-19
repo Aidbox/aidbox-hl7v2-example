@@ -5,10 +5,7 @@
  */
 
 import type { Task, TaskOutput } from "../fhir/hl7-fhir-r4-core/Task";
-import type {
-  ConceptMap,
-  ConceptMapGroupElement,
-} from "../fhir/hl7-fhir-r4-core/ConceptMap";
+import type { ConceptMap } from "../fhir/hl7-fhir-r4-core/ConceptMap";
 import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import {
   aidboxFetch,
@@ -19,8 +16,9 @@ import {
 } from "../aidbox";
 import {
   generateConceptMapId,
-  formatSenderAsPublisher,
   type SenderContext,
+  createEmptyConceptMap,
+  addMappingToConceptMap,
 } from "../code-mapping/concept-map";
 
 export function getTaskInputValue(
@@ -35,71 +33,6 @@ function extractSenderFromTask(task: Task): SenderContext {
     getTaskInputValue(task, "Sending application") || "";
   const sendingFacility = getTaskInputValue(task, "Sending facility") || "";
   return { sendingApplication, sendingFacility };
-}
-
-function createEmptyConceptMap(sender: SenderContext): ConceptMap {
-  const id = generateConceptMapId(sender);
-  return {
-    resourceType: "ConceptMap",
-    id,
-    name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to LOINC`,
-    status: "active",
-    publisher: formatSenderAsPublisher(sender),
-    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-to-loinc", "")}`,
-    targetUri: "http://loinc.org",
-    group: [],
-  };
-}
-
-function addMappingToConceptMap(
-  conceptMap: ConceptMap,
-  localSystem: string,
-  localCode: string,
-  localDisplay: string,
-  loincCode: string,
-  loincDisplay: string,
-): ConceptMap {
-  const updated = { ...conceptMap };
-
-  if (!updated.group) {
-    updated.group = [];
-  }
-
-  let group = updated.group.find((g) => g.source === localSystem);
-
-  if (!group) {
-    group = {
-      source: localSystem,
-      target: "http://loinc.org",
-      element: [],
-    };
-    updated.group.push(group);
-  }
-
-  if (!group.element) {
-    group.element = [];
-  }
-
-  const newElement: ConceptMapGroupElement = {
-    code: localCode,
-    display: localDisplay,
-    target: [
-      {
-        code: loincCode,
-        display: loincDisplay,
-        equivalence: "equivalent",
-      },
-    ],
-  };
-
-  const existingIndex = group.element.findIndex((e) => e.code === localCode);
-  if (existingIndex >= 0) {
-    group.element[existingIndex] = newElement;
-  } else {
-    group.element.push(newElement);
-  }
-
-  return updated;
 }
 
 export async function resolveTaskWithMapping(
