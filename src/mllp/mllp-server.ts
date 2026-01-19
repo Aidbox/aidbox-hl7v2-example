@@ -104,7 +104,7 @@ export function wrapWithMLLP(message: string): Buffer {
 /**
  * Store incoming HL7v2 message in Aidbox
  */
-async function storeMessage(hl7Message: string): Promise<void> {
+export async function storeMessage(hl7Message: string): Promise<void> {
   const { messageType, sendingApplication, sendingFacility } = extractMSHFields(hl7Message);
 
   const resource: IncomingHL7v2Message = {
@@ -124,6 +124,8 @@ async function storeMessage(hl7Message: string): Promise<void> {
 
   console.log(`[MLLP] Stored message of type: ${messageType} from ${sendingApplication || "unknown"}/${sendingFacility || "unknown"}`);
 }
+
+export type StoreMessageFn = (hl7Message: string) => Promise<void>;
 
 /**
  * MLLP message parser - handles buffering and framing
@@ -181,10 +183,18 @@ export class MLLPParser {
   }
 }
 
+export interface MLLPServerOptions {
+  // Overriding is used for testing
+  storeMessageFn?: StoreMessageFn;
+}
+
 /**
  * Create MLLP TCP server
  */
-export function createMLLPServer(port: number = 2575): net.Server {
+export function createMLLPServer(port: number = 2575, options: MLLPServerOptions = {}): net.Server {
+  // Overriding is used for testing
+  const storeFn = options.storeMessageFn ?? storeMessage;
+
   const server = net.createServer((socket) => {
     const clientAddr = `${socket.remoteAddress}:${socket.remotePort}`;
     console.log(`[MLLP] Client connected: ${clientAddr}`);
@@ -199,7 +209,7 @@ export function createMLLPServer(port: number = 2575): net.Server {
         console.log(`[MLLP] Message preview: ${message.substring(0, 100)}...`);
 
         try {
-          await storeMessage(message);
+          await storeFn(message);
           const ack = generateAck(message, "AA");
           socket.write(wrapWithMLLP(ack));
           console.log(`[MLLP] Sent ACK to ${clientAddr}`);
