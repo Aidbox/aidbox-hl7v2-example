@@ -14,20 +14,14 @@ import {
   aidboxFetch,
   getResourceWithETag,
   updateResourceWithETag,
+  NotFoundError,
   type Bundle,
 } from "../aidbox";
-import { toKebabCase } from "../utils/string";
-
-export interface SenderContext {
-  sendingApplication: string;
-  sendingFacility: string;
-}
-
-export function generateConceptMapId(sender: SenderContext): string {
-  const app = toKebabCase(sender.sendingApplication);
-  const facility = toKebabCase(sender.sendingFacility);
-  return `hl7v2-${app}-${facility}-to-loinc`;
-}
+import {
+  generateConceptMapId,
+  formatSenderAsPublisher,
+  type SenderContext,
+} from "../code-mapping/concept-map";
 
 export function getTaskInputValue(
   task: Task,
@@ -50,6 +44,7 @@ function createEmptyConceptMap(sender: SenderContext): ConceptMap {
     id,
     name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to LOINC`,
     status: "active",
+    publisher: formatSenderAsPublisher(sender),
     sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-to-loinc", "")}`,
     targetUri: "http://loinc.org",
     group: [],
@@ -140,7 +135,7 @@ export async function resolveTaskWithMapping(
     conceptMap = result.resource;
     conceptMapEtag = result.etag;
   } catch (error) {
-    if ((error as Error).message.includes("404")) {
+    if (error instanceof NotFoundError) {
       conceptMap = createEmptyConceptMap(sender);
       conceptMapEtag = "";
       isNewConceptMap = true;

@@ -153,11 +153,10 @@ function createTaskBundleEntry(task: Task): BundleEntry {
 }
 
 function generateMappingTaskId(
-  sender: SenderContext,
+  conceptMapId: string,
   localSystem: string,
   localCode: string,
 ): string {
-  const conceptMapId = generateConceptMapId(sender);
   const systemHash = simpleHash(localSystem);
   const codeHash = simpleHash(localCode);
   return `map-${conceptMapId}-${systemHash}-${codeHash}`;
@@ -167,8 +166,9 @@ function createMappingTask(
   sender: SenderContext,
   error: LoincResolutionError,
 ): Task {
+  const conceptMapId = generateConceptMapId(sender);
   const taskId = generateMappingTaskId(
-    sender,
+    conceptMapId,
     error.localSystem || "",
     error.localCode || "",
   );
@@ -630,6 +630,7 @@ function buildMappingErrorResult(
   senderContext: SenderContext,
   mappingErrors: LoincResolutionError[],
 ): ConversionResult {
+  const conceptMapId = generateConceptMapId(senderContext);
   const seenTaskIds = new Set<string>();
   const taskEntries: BundleEntry[] = [];
   const unmappedCodes: UnmappedCode[] = [];
@@ -638,7 +639,7 @@ function buildMappingErrorResult(
     if (!error.localCode || !error.localSystem) continue;
 
     const taskId = generateMappingTaskId(
-      senderContext,
+      conceptMapId,
       error.localSystem,
       error.localCode,
     );

@@ -59,6 +59,13 @@ export class PreconditionFailedError extends Error {
   }
 }
 
+export class NotFoundError extends Error {
+  constructor(resourceType: string, id: string) {
+    super(`${resourceType}/${id} not found`);
+    this.name = "NotFoundError";
+  }
+}
+
 export interface ResourceWithETag<T> {
   resource: T;
   etag: string;
@@ -74,6 +81,10 @@ export async function getResourceWithETag<T>(
       "Content-Type": "application/fhir+json",
     },
   });
+
+  if (response.status === 404) {
+    throw new NotFoundError(resourceType, id);
+  }
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${await response.text()}`);

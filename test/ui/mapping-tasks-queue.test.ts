@@ -20,6 +20,14 @@ interface Bundle<T> {
   entry?: Array<{ resource: T }>;
 }
 
+// Mock NotFoundError class to include in all mocks
+class MockNotFoundError extends Error {
+  constructor(resourceType: string, id: string) {
+    super(`${resourceType}/${id} not found`);
+    this.name = "NotFoundError";
+  }
+}
+
 const samplePendingTask: Task = {
   resourceType: "Task",
   id: "map-hl7v2-acme-lab-acme-hosp-to-loinc-1a2b3c-4d5e6f",
@@ -154,6 +162,7 @@ describe("resolveTaskWithMapping", () => {
       updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
         Promise.resolve(resource),
       ),
+      NotFoundError: MockNotFoundError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -249,6 +258,7 @@ describe("resolveTaskWithMapping", () => {
       updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
         Promise.resolve(resource),
       ),
+      NotFoundError: MockNotFoundError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -304,6 +314,7 @@ describe("resolveTaskWithMapping", () => {
       updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
         Promise.resolve(resource),
       ),
+      NotFoundError: MockNotFoundError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -334,7 +345,7 @@ describe("resolveTaskWithMapping", () => {
         }
         return Promise.resolve({});
       }),
-      getResourceWithETag: mock((resourceType: string) => {
+      getResourceWithETag: mock((resourceType: string, id: string) => {
         if (resourceType === "Task") {
           return Promise.resolve({
             resource: structuredClone(samplePendingTask),
@@ -342,7 +353,7 @@ describe("resolveTaskWithMapping", () => {
           });
         }
         if (resourceType === "ConceptMap") {
-          return Promise.reject(new Error("HTTP 404: Not Found"));
+          return Promise.reject(new MockNotFoundError(resourceType, id));
         }
         return Promise.resolve({ resource: {}, etag: '""' });
       }),
@@ -353,6 +364,7 @@ describe("resolveTaskWithMapping", () => {
       updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
         Promise.resolve(resource),
       ),
+      NotFoundError: MockNotFoundError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);

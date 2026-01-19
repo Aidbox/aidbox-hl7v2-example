@@ -22,11 +22,9 @@ export {
 
 export {
   generateMappingTaskId,
-  createOrUpdateMappingTask,
   resolveMappingTask,
   findAffectedMessages,
   removeResolvedTaskFromMessage,
-  type CreateMappingTaskParams,
 } from "./mapping-task-service";
 
 export {

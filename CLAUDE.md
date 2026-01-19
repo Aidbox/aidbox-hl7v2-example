@@ -431,5 +431,26 @@ import { sharedFunction } from "../shared/utils";
 import { sharedFunction } from "../shared/utils";
 ```
 
+## Imports
+Always use static imports at the top of the file. Never use dynamic `await import()` inside functions or route handlers.
+
+```typescript
+/* BAD - dynamic import inside handler */
+
+"/mapping/table": async (req) => {
+  const { listConceptMaps } = await import("./ui/code-mappings");
+  // ...
+}
+
+
+/* GOOD - static import at top of file */
+
+import { listConceptMaps } from "./ui/code-mappings";
+
+"/mapping/table": async (req) => {
+  // use listConceptMaps directly
+}
+```
+
 ## Other
 Don't add error handling, fallbacks, or validation for scenarios that can't happen.

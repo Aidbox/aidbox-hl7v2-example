@@ -186,7 +186,11 @@ async function resolveFromConceptMap(
 
   const localSystemNormalized = normalizeSystem(localSystem);
 
-  const loincCoding = lookupInConceptMap(conceptMap, localCode, localSystemNormalized);
+  const loincCoding = lookupInConceptMap(
+    conceptMap,
+    localCode,
+    localSystemNormalized,
+  );
 
   if (!loincCoding) {
     throw new LoincResolutionError(
@@ -244,4 +248,12 @@ export function buildCodeableConcept(
     coding: codings,
     text: result.loinc.display || result.local?.display,
   };
+}
+
+/**
+ * Format sender context as publisher string (format: "APP|FACILITY")
+ * Used for ConceptMap.publisher field
+ */
+export function formatSenderAsPublisher(sender: SenderContext): string {
+  return `${sender.sendingApplication} | ${sender.sendingFacility}`;
 }

@@ -4,11 +4,20 @@
  * Manages sender-specific ConceptMaps for local code to LOINC mappings.
  */
 
-import type { ConceptMap, ConceptMapGroupElement } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
+import type {
+  ConceptMap,
+  ConceptMapGroupElement,
+} from "../../fhir/hl7-fhir-r4-core/ConceptMap";
 import { aidboxFetch, putResource } from "../../aidbox";
-import { generateConceptMapId, type SenderContext } from "./lookup";
+import {
+  generateConceptMapId,
+  formatSenderAsPublisher,
+  type SenderContext,
+} from "./lookup";
 
-export async function fetchConceptMap(conceptMapId: string): Promise<ConceptMap | null> {
+export async function fetchConceptMap(
+  conceptMapId: string,
+): Promise<ConceptMap | null> {
   try {
     return await aidboxFetch<ConceptMap>(`/fhir/ConceptMap/${conceptMapId}`);
   } catch (error) {
@@ -26,13 +35,16 @@ function createEmptyConceptMap(sender: SenderContext): ConceptMap {
     id,
     name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to LOINC`,
     status: "active",
+    publisher: formatSenderAsPublisher(sender),
     sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-to-loinc", "")}`,
     targetUri: "http://loinc.org",
     group: [],
   };
 }
 
-export async function getOrCreateConceptMap(sender: SenderContext): Promise<ConceptMap> {
+export async function getOrCreateConceptMap(
+  sender: SenderContext,
+): Promise<ConceptMap> {
   const conceptMapId = generateConceptMapId(sender);
   const existing = await fetchConceptMap(conceptMapId);
 
@@ -50,7 +62,7 @@ export async function addMapping(
   localSystem: string,
   localDisplay: string,
   loincCode: string,
-  loincDisplay: string
+  loincDisplay: string,
 ): Promise<void> {
   const conceptMap = await getOrCreateConceptMap(sender);
 
@@ -73,7 +85,9 @@ export async function addMapping(
     group.element = [];
   }
 
-  const existingElementIndex = group.element.findIndex((e) => e.code === localCode);
+  const existingElementIndex = group.element.findIndex(
+    (e) => e.code === localCode,
+  );
 
   const newElement: ConceptMapGroupElement = {
     code: localCode,
@@ -99,7 +113,7 @@ export async function addMapping(
 export async function deleteMapping(
   sender: SenderContext,
   localCode: string,
-  localSystem: string
+  localSystem: string,
 ): Promise<void> {
   const conceptMapId = generateConceptMapId(sender);
   const conceptMap = await fetchConceptMap(conceptMapId);
@@ -121,7 +135,7 @@ export async function deleteMapping(
 
 export async function searchMappings(
   sender: SenderContext,
-  query?: { localCode?: string; loincCode?: string }
+  query?: { localCode?: string; loincCode?: string },
 ): Promise<ConceptMapGroupElement[]> {
   const conceptMapId = generateConceptMapId(sender);
   const conceptMap = await fetchConceptMap(conceptMapId);
@@ -150,7 +164,9 @@ export async function searchMappings(
     }
 
     if (query.loincCode) {
-      const hasMatchingTarget = element.target?.some((t) => t.code === query.loincCode);
+      const hasMatchingTarget = element.target?.some(
+        (t) => t.code === query.loincCode,
+      );
       if (!hasMatchingTarget) {
         return false;
       }
