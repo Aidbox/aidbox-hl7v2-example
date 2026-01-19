@@ -6,6 +6,7 @@
 
 import type {
   ConceptMap,
+  ConceptMapGroup,
   ConceptMapGroupElement,
 } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
 import { aidboxFetch, putResource } from "../../aidbox";
@@ -70,7 +71,7 @@ export function addMappingToConceptMap(
     groupIndex = updated.group!.length - 1;
   }
 
-  const group = { ...updated.group![groupIndex] };
+  const group = { ...updated.group![groupIndex] } as ConceptMapGroup;
   group.element = group.element ? [...group.element] : [];
   updated.group![groupIndex] = group;
 
