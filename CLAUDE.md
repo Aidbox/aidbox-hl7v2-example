@@ -409,48 +409,7 @@ To avoid cycles:
 - Keep dependencies flowing in one direction (e.g., services → utilities, not utilities → services)
 - If two modules need each other's functionality, extract the shared part into a third module
 
-```typescript
-/* BAD - creates a cycle */
-
-// src/bar/generator.ts
-import { something } from "../oru/processor";
-
-// src/oru/processor.ts
-import { somethingElse } from "../bar/generator";
-
-
-/* GOOD - shared module breaks the cycle */
-
-// src/shared/utils.ts
-export function sharedFunction() { ... }
-
-// src/bar/generator.ts
-import { sharedFunction } from "../shared/utils";
-
-// src/oru/processor.ts
-import { sharedFunction } from "../shared/utils";
-```
-
-## Imports
-Always use static imports at the top of the file. Never use dynamic `await import()` inside functions or route handlers.
-
-```typescript
-/* BAD - dynamic import inside handler */
-
-"/mapping/table": async (req) => {
-  const { listConceptMaps } = await import("./ui/code-mappings");
-  // ...
-}
-
-
-/* GOOD - static import at top of file */
-
-import { listConceptMaps } from "./ui/code-mappings";
-
-"/mapping/table": async (req) => {
-  // use listConceptMaps directly
-}
-```
-
 ## Other
-Don't add error handling, fallbacks, or validation for scenarios that can't happen.
+- Don't add error handling, fallbacks, or validation for scenarios that can't happen.
+- Always use static imports at the top of the file. Never use dynamic `await import()` inside functions or route handlers.
+- Remove unused code immediately; do not keep dead code or commented-out code
