@@ -12,7 +12,7 @@ import type {
 import { aidboxFetch, putResource } from "../../aidbox";
 import {
   generateConceptMapId,
-  formatSenderAsPublisher,
+  formatSenderAsTitle,
   type SenderContext,
 } from "./lookup";
 
@@ -36,7 +36,7 @@ export function createEmptyConceptMap(sender: SenderContext): ConceptMap {
     id,
     name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to LOINC`,
     status: "active",
-    publisher: formatSenderAsPublisher(sender),
+    title: formatSenderAsTitle(sender),
     sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-to-loinc", "")}`,
     targetUri: "http://loinc.org",
     group: [],

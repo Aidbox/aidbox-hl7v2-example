@@ -251,9 +251,9 @@ export function buildCodeableConcept(
 }
 
 /**
- * Format sender context as publisher string (format: "APP | FACILITY")
- * Used for ConceptMap.publisher field
+ * Format sender context as title string (format: "APP | FACILITY")
+ * Used for ConceptMap.title field
  */
-export function formatSenderAsPublisher(sender: SenderContext): string {
+export function formatSenderAsTitle(sender: SenderContext): string {
   return `${sender.sendingApplication} | ${sender.sendingFacility}`;
 }

@@ -100,7 +100,7 @@ export async function listConceptMaps(): Promise<ConceptMapSummary[]> {
     .filter((cm) => cm.targetUri === "http://loinc.org")
     .map((cm) => ({
       id: cm.id!,
-      displayName: cm.publisher || cm.id!,
+      displayName: cm.title || cm.id!,
     }));
 }
 
