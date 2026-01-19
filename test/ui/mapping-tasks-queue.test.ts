@@ -424,6 +424,112 @@ describe("resolveTaskWithMapping", () => {
     ).rejects.toThrow("412");
   });
 
+  test("skips ifMatch when existing ConceptMap has no ETag", async () => {
+    let executedBundle: any = null;
+
+    const mockAidbox = {
+      aidboxFetch: mock((path: string, options?: RequestInit) => {
+        if (path === "/fhir" && options?.method === "POST") {
+          executedBundle = JSON.parse(options.body as string);
+          return Promise.resolve({ type: "transaction-response", entry: [] });
+        }
+        return Promise.resolve({});
+      }),
+      getResourceWithETag: mock((resourceType: string) => {
+        if (resourceType === "Task") {
+          return Promise.resolve({
+            resource: structuredClone(samplePendingTask),
+            etag: '"task-v1"',
+          });
+        }
+        if (resourceType === "ConceptMap") {
+          // Simulate Aidbox returning no ETag (empty string)
+          return Promise.resolve({
+            resource: structuredClone(sampleConceptMap),
+            etag: "",
+          });
+        }
+        return Promise.resolve({ resource: {}, etag: "" });
+      }),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
+      getResources: mock(() => Promise.resolve([])),
+      updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
+      NotFoundError: MockNotFoundError,
+    };
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { resolveTaskWithMapping } =
+      await import("../../src/ui/mapping-tasks-queue");
+
+    await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
+
+    const conceptMapEntry = executedBundle.entry.find(
+      (e: any) => e.resource?.resourceType === "ConceptMap",
+    );
+
+    // Should NOT have ifMatch (would cause 422 error with empty value)
+    expect(conceptMapEntry.request.ifMatch).toBeUndefined();
+    // Should NOT have ifNoneMatch (not a new resource)
+    expect(conceptMapEntry.request.ifNoneMatch).toBeUndefined();
+    expect(conceptMapEntry.request.method).toBe("PUT");
+  });
+
+  test("skips ifMatch when Task has no ETag", async () => {
+    let executedBundle: any = null;
+
+    const mockAidbox = {
+      aidboxFetch: mock((path: string, options?: RequestInit) => {
+        if (path === "/fhir" && options?.method === "POST") {
+          executedBundle = JSON.parse(options.body as string);
+          return Promise.resolve({ type: "transaction-response", entry: [] });
+        }
+        return Promise.resolve({});
+      }),
+      getResourceWithETag: mock((resourceType: string) => {
+        if (resourceType === "Task") {
+          // Simulate Aidbox returning no ETag for Task
+          return Promise.resolve({
+            resource: structuredClone(samplePendingTask),
+            etag: "",
+          });
+        }
+        if (resourceType === "ConceptMap") {
+          return Promise.resolve({
+            resource: structuredClone(sampleConceptMap),
+            etag: '"cm-v1"',
+          });
+        }
+        return Promise.resolve({ resource: {}, etag: "" });
+      }),
+      putResource: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
+      getResources: mock(() => Promise.resolve([])),
+      updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
+        Promise.resolve(resource),
+      ),
+      NotFoundError: MockNotFoundError,
+    };
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { resolveTaskWithMapping } =
+      await import("../../src/ui/mapping-tasks-queue");
+
+    await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
+
+    const taskEntry = executedBundle.entry.find(
+      (e: any) => e.resource?.resourceType === "Task",
+    );
+
+    // Should NOT have ifMatch (would cause 422 error with empty value)
+    expect(taskEntry.request.ifMatch).toBeUndefined();
+    expect(taskEntry.request.method).toBe("PUT");
+  });
+
   test("extracts sender info from Task.input", async () => {
     let executedBundle: any = null;
 

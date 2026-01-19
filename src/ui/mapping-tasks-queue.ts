@@ -107,6 +107,16 @@ export async function resolveTaskWithMapping(
     output: [output],
   };
 
+  // Build conditional update for ConceptMap:
+  // - New ConceptMap: use ifNoneMatch to prevent overwriting if created concurrently
+  // - Existing ConceptMap with ETag: use ifMatch for optimistic locking
+  // - Existing ConceptMap without ETag: skip conditional update (some resources may not have versioning)
+  const conceptMapCondition = isNewConceptMap
+    ? { ifNoneMatch: "*" }
+    : conceptMapEtag
+      ? { ifMatch: conceptMapEtag }
+      : {};
+
   const bundle = {
     resourceType: "Bundle",
     type: "transaction",
@@ -116,7 +126,7 @@ export async function resolveTaskWithMapping(
         request: {
           method: "PUT",
           url: `Task/${taskId}`,
-          ifMatch: taskEtag,
+          ...(taskEtag ? { ifMatch: taskEtag } : {}),
         },
       },
       {
@@ -124,9 +134,7 @@ export async function resolveTaskWithMapping(
         request: {
           method: "PUT",
           url: `ConceptMap/${conceptMapId}`,
-          ...(isNewConceptMap
-            ? { ifNoneMatch: "*" }
-            : { ifMatch: conceptMapEtag }),
+          ...conceptMapCondition,
         },
       },
     ],
