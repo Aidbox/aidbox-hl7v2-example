@@ -251,7 +251,7 @@ export function buildCodeableConcept(
 }
 
 /**
- * Format sender context as publisher string (format: "APP|FACILITY")
+ * Format sender context as publisher string (format: "APP | FACILITY")
  * Used for ConceptMap.publisher field
  */
 export function formatSenderAsPublisher(sender: SenderContext): string {

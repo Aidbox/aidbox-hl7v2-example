@@ -102,13 +102,20 @@ export async function updateResourceWithETag<T>(
   resource: T,
   etag: string,
 ): Promise<T> {
+  // Only include If-Match header when etag is present.
+  // Some resource types (e.g., ConceptMap) may not have versioning enabled in Aidbox,
+  // resulting in empty etag. In those cases, we skip optimistic locking.
+  const headers: Record<string, string> = {
+    Authorization: `Basic ${credentials}`,
+    "Content-Type": "application/fhir+json",
+  };
+  if (etag) {
+    headers["If-Match"] = etag;
+  }
+
   const response = await fetch(`${AIDBOX_URL}/fhir/${resourceType}/${id}`, {
     method: "PUT",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/fhir+json",
-      "If-Match": etag,
-    },
+    headers,
     body: JSON.stringify(resource),
   });
 
