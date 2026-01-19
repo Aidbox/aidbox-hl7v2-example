@@ -253,6 +253,8 @@ test("hello world", () => {
 });
 ```
 
+Use `bun run typecheck` to ensure there are no type errors.
+
 ## Frontend
 
 Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
@@ -399,6 +401,26 @@ If new logic overlaps with another module’s responsibility:
 If ownership is unclear or refactoring is risky:
 - Keep the duplication for now.
 - Add a short comment explaining why and where the related code lives, so it can be consolidated later.
+
+### Minimal public interface
+
+Modules should export only what consumers actually need.
+Keep implementation details private, don't break encapsulation and keep coupling low.
+
+```typescript
+// GOOD: Export only the interface consumers need
+export async function processInvoice(invoiceId: string): Promise<Result>
+
+// BAD: Export implementation details that force consumers to orchestrate
+export function fetchInvoice(id: string)        // Internal step - keep private
+export function saveInvoice(invoice: any)       // Internal step - keep private
+export interface InvoiceInternal { ... }        // Internal type - keep private
+```
+
+This ensures:
+- Consumers depend only on the public contract, not internal structure
+- Internal implementation can change without breaking consumers
+- Each module owns its logic; consumers don't orchestrate it
 
 ## Avoid cyclic dependencies
 

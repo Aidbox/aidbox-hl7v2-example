@@ -4,28 +4,31 @@
  * Displays and manages ConceptMap entries for local-to-LOINC mappings.
  */
 
-import type { ConceptMap } from "../fhir/hl7-fhir-r4-core/ConceptMap";
-import type { Task, TaskOutput } from "../fhir/hl7-fhir-r4-core/Task";
+import type { ConceptMap } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
+import type { Task, TaskOutput } from "../../fhir/hl7-fhir-r4-core/Task";
 import {
   aidboxFetch,
   getResourceWithETag,
   updateResourceWithETag,
   NotFoundError,
   type Bundle,
-} from "../aidbox";
-import { escapeHtml } from "../utils/html";
-import { generateMappingTaskId } from "../code-mapping/mapping-task-service";
-import { addMappingToConceptMap } from "../code-mapping/concept-map";
+} from "../../aidbox";
+import { escapeHtml } from "../../utils/html";
+import { generateMappingTaskId } from "../../code-mapping/mapping-task-service";
+import { addMappingToConceptMap } from "../../code-mapping/concept-map";
 import {
+  parsePageParam,
+  createPagination,
   PAGE_SIZE,
   renderPaginationControls,
   type PaginationData,
-} from "./pagination";
-import { updateAffectedMessages } from "./mapping-tasks-queue";
-import { renderNav, renderLayout, type NavData } from "./shared-layout";
+} from "../pagination";
+import { updateAffectedMessages } from "../mapping-tasks-queue";
+import { renderNav, renderLayout, type NavData } from "../shared-layout";
+import { htmlResponse, getNavData } from "../shared";
 
 // ============================================================================
-// Types
+// Types (exported for testing)
 // ============================================================================
 
 export interface ConceptMapSummary {
@@ -42,7 +45,45 @@ export interface MappingEntry {
 }
 
 // ============================================================================
-// Service Functions
+// Handler Functions (exported)
+// ============================================================================
+
+export async function handleCodeMappingsPage(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const conceptMapId = url.searchParams.get("conceptMapId");
+  const showAdd = url.searchParams.get("add") === "true";
+  const errorParam = url.searchParams.get("error");
+  const requestedPage = parsePageParam(url.searchParams);
+
+  const [conceptMaps, navData] = await Promise.all([
+    listConceptMaps(),
+    getNavData(),
+  ]);
+
+  let entries: MappingEntry[] = [];
+  let total = 0;
+  let loadError: string | null = errorParam;
+
+  if (conceptMapId) {
+    try {
+      const result = await getMappingsFromConceptMap(conceptMapId, requestedPage);
+      entries = result.entries;
+      total = result.total;
+    } catch (error) {
+      console.error("Error loading ConceptMap:", error);
+      loadError = "Failed to load ConceptMap";
+    }
+  }
+
+  const pagination = createPagination(requestedPage, total);
+
+  return htmlResponse(
+    renderCodeMappingsPage(navData, conceptMaps, conceptMapId, entries, pagination, showAdd, loadError),
+  );
+}
+
+// ============================================================================
+// Service Functions (exported for testing and API operations)
 // ============================================================================
 
 /**
@@ -332,10 +373,10 @@ export async function deleteConceptMapEntry(
 }
 
 // ============================================================================
-// Rendering Functions
+// Rendering Functions (internal)
 // ============================================================================
 
-export function renderCodeMappingsPage(
+function renderCodeMappingsPage(
   navData: NavData,
   conceptMaps: ConceptMapSummary[],
   selectedConceptMapId: string | null,
