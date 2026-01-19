@@ -414,10 +414,10 @@ function renderIncomingMessagesPage(
     error: msg.error,
     bundle: msg.bundle,
     retryUrl:
-      msg.status === "error" && msg.id
+      (msg.status === "error" || msg.status === "mapping_error") && msg.id
         ? `/mark-for-retry/${msg.id}`
         : undefined,
-    unmappedCodes: msg.unmappedCodes,
+    unmappedCodes: msg.status === "mapping_error" ? msg.unmappedCodes : undefined,
   }));
 
   const statuses = ["received", "processed", "mapping_error", "error"];
