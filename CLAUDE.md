@@ -10,7 +10,7 @@ alwaysApply: false
 
 This project integrates with Aidbox FHIR server for HL7v2 message processing. It provides a web UI to view Invoices, Outgoing BAR messages, and Incoming HL7v2 messages.
 
-See `spec/architecture.md` for system diagrams, pull-based polling architecture, data flow sequences, and resource status transitions - useful when understanding how components interact or debugging message flow issues.
+See `docs/technical/architecture.md` for system diagrams, pull-based polling architecture, data flow sequences, and resource status transitions - useful when understanding how components interact or debugging message flow issues.
 
 ## Quick Start
 
@@ -51,7 +51,7 @@ bun scripts/load-test-data.ts
 - `src/code-mapping/` - Code mapping services (ConceptMap, terminology API, mapping Task)
 - `src/mllp/` - MLLP (Minimal Lower Layer Protocol) TCP server for receiving HL7v2 messages
 - `src/ui/` - Web UI page handlers and HTML rendering
-- `spec/` - Detailed specification documents
+- `docs/` - User guide, technical docs, and specifications
 - `docker-compose.yaml` - Aidbox and PostgreSQL setup
 
 ## Routes
@@ -140,7 +140,7 @@ const message = new BAR_P01Builder()
 console.log(formatMessage(message));
 ```
 
-See `spec/hl7v2.md` for segment builder fluent API, field naming conventions, and datatype interfaces (XPN, CX, HD, etc.) - useful when building or parsing HL7v2 messages.
+See `docs/technical/modules/hl7v2-builders.md` for segment builder fluent API, field naming conventions, and datatype interfaces (XPN, CX, HD, etc.) - useful when building or parsing HL7v2 messages.
 
 ## BAR Message Generator (`src/bar/`)
 
@@ -170,7 +170,7 @@ const barMessage = generateBarMessage({
 console.log(formatMessage(barMessage));
 ```
 
-See `spec/bar-message-spec.md` for FHIR→HL7v2 field mappings per segment (PID, PV1, IN1, DG1, PR1, GT1) and trigger event semantics (P01/P05/P06) - useful when debugging or extending BAR generation.
+See `docs/technical/modules/fhir-to-hl7v2.md` for FHIR→HL7v2 field mappings per segment (PID, PV1, IN1, DG1, PR1, GT1) and trigger event semantics (P01/P05/P06) - useful when debugging or extending BAR generation.
 
 ## Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
 
@@ -256,14 +256,14 @@ Converts inbound HL7v2 messages to FHIR resources. Supports ADT_A01, ADT_A08, an
 bun src/v2-to-fhir/processor-service.ts
 ```
 
-See `spec/v2-to-fhir/spec.md` for supported segments/datatypes.
+See `docs/v2-to-fhir-spec/spec.md` for supported segments/datatypes.
 
 ### ORU_R01 Lab Results Processing
 
 Converts lab results to DiagnosticReport + Observation + Specimen resources.
 Blocks message conversion with status `mapping_error` if failed to resolve OBX code to LOINC.
 
-See `spec/oru-message-processing.md` for ORU_R01 processing pipeline details.
+See `docs/technical/modules/v2-to-fhir-oru.md` for ORU_R01 processing pipeline details.
 
 ## Code Mapping (`src/code-mapping/`)
 
@@ -273,7 +273,7 @@ Handles local-to-LOINC code mappings for laboratory codes that arrive without st
 - `mapping-task-service.ts` - Task lifecycle: create for unmapped codes, resolve with LOINC, update affected messages
 - `terminology-api.ts` - LOINC search and validation via external terminology service
 
-See `spec/code-mapping-infrastructure.md` for data model and `spec/code-mapping-ui.md` for UI workflows.
+See `docs/technical/modules/code-mapping-infrastructure.md` for data model and `docs/technical/modules/code-mapping-ui.md` for UI workflows.
 
 ## Custom FHIR Resources
 

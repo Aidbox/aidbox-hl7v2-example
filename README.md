@@ -56,7 +56,7 @@ src/
 └── ui/                   # Web UI page handlers
 
 fhir/                     # FHIR resource definitions (loaded by migrate.ts)
-spec/                     # Detailed specification documents
+docs/                     # Documentation (user-guide/, technical/, spec/)
 scripts/                  # Development and code generation scripts
 ```
 
