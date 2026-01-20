@@ -6,10 +6,12 @@ export interface PaginationData {
   totalPages: number;
 }
 
+export type FilterParams = Record<string, string | undefined>;
+
 export interface PaginationOptions {
   pagination: PaginationData;
   baseUrl: string;
-  filterParams?: Record<string, string>;
+  filterParams?: FilterParams;
 }
 
 export function calculateTotalPages(total: number): number {
@@ -42,13 +44,15 @@ export function createPagination(
 function buildUrl(
   baseUrl: string,
   page: number,
-  filterParams?: Record<string, string>,
+  filterParams?: FilterParams,
 ): string {
   const params = new URLSearchParams();
   params.set("_page", String(page));
   if (filterParams) {
     for (const [key, value] of Object.entries(filterParams)) {
-      params.set(key, value);
+      if (value) {
+        params.set(key, value);
+      }
     }
   }
   return `${baseUrl}?${params.toString()}`;

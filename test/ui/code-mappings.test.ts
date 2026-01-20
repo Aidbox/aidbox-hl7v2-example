@@ -23,7 +23,7 @@ const sampleConceptMap: ConceptMap = {
   id: "hl7v2-acme-lab-acme-hosp-to-loinc",
   name: "HL7v2 ACME_LAB/ACME_HOSP to LOINC",
   status: "active",
-  publisher: "ACME_LAB|ACME_HOSP",
+  title: "ACME_LAB|ACME_HOSP",
   sourceUri: "http://example.org/fhir/CodeSystem/hl7v2-acme-lab-acme-hosp",
   targetUri: "http://loinc.org",
   group: [
@@ -52,7 +52,7 @@ const sampleConceptMap2: ConceptMap = {
   id: "hl7v2-other-lab-other-hosp-to-loinc",
   name: "HL7v2 OTHER_LAB/OTHER_HOSP to LOINC",
   status: "active",
-  publisher: "OTHER_LAB|OTHER_HOSP",
+  title: "OTHER_LAB|OTHER_HOSP",
   sourceUri: "http://example.org/fhir/CodeSystem/hl7v2-other-lab-other-hosp",
   targetUri: "http://loinc.org",
   group: [],

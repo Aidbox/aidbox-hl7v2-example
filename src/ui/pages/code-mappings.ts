@@ -53,6 +53,7 @@ export async function handleCodeMappingsPage(req: Request): Promise<Response> {
   const conceptMapId = url.searchParams.get("conceptMapId");
   const showAdd = url.searchParams.get("add") === "true";
   const errorParam = url.searchParams.get("error");
+  const search = url.searchParams.get("search") || undefined;
   const requestedPage = parsePageParam(url.searchParams);
 
   const [conceptMaps, navData] = await Promise.all([
@@ -66,7 +67,7 @@ export async function handleCodeMappingsPage(req: Request): Promise<Response> {
 
   if (conceptMapId) {
     try {
-      const result = await getMappingsFromConceptMap(conceptMapId, requestedPage);
+      const result = await getMappingsFromConceptMap(conceptMapId, requestedPage, search);
       entries = result.entries;
       total = result.total;
     } catch (error) {
@@ -78,7 +79,7 @@ export async function handleCodeMappingsPage(req: Request): Promise<Response> {
   const pagination = createPagination(requestedPage, total);
 
   return htmlResponse(
-    renderCodeMappingsPage(navData, conceptMaps, conceptMapId, entries, pagination, showAdd, loadError),
+    renderCodeMappingsPage(navData, conceptMaps, conceptMapId, entries, pagination, showAdd, loadError, search),
   );
 }
 
@@ -104,12 +105,23 @@ export async function listConceptMaps(): Promise<ConceptMapSummary[]> {
     }));
 }
 
+function matchesSearch(entry: MappingEntry, search: string): boolean {
+  const query = search.toLowerCase();
+  return (
+    entry.localCode.toLowerCase().includes(query) ||
+    entry.localDisplay.toLowerCase().includes(query) ||
+    entry.loincCode.toLowerCase().includes(query) ||
+    entry.loincDisplay.toLowerCase().includes(query)
+  );
+}
+
 /**
  * Get paginated mapping entries from a ConceptMap
  */
 export async function getMappingsFromConceptMap(
   conceptMapId: string,
   page: number,
+  search?: string,
 ): Promise<{ entries: MappingEntry[]; total: number }> {
   const conceptMap = await aidboxFetch<ConceptMap>(
     `/fhir/ConceptMap/${conceptMapId}`,
@@ -130,9 +142,13 @@ export async function getMappingsFromConceptMap(
     }
   }
 
-  const total = allEntries.length;
+  const filteredEntries = search
+    ? allEntries.filter((entry) => matchesSearch(entry, search))
+    : allEntries;
+
+  const total = filteredEntries.length;
   const startIndex = (page - 1) * PAGE_SIZE;
-  const entries = allEntries.slice(startIndex, startIndex + PAGE_SIZE);
+  const entries = filteredEntries.slice(startIndex, startIndex + PAGE_SIZE);
 
   return { entries, total };
 }
@@ -384,6 +400,7 @@ function renderCodeMappingsPage(
   pagination: PaginationData,
   showAddForm: boolean,
   errorMessage: string | null,
+  search: string | undefined,
 ): string {
   const content = `
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Code Mappings</h1>
@@ -415,6 +432,19 @@ function renderCodeMappingsPage(
       ${
         selectedConceptMapId
           ? `
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Search codes</label>
+          <div class="flex gap-2 max-w-md">
+            <input type="text" id="searchInput" value="${escapeHtml(search || "")}" placeholder="Search by code or display..."
+              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              onkeydown="if(event.key==='Enter'){const v=this.value;window.location.href='/mapping/table?conceptMapId=${selectedConceptMapId}'+(v?'&search='+encodeURIComponent(v):'');}">
+            <button type="button"
+              onclick="const v=document.getElementById('searchInput').value;window.location.href='/mapping/table?conceptMapId=${selectedConceptMapId}'+(v?'&search='+encodeURIComponent(v):'');"
+              class="px-3 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+              Search
+            </button>
+          </div>
+        </div>
         <div class="pt-6">
           <a href="/mapping/table?conceptMapId=${selectedConceptMapId}&add=true"
             class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center gap-2">
@@ -454,7 +484,7 @@ function renderCodeMappingsPage(
         ${renderPaginationControls({
           pagination,
           baseUrl: "/mapping/table",
-          filterParams: { conceptMapId: selectedConceptMapId },
+          filterParams: { conceptMapId: selectedConceptMapId, search },
         })}
       </div>
     `
