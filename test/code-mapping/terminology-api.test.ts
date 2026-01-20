@@ -3,7 +3,7 @@
  *
  * The terminology API calls external terminology server for LOINC operations.
  */
-import { describe, test, expect, mock, afterEach, spyOn } from "bun:test";
+import { describe, test, expect, mock, afterEach } from "bun:test";
 
 const sampleValueSetExpansion = {
   expansion: {
@@ -44,57 +44,53 @@ const sampleCodeSystemLookup = {
   ],
 };
 
-function mockFetchResponse(data: unknown, ok = true, status = 200) {
-  return Promise.resolve({
-    ok,
-    status,
-    statusText: ok ? "OK" : "Error",
-    json: () => Promise.resolve(data),
-  } as Response);
-}
-
 describe("searchLoincCodes", () => {
   afterEach(() => {
     mock.restore();
   });
 
   test("searches by text query and returns up to 10 results", async () => {
-    const fetchSpy = spyOn(globalThis, "fetch").mockImplementation((url) => {
-      const urlStr = url.toString();
-      if (urlStr.includes("ValueSet/$expand")) {
-        return mockFetchResponse(sampleValueSetExpansion);
-      }
-      return mockFetchResponse({});
-    });
+    let calledPath = "";
+    const mockAidbox = {
+      aidboxFetch: mock((path: string) => {
+        calledPath = path;
+        return Promise.resolve(sampleValueSetExpansion);
+      }),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("potassium");
 
-    expect(fetchSpy).toHaveBeenCalled();
-    const calledUrl = fetchSpy.mock.calls[0][0].toString();
-    expect(calledUrl).toContain("ValueSet/$expand");
-    expect(calledUrl).toContain("filter=potassium");
-    expect(calledUrl).toContain("count=10");
+    expect(mockAidbox.aidboxFetch).toHaveBeenCalled();
+    expect(calledPath).toContain("ValueSet/$expand");
+    expect(calledPath).toContain("filter=potassium");
+    expect(calledPath).toContain("count=10");
     expect(results.length).toBeLessThanOrEqual(10);
   });
 
   test("searches by code (numeric-looking query)", async () => {
-    const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(() =>
-      mockFetchResponse(sampleValueSetExpansion)
-    );
+    let calledPath = "";
+    const mockAidbox = {
+      aidboxFetch: mock((path: string) => {
+        calledPath = path;
+        return Promise.resolve(sampleValueSetExpansion);
+      }),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
     await searchLoincCodes("2823");
 
-    const calledUrl = fetchSpy.mock.calls[0][0].toString();
-    expect(calledUrl).toContain("filter=2823");
+    expect(calledPath).toContain("filter=2823");
   });
 
   test("returns results with code, display, and optional component/property/timing/scale", async () => {
-    spyOn(globalThis, "fetch").mockImplementation(() =>
-      mockFetchResponse(sampleValueSetExpansion)
-    );
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve(sampleValueSetExpansion)),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("potassium");
 
@@ -107,10 +103,11 @@ describe("searchLoincCodes", () => {
   });
 
   test("handles results without designation (optional fields)", async () => {
-    spyOn(globalThis, "fetch").mockImplementation(() =>
-      mockFetchResponse(sampleValueSetExpansion)
-    );
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve(sampleValueSetExpansion)),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("potassium");
     const resultWithoutDesignation = results.find((r) => r.code === "39789-3");
@@ -121,10 +118,11 @@ describe("searchLoincCodes", () => {
   });
 
   test("returns empty array when no results found", async () => {
-    spyOn(globalThis, "fetch").mockImplementation(() =>
-      mockFetchResponse({ expansion: { contains: [] } })
-    );
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ expansion: { contains: [] } })),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("nonexistent");
 
@@ -132,10 +130,11 @@ describe("searchLoincCodes", () => {
   });
 
   test("returns empty array when expansion.contains is undefined", async () => {
-    spyOn(globalThis, "fetch").mockImplementation(() =>
-      mockFetchResponse({ expansion: {} })
-    );
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.resolve({ expansion: {} })),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("test");
 
@@ -144,14 +143,17 @@ describe("searchLoincCodes", () => {
 
   test("retries on transient failure (2 retries)", async () => {
     let callCount = 0;
-    spyOn(globalThis, "fetch").mockImplementation(() => {
-      callCount++;
-      if (callCount < 3) {
-        return mockFetchResponse({}, false, 503);
-      }
-      return mockFetchResponse(sampleValueSetExpansion);
-    });
+    const mockAidbox = {
+      aidboxFetch: mock(() => {
+        callCount++;
+        if (callCount < 3) {
+          return Promise.reject(new Error("HTTP 503: Service Unavailable"));
+        }
+        return Promise.resolve(sampleValueSetExpansion);
+      }),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("potassium");
 
@@ -160,10 +162,11 @@ describe("searchLoincCodes", () => {
   });
 
   test("throws after max retries exceeded", async () => {
-    spyOn(globalThis, "fetch").mockImplementation(() =>
-      mockFetchResponse({}, false, 503)
-    );
+    const mockAidbox = {
+      aidboxFetch: mock(() => Promise.reject(new Error("HTTP 503: Service Unavailable"))),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
 
     await expect(searchLoincCodes("potassium")).rejects.toThrow();
@@ -171,11 +174,14 @@ describe("searchLoincCodes", () => {
 
   test("does not retry on 4xx errors", async () => {
     let callCount = 0;
-    spyOn(globalThis, "fetch").mockImplementation(() => {
-      callCount++;
-      return mockFetchResponse({}, false, 400);
-    });
+    const mockAidbox = {
+      aidboxFetch: mock(() => {
+        callCount++;
+        return Promise.reject(new Error("HTTP 400: Bad Request"));
+      }),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
 
     await expect(searchLoincCodes("potassium")).rejects.toThrow("400");
@@ -183,15 +189,19 @@ describe("searchLoincCodes", () => {
   });
 
   test("encodes special characters in query", async () => {
-    const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(() =>
-      mockFetchResponse({ expansion: {} })
-    );
+    let calledPath = "";
+    const mockAidbox = {
+      aidboxFetch: mock((path: string) => {
+        calledPath = path;
+        return Promise.resolve({ expansion: {} });
+      }),
+    };
 
+    mock.module("../../src/aidbox", () => mockAidbox);
     const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
     await searchLoincCodes("test & query");
 
-    const calledUrl = fetchSpy.mock.calls[0][0].toString();
-    expect(calledUrl).toContain("filter=test%20%26%20query");
+    expect(calledPath).toContain("filter=test%20%26%20query");
   });
 });
 
