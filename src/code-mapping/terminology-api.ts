@@ -1,22 +1,8 @@
 /**
- * Terminology API - LOINC search and validation
- *
- * - Search ($expand): Direct call to external server (Aidbox hybrid mode is not working for implicit ValueSets)
- * - Validation ($lookup): Via Aidbox hybrid mode
+ * Terminology API - LOINC search and validation via local Aidbox instance
  */
 
 import { aidboxFetch } from "../aidbox";
-
-const TERMINOLOGY_SERVER = "https://tx.health-samurai.io/fhir";
-
-// FIXME: should use Aidbox's Hybrid mode instead of direct request
-async function terminologyFetch<T>(path: string): Promise<T> {
-  const response = await fetch(`${TERMINOLOGY_SERVER}${path}`);
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-  }
-  return response.json() as T;
-}
 
 export interface LoincSearchResult {
   code: string;
@@ -94,10 +80,10 @@ export async function searchLoincCodes(
   query: string
 ): Promise<LoincSearchResult[]> {
   const encodedQuery = encodeURIComponent(query);
-  const path = `/ValueSet/$expand?url=http://loinc.org/vs&filter=${encodedQuery}&count=10`;
+  const path = `/fhir/ValueSet/$expand?url=http://loinc.org/vs&filter=${encodedQuery}&count=10`;
 
   const response = await withRetry(() =>
-    terminologyFetch<ValueSetExpansion>(path)
+    aidboxFetch<ValueSetExpansion>(path)
   );
 
   const contains = response.expansion?.contains || [];

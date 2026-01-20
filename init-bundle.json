@@ -445,6 +445,28 @@
       }
     },
     {
+      "request": {
+        "method": "PUT",
+        "url": "ValueSet/loinc-all"
+      },
+      "resource": {
+        "resourceType": "ValueSet",
+        "id": "loinc-all",
+        "url": "http://loinc.org/vs",
+        "name": "LOINC",
+        "status": "active",
+        "publisher": "LOINC / HL7",
+        "description": "A ValueSet containing all LOINC codes. Workaround for Aidbox $expand endpoint issue.",
+        "compose": {
+          "include": [
+            {
+              "system": "http://loinc.org"
+            }
+          ]
+        }
+      }
+    },
+    {
       "request": { "method": "POST", "url": "/$sql" },
       "resource": "CREATE INDEX IF NOT EXISTS invoice_pending_ts_idx ON invoice (ts ASC) WHERE resource @> '{\"extension\": [{\"url\": \"http://example.org/invoice-processing-status\", \"value\": {\"code\": \"pending\"}}]}'"
     }
