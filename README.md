@@ -48,25 +48,16 @@ src/
 ├── index.ts              # HTTP server with web UI routes
 ├── aidbox.ts             # Aidbox FHIR client
 ├── migrate.ts            # Loads FHIR resources from fhir/ folder
-├── bar/
-│   ├── generator.ts      # BAR message generator from FHIR resources
-│   ├── invoice-builder-service.ts  # Polls pending Invoices, creates BAR messages
-│   ├── sender-service.ts # Sends pending OutgoingBarMessage
-│   └── types.ts          # FHIR resource type definitions
-└── hl7v2/
-    └── generated/        # Auto-generated from @atomic-ehr/hl7v2
-        ├── types.ts      # HL7v2 message types
-        ├── fields.ts     # Segment interfaces and fromXXX() getters
-        ├── messages.ts   # Message builders (BAR_P01Builder)
-        └── tables.ts     # HL7 table constants
+├── bar/                  # BAR message generation (FHIR → HL7v2)
+├── hl7v2/                # HL7v2 types, builders, formatter
+├── v2-to-fhir/           # HL7v2 to FHIR converters (ADT, ORU)
+├── code-mapping/         # Local code to LOINC mapping services
+├── mllp/                 # MLLP TCP server
+└── ui/                   # Web UI page handlers
 
 fhir/                     # FHIR resource definitions (loaded by migrate.ts)
-scripts/
-├── regenerate-fhir.ts    # FHIR R4 type generation script
-├── regenerate-hl7v2.sh   # HL7v2 bindings generation script
-├── dev.sh                # Development server script
-├── stop.sh               # Stop server script
-└── load-test-data.ts     # Creates sample FHIR data
+spec/                     # Detailed specification documents
+scripts/                  # Development and code generation scripts
 ```
 
 ## Custom FHIR Resources
@@ -88,17 +79,23 @@ Stores received HL7v2 messages.
 
 | Field | Type | Required |
 |-------|------|----------|
-| type | string | Yes |
-| status | string (received/processed/error) | No |
-| date | dateTime | No |
-| patient | Reference(Patient) | No |
 | message | string | Yes |
+| type | string (e.g., "ADT^A01") | Yes |
+| status | string (received/processed/error/mapping_error) | No |
+| date | dateTime | No |
+| sendingApplication | string (MSH-3) | No |
+| sendingFacility | string (MSH-4) | No |
+| patient | Reference(Patient) | No |
+| error | string | No |
+| unmappedCodes | array | No |
 
 ## Web UI Features
 
-- **Invoices:** View all invoices, filter by processing-status (pending/error/completed), create new invoices, build BAR messages from pending
-- **Outgoing Messages:** View BAR messages with HL7v2 syntax highlighting, filter by status, send pending messages
-- **Incoming Messages:** View received HL7v2 messages, filter by status
+- **Invoices:** View all invoices, filter by processing-status, build BAR messages from pending
+- **Outgoing Messages:** View BAR messages with HL7v2 syntax highlighting, send pending messages
+- **Incoming Messages:** View received HL7v2 messages, process to FHIR, retry failed messages
+- **Mapping Tasks:** Queue of unmapped OBX codes, resolve by selecting LOINC code
+- **Code Mappings:** Manage ConceptMap entries for local-to-LOINC mappings
 
 ### HL7v2 Message Highlighting
 
@@ -213,6 +210,26 @@ bun run test-mllp
 
 The web UI also includes an MLLP Test Client at `/mllp-client` for sending test messages.
 
+## V2-to-FHIR Converter
+
+Converts incoming HL7v2 messages to FHIR resources.
+
+**Supported Messages:**
+- **ADT_A01/A08** → Patient, Encounter, Coverage, AllergyIntolerance, Condition, RelatedPerson
+- **ORU_R01** → DiagnosticReport, Observation, Specimen
+
+The processor service polls `IncomingHL7v2Message` with `status=received` and converts them to FHIR.
+
+## Code Mapping
+
+Handles local laboratory codes that need LOINC mappings. When ORU_R01 messages contain OBX codes without LOINC:
+
+1. Message is marked with `status=mapping_error`
+2. A mapping Task is created for each unmapped code
+3. User resolves via `/mapping/tasks` UI by selecting LOINC code
+4. Resolved mappings are stored in sender-specific ConceptMaps
+5. Message is automatically reprocessed
+
 ## Background Services
 
 Run as standalone processes:
@@ -223,6 +240,9 @@ bun src/bar/invoice-builder-service.ts
 
 # Send pending OutgoingBarMessage resources
 bun src/bar/sender-service.ts
+
+# Process incoming HL7v2 messages to FHIR
+bun src/v2-to-fhir/processor-service.ts
 ```
 
 There are environment variables allowing one to customize some of the resulting BAR message:
@@ -236,4 +256,9 @@ There are environment variables allowing one to customize some of the resulting 
 
 ```sh
 bun test
+```
+
+Typecheck:
+```sh
+bun run typecheck
 ```

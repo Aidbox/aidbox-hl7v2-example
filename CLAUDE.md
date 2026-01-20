@@ -10,6 +10,8 @@ alwaysApply: false
 
 This project integrates with Aidbox FHIR server for HL7v2 message processing. It provides a web UI to view Invoices, Outgoing BAR messages, and Incoming HL7v2 messages.
 
+See `spec/architecture.md` for system diagrams, pull-based polling architecture, data flow sequences, and resource status transitions - useful when understanding how components interact or debugging message flow issues.
+
 ## Quick Start
 
 ```sh
@@ -41,12 +43,47 @@ bun scripts/load-test-data.ts
 
 - `src/index.ts` - Bun HTTP server with routes for Invoices, Outgoing/Incoming Messages, MLLP Client
 - `src/aidbox.ts` - Reusable Aidbox client with `aidboxFetch`, `getResources`, `putResource`
-- `src/migrate.ts` - Custom resource StructureDefinitions (OutgoingBarMessage, IncomingHL7v2Message)
+- `src/migrate.ts` - Script for loading custom resource StructureDefinitions (OutgoingBarMessage, IncomingHL7v2Message) from init-bundle.json
 - `src/fhir/` - Code-generated FHIR R4 type definitions
 - `src/bar/` - BAR message generation from FHIR resources
 - `src/hl7v2/` - HL7v2 message representation, builders, and formatter
+- `src/v2-to-fhir/` - Collection of HL7v2 to FHIR converters
+- `src/code-mapping/` - Code mapping services (ConceptMap, terminology API, mapping Task)
 - `src/mllp/` - MLLP (Minimal Lower Layer Protocol) TCP server for receiving HL7v2 messages
+- `src/ui/` - Web UI page handlers and HTML rendering
+- `spec/` - Detailed specification documents
 - `docker-compose.yaml` - Aidbox and PostgreSQL setup
+
+## Routes
+
+**UI Pages:**
+| Route | Description |
+|-------|-------------|
+| `/invoices` | List invoices with status filter |
+| `/outgoing-messages` | List outgoing BAR messages |
+| `/incoming-messages` | List incoming HL7v2 messages |
+| `/mapping/tasks` | Queue of pending code mapping tasks |
+| `/mapping/table` | ConceptMap entries management |
+| `/mllp-client` | MLLP test client |
+
+**API:**
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/terminology/loinc?q=` | GET | Search LOINC codes |
+| `/api/terminology/loinc/:code` | GET | Validate LOINC code |
+| `/api/mapping/tasks/:id/resolve` | POST | Resolve mapping task with LOINC code |
+| `/api/concept-maps/:id/entries` | POST | Add ConceptMap entry |
+| `/api/concept-maps/:id/entries/:code` | POST | Update ConceptMap entry |
+| `/api/concept-maps/:id/entries/:code/delete` | POST | Delete ConceptMap entry |
+
+**Actions:**
+| Route | Description |
+|-------|-------------|
+| `/build-bar` | Build BAR messages from pending invoices |
+| `/send-messages` | Send pending outgoing messages |
+| `/reprocess-errors` | Retry failed invoices (max 3 attempts) |
+| `/process-incoming-messages` | Process received HL7v2 messages |
+| `/mark-for-retry/:id` | Reset message status to `received` |
 
 ## Code Generation
 
@@ -103,6 +140,8 @@ const message = new BAR_P01Builder()
 console.log(formatMessage(message));
 ```
 
+See `spec/hl7v2.md` for segment builder fluent API, field naming conventions, and datatype interfaces (XPN, CX, HD, etc.) - useful when building or parsing HL7v2 messages.
+
 ## BAR Message Generator (`src/bar/`)
 
 Generates HL7v2 BAR messages from FHIR resources.
@@ -130,6 +169,8 @@ const barMessage = generateBarMessage({
 
 console.log(formatMessage(barMessage));
 ```
+
+See `spec/bar-message-spec.md` for FHIR→HL7v2 field mappings per segment (PID, PV1, IN1, DG1, PR1, GT1) and trigger event semantics (P01/P05/P06) - useful when debugging or extending BAR generation.
 
 ## Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
 
@@ -199,6 +240,41 @@ The web UI includes an MLLP Test Client at `/mllp-client` for sending test messa
 - View ACK responses
 - Messages are stored in Aidbox and visible in Incoming Messages
 
+## V2-to-FHIR Converter (`src/v2-to-fhir/`)
+
+Converts inbound HL7v2 messages to FHIR resources. Supports ADT_A01, ADT_A08, and ORU_R01.
+
+- `converter.ts` - Core conversion logic, message type routing
+- `processor-service.ts` - Background service polling `IncomingHL7v2Message` with `status=received`
+- `messages/` - Message-level converters
+- `segments/` - Segment-to-FHIR converters
+- `datatypes/` - HL7v2 datatype converters
+- `code-mapping/` - LOINC code resolution for OBX segments
+
+```sh
+# Run processor service
+bun src/v2-to-fhir/processor-service.ts
+```
+
+See `spec/v2-to-fhir/spec.md` for supported segments/datatypes.
+
+### ORU_R01 Lab Results Processing
+
+Converts lab results to DiagnosticReport + Observation + Specimen resources.
+Blocks message conversion with status `mapping_error` if failed to resolve OBX code to LOINC.
+
+See `spec/oru-message-processing.md` for ORU_R01 processing pipeline details.
+
+## Code Mapping (`src/code-mapping/`)
+
+Handles local-to-LOINC code mappings for laboratory codes that arrive without standard LOINC codes.
+
+- `concept-map/` - ConceptMap CRUD and LOINC lookup (one ConceptMap per sender)
+- `mapping-task-service.ts` - Task lifecycle: create for unmapped codes, resolve with LOINC, update affected messages
+- `terminology-api.ts` - LOINC search and validation via external terminology service
+
+See `spec/code-mapping-infrastructure.md` for data model and `spec/code-mapping-ui.md` for UI workflows.
+
 ## Custom FHIR Resources
 
 ### OutgoingBarMessage
@@ -208,10 +284,15 @@ The web UI includes an MLLP Test Client at `/mllp-client` for sending test messa
 - `hl7v2` (string) - optional
 
 ### IncomingHL7v2Message
-- `type` (string) - required
-- `date` (dateTime) - optional
-- `patient` (Reference to Patient) - optional
-- `message` (string) - required
+- `message` (string) - raw HL7v2 message content, required
+- `type` (string) - message type from MSH-9 (e.g., "ADT^A01"), required
+- `status` (string) - `received` | `processed` | `error` | `mapping_error`
+- `date` (dateTime) - message timestamp
+- `sendingApplication` (string) - MSH-3
+- `sendingFacility` (string) - MSH-4
+- `patient` (Reference) - linked Patient after processing
+- `error` (string) - error message if status is `error`
+- `unmappedCodes` (array) - unresolved OBX codes when status is `mapping_error`
 
 ## Aidbox Credentials (Development)
 
