@@ -723,6 +723,265 @@ describe("deleteConceptMapEntry", () => {
   });
 });
 
+// Test data for search functionality
+const searchTestConceptMap: ConceptMap = {
+  resourceType: "ConceptMap",
+  id: "search-test-concept-map",
+  name: "Search Test ConceptMap",
+  status: "active",
+  title: "SEARCH_TEST|FACILITY",
+  sourceUri: "http://example.org/fhir/CodeSystem/search-test",
+  targetUri: "http://loinc.org",
+  group: [
+    {
+      source: "TEST-LAB-CODES",
+      target: "http://loinc.org",
+      element: [
+        {
+          code: "K_SERUM",
+          display: "Potassium [Serum/Plasma]",
+          target: [
+            {
+              code: "2823-3",
+              display: "Potassium [Moles/volume] in Serum or Plasma",
+              equivalence: "equivalent",
+            },
+          ],
+        },
+        {
+          code: "NA_SERUM",
+          display: "Sodium [Serum/Plasma]",
+          target: [
+            {
+              code: "2951-2",
+              display: "Sodium [Moles/volume] in Serum or Plasma",
+              equivalence: "equivalent",
+            },
+          ],
+        },
+        {
+          code: "GLU_BLOOD",
+          display: "Glucose [Blood]",
+          target: [
+            {
+              code: "2345-7",
+              display: "Glucose [Mass/volume] in Serum or Plasma",
+              equivalence: "equivalent",
+            },
+          ],
+        },
+        {
+          code: "CREAT",
+          display: "Creatinine",
+          target: [
+            {
+              code: "2160-0",
+              display: "Creatinine [Mass/volume] in Serum or Plasma",
+              equivalence: "equivalent",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+describe("getMappingsFromConceptMap - search", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("filters by local code (partial match)", async () => {
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
+    });
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { getMappingsFromConceptMap } =
+      await import("../../src/ui/pages/code-mappings");
+
+    const result = await getMappingsFromConceptMap(
+      "search-test-concept-map",
+      1,
+      "GLU_",
+    );
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.total).toBe(1);
+    expect(result.entries[0].localCode).toBe("GLU_BLOOD");
+  });
+
+  test("filters by local display (partial match)", async () => {
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
+    });
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { getMappingsFromConceptMap } =
+      await import("../../src/ui/pages/code-mappings");
+
+    const result = await getMappingsFromConceptMap(
+      "search-test-concept-map",
+      1,
+      "Potassium",
+    );
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.total).toBe(1);
+    expect(result.entries[0].localCode).toBe("K_SERUM");
+    expect(result.entries[0].localDisplay).toBe("Potassium [Serum/Plasma]");
+  });
+
+  test("filters by LOINC code (partial match)", async () => {
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
+    });
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { getMappingsFromConceptMap } =
+      await import("../../src/ui/pages/code-mappings");
+
+    const result = await getMappingsFromConceptMap(
+      "search-test-concept-map",
+      1,
+      "2345",
+    );
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.total).toBe(1);
+    expect(result.entries[0].localCode).toBe("GLU_BLOOD");
+    expect(result.entries[0].loincCode).toBe("2345-7");
+  });
+
+  test("filters by LOINC display (partial match)", async () => {
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
+    });
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { getMappingsFromConceptMap } =
+      await import("../../src/ui/pages/code-mappings");
+
+    const result = await getMappingsFromConceptMap(
+      "search-test-concept-map",
+      1,
+      "Creatinine [Mass",
+    );
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.total).toBe(1);
+    expect(result.entries[0].localCode).toBe("CREAT");
+    expect(result.entries[0].loincDisplay).toBe(
+      "Creatinine [Mass/volume] in Serum or Plasma",
+    );
+  });
+
+  test("search is case-insensitive", async () => {
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
+    });
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { getMappingsFromConceptMap } =
+      await import("../../src/ui/pages/code-mappings");
+
+    const result = await getMappingsFromConceptMap(
+      "search-test-concept-map",
+      1,
+      "glucose",
+    );
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.total).toBe(1);
+    expect(result.entries[0].localCode).toBe("GLU_BLOOD");
+  });
+
+  test("returns empty results when no match found", async () => {
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
+    });
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { getMappingsFromConceptMap } =
+      await import("../../src/ui/pages/code-mappings");
+
+    const result = await getMappingsFromConceptMap(
+      "search-test-concept-map",
+      1,
+      "NONEXISTENT",
+    );
+
+    expect(result.entries).toHaveLength(0);
+    expect(result.total).toBe(0);
+  });
+
+  test("search results are paginated correctly", async () => {
+    const manyElements = Array.from({ length: 75 }, (_, i) => ({
+      code: `POTASSIUM_${i}`,
+      display: `Potassium variant ${i}`,
+      target: [
+        {
+          code: `${1000 + i}`,
+          display: `LOINC ${i}`,
+          equivalence: "equivalent" as const,
+        },
+      ],
+    }));
+
+    const conceptMapWithManyPotassiumEntries: ConceptMap = {
+      ...searchTestConceptMap,
+      group: [
+        {
+          source: "TEST-LAB-CODES",
+          target: "http://loinc.org",
+          element: [
+            ...manyElements,
+            {
+              code: "SODIUM_1",
+              display: "Sodium variant",
+              target: [
+                {
+                  code: "9999",
+                  display: "Sodium LOINC",
+                  equivalence: "equivalent" as const,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock(() =>
+        Promise.resolve(conceptMapWithManyPotassiumEntries),
+      ),
+    });
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { getMappingsFromConceptMap } =
+      await import("../../src/ui/pages/code-mappings");
+
+    const page1 = await getMappingsFromConceptMap(
+      "search-test-concept-map",
+      1,
+      "POTASSIUM",
+    );
+    expect(page1.entries).toHaveLength(50);
+    expect(page1.total).toBe(75);
+    expect(page1.entries[0].localCode).toBe("POTASSIUM_0");
+
+    const page2 = await getMappingsFromConceptMap(
+      "search-test-concept-map",
+      2,
+      "POTASSIUM",
+    );
+    expect(page2.entries).toHaveLength(25);
+    expect(page2.total).toBe(75);
+    expect(page2.entries[0].localCode).toBe("POTASSIUM_50");
+  });
+});
+
 describe("integration: add mapping flow", () => {
   afterEach(() => {
     mock.restore();
