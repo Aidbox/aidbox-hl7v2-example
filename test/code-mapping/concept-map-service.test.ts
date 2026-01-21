@@ -312,6 +312,64 @@ describe("addMappingToConceptMap", () => {
     expect(result.group![0].source).toBe("ACME-LAB-CODES");
   });
 
+  test("omits display when localDisplay is empty", async () => {
+    const { addMappingToConceptMap } = await import(
+      "../../src/code-mapping/concept-map"
+    );
+
+    const emptyConceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "test-concept-map",
+      status: "active",
+      targetUri: "http://loinc.org",
+      group: [],
+    };
+
+    // When localDisplay is empty (OBX-3 like "GS26-2&rpt^^99DHT" has no display)
+    const result = addMappingToConceptMap(
+      emptyConceptMap,
+      "99DHT",
+      "GS26-2&rpt",
+      "", // empty localDisplay
+      "11529-5",
+      "Surgical pathology study",
+    );
+
+    // The element should NOT have a display property (Aidbox rejects empty strings)
+    expect(result.group![0].element![0].code).toBe("GS26-2&rpt");
+    expect(result.group![0].element![0].display).toBeUndefined();
+    expect(result.group![0].element![0].target![0].code).toBe("11529-5");
+    expect(result.group![0].element![0].target![0].display).toBe(
+      "Surgical pathology study",
+    );
+  });
+
+  test("omits target display when loincDisplay is empty", async () => {
+    const { addMappingToConceptMap } = await import(
+      "../../src/code-mapping/concept-map"
+    );
+
+    const emptyConceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "test-concept-map",
+      status: "active",
+      targetUri: "http://loinc.org",
+      group: [],
+    };
+
+    const result = addMappingToConceptMap(
+      emptyConceptMap,
+      "99DHT",
+      "LOCAL",
+      "Local Display",
+      "12345-6",
+      "", // empty loincDisplay
+    );
+
+    expect(result.group![0].element![0].target![0].code).toBe("12345-6");
+    expect(result.group![0].element![0].target![0].display).toBeUndefined();
+  });
+
   test("finds existing group with undefined source", async () => {
     const { addMappingToConceptMap } = await import(
       "../../src/code-mapping/concept-map"

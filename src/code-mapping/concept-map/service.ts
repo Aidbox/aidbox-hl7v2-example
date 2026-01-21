@@ -77,11 +77,11 @@ export function addMappingToConceptMap(
 
   const newElement: ConceptMapGroupElement = {
     code: localCode,
-    display: localDisplay,
+    ...(localDisplay && { display: localDisplay }),
     target: [
       {
         code: loincCode,
-        display: loincDisplay,
+        ...(loincDisplay && { display: loincDisplay }),
         equivalence: "equivalent",
       },
     ],
