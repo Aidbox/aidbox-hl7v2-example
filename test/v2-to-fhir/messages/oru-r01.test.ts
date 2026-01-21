@@ -6,6 +6,7 @@ import type {
   Observation,
   Specimen,
   Encounter,
+  Task,
 } from "../../../src/fhir/hl7-fhir-r4-core";
 import type { OBX } from "../../../src/hl7v2/generated/fields";
 import type { SenderContext } from "../../../src/code-mapping/concept-map";
@@ -597,6 +598,50 @@ OBX|1|TXT|BFTYPE^BF Type||Other|||N/A|||F|||20260104112732`;
       (e) => e.resource?.resourceType === "Task",
     );
     expect(taskEntries).toHaveLength(1);
+  });
+
+  test("Task inputs omit empty values when localSystem is missing", async () => {
+    // OBX-3 is "BFTYPE^BF Type" - no third component (system)
+    // Aidbox rejects empty valueString, so we must omit the input entirely
+    const messageWithoutSystem = `MSH|^~\\&|MILL|MCHS||DEST|20260104||ORU^R01|MSG1|T|2.3
+PID|1||6163072|||||||||||||||||||
+ORC|RE||||
+OBR|1|4566983397||PH-BF^pH Body Fluid|||20260104110000|||||||||||||||||General Lab|F
+OBX|1|TXT|BFTYPE^BF Type||Other|||N/A|||F|||20260104112732`;
+
+    const result = await convertORU_R01(parseMessage(messageWithoutSystem));
+
+    const taskEntry = result.bundle.entry?.find(
+      (e) => e.resource?.resourceType === "Task",
+    );
+    expect(taskEntry).toBeDefined();
+
+    const task = taskEntry!.resource as Task;
+    expect(task.input).toBeDefined();
+
+    // Verify no input has an empty valueString
+    for (const input of task.input!) {
+      expect(input.valueString).not.toBe("");
+    }
+
+    // Verify "Local system" input is not present (since it would be empty)
+    const localSystemInput = task.input!.find(
+      (i) => i.type?.text === "Local system",
+    );
+    expect(localSystemInput).toBeUndefined();
+
+    // Verify other inputs are present
+    const localCodeInput = task.input!.find(
+      (i) => i.type?.text === "Local code",
+    );
+    expect(localCodeInput).toBeDefined();
+    expect(localCodeInput!.valueString).toBe("BFTYPE");
+
+    const localDisplayInput = task.input!.find(
+      (i) => i.type?.text === "Local display",
+    );
+    expect(localDisplayInput).toBeDefined();
+    expect(localDisplayInput!.valueString).toBe("BF Type");
   });
 });
 

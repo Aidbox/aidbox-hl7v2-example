@@ -298,19 +298,15 @@ function createMappingTask(
     error.localCode || "",
   );
 
-  const inputs: TaskInput[] = [
-    {
-      type: { text: "Sending application" },
-      valueString: sender.sendingApplication,
-    },
-    {
-      type: { text: "Sending facility" },
-      valueString: sender.sendingFacility,
-    },
-    { type: { text: "Local code" }, valueString: error.localCode || "" },
-    { type: { text: "Local display" }, valueString: error.localDisplay || "" },
-    { type: { text: "Local system" }, valueString: error.localSystem || "" },
-  ];
+  const inputs = [
+    ["Sending application", sender.sendingApplication],
+    ["Sending facility", sender.sendingFacility],
+    ["Local code", error.localCode],
+    ["Local display", error.localDisplay],
+    ["Local system", error.localSystem],
+  ]
+    .filter(([, value]) => value)
+    .map(([label, value]) => ({ type: { text: label }, valueString: value }));
 
   const now = new Date().toISOString();
 
