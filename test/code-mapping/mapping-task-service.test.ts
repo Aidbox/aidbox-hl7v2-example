@@ -267,7 +267,7 @@ describe("removeResolvedTaskFromMessage", () => {
       '"version-1"',
     );
 
-    expect(updatedMessage!.unmappedCodes).toHaveLength(0);
+    expect(updatedMessage!.unmappedCodes).toBeUndefined();
     expect(updatedMessage!.status).toBe("received");
   });
 
