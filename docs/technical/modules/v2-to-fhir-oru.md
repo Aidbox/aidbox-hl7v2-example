@@ -6,7 +6,8 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 
 ## Key Behaviors
 
-- Patient/Encounter: lookup only, never create (hard error if not found)
+- Patient: match existing or create draft (`active=false`); PID segment required (error if missing)
+- Encounter: lookup only, never create (proceed without if not found)
 - One DiagnosticReport per ORDER_OBSERVATION group (ORC/OBR pair)
 - Deterministic IDs from OBR-3 (filler order number) for idempotency via PUT
 - Tag all resources with MSH-10 (message control ID) for audit trail
@@ -22,12 +23,18 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 2. Parse message structure; validate MSH, OBR-3, OBR-25, OBX-11 required fields
 3. Resolve all OBX-3 codes to LOINC (inline or via sender-specific ConceptMap, see Appendix E)
 4. If any OBX-3 cannot be resolved → set `status=mapping_error`, create mapping Tasks (see Code Mapping), stop processing
-5. Lookup Patient (PID-3) and Encounter (PV1-19) - error if not found
-6. Convert:
+5. Handle Patient (PID):
+   - PID segment required - error if missing
+   - Extract patient ID from PID-2 or PID-3.1 (first identifier's ID) - error if no usable ID
+   - Lookup Patient by ID: if exists → use existing (do NOT update - ADT is source of truth)
+   - If Patient not found → create draft Patient with `active=false`
+6. Lookup Encounter (PV1-19) - error if not found
+7. Convert:
+   - Patient (if creating draft) → Patient with `active=false`
    - ORC + OBR → DiagnosticReport (one per ORDER_OBSERVATION group)
    - OBX + trailing NTE → Observation (linked to DiagnosticReport)
    - SPM or OBR-15 → Specimen (linked to DiagnosticReport and Observations)
-7. Submit transaction bundle via PUT (idempotent), update status to `processed`
+8. Submit transaction bundle via PUT (idempotent), update status to `processed`
 
 ### Code Mapping Failure Handling
 
@@ -126,15 +133,16 @@ When a message contains OBX codes that cannot be resolved to LOINC, ORU processi
 | OBX without parent OBR | Reject message |
 | OBX-3 has no LOINC (inline or ConceptMap) | Set `mapping_error`, create/update mapping Task(s), store `unmappedCodes[]` |
 | ConceptMap not found for sender | Set `mapping_error` when OBX-3 has no inline LOINC |
-| Patient not found (PID-3) | Reject message |
-| Encounter not found (PV1-19) | Reject message (see Open Questions for missing PV1) |
+| PID segment missing | Reject message with error |
+| PID without usable ID (PID-2/PID-3 empty) | Reject message with error |
+| Patient not found (PID-2/PID-3) | Create draft Patient with `active=false` |
+| Encounter not found (PV1-19) | Reject message with error |
 | OBR-25 missing or Y/Z | Reject message |
 | OBX-11 missing or N | Reject message |
 | OBR without OBX | Create DiagnosticReport with empty result |
 
 ## Open Questions
 
-- **Missing PV1**: Error or proceed without encounter? (Examples have PV1 but PV1-19 may be empty)
 - **DiagnosticReport.category**: Derive from OBR-24 (Diagnostic Service Section ID)?
 - **OBX-6 units**: Map to UCUM or pass through as-is?
 - **Timezone handling**: Timestamps without timezone - server default or local time?

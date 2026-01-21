@@ -13,6 +13,7 @@ ORU_R01 messages contain laboratory results and must be converted to FHIR Diagno
 | [01-oru-core-processing.md](./01-oru-core-processing.md) | Core ORU_R01 message parsing and FHIR conversion without custom mapping logic |
 | [02-code-mapping-infrastructure.md](./02-code-mapping-infrastructure.md) | Code mapping workflow, ConceptMap, and LabCodeMappingTask resources |
 | [03-mapping-ui.md](./03-mapping-ui.md) | User interface for mapping tasks queue and code mappings management |
+| [04-patient-handling.md](./04-patient-handling.md) | Patient matching, draft patient creation, and resource linking |
 
 ## Implementation Phases
 
@@ -42,6 +43,13 @@ Covered in [03-mapping-ui.md](./03-mapping-ui.md)
 Covered in [03-mapping-ui.md](./03-mapping-ui.md)
 - Mappings table page
 - CRUD operations for ConceptMap entries
+
+### Phase 5: Patient Handling
+Covered in [04-patient-handling.md](./04-patient-handling.md)
+- Parse PID segment and extract patient ID (required)
+- Match existing patients or create draft (active=false)
+- Link DiagnosticReport, Observation, Specimen to Patient
+- Reject messages with missing PID or patient ID
 
 ## Non-Functional Requirements
 
