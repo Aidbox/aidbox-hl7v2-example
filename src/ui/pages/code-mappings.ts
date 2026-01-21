@@ -266,7 +266,7 @@ export async function addConceptMapEntry(
           request: {
             method: "PUT",
             url: `ConceptMap/${conceptMapId}`,
-            ifMatch: conceptMapEtag,
+            ...(conceptMapEtag && { ifMatch: conceptMapEtag }),
           },
         },
         {
@@ -274,7 +274,7 @@ export async function addConceptMapEntry(
           request: {
             method: "PUT",
             url: `Task/${taskId}`,
-            ifMatch: taskEtag,
+            ...(taskEtag && { ifMatch: taskEtag }),
           },
         },
       ],
