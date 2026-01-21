@@ -518,6 +518,86 @@ OBX|2|NM|67890^Sodium^LOCAL||140|mmol/L||||F`;
     expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
     expect(result.messageUpdate.unmappedCodes![0].localCode).toBe("67890");
   });
+
+  test("creates mapping task when OBX-3 has no system (only code and display)", async () => {
+    // OBX-3 is "BFTYPE^BF Type" - no third component (system)
+    const messageWithoutSystem = `MSH|^~\\&|MILL|MCHS||DEST|20260104||ORU^R01|MSG1|T|2.3
+PID|1||6163072|||||||||||||||||||
+ORC|RE||||
+OBR|1|4566983397||PH-BF^pH Body Fluid|||20260104110000|||||||||||||||||General Lab|F
+OBX|1|TXT|BFTYPE^BF Type||Other|||N/A|||F|||20260104112732`;
+
+    const result = await convertORU_R01(parseMessage(messageWithoutSystem));
+
+    expect(result.messageUpdate.status).toBe("mapping_error");
+    expect(result.messageUpdate.unmappedCodes).toBeDefined();
+    expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
+    expect(result.messageUpdate.unmappedCodes![0].localCode).toBe("BFTYPE");
+    expect(result.messageUpdate.unmappedCodes![0].localDisplay).toBe("BF Type");
+    expect(result.messageUpdate.unmappedCodes![0].localSystem).toBeUndefined();
+
+    // Should create a Task for the unmapped code
+    const taskEntries = result.bundle.entry?.filter(
+      (e) => e.resource?.resourceType === "Task",
+    );
+    expect(taskEntries).toHaveLength(1);
+  });
+
+  test("creates mapping tasks for multiple OBX codes without system", async () => {
+    // Both OBX-3 segments have no system component
+    const messageWithMultipleNoSystem = `MSH|^~\\&|MILL|MCHS||DEST|20260104||ORU^R01|MSG1|T|2.3
+PID|1||6163072|||||||||||||||||||
+ORC|RE||||
+OBR|1|4566983397||PH-BF^pH Body Fluid|||20260104110000|||||||||||||||||General Lab|F
+OBX|1|TXT|BFTYPE^BF Type||Other|||N/A|||F|||20260104112732
+OBX|2|NUM|PH-O^pH BF||6.9|||N/A|||F|||20260104112732`;
+
+    const result = await convertORU_R01(parseMessage(messageWithMultipleNoSystem));
+
+    expect(result.messageUpdate.status).toBe("mapping_error");
+    expect(result.messageUpdate.unmappedCodes).toHaveLength(2);
+    expect(result.messageUpdate.unmappedCodes![0].localCode).toBe("BFTYPE");
+    expect(result.messageUpdate.unmappedCodes![1].localCode).toBe("PH-O");
+
+    // Should create Tasks for both unmapped codes
+    const taskEntries = result.bundle.entry?.filter(
+      (e) => e.resource?.resourceType === "Task",
+    );
+    expect(taskEntries).toHaveLength(2);
+  });
+
+  test("bundle entry is valid when patient exists and OBX has no system", async () => {
+    // Simulates the case where patient already exists (patientEntry is null)
+    // and OBX-3 has no system - bundle should still have Task entries
+    const messageWithoutSystem = `MSH|^~\\&|MILL|MCHS||DEST|20260104||ORU^R01|MSG1|T|2.3
+PID|1||EXISTING-PATIENT|||||||||||||||||||
+ORC|RE||||
+OBR|1|4566983397||PH-BF^pH Body Fluid|||20260104110000|||||||||||||||||General Lab|F
+OBX|1|TXT|BFTYPE^BF Type||Other|||N/A|||F|||20260104112732`;
+
+    // Mock patient lookup to return existing patient
+    const existingPatient = {
+      resourceType: "Patient" as const,
+      id: "EXISTING-PATIENT",
+      active: true,
+    };
+    const mockPatientLookup = mock(() => Promise.resolve(existingPatient));
+
+    const result = await convertORU_R01(
+      parseMessage(messageWithoutSystem),
+      mockPatientLookup,
+    );
+
+    expect(result.messageUpdate.status).toBe("mapping_error");
+    // Bundle should have Task entry (not be empty)
+    expect(result.bundle.entry).toBeDefined();
+    expect(result.bundle.entry!.length).toBeGreaterThan(0);
+
+    const taskEntries = result.bundle.entry?.filter(
+      (e) => e.resource?.resourceType === "Task",
+    );
+    expect(taskEntries).toHaveLength(1);
+  });
 });
 
 describe("ConceptMap code resolution", () => {

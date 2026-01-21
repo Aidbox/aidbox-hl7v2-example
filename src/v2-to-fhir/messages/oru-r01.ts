@@ -1051,11 +1051,11 @@ function buildMappingErrorResult(
   const unmappedCodes: UnmappedCode[] = [];
 
   for (const error of mappingErrors) {
-    if (!error.localCode || !error.localSystem) continue;
+    if (!error.localCode) continue;
 
     const taskId = generateMappingTaskId(
       conceptMapId,
-      error.localSystem,
+      error.localSystem || "",
       error.localCode,
     );
 
@@ -1076,14 +1076,14 @@ function buildMappingErrorResult(
   const bundle: Bundle = {
     resourceType: "Bundle",
     type: "transaction",
-    entry: entries,
+    entry: entries.length > 0 ? entries : undefined,
   };
 
   return {
     bundle,
     messageUpdate: {
       status: "mapping_error",
-      unmappedCodes,
+      unmappedCodes: unmappedCodes.length > 0 ? unmappedCodes : undefined,
       patient: patientRef,
     },
   };
