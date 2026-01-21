@@ -13,8 +13,8 @@
  * - Coverage[] from IN1[]
  */
 
-import { parseMessage } from "@atomic-ehr/hl7v2";
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
+import type { ConversionResult } from "../converter";
 import {
   fromMSH,
   fromPID,
@@ -24,6 +24,11 @@ import {
   fromAL1,
   fromIN1,
   type MSH,
+  type DG1,
+  type IN1,
+  type AL1,
+  type XON,
+  type CX,
 } from "../../hl7v2/generated/fields";
 import type {
   Bundle,
@@ -44,6 +49,7 @@ import { convertNK1ToRelatedPerson } from "../segments/nk1-relatedperson";
 import { convertDG1ToCondition } from "../segments/dg1-condition";
 import { convertAL1ToAllergyIntolerance } from "../segments/al1-allergyintolerance";
 import { convertIN1ToCoverage } from "../segments/in1-coverage";
+import { toKebabCase } from "../../utils/string";
 
 // ============================================================================
 // Helper Functions
@@ -115,19 +121,6 @@ function createBundleEntry(
 }
 
 /**
- * Convert string to kebab-case
- * "Essential Hypertension" → "essential-hypertension"
- */
-function toKebabCase(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "") // Remove special chars
-    .replace(/\s+/g, "-") // Replace spaces with hyphens
-    .replace(/-+/g, "-") // Collapse multiple hyphens
-    .replace(/^-|-$/g, ""); // Trim leading/trailing hyphens
-}
-
-/**
  * Deduplicate DG1 segments by diagnosis code+display
  * When duplicates exist, keep the one with lowest priority (1 < 2 < 3...)
  * Null priorities are ranked last
@@ -171,7 +164,8 @@ function prepareDG1ForExtraction(segments: HL7v2Segment[]): HL7v2Segment[] {
       return a.priority - b.priority; // ascending
     });
 
-    deduplicated.push(items[0].segment);
+    const first = items[0];
+    if (first) deduplicated.push(first.segment);
   }
 
   return deduplicated;
@@ -206,7 +200,7 @@ function generateCoverageId(in1: IN1, patientId: string | undefined): string {
   let payorId: string | undefined;
 
   if (in1.$3_insuranceCompanyId && in1.$3_insuranceCompanyId.length > 0) {
-    payorId = in1.$3_insuranceCompanyId[0].$1_value;
+    payorId = in1.$3_insuranceCompanyId[0]?.$1_value;
   }
 
   // Fallback to first payor organization name
@@ -215,7 +209,7 @@ function generateCoverageId(in1: IN1, patientId: string | undefined): string {
     in1.$4_insuranceCompanyName &&
     in1.$4_insuranceCompanyName.length > 0
   ) {
-    const orgName = in1.$4_insuranceCompanyName[0].$1_name;
+    const orgName = in1.$4_insuranceCompanyName[0]?.$1_name;
     if (orgName) {
       payorId = toKebabCase(orgName);
     }
@@ -238,13 +232,13 @@ function generateCoverageId(in1: IN1, patientId: string | undefined): string {
 function hasValidPayorInfo(in1: IN1): boolean {
   // Check for Insurance Company Name (IN1-4)
   if (in1.$4_insuranceCompanyName && in1.$4_insuranceCompanyName.length > 0) {
-    const hasName = in1.$4_insuranceCompanyName.some((xon) => xon.$1_name);
+    const hasName = in1.$4_insuranceCompanyName.some((xon: XON) => xon.$1_name);
     if (hasName) return true;
   }
 
   // Check for Insurance Company ID (IN1-3)
   if (in1.$3_insuranceCompanyId && in1.$3_insuranceCompanyId.length > 0) {
-    const hasId = in1.$3_insuranceCompanyId.some((cx) => cx.$1_value);
+    const hasId = in1.$3_insuranceCompanyId.some((cx: CX) => cx.$1_value);
     if (hasId) return true;
   }
 
@@ -295,9 +289,7 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  * AL1 - Allergy Information (0..*)
  * IN1 - Insurance (0..*)
  */
-export function convertADT_A01(message: string): Bundle {
-  const parsed = parseMessage(message);
-
+export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
   // =========================================================================
   // Extract MSH
   // =========================================================================
@@ -514,7 +506,13 @@ export function convertADT_A01(message: string): Bundle {
     entry: entries,
   };
 
-  return bundle;
+  return {
+    bundle,
+    messageUpdate: {
+      status: "processed",
+      patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
+    },
+  };
 }
 
 export default convertADT_A01;

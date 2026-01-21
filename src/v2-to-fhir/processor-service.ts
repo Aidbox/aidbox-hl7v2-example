@@ -5,11 +5,14 @@
  * converts them to FHIR resources, submits to Aidbox, and updates status.
  */
 
-import { aidboxFetch, putResource, type Bundle as AidboxBundle } from "../aidbox";
+import {
+  aidboxFetch,
+  putResource,
+  type Bundle as AidboxBundle,
+} from "../aidbox";
 import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
-import type { Patient } from "../fhir/hl7-fhir-r4-core/Patient";
 import type { Bundle } from "../fhir/hl7-fhir-r4-core/Bundle";
-import { convertToFHIR } from "./converter";
+import { convertToFHIR, type ConversionResult } from "./converter";
 
 // ============================================================================
 // Constants
@@ -27,7 +30,7 @@ const POLL_INTERVAL_MS = 60_000; // 1 minute
  */
 export async function pollReceivedMessage(): Promise<IncomingHL7v2Message | null> {
   const bundle = await aidboxFetch<AidboxBundle<IncomingHL7v2Message>>(
-    "/fhir/IncomingHL7v2Message?status=received&_sort=_lastUpdated&_count=1"
+    "/fhir/IncomingHL7v2Message?status=received&_sort=_lastUpdated&_count=1",
   );
   return bundle.entry?.[0]?.resource ?? null;
 }
@@ -37,11 +40,13 @@ export async function pollReceivedMessage(): Promise<IncomingHL7v2Message | null
 // ============================================================================
 
 /**
- * Convert HL7v2 message to FHIR Bundle
+ * Convert HL7v2 message to FHIR Bundle with message update
  * Uses converter router to automatically detect message type
  */
-function convertMessage(message: IncomingHL7v2Message): Bundle {
-  return convertToFHIR(message.message);
+async function convertMessage(
+  message: IncomingHL7v2Message,
+): Promise<ConversionResult> {
+  return await convertToFHIR(message.message);
 }
 
 // ============================================================================
@@ -60,51 +65,28 @@ async function submitBundle(bundle: Bundle): Promise<void> {
 }
 
 // ============================================================================
-// Patient ID Extraction
-// ============================================================================
-
-/**
- * Extract patient ID from bundle
- * Returns undefined if no patient found
- */
-function extractPatientId(bundle: Bundle): string | undefined {
-  // Extract from first Patient in bundle
-  const patientEntry = bundle.entry?.find(
-    (e) => e.resource?.resourceType === "Patient"
-  );
-
-  if (patientEntry?.resource) {
-    return (patientEntry.resource as Patient).id;
-  }
-
-  return undefined;
-}
-
-// ============================================================================
 // Status Management
 // ============================================================================
 
 /**
- * Update IncomingHL7v2Message status
- * Optionally links to created Patient resource, stores error message and bundle
+ * Apply message update from conversion result
+ * Merges update fields with existing message and saves to Aidbox
  */
-async function updateMessageStatus(
+async function applyMessageUpdate(
   message: IncomingHL7v2Message,
-  status: "processed" | "error",
-  options?: { patientId?: string; error?: string; bundle?: Bundle }
+  update: Partial<IncomingHL7v2Message>,
+  bundle?: Bundle,
 ): Promise<void> {
   const updated: IncomingHL7v2Message = {
     ...message,
-    status,
-    patient: options?.patientId ? { reference: `Patient/${options.patientId}` } : message.patient,
-    error: options?.error,
-    bundle: options?.bundle ? JSON.stringify(options.bundle, null, 2) : undefined,
+    ...update,
+    bundle: bundle ? JSON.stringify(bundle, null, 2) : undefined,
   };
 
   await putResource<IncomingHL7v2Message>(
     "IncomingHL7v2Message",
     message.id!,
-    updated
+    updated,
   );
 }
 
@@ -123,32 +105,21 @@ export async function processNextMessage(): Promise<boolean> {
     return false;
   }
 
-  let bundle: Bundle | undefined;
-
   try {
-    // Convert HL7v2 to FHIR
-    bundle = convertMessage(message);
-
-    // Submit to Aidbox as transaction
+    const { bundle, messageUpdate } = await convertMessage(message);
     await submitBundle(bundle);
-
-    // Extract patient ID for linking
-    const patientId = extractPatientId(bundle);
-
-    // Update status to processed
-    await updateMessageStatus(message, "processed", { patientId, bundle });
-
+    await applyMessageUpdate(message, messageUpdate, bundle);
     return true;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    // Update status to error (best effort - don't fail if update fails)
     try {
-      await updateMessageStatus(message, "error", { error: errorMessage, bundle });
+      await applyMessageUpdate(message, {
+        status: "error",
+        error: errorMessage,
+      });
     } catch (updateError) {
       console.error("Failed to update message status:", updateError);
     }
-
-    // Re-throw error to be handled by caller
     throw error;
   }
 }
@@ -161,12 +132,14 @@ export async function processNextMessage(): Promise<boolean> {
  * Create IncomingHL7v2Message processor service
  * Returns object with start(), stop(), isRunning() methods
  */
-export function createIncomingHL7v2MessageProcessorService(options: {
-  pollIntervalMs?: number;
-  onError?: (error: Error, message?: IncomingHL7v2Message) => void;
-  onProcessed?: (message: IncomingHL7v2Message, patientId?: string) => void;
-  onIdle?: () => void;
-} = {}) {
+export function createIncomingHL7v2MessageProcessorService(
+  options: {
+    pollIntervalMs?: number;
+    onError?: (error: Error, message?: IncomingHL7v2Message) => void;
+    onProcessed?: (message: IncomingHL7v2Message) => void;
+    onIdle?: () => void;
+  } = {},
+) {
   const pollIntervalMs = options.pollIntervalMs ?? POLL_INTERVAL_MS;
   let running = false;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -175,42 +148,38 @@ export function createIncomingHL7v2MessageProcessorService(options: {
     if (!running) return;
 
     let currentMessage: IncomingHL7v2Message | null = null;
-    let bundle: Bundle | undefined;
 
     try {
       currentMessage = await pollReceivedMessage();
 
       if (!currentMessage) {
-        // No message found, wait for poll interval
         options.onIdle?.();
         timeoutId = setTimeout(poll, pollIntervalMs);
         return;
       }
 
-      // Process the message
-      bundle = convertMessage(currentMessage);
+      const { bundle, messageUpdate } = await convertMessage(currentMessage);
       await submitBundle(bundle);
-      const patientId = extractPatientId(bundle);
-      await updateMessageStatus(currentMessage, "processed", { patientId, bundle });
+      await applyMessageUpdate(currentMessage, messageUpdate, bundle);
 
-      options.onProcessed?.(currentMessage, patientId);
-
-      // Message processed successfully, poll immediately for next
+      options.onProcessed?.(currentMessage);
       setImmediate(poll);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       options.onError?.(error as Error, currentMessage ?? undefined);
 
-      // Update status to error if we have the message
       if (currentMessage) {
         try {
-          await updateMessageStatus(currentMessage, "error", { error: errorMessage, bundle });
+          await applyMessageUpdate(currentMessage, {
+            status: "error",
+            error: errorMessage,
+          });
         } catch (updateError) {
           console.error("Failed to update message status:", updateError);
         }
       }
 
-      // On error, continue polling after interval
       timeoutId = setTimeout(poll, pollIntervalMs);
     }
   }
@@ -242,18 +211,21 @@ export function createIncomingHL7v2MessageProcessorService(options: {
 
 if (import.meta.main) {
   console.log("Starting HL7v2 Message Processor Service...");
-  console.log("Polling for IncomingHL7v2Message with status=received every minute.");
+  console.log(
+    "Polling for IncomingHL7v2Message with status=received every minute.",
+  );
 
   const service = createIncomingHL7v2MessageProcessorService({
     onError: (error, message) => {
       console.error(
         `Error processing message ${message?.id || "unknown"}:`,
-        error.message
+        error.message,
       );
     },
-    onProcessed: (message, patientId) => {
+    onProcessed: (message) => {
+      const patientRef = message.patient?.reference || "unknown";
       console.log(
-        `✓ Processed ${message.type} message ${message.id} → Patient ${patientId || "unknown"}`
+        `✓ Processed ${message.type} message ${message.id} → ${patientRef}`,
       );
     },
     onIdle: () => {

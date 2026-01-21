@@ -10,6 +10,7 @@ import {
   VT,
   FS,
   CR,
+  type StoreMessageFn,
 } from "../../src/mllp/mllp-server";
 
 // Sample HL7v2 messages for testing
@@ -202,23 +203,18 @@ describe("wrapWithMLLP", () => {
 describe("MLLP Server Functional Tests", () => {
   let server: net.Server;
   let port: number;
-  let originalFetch: typeof fetch;
+  let mockStoreMessage: ReturnType<typeof mock<StoreMessageFn>>;
+  let storedMessages: string[];
 
   beforeEach(async () => {
-    // Mock fetch to prevent actual Aidbox calls
-    originalFetch = globalThis.fetch;
-    globalThis.fetch = mock(() =>
-      Promise.resolve(
-        new Response(
-          JSON.stringify({ resourceType: "IncomingHL7v2Message", id: "test-1" }),
-          { headers: { "Content-Type": "application/json" } }
-        )
-      )
-    ) as unknown as typeof fetch;
+    storedMessages = [];
+    mockStoreMessage = mock(async (message: string) => {
+      storedMessages.push(message);
+    });
 
-    // Use random available port
+    // Use random available port with injected store function
     port = 0;
-    server = createMLLPServer(port);
+    server = createMLLPServer(port, { storeMessageFn: mockStoreMessage });
 
     await new Promise<void>((resolve) => {
       server.listen(0, () => {
@@ -230,151 +226,161 @@ describe("MLLP Server Functional Tests", () => {
   });
 
   afterEach(async () => {
-    globalThis.fetch = originalFetch;
-
-    await new Promise<void>((resolve) => {
-      server.close(() => resolve());
-    });
+    // Force close server with timeout to prevent hanging
+    await Promise.race([
+      new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      }),
+      new Promise<void>((resolve) => setTimeout(resolve, 1000)),
+    ]);
   });
 
   test("accepts connection and receives message", async () => {
     const client = net.createConnection({ port });
+    try {
+      await new Promise<void>((resolve) => client.on("connect", resolve));
 
-    await new Promise<void>((resolve) => client.on("connect", resolve));
+      // Send framed message
+      client.write(wrapWithMLLP(sampleADT));
 
-    // Send framed message
-    client.write(wrapWithMLLP(sampleADT));
+      // Wait for ACK
+      const response = await new Promise<Buffer>((resolve) => {
+        client.once("data", resolve);
+      });
 
-    // Wait for ACK
-    const response = await new Promise<Buffer>((resolve) => {
-      client.once("data", resolve);
-    });
+      // Parse ACK
+      const ackStart = response.indexOf(VT);
+      const ackEnd = response.indexOf(FS);
+      const ack = response.subarray(ackStart + 1, ackEnd).toString();
 
-    // Parse ACK
-    const ackStart = response.indexOf(VT);
-    const ackEnd = response.indexOf(FS);
-    const ack = response.subarray(ackStart + 1, ackEnd).toString();
-
-    expect(ack).toContain("MSH|");
-    expect(ack).toContain("MSA|AA|MSG001");
-
-    client.end();
+      expect(ack).toContain("MSH|");
+      expect(ack).toContain("MSA|AA|MSG001");
+    } finally {
+      client.destroy();
+    }
   });
 
   test("handles multiple messages on same connection", async () => {
     const client = net.createConnection({ port });
+    try {
+      await new Promise<void>((resolve) => client.on("connect", resolve));
 
-    await new Promise<void>((resolve) => client.on("connect", resolve));
+      const acks: string[] = [];
 
-    const acks: string[] = [];
+      client.on("data", (data) => {
+        const ackStart = data.indexOf(VT);
+        const ackEnd = data.indexOf(FS);
+        if (ackStart !== -1 && ackEnd !== -1) {
+          acks.push(data.subarray(ackStart + 1, ackEnd).toString());
+        }
+      });
 
-    client.on("data", (data) => {
-      const ackStart = data.indexOf(VT);
-      const ackEnd = data.indexOf(FS);
-      if (ackStart !== -1 && ackEnd !== -1) {
-        acks.push(data.subarray(ackStart + 1, ackEnd).toString());
-      }
-    });
+      // Send first message
+      client.write(wrapWithMLLP(sampleADT));
+      await new Promise((r) => setTimeout(r, 50));
 
-    // Send first message
-    client.write(wrapWithMLLP(sampleADT));
-    await new Promise((r) => setTimeout(r, 50));
+      // Send second message
+      client.write(wrapWithMLLP(sampleBAR));
+      await new Promise((r) => setTimeout(r, 50));
 
-    // Send second message
-    client.write(wrapWithMLLP(sampleBAR));
-    await new Promise((r) => setTimeout(r, 50));
-
-    expect(acks.length).toBe(2);
-    expect(acks[0]).toContain("MSA|AA|MSG001");
-    expect(acks[1]).toContain("MSA|AA|MSG002");
-
-    client.end();
+      expect(acks.length).toBe(2);
+      expect(acks[0]).toContain("MSA|AA|MSG001");
+      expect(acks[1]).toContain("MSA|AA|MSG002");
+    } finally {
+      client.destroy();
+    }
   });
 
   test("handles fragmented TCP delivery", async () => {
     const client = net.createConnection({ port });
+    try {
+      await new Promise<void>((resolve) => client.on("connect", resolve));
 
-    await new Promise<void>((resolve) => client.on("connect", resolve));
+      const framedMessage = wrapWithMLLP(sampleADT);
 
-    const framedMessage = wrapWithMLLP(sampleADT);
+      // Split message into 3 parts
+      const part1 = framedMessage.subarray(0, 10);
+      const part2 = framedMessage.subarray(10, 50);
+      const part3 = framedMessage.subarray(50);
 
-    // Split message into 3 parts
-    const part1 = framedMessage.subarray(0, 10);
-    const part2 = framedMessage.subarray(10, 50);
-    const part3 = framedMessage.subarray(50);
+      client.write(part1);
+      await new Promise((r) => setTimeout(r, 10));
+      client.write(part2);
+      await new Promise((r) => setTimeout(r, 10));
+      client.write(part3);
 
-    client.write(part1);
-    await new Promise((r) => setTimeout(r, 10));
-    client.write(part2);
-    await new Promise((r) => setTimeout(r, 10));
-    client.write(part3);
+      // Wait for ACK
+      const response = await new Promise<Buffer>((resolve) => {
+        client.once("data", resolve);
+      });
 
-    // Wait for ACK
-    const response = await new Promise<Buffer>((resolve) => {
-      client.once("data", resolve);
-    });
+      const ackStart = response.indexOf(VT);
+      const ackEnd = response.indexOf(FS);
+      const ack = response.subarray(ackStart + 1, ackEnd).toString();
 
-    const ackStart = response.indexOf(VT);
-    const ackEnd = response.indexOf(FS);
-    const ack = response.subarray(ackStart + 1, ackEnd).toString();
-
-    expect(ack).toContain("MSA|AA|MSG001");
-
-    client.end();
+      expect(ack).toContain("MSA|AA|MSG001");
+    } finally {
+      client.destroy();
+    }
   });
 
   test("stores message in Aidbox", async () => {
-    const mockFetch = globalThis.fetch as unknown as ReturnType<typeof mock>;
-
     const client = net.createConnection({ port });
-    await new Promise<void>((resolve) => client.on("connect", resolve));
+    try {
+      await new Promise<void>((resolve) => client.on("connect", resolve));
 
-    client.write(wrapWithMLLP(sampleADT));
+      client.write(wrapWithMLLP(sampleADT));
 
-    // Wait for processing
-    await new Promise((r) => setTimeout(r, 50));
+      // Wait for ACK to ensure processing is complete
+      await new Promise<Buffer>((resolve) => {
+        client.once("data", resolve);
+      });
 
-    expect(mockFetch).toHaveBeenCalled();
-
-    const calls = mockFetch.mock.calls as [string, RequestInit][];
-    const postCall = calls.find(([url, opts]) =>
-      url.includes("/fhir/IncomingHL7v2Message") && opts?.method === "POST"
-    );
-
-    expect(postCall).toBeDefined();
-
-    const body = JSON.parse(postCall![1].body as string);
-    expect(body.resourceType).toBe("IncomingHL7v2Message");
-    expect(body.type).toBe("ADT_A01");
-    expect(body.message).toBe(sampleADT);
-    expect(body.status).toBe("received");
-
-    client.end();
+      expect(mockStoreMessage).toHaveBeenCalled();
+      expect(storedMessages).toHaveLength(1);
+      expect(storedMessages[0]).toBe(sampleADT);
+    } finally {
+      client.destroy();
+    }
   });
 
   test("returns AE on Aidbox error", async () => {
-    // Make fetch fail
-    globalThis.fetch = mock(() =>
-      Promise.reject(new Error("Connection refused"))
-    ) as unknown as typeof fetch;
-
-    const client = net.createConnection({ port });
-    await new Promise<void>((resolve) => client.on("connect", resolve));
-
-    client.write(wrapWithMLLP(sampleADT));
-
-    const response = await new Promise<Buffer>((resolve) => {
-      client.once("data", resolve);
+    // Create a new server with a failing store function
+    const failingServer = createMLLPServer(0, {
+      storeMessageFn: async () => {
+        throw new Error("Connection refused");
+      },
     });
 
-    const ackStart = response.indexOf(VT);
-    const ackEnd = response.indexOf(FS);
-    const ack = response.subarray(ackStart + 1, ackEnd).toString();
+    const failingPort = await new Promise<number>((resolve) => {
+      failingServer.listen(0, () => {
+        const addr = failingServer.address() as net.AddressInfo;
+        resolve(addr.port);
+      });
+    });
 
-    expect(ack).toContain("MSA|AE|MSG001");
-    expect(ack).toContain("Connection refused");
+    const client = net.createConnection({ port: failingPort });
+    try {
+      await new Promise<void>((resolve) => client.on("connect", resolve));
 
-    client.end();
+      client.write(wrapWithMLLP(sampleADT));
+
+      const response = await new Promise<Buffer>((resolve) => {
+        client.once("data", resolve);
+      });
+
+      const ackStart = response.indexOf(VT);
+      const ackEnd = response.indexOf(FS);
+      const ack = response.subarray(ackStart + 1, ackEnd).toString();
+
+      expect(ack).toContain("MSA|AE|MSG001");
+      expect(ack).toContain("Connection refused");
+    } finally {
+      client.destroy();
+      await new Promise<void>((resolve) => {
+        failingServer.close(() => resolve());
+      });
+    }
   });
 
   test("handles multiple concurrent clients", async () => {
@@ -382,36 +388,38 @@ describe("MLLP Server Functional Tests", () => {
     const clients: net.Socket[] = [];
     const results: string[] = [];
 
-    // Create multiple clients
-    for (let i = 0; i < numClients; i++) {
-      const client = net.createConnection({ port });
-      await new Promise<void>((resolve) => client.on("connect", resolve));
-      clients.push(client);
-    }
+    try {
+      // Create multiple clients
+      for (let i = 0; i < numClients; i++) {
+        const client = net.createConnection({ port });
+        await new Promise<void>((resolve) => client.on("connect", resolve));
+        clients.push(client);
+      }
 
-    // Set up data handlers
-    clients.forEach((client, i) => {
-      client.on("data", (data) => {
-        const ackStart = data.indexOf(VT);
-        const ackEnd = data.indexOf(FS);
-        if (ackStart !== -1 && ackEnd !== -1) {
-          results.push(`client-${i}`);
-        }
+      // Set up data handlers
+      clients.forEach((client, i) => {
+        client.on("data", (data) => {
+          const ackStart = data.indexOf(VT);
+          const ackEnd = data.indexOf(FS);
+          if (ackStart !== -1 && ackEnd !== -1) {
+            results.push(`client-${i}`);
+          }
+        });
       });
-    });
 
-    // Send messages from all clients
-    clients.forEach((client, i) => {
-      const msg = `MSH|^~\\&|APP${i}|FAC|RCV|FAC|20231215||ADT^A01|MSG${i}|P|2.4`;
-      client.write(wrapWithMLLP(msg));
-    });
+      // Send messages from all clients
+      clients.forEach((client, i) => {
+        const msg = `MSH|^~\\&|APP${i}|FAC|RCV|FAC|20231215||ADT^A01|MSG${i}|P|2.4`;
+        client.write(wrapWithMLLP(msg));
+      });
 
-    // Wait for all responses
-    await new Promise((r) => setTimeout(r, 100));
+      // Wait for all responses
+      await new Promise((r) => setTimeout(r, 100));
 
-    expect(results.length).toBe(numClients);
-
-    // Clean up
-    clients.forEach((c) => c.end());
+      expect(results.length).toBe(numClients);
+    } finally {
+      // Clean up
+      clients.forEach((c) => c.destroy());
+    }
   });
 });

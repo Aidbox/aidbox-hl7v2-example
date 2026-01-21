@@ -56,4 +56,14 @@ describe("convertCEToCodeableConcept", () => {
       coding: [{ code: "M" }],
     });
   });
+
+  test("preserves original system values without normalization", () => {
+    const result = convertCEToCodeableConcept({
+      $1_code: "2160-0",
+      $2_text: "Creatinine",
+      $3_system: "LN",
+    });
+
+    expect(result?.coding?.[0]?.system).toBe("LN");
+  });
 });

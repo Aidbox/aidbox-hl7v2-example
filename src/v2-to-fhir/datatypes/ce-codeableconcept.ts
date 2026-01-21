@@ -1,7 +1,9 @@
 import type { CE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
 
-export function convertCEToCodeableConcept(ce: CE | undefined): CodeableConcept | undefined {
+export function convertCEToCodeableConcept(
+  ce: CE | undefined,
+): CodeableConcept | undefined {
   if (!ce) return undefined;
 
   const codings: Coding[] = [];

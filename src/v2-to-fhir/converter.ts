@@ -2,15 +2,26 @@
  * HL7v2 to FHIR Converter Router
  *
  * Routes HL7v2 messages to appropriate converters based on message type.
- * Supports: ADT_A01, ADT_A08
+ * Supports: ADT_A01, ADT_A08, ORU_R01
  */
 
 import { parseMessage } from "@atomic-ehr/hl7v2";
 import type { HL7v2Message, HL7v2Segment } from "../hl7v2/generated/types";
-import { fromMSH, type MSH } from "../hl7v2/generated/fields";
+import { fromMSH } from "../hl7v2/generated/fields";
 import type { Bundle } from "../fhir/hl7-fhir-r4-core";
+import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { convertADT_A01 } from "./messages/adt-a01";
 import { convertADT_A08 } from "./messages/adt-a08";
+import { convertORU_R01 } from "./messages/oru-r01";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface ConversionResult {
+  bundle: Bundle;
+  messageUpdate: Partial<IncomingHL7v2Message>;
+}
 
 // ============================================================================
 // Helper Functions
@@ -18,18 +29,16 @@ import { convertADT_A08 } from "./messages/adt-a08";
 
 function findSegment(
   message: HL7v2Message,
-  name: string
+  name: string,
 ): HL7v2Segment | undefined {
   return message.find((s) => s.segment === name);
 }
 
 /**
- * Extract message type from MSH-9 segment
+ * Extract message type from parsed HL7v2 message
  * Returns message type in format: ADT_A01, ADT_A08, etc.
  */
-function extractMessageType(message: string): string {
-  const parsed = parseMessage(message);
-
+function extractMessageType(parsed: HL7v2Message): string {
   const mshSegment = findSegment(parsed, "MSH");
   if (!mshSegment) {
     throw new Error("MSH segment not found");
@@ -56,25 +65,32 @@ function extractMessageType(message: string): string {
 // ============================================================================
 
 /**
- * Convert HL7v2 message to FHIR Bundle
+ * Convert HL7v2 message to FHIR Bundle with message update
  *
- * Reads message type from MSH-9 and routes to appropriate converter:
+ * Parses the message, reads message type from MSH-9, and routes to appropriate converter:
  * - ADT_A01 -> convertADT_A01
  * - ADT_A08 -> convertADT_A08
+ * - ORU_R01 -> convertORU_R01
  *
  * @param message - Raw HL7v2 message string
- * @returns FHIR R4 Transaction Bundle
+ * @returns ConversionResult with FHIR Bundle and message update fields
  * @throws Error if message type is unsupported
  */
-export function convertToFHIR(message: string): Bundle {
-  const messageType = extractMessageType(message);
+export async function convertToFHIR(
+  message: string,
+): Promise<ConversionResult> {
+  const parsed = parseMessage(message);
+  const messageType = extractMessageType(parsed);
 
   switch (messageType) {
     case "ADT_A01":
-      return convertADT_A01(message);
+      return convertADT_A01(parsed);
 
     case "ADT_A08":
-      return convertADT_A08(message);
+      return convertADT_A08(parsed);
+
+    case "ORU_R01":
+      return await convertORU_R01(parsed);
 
     default:
       throw new Error(`Unsupported message type: ${messageType}`);

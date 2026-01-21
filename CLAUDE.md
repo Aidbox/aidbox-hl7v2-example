@@ -10,6 +10,10 @@ alwaysApply: false
 
 This project integrates with Aidbox FHIR server for HL7v2 message processing. It provides a web UI to view Invoices, Outgoing BAR messages, and Incoming HL7v2 messages.
 
+See `docs/technical/architecture.md` for system diagrams, pull-based polling architecture, data flow sequences, and resource status transitions - useful when understanding how components interact or debugging message flow issues.
+
+**Note:** The `docs/` directory contains documentation for human readers. Some content overlaps with this file intentionally - CLAUDE.md is optimized for AI agents, while user-guide is written for humans who prefer a different structure and presentation.
+
 ## Quick Start
 
 ```sh
@@ -41,12 +45,47 @@ bun scripts/load-test-data.ts
 
 - `src/index.ts` - Bun HTTP server with routes for Invoices, Outgoing/Incoming Messages, MLLP Client
 - `src/aidbox.ts` - Reusable Aidbox client with `aidboxFetch`, `getResources`, `putResource`
-- `src/migrate.ts` - Custom resource StructureDefinitions (OutgoingBarMessage, IncomingHL7v2Message)
+- `src/migrate.ts` - Script for loading custom resource StructureDefinitions (OutgoingBarMessage, IncomingHL7v2Message) from init-bundle.json
 - `src/fhir/` - Code-generated FHIR R4 type definitions
 - `src/bar/` - BAR message generation from FHIR resources
 - `src/hl7v2/` - HL7v2 message representation, builders, and formatter
+- `src/v2-to-fhir/` - Collection of HL7v2 to FHIR converters
+- `src/code-mapping/` - Code mapping services (ConceptMap, terminology API, mapping Task)
 - `src/mllp/` - MLLP (Minimal Lower Layer Protocol) TCP server for receiving HL7v2 messages
+- `src/ui/` - Web UI page handlers and HTML rendering
+- `docs/` - User guide, technical docs, and specifications
 - `docker-compose.yaml` - Aidbox and PostgreSQL setup
+
+## Routes
+
+**UI Pages:**
+| Route | Description |
+|-------|-------------|
+| `/invoices` | List invoices with status filter |
+| `/outgoing-messages` | List outgoing BAR messages |
+| `/incoming-messages` | List incoming HL7v2 messages |
+| `/mapping/tasks` | Queue of pending code mapping tasks |
+| `/mapping/table` | ConceptMap entries management |
+| `/mllp-client` | MLLP test client |
+
+**API:**
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/terminology/loinc?q=` | GET | Search LOINC codes |
+| `/api/terminology/loinc/:code` | GET | Validate LOINC code |
+| `/api/mapping/tasks/:id/resolve` | POST | Resolve mapping task with LOINC code |
+| `/api/concept-maps/:id/entries` | POST | Add ConceptMap entry |
+| `/api/concept-maps/:id/entries/:code` | POST | Update ConceptMap entry |
+| `/api/concept-maps/:id/entries/:code/delete` | POST | Delete ConceptMap entry |
+
+**Actions:**
+| Route | Description |
+|-------|-------------|
+| `/build-bar` | Build BAR messages from pending invoices |
+| `/send-messages` | Send pending outgoing messages |
+| `/reprocess-errors` | Retry failed invoices (max 3 attempts) |
+| `/process-incoming-messages` | Process received HL7v2 messages |
+| `/mark-for-retry/:id` | Reset message status to `received` |
 
 ## Code Generation
 
@@ -103,6 +142,8 @@ const message = new BAR_P01Builder()
 console.log(formatMessage(message));
 ```
 
+See `docs/technical/modules/hl7v2-builders.md` for segment builder fluent API, field naming conventions, and datatype interfaces (XPN, CX, HD, etc.) - useful when building or parsing HL7v2 messages.
+
 ## BAR Message Generator (`src/bar/`)
 
 Generates HL7v2 BAR messages from FHIR resources.
@@ -130,6 +171,8 @@ const barMessage = generateBarMessage({
 
 console.log(formatMessage(barMessage));
 ```
+
+See `docs/technical/modules/fhir-to-hl7v2.md` for FHIR→HL7v2 field mappings per segment (PID, PV1, IN1, DG1, PR1, GT1) and trigger event semantics (P01/P05/P06) - useful when debugging or extending BAR generation.
 
 ## Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
 
@@ -199,6 +242,41 @@ The web UI includes an MLLP Test Client at `/mllp-client` for sending test messa
 - View ACK responses
 - Messages are stored in Aidbox and visible in Incoming Messages
 
+## V2-to-FHIR Converter (`src/v2-to-fhir/`)
+
+Converts inbound HL7v2 messages to FHIR resources. Supports ADT_A01, ADT_A08, and ORU_R01.
+
+- `converter.ts` - Core conversion logic, message type routing
+- `processor-service.ts` - Background service polling `IncomingHL7v2Message` with `status=received`
+- `messages/` - Message-level converters
+- `segments/` - Segment-to-FHIR converters
+- `datatypes/` - HL7v2 datatype converters
+- `code-mapping/` - LOINC code resolution for OBX segments
+
+```sh
+# Run processor service
+bun src/v2-to-fhir/processor-service.ts
+```
+
+See `docs/v2-to-fhir-spec/spec.md` for supported segments/datatypes.
+
+### ORU_R01 Lab Results Processing
+
+Converts lab results to DiagnosticReport + Observation + Specimen resources.
+Blocks message conversion with status `mapping_error` if failed to resolve OBX code to LOINC.
+
+See `docs/technical/modules/v2-to-fhir-oru.md` for ORU_R01 processing pipeline details.
+
+## Code Mapping (`src/code-mapping/`)
+
+Handles local-to-LOINC code mappings for laboratory codes that arrive without standard LOINC codes.
+
+- `concept-map/` - ConceptMap CRUD and LOINC lookup (one ConceptMap per sender)
+- `mapping-task-service.ts` - Task lifecycle: create for unmapped codes, resolve with LOINC, update affected messages
+- `terminology-api.ts` - LOINC search and validation via external terminology service
+
+See `docs/technical/modules/code-mapping-infrastructure.md` for data model and `docs/technical/modules/code-mapping-ui.md` for UI workflows.
+
 ## Custom FHIR Resources
 
 ### OutgoingBarMessage
@@ -208,10 +286,15 @@ The web UI includes an MLLP Test Client at `/mllp-client` for sending test messa
 - `hl7v2` (string) - optional
 
 ### IncomingHL7v2Message
-- `type` (string) - required
-- `date` (dateTime) - optional
-- `patient` (Reference to Patient) - optional
-- `message` (string) - required
+- `message` (string) - raw HL7v2 message content, required
+- `type` (string) - message type from MSH-9 (e.g., "ADT^A01"), required
+- `status` (string) - `received` | `processed` | `error` | `mapping_error`
+- `date` (dateTime) - message timestamp
+- `sendingApplication` (string) - MSH-3
+- `sendingFacility` (string) - MSH-4
+- `patient` (Reference) - linked Patient after processing
+- `error` (string) - error message if status is `error`
+- `unmappedCodes` (array) - unresolved OBX codes when status is `mapping_error`
 
 ## Aidbox Credentials (Development)
 
@@ -252,6 +335,8 @@ test("hello world", () => {
   expect(1).toBe(1);
 });
 ```
+
+Use `bun run typecheck` to ensure there are no type errors.
 
 ## Frontend
 
@@ -327,3 +412,109 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+
+# Best Code Practices
+
+## Readable code
+Prefer readable variable names over comments:
+```typescript
+/* BAD */
+
+// Check if this group maps to LOINC
+if (group.target !== "http://loinc.org") continue;
+
+// If a source system is specified in the group, check if it matches
+if (group.source !== localSystem) {
+  // Also try with normalized system
+  if (normalizeSystem(localSystem) !== group.source) {
+    continue;
+  }
+}
+
+
+/* GOOD */
+
+const mapsToLoinc = mappingSystem.target === "http://loinc.org";
+const matchingSystem = mappingSystem.source === localSystem || mappingSystem.source === normalizeSystem(localSystem);
+
+if (!mapsToLoinc || !matchingSystem)
+  continue;
+```
+
+Prefer functions over big commented blocks:
+```typescript
+/* BAD */
+
+// =========================================================================
+// OBX Parsing
+// =========================================================================
+
+// ... a lot of code
+
+// =========================================================================
+// SPM Parsing
+// =========================================================================
+
+// ... a lot of code
+
+
+/* GOOD */
+
+function parseOBX() {
+  // ... a lot of code
+}
+
+function parseSPM() {
+  // ... a lot of code
+}
+
+const obx = parseOBX();
+const spm = parseSPM();
+```
+
+## Separation of concerns
+
+Ideally, each module should own one primary responsibility. Before adding new logic, check if a
+module already owns that responsibility; if yes, extend or reuse it instead of duplicating code.
+
+If new logic overlaps with another module’s responsibility:
+- Consider moving shared logic into a single module and call it from both places.
+- Prefer refactoring when the overlap is more than small glue code.
+
+If ownership is unclear or refactoring is risky:
+- Keep the duplication for now.
+- Add a short comment explaining why and where the related code lives, so it can be consolidated later.
+
+### Minimal public interface
+
+Modules should export only what consumers actually need.
+Keep implementation details private, don't break encapsulation and keep coupling low.
+
+```typescript
+// GOOD: Export only the interface consumers need
+export async function processInvoice(invoiceId: string): Promise<Result>
+
+// BAD: Export implementation details that force consumers to orchestrate
+export function fetchInvoice(id: string)        // Internal step - keep private
+export function saveInvoice(invoice: any)       // Internal step - keep private
+export interface InvoiceInternal { ... }        // Internal type - keep private
+```
+
+This ensures:
+- Consumers depend only on the public contract, not internal structure
+- Internal implementation can change without breaking consumers
+- Each module owns its logic; consumers don't orchestrate it
+
+## Avoid cyclic dependencies
+
+Never create circular imports between modules. If module A imports from module B, then module B must not import from module A (directly or indirectly).
+
+To avoid cycles:
+- Place shared utilities, types, and constants in a dedicated `shared/` module that other modules can import from
+- Keep dependencies flowing in one direction (e.g., services → utilities, not utilities → services)
+- If two modules need each other's functionality, extract the shared part into a third module
+
+## Other
+- Don't add error handling, fallbacks, or validation for scenarios that can't happen.
+- Always use static imports at the top of the file. Never use dynamic `await import()` inside functions or route handlers.
+- Remove unused code immediately; do not keep dead code or commented-out code

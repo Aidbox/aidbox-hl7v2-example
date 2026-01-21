@@ -1,5 +1,6 @@
+// @ts-nocheck
 // AUTO-GENERATED - HL7v2 Table Value Types
-// Generated for: BAR_P01
+// Generated for: BAR_P01, ORU_R01
 
 /** Table 0001 - AdministrativeSex */
 export const AdministrativeSex = {
@@ -580,6 +581,30 @@ export const AmbulatoryStatus = {
 } as const;
 export type AmbulatoryStatus = typeof AmbulatoryStatus[keyof typeof AmbulatoryStatus];
 
+/** Table 0017 - TransactionType */
+export const TransactionType = {
+  Charge: "CG",
+  Credit: "CD",
+  Payment: "PY",
+  Adjustment: "AJ",
+  CoPayment: "CO",
+} as const;
+export type TransactionType = typeof TransactionType[keyof typeof TransactionType];
+
+/** Table 0038 - OrderStatus */
+export const OrderStatus = {
+  SomeButNotAllResultsAvailable: "A",
+  OrderWasCanceled: "CA",
+  OrderIsCompleted: "CM",
+  OrderWasDiscontinued: "DC",
+  ErrorOrderNotFound: "ER",
+  OrderIsOnHold: "HD",
+  InProcessUnspecified: "IP",
+  OrderHasBeenReplaced: "RP",
+  InProcessScheduled: "SC",
+} as const;
+export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
+
 /** Table 0052 - DiagnosisType */
 export const DiagnosisType = {
   Admitting: "A",
@@ -635,6 +660,19 @@ export const Relationship = {
 } as const;
 export type Relationship = typeof Relationship[keyof typeof Relationship];
 
+/** Table 0065 - SpecimenAction */
+export const SpecimenAction = {
+  CancelOrderForBatteryOrTestsNamed: "C",
+  AddOrderedTestsToTheExistingSpecimen: "A",
+  GeneratedOrderReflexOrder: "G",
+  LabToObtainSpecimenFromPatient: "L",
+  SpecimenObtainedByServiceOtherThanLab: "O",
+  PendingSpecimenOrderSentPriorToDelivery: "P",
+  RevisedOrder: "R",
+  ScheduleTheTestsSpecifiedBelow: "S",
+} as const;
+export type SpecimenAction = typeof SpecimenAction[keyof typeof SpecimenAction];
+
 /** Table 0066 - EmploymentStatus */
 export const EmploymentStatus = {
   FullTimeEmployed: "1",
@@ -664,6 +702,56 @@ export const HospitalService = {
   CardiacService: "CAR",
 } as const;
 export type HospitalService = typeof HospitalService[keyof typeof HospitalService];
+
+/** Table 0074 - DiagnosticServiceSectionId */
+export const DiagnosticServiceSectionId = {
+  Audiology: "AU",
+  BloodGases: "BG",
+  BloodBank: "BLB",
+  Cytogenetics: "CG",
+  CardiacUltrasound: "CUS",
+  CardiacCatheterization: "CTH",
+  CatScan: "CT",
+  Chemistry: "CH",
+  Cytopathology: "CP",
+  ElectrocardiacEGEkgEecHolter: "EC",
+  ElectroneuroEegEmgEpPsg: "EN",
+  Genetics: "GE",
+  Hematology: "HM",
+  DiagnosticImaging: "IMG",
+  BedsideIcuMonitoring: "ICU",
+  Immunology: "IMM",
+  Laboratory: "LAB",
+  Microbiology: "MB",
+  Mycobacteriology: "MCB",
+  Mycology: "MYC",
+  NuclearMedicineScan: "NMS",
+  NuclearMagneticResonance: "NMR",
+  NursingServiceMeasures: "NRS",
+  ObUltrasound: "OUS",
+  OccupationalTherapy: "OT",
+  Other: "OTH",
+  OutsideLab: "OSL",
+  Parasitology: "PAR",
+  Pharmacy: "PHR",
+  PathologyGrossHistopathNotSurgical: "PAT",
+  PhysicalTherapy: "PT",
+  PhysicianHxDxAdmissionNoteEtc: "PHY",
+  PulmonaryFunction: "PF",
+  Radiology: "RAD",
+  Radiograph: "RX",
+  RadiologyUltrasound: "RUS",
+  RespiratoryCareTherapy: "RC",
+  RadiationTherapy: "RT",
+  Serology: "SR",
+  SurgicalPathology: "SP",
+  Toxicology: "TX",
+  VascularUltrasound: "VUS",
+  Virology: "VR",
+  Urinalysis: "URN",
+  Cineradiograph: "XRC",
+} as const;
+export type DiagnosticServiceSectionId = typeof DiagnosticServiceSectionId[keyof typeof DiagnosticServiceSectionId];
 
 /** Table 0080 - NatureOfAbnormalTesting */
 export const NatureOfAbnormalTesting = {
@@ -718,6 +806,14 @@ export const TypeOfAgreement = {
 } as const;
 export type TypeOfAgreement = typeof TypeOfAgreement[keyof typeof TypeOfAgreement];
 
+/** Table 0105 - SourceOfComment */
+export const SourceOfComment = {
+  AncillaryFillerDepartmentIsSourceOfComment: "L",
+  OrdererPlacerIsSourceOfComment: "P",
+  OtherSystemIsSourceOfComment: "O",
+} as const;
+export type SourceOfComment = typeof SourceOfComment[keyof typeof SourceOfComment];
+
 /** Table 0116 - BedStatus */
 export const BedStatus = {
   Closed: "C",
@@ -728,6 +824,106 @@ export const BedStatus = {
   Isolated: "I",
 } as const;
 export type BedStatus = typeof BedStatus[keyof typeof BedStatus];
+
+/** Table 0119 - OrderControlCodes */
+export const OrderControlCodes = {
+  OrderServiceRefillRequestApproval: "AF", // AF is a response to RF where the placer authorizing a refill...
+  CancelOrderServiceRequest: "CA",
+  ChildOrderService: "CH",
+  CombinedResult: "CN",
+  CancelProcessStep: "CP",
+  CanceledAsRequested: "CR",
+  DiscontinueOrderServiceRequest: "DC",
+  DataErrors: "DE",
+  OrderServiceRefillRequestDenied: "DF",
+  DiscontinuedAsRequested: "DR",
+  OrderServiceRefilledUnsolicited: "FU",
+  HoldOrderRequest: "HD",
+  OnHoldAsRequested: "HR",
+  LinkOrderServiceToPatientCareProblemOrGoal: "LI",
+  MiscellaneousChargeNotAssociatedWithAnOrder: "MC",
+  NumberAssigned: "NA",
+  NotificationReceived: "NR", // Notifies the Filler that the Placer received a cancellation,...
+  NewOrderService: "NW",
+  OrderServiceCanceled: "OC",
+  OrderServiceDiscontinued: "OD",
+  OrderServiceReleased: "OE",
+  OrderServiceRefilledAsRequested: "OF",
+  OrderServiceHeld: "OH",
+  OrderServiceAcceptedOk: "OK",
+  NotificationOfOrderForOutsideDispense: "OP",
+  ReleasedAsRequested: "OR",
+  ParentOrderService: "PA",
+  PreviousResultsWithNewOrderService: "PR",
+  NotificationOfReplacementOrderForOutsideDispense: "PY",
+  RecommendationAccepted: "RA", // Identifies that this previously recommended replacement orde...
+  RecommendedChange: "RC", // Identifies that this OBR represents a recommended replacemen...
+  RecommendationDeclined: "RD", // Identifies that this previously sent recommended replacement...
+  ObservationsPerformedServiceToFollow: "RE",
+  RefillOrderServiceRequest: "RF",
+  ReleasePreviousHold: "RL",
+  ReplacementOrder: "RO",
+  OrderServiceReplaceRequest: "RP",
+  ReplacedAsRequested: "RQ",
+  RequestReceived: "RR",
+  ReplacedUnsolicited: "RU",
+  StatusChanged: "SC",
+  SendOrderServiceNumber: "SN",
+  SupplementedAsRequested: "SQ", // Supplementation confirmation message indicating that an orde...
+  ResponseToSendOrderServiceStatusRequest: "SR",
+  SendOrderServiceStatusRequest: "SS",
+  SupplementThisOrder: "SU", // Identifies existing orders to be supplemented in Supplementa...
+  UnableToAcceptOrderService: "UA",
+  UnableToCancel: "UC",
+  UnableToDiscontinue: "UD",
+  UnableToRefill: "UF",
+  UnableToPutOnHold: "UH",
+  UnableToReplace: "UM",
+  UnlinkOrderServiceFromPatientCareProblemOrGoal: "UN",
+  UnableToRelease: "UR",
+  UnableToChange: "UX",
+  ChangeOrderServiceRequest: "XO",
+  ChangedAsRequested: "XR",
+  OrderServiceChangedUnsol: "XX",
+} as const;
+export type OrderControlCodes = typeof OrderControlCodes[keyof typeof OrderControlCodes];
+
+/** Table 0121 - ResponseFlag */
+export const ResponseFlag = {
+  ReportExceptionsOnly: "E",
+  SameAsEAlsoReplacementAndParentChild: "R", // Report exceptions, replacement and parent-child
+  SameAsRAlsoOtherAssociatedSegments: "D", // Report exceptions, replacement, parent-child and other assoc...
+  SameAsDPlusConfirmationsExplicitly: "F", // Report exceptions, replacement, parent-child, other associat...
+  OnlyTheMsaSegmentIsReturned: "N",
+} as const;
+export type ResponseFlag = typeof ResponseFlag[keyof typeof ResponseFlag];
+
+/** Table 0123 - ResultStatus */
+export const ResultStatus = {
+  OrderReceivedSpecimenNotYetReceived: "O",
+  NoResultsAvailableSpecimenReceivedProcedureIncomplete: "I",
+  NoResultsAvailableProcedureScheduledButNotDone: "S",
+  SomeButNotAllResultsAvailable: "A",
+  Preliminary: "P", // A verified early result is available, final results not yet ...
+  CorrectedFinal: "C", // A result under an order, that has been finalized has been co...
+  ResultsStoredNotYetVerified: "R",
+  FinalResults: "F", // Final results; results stored and verified.
+  NoResultsAvailableOrderCanceled: "X", // No results available; Order canceled.
+  NoOrderOnRecordForThisTest: "Y", // No order on record for this test.
+  NoRecordOfThisPatient: "Z", // No record of this patient.
+  CorrectedNotFinal: "M", // A result under an order, that has not yet been finalized has...
+  ProcedureCompletedResultsPending: "N", // No result available; requested procedure done.  To indicate ...
+} as const;
+export type ResultStatus = typeof ResultStatus[keyof typeof ResultStatus];
+
+/** Table 0124 - TransportationMode */
+export const TransportationMode = {
+  CartPatientTravelsOnCartOrGurney: "CART",
+  TheExaminingDeviceGoesToPatientSLocation: "PORT",
+  PatientWalksToDiagnosticService: "WALK",
+  Wheelchair: "WHLC",
+} as const;
+export type TransportationMode = typeof TransportationMode[keyof typeof TransportationMode];
 
 /** Table 0127 - AllergenType */
 export const AllergenType = {
@@ -846,6 +1042,32 @@ export const CoordinationOfBenefits = {
   Independent: "IN",
 } as const;
 export type CoordinationOfBenefits = typeof CoordinationOfBenefits[keyof typeof CoordinationOfBenefits];
+
+/** Table 0177 - ConfidentialityCodes */
+export const ConfidentialityCodes = {
+  VeryRestricted: "V",
+  Restricted: "R",
+  UsualControl: "U",
+  Employee: "EMP",
+  UnwedMother: "UWM",
+  VeryImportantPersonOrCelebrity: "VIP",
+  PsychiatricPatient: "PSY",
+  AidsPatient: "AID",
+  HivPatient: "HIV",
+  AlcoholDrugTreatmentPatient: "ETH",
+} as const;
+export type ConfidentialityCodes = typeof ConfidentialityCodes[keyof typeof ConfidentialityCodes];
+
+/** Table 0185 - PreferredMethodOfContact */
+export const PreferredMethodOfContact = {
+  BeeperNumber: "B",
+  CellularPhoneNumber: "C",
+  EMailAddressForBackwardCompatibility: "E",
+  FaxNumber: "F",
+  HomePhoneNumber: "H",
+  OfficePhoneNumber: "O",
+} as const;
+export type PreferredMethodOfContact = typeof PreferredMethodOfContact[keyof typeof PreferredMethodOfContact];
 
 /** Table 0189 - EthnicGroup */
 export const EthnicGroup = {
@@ -1113,6 +1335,22 @@ export const LivingDependency2 = {
 } as const;
 export type LivingDependency2 = typeof LivingDependency2[keyof typeof LivingDependency2];
 
+/** Table 0224 - TransportArranged */
+export const TransportArranged = {
+  Arranged: "A",
+  NotArranged: "N",
+  Unknown: "U",
+} as const;
+export type TransportArranged = typeof TransportArranged[keyof typeof TransportArranged];
+
+/** Table 0225 - EscortRequired */
+export const EscortRequired = {
+  Required: "R",
+  NotRequired: "N",
+  Unknown: "U",
+} as const;
+export type EscortRequired = typeof EscortRequired[keyof typeof EscortRequired];
+
 /** Table 0228 - DiagnosisClassification */
 export const DiagnosisClassification = {
   Consultation: "C",
@@ -1220,6 +1458,48 @@ export const DisabilityInformationRelationship = {
 } as const;
 export type DisabilityInformationRelationship = typeof DisabilityInformationRelationship[keyof typeof DisabilityInformationRelationship];
 
+/** Table 0335 - RepeatPattern */
+export const RepeatPattern = {
+  EveryIntegerSeconds: "Q<integer>S",
+  EveryIntegerMinutes: "Q<integer>M",
+  EveryIntegerHours: "Q<integer>H",
+  EveryIntegerDays: "Q<integer>D",
+  EveryIntegerWeeks: "Q<integer>W",
+  EveryIntegerMonthsLunarCycle: "Q<integer>L",
+  RepeatsOnAParticularDayOfTheWeek: "Q<integer>J<day#>",
+  TwiceADayAtInstitutionSpecifiedTimes: "BID",
+  ThreeTimesADayAtInstitutionSpecifiedTimes: "TID",
+  FourTimesADayAtInstitutionSpecifiedTimes: "QID",
+  XTimesPerDayAtInstitutionSpecifiedTimesWhereXIsANumeral5OrGreater: "xID",
+  InTheMorningAtInstitutionSpecifiedTime: "QAM",
+  DuringEachOfThreeEightHourShiftsAtInstitutionSpecifiedTimes: "QSHIFT",
+  EveryOtherDay: "QOD",
+  EveryDayBeforeTheHourOfSleep: "QHS",
+  InTheEveningAtInstitutionSpecifiedTime: "QPM",
+  ServiceIsProvidedContinuouslyBetweenStartTimeAndStopTime: "C",
+  ForFutureUseWhereSpecIsAnIntervalSpecificationAsDefinedByTheUnixCronSpecification: "U <spec>",
+  GivenAsNeeded: "PRN",
+  WhereXxxIsSomeFrequencyCode: "PRNxxx",
+  OneTimeOnly: "Once",
+  TimingCCumMeal: "Meal Related Timings",
+  AnteBefore: "A",
+  PostAfter: "P",
+  Inter: "I",
+  CibusMatutinusBreakfast: "M",
+  CibusDiurnusLunch: "D",
+  CibusVespertinusDinner: "V",
+} as const;
+export type RepeatPattern = typeof RepeatPattern[keyof typeof RepeatPattern];
+
+/** Table 0339 - AdvancedBeneficiaryNotice */
+export const AdvancedBeneficiaryNotice = {
+  ServiceIsSubjectToMedicalNecessityProcedures: "1",
+  PatientHasBeenInformedOfResponsibilityAndAgreesToPayForService: "2",
+  PatientHasBeenInformedOfResponsibilityAndAsksThatThePayerBeBilled: "3",
+  AdvancedBeneficiaryNoticeHasNotBeenSigned: "4",
+} as const;
+export type AdvancedBeneficiaryNotice = typeof AdvancedBeneficiaryNotice[keyof typeof AdvancedBeneficiaryNotice];
+
 /** Table 0344 - PatientsRelationshipToInsured */
 export const PatientsRelationshipToInsured = {
   PatientIsInsured: "01",
@@ -1264,6 +1544,127 @@ export const DiagnosisPriority = {
   ForQuaternaryDiagnosis: "4",
 } as const;
 export type DiagnosisPriority = typeof DiagnosisPriority[keyof typeof DiagnosisPriority];
+
+/** Table 0364 - CommentType */
+export const CommentType = {
+  PatientInstructions: "PI",
+  AncillaryInstructions: "AI",
+  GeneralInstructions: "GI",
+  PrimaryReason: "1R",
+  SecondaryReason: "2R",
+  GeneralReason: "GR",
+  Remark: "RE",
+  DuplicateInteractionReason: "DR",
+} as const;
+export type CommentType = typeof CommentType[keyof typeof CommentType];
+
+/** Table 0369 - SpecimenRole */
+export const SpecimenRole = {
+  BlindSample: "B", // Used to test the validity of the measurement process, where ...
+  Calibrator: "C", // Used for initial setting of calibration of the instrument.
+  ElectronicQc: "E", // Used with manufactured reference providing signals that simu...
+  FillerOrganizationProficiency: "F", // Specimen used for testing proficiency of the organization pe...
+  Group: "G", // Used when solid specimens consist of multiple individual ele...
+  HistoricalSpecimen: "H", // This identifies a parent specimen to the specimen that is su...
+  Pool: "L", // Used when aliquots of liquid individual specimens are combin...
+  OperatorProficiency: "O", // Specimen used for testing Operator Proficiency.
+  Patient: "P", // Used for any patient sample.
+  ControlSpecimen: "Q", // Used when specimen is the control specimen (either positive ...
+  ReplicateOfPatientSampleAsAControl: "R", // Used when a patient sample is re-run as a control for a repe...
+  VerifyingCalibrator: "V", // Used for periodic calibration checks.
+} as const;
+export type SpecimenRole = typeof SpecimenRole[keyof typeof SpecimenRole];
+
+/** Table 0371 - AdditivePreservative */
+export const AdditivePreservative = {
+  _10Formalin: "F10",
+  _32Citrate: "C32",
+  _38Citrate: "C38",
+  _6nHcl: "HCL6",
+  AcdSolutionA: "ACDA",
+  AcdSolutionB: "ACDB",
+  AceticAcid: "ACET",
+  AmiesTransportMedium: "AMIES",
+  AmmoniumHeparin: "HEPA",
+  BacterialTransportMedium: "BACTM",
+  BorateBoricAcid: "BOR",
+  BouinSSolution: "BOUIN",
+  Buffered10Formalin: "BF10",
+  BufferedCitrateWestergrenSedimentationRate: "WEST",
+  BufferedSkimMilk: "BSKM",
+  CarsonSModified10Formalin: "CARS",
+  CaryBlairMedium: "CARY",
+  ChlamydiaTransportMedium: "CHLTM",
+  CtadThisShouldBeSpelledOutIfNotUniversallyUnderstood: "CTAD",
+  EntericBacteriaTransportMedium: "ENT",
+  EntericPlus: "ENT+",
+  JonesKendrickMedium: "JKM",
+  KarnovskySFixative: "KARN",
+  LithiumIodoacetate: "LIA",
+  LithiumLiHeparin: "HEPL",
+  M4: "M4",
+  M4Rt: "M4RT",
+  M5: "M5",
+  MichelSTransportMedium: "MICHTM",
+  MmdTransportMedium: "MMDTM",
+  NitricAcid: "HNO3",
+  None: "NONE",
+  PagesSSaline: "PAGE",
+  Phenol: "PHENOL",
+  PotassiumOxalate: "KOX",
+  PotassiumKEdta: "EDTK",
+  PotassiumKEdta15: "EDTK15",
+  PotassiumKEdta75: "EDTK75",
+  PvaPolyvinylalcohol: "PVA",
+  ReaganLoweMedium: "RLM",
+  SerumSeparatorTubePolymerGel: "SST",
+  SiliceousEarth12Mg: "SILICA",
+  SodiumFluoride: "NAF",
+  SodiumFluoride100mg: "FL100",
+  SodiumFluoride10mg: "FL10",
+  SodiumPolyanetholSulfonate035In085SodiumChloride: "NAPS",
+  SodiumNaHeparin: "HEPN",
+  SodiumNaEdta: "EDTN",
+  SpsThisShouldBeSpelledOutIfNotUniversallyUnderstood: "SPS",
+  StuartTransportMedium: "STUTM",
+  Thrombin: "THROM",
+  ThrombinNihSoybeanTrypsinInhibitorFibrinDegradationProducts: "FDP",
+  Thymol: "THYMOL",
+  ThyoglycollateBroth: "THYO",
+  Toluene: "TOLU",
+  UreaplasmaTransportMedium: "URETM",
+  ViralTransportMedium: "VIRTM",
+} as const;
+export type AdditivePreservative = typeof AdditivePreservative[keyof typeof AdditivePreservative];
+
+/** Table 0376 - SpecialHandling */
+export const SpecialHandling = {
+  BodyTemperature: "C37",
+  AmbientTemperature: "AMB",
+  CriticalAmbientTemperature: "CAMB",
+  RefrigeratedTemperature: "REF",
+  CriticalRefrigeratedTemperature: "CREF",
+  FrozenTemperature: "FRZ",
+  CriticalFrozenTemperature: "CFRZ",
+  DeepFrozen: "DFRZ",
+  UltraFrozen: "UFRZ",
+  LiquidNitrogen: "NTR",
+  ProtectFromLight: "PRTL",
+  ProtectFromAir: "CATM",
+  Dry: "DRY",
+  NoShock: "PSO",
+  DoNotShake: "PSA",
+  Upright: "UPR",
+  MetalFree: "MTLF",
+} as const;
+export type SpecialHandling = typeof SpecialHandling[keyof typeof SpecialHandling];
+
+/** Table 0398 - ContinuationStyle */
+export const ContinuationStyle = {
+  Fragmentation: "F",
+  InteractiveContinuation: "I",
+} as const;
+export type ContinuationStyle = typeof ContinuationStyle[keyof typeof ContinuationStyle];
 
 /** Table 0406 - OrganizationUnitType */
 export const OrganizationUnitType = {
@@ -1321,6 +1722,25 @@ export const ProcedurePriority = {
   NoSuggestedValuesDefined: "...",
 } as const;
 export type ProcedurePriority = typeof ProcedurePriority[keyof typeof ProcedurePriority];
+
+/** Table 0427 - RiskManagementIncident */
+export const RiskManagementIncident = {
+  BodyFluidExposure: "B",
+  ContaminatedSubstance: "C",
+  DietErrors: "D",
+  EquipmentProblem: "E",
+  PatientFellNotFromBed: "F",
+  PatientFellFromBed: "H",
+  InfusionError: "I",
+  ForeignObjectLeftDuringSurgery: "J",
+  SterilePrecautionViolated: "K",
+  ProcedureError: "P",
+  PharmaceuticalError: "R",
+  SuicideAttempt: "S",
+  TransfusionError: "T",
+  Other: "O",
+} as const;
+export type RiskManagementIncident = typeof RiskManagementIncident[keyof typeof RiskManagementIncident];
 
 /** Table 0429 - ProductionClass */
 export const ProductionClass = {
@@ -1455,6 +1875,535 @@ export const IdentityReliability = {
 } as const;
 export type IdentityReliability = typeof IdentityReliability[keyof typeof IdentityReliability];
 
+/** Table 0482 - OrderType */
+export const OrderType = {
+  InpatientOrder: "I",
+  OutpatientOrder: "O",
+} as const;
+export type OrderType = typeof OrderType[keyof typeof OrderType];
+
+/** Table 0483 - AuthorizationMode */
+export const AuthorizationMode = {
+  Electronic: "EL",
+  EMail: "EM",
+  Fax: "FX",
+  InPerson: "IP",
+  Mail: "MA",
+  Paper: "PA",
+  Phone: "PH",
+  ReflexiveAutomatedSystem: "RE",
+  VideoConference: "VC",
+  Voice: "VO",
+} as const;
+export type AuthorizationMode = typeof AuthorizationMode[keyof typeof AuthorizationMode];
+
+/** Table 0485 - ExtendedPriorityCodes */
+export const ExtendedPriorityCodes = {
+  Stat: "S",
+  Asap: "A",
+  Routine: "R",
+  Preop: "P",
+  Callback: "C",
+  TimingCritical: "T",
+  TimingCriticalWithinIntegerSeconds: "TS<integer>",
+  TimingCriticalWithinIntegerMinutes: "TM<integer>",
+  TimingCriticalWithinIntegerHours: "TH<integer>",
+  TimingCriticalWithinIntegerDays: "TD<integer>",
+  TimingCriticalWithinIntegerWeeks: "TW<integer>",
+  TimingCriticalWithinIntegerMonths: "TL<integer>",
+  AsNeeded: "PRN",
+} as const;
+export type ExtendedPriorityCodes = typeof ExtendedPriorityCodes[keyof typeof ExtendedPriorityCodes];
+
+/** Table 0487 - SpecimenType */
+export const SpecimenType = {
+  Abscess: "ABS",
+  NoSuggestedValues: "...",
+  TissueAcne: "ACNE",
+  FluidAcne: "ACNFLD",
+  AirSample: "AIRS",
+  Allograft: "ALL",
+  AmnioticFluid: "AMN",
+  Amputation: "AMP",
+  CatheterTipAngio: "ANGI",
+  CatheterTipArterial: "ARTC",
+  SerumAcute: "ASERU",
+  Aspirate: "ASP",
+  EnvironmentAttest: "ATTE",
+  EnvironmentalAutoclaveAmpule: "AUTOA",
+  EnvironmentalAutoclaveCapsule: "AUTOC",
+  Autopsy: "AUTP",
+  BloodBag: "BBL",
+  CystBakerS: "BCYST",
+  WholeBody: "BDY",
+  BileFluid: "BIFL",
+  Bite: "BITE",
+  WholeBlood: "BLD",
+  BloodArterial: "BLDA",
+  CordBlood: "BLDCO",
+  BloodVenous: "BLDV",
+  Bleb: "BLEB",
+  Blister: "BLIST",
+  Boil: "BOIL",
+  Bone: "BON",
+  BowelContents: "BOWL",
+  Basophils: "BPH",
+  BloodProductUnit: "BPU",
+  Burn: "BRN",
+  Brush: "BRSH",
+  BreathUseExhld: "BRTH",
+  Brushing: "BRUS",
+  Bubo: "BUB",
+  BullaBullae: "BULLA",
+  Biopsy: "BX",
+  CalculusStone: "CALC",
+  Bone_BONE: "BONE",
+  Carbuncle: "CARBU",
+  Catheter: "CAT",
+  BiteCat: "CBITE",
+  CardiacMuscle: "CDM",
+  Clippings: "CLIPP",
+  Conjunctiva: "CNJT",
+  Cannula: "CNL",
+  Colostrum: "COL",
+  BiospyCone: "CONE",
+  ScratchCat: "CSCR",
+  SerumConvalescent: "CSERU",
+  CerebralSpinalFluid: "CSF",
+  CatheterInsertionSite: "CSITE",
+  FluidCystostomyTube: "CSMY",
+  FluidCyst: "CST",
+  BloodCellSaver: "CSVR",
+  CatheterTip: "CTP",
+  Curretage: "CUR",
+  CervicalMucus: "CVM",
+  SiteCvp: "CVPS",
+  CatheterTipCvp: "CVPT",
+  NoduleCystic: "CYN",
+  Cyst: "CYST",
+  BiteDog: "DBITE",
+  SputumDeepCough: "DCS",
+  UlcerDecubitus: "DEC",
+  EnvironmentalWaterDeionized: "DEION",
+  Dialysate: "DIA",
+  DialysisFluid: "DIAF",
+  Discharge: "DISCHG",
+  Diverticulum: "DIV",
+  Drain: "DRN",
+  DrainageTube: "DRNG",
+  DrainagePenrose: "DRNGP",
+  DuodenalFluid: "DUFL",
+  EarWaxCerumen: "EARW",
+  BrushEsophageal: "EBRUSH",
+  EnvironmentalEyeWash: "EEYE",
+  EnvironmentalEffluent: "EFF",
+  Effusion: "EFFUS",
+  EnvironmentalFood: "EFOD",
+  EnvironmentalIsolette: "EISO",
+  Electrode: "ELT",
+  EnvironmentalUnidentifiedSubstance: "ENVIR",
+  Eosinophils: "EOS",
+  EnvironmentalOtherSubstance: "EOTH",
+  EnvironmentalSoil: "ESOI",
+  EnvironmentalSolutionSterile: "ESOS",
+  AspirateEndotrach: "ETA",
+  CatheterTipEndotracheal: "ETTP",
+  TubeEndotracheal: "ETTUB",
+  EnvironmentalWhirlpool: "EWHI",
+  GasExhaledBreath: "EXG",
+  ShuntExternal: "EXS",
+  Exudate: "EXUDTE",
+  EnvironmentalWaterWell: "FAW",
+  BloodFetal: "FBLOOD",
+  FluidAbdomen: "FGA",
+  Fibroblasts: "FIB",
+  Fistula: "FIST",
+  FluidOther: "FLD",
+  Filter: "FLT",
+  FluidBodyUnsp: "FLU",
+  Fluid: "FLUID",
+  CatheterTipFoley: "FOLEY",
+  FluidRespiratory: "FRS",
+  ScalpFetal: "FSCLP",
+  Furuncle: "FUR",
+  Gas: "GAS",
+  AspirateGastric: "GASA",
+  AntrumGastric: "GASAN",
+  BrushingGastric: "GASBR",
+  DrainageGastric: "GASD",
+  FluidContentsGastric: "GAST",
+  GenitalLochia: "GENL",
+  GenitalVaginal: "GENV",
+  Graft: "GRAFT",
+  GraftSite: "GRAFTS",
+  Granuloma: "GRANU",
+  CatheterGroshong: "GROSH",
+  SolutionGastrostomy: "GSOL",
+  BiopsyGastric: "GSPEC",
+  TubeGastric: "GT",
+  DrainageTubeDrainageGastrostomy: "GTUBE",
+  Hair: "HAR",
+  BiteHuman: "HBITE",
+  BloodAutopsy: "HBLUD",
+  CatheterTipHemaquit: "HEMAQ",
+  CatheterTipHemovac: "HEMO",
+  TissueHerniated: "HERNI",
+  DrainHemovac: "HEV",
+  CatheterHickman: "HIC",
+  FluidHydrocele: "HYDC",
+  BiteInsect: "IBITE",
+  CystInclusion: "ICYST",
+  CatheterTipIndwelling: "IDC",
+  GasInhaled: "IHG",
+  DrainageIleostomy: "ILEO",
+  SourceOfSpecimenIsIllegible: "ILLEG",
+  Implant: "IMP",
+  SiteIncisionSurgical: "INCI",
+  Infiltrate: "INFIL",
+  Insect: "INS",
+  CatheterTipIntroducer: "INTRD",
+  Isolate: "ISLT",
+  IntubationTube: "IT",
+  IntrauterineDevice: "IUD",
+  CatheterTipIv: "IVCAT",
+  FluidIv: "IVFLD",
+  TubingTipIv: "IVTIP",
+  DrainageJejunal: "JEJU",
+  FluidJoint: "JNTFLD",
+  DrainageJacksonPratt: "JP",
+  Lavage: "KELOI",
+  FluidKidney: "KIDFLD",
+  LavageBronhial: "LAVG",
+  LavageGastric: "LAVGG",
+  LavagePeritoneal: "LAVGP",
+  LavagePreBronch: "LAVPG",
+  ContactLens: "LENS1",
+  ContactLensCase: "LENS2",
+  Lesion: "LESN",
+  LiquidUnspecified: "LIQ",
+  LiquidOther: "LIQO",
+  LineArterial: "LNA",
+  LineVenous: "LNV",
+  FluidLumbarSac: "LSAC",
+  Lymphocytes: "LYM",
+  Macrophages: "MAC",
+  CatheterTipMakurkour: "MAHUR",
+  Marrow: "MAR",
+  Mass: "MASS",
+  BloodMenstrual: "MBLD",
+  Meconium: "MEC",
+  BreastMilk: "MILK",
+  Milk: "MLK",
+  Mucosa: "MUCOS",
+  Mucus: "MUCUS",
+  Nail: "NAIL",
+  DrainageNasal: "NASDR",
+  Needle: "NEDL",
+  SiteNephrostomy: "NEPH",
+  AspirateNasogastric: "NGASP",
+  DrainageNasogastric: "NGAST",
+  SiteNasoGastric: "NGS",
+  NoduleS: "NODUL",
+  SecretionNasal: "NSECR",
+  Other: "ORH",
+  LesionOral: "ORL",
+  SourceOther: "OTH",
+  Pacemaker: "PACEM",
+  PancreaticFluid: "PAFL",
+  FluidPericardial: "PCFL",
+  SitePeritonealDialysis: "PDSIT",
+  SitePeritonealDialysisTunnel: "PDTS",
+  AbscessPelvic: "PELVA",
+  LesionPenile: "PENIL",
+  AbscessPerianal: "PERIA",
+  CystPilonidal: "PILOC",
+  SitePin: "PINS",
+  SitePacemakerInsetion: "PIS",
+  PlantMaterial: "PLAN",
+  Plasma: "PLAS",
+  PlasmaBag: "PLB",
+  Placenta: "PLC",
+  SerumPeakLevel: "PLEVS",
+  PleuralFluidThoracentesisFluid: "PLR",
+  PolymorphonuclearNeutrophils: "PMN",
+  DrainagePenile: "PND",
+  Polyps: "POL",
+  GraftSitePopliteal: "POPGS",
+  GraftPopliteal: "POPLG",
+  SitePoplitealVein: "POPLV",
+  CatheterPorta: "PORTA",
+  PlasmaPlateletPoor: "PPP",
+  ProstheticDevice: "PROST",
+  PlasmaPlateletRich: "PRP",
+  Pseudocyst: "PSC",
+  WoundPuncture: "PUNCT",
+  Pus: "PUS",
+  Pustule: "PUSFR",
+  Pus_PUST: "PUST",
+  QualityControl: "QC3",
+  UrineRandom: "RANDU",
+  Erythrocytes: "RBC",
+  BiteReptile: "RBITE",
+  DrainageRectal: "RECT",
+  AbscessRectal: "RECTA",
+  CystRenal: "RENALC",
+  FluidRenalCyst: "RENC",
+  Respiratory: "RES",
+  Saliva: "SAL",
+  TissueKeloidScar: "SCAR",
+  CatheterTipSubclavian: "SCLV",
+  AbscessScrotal: "SCROA",
+  SecretionS: "SECRE",
+  Serum: "SER",
+  SiteShunt: "SHU",
+  FluidShunt: "SHUNF",
+  Shunt: "SHUNT",
+  Site: "SITE",
+  BiopsySkin: "SKBP",
+  Skin: "SKN",
+  MassSubMandibular: "SMM",
+  SeminalFluid: "SMN",
+  FluidSynovialJointFluid: "SNV",
+  Spermatozoa: "SPRM",
+  CatheterTipSuprapubic: "SPRP",
+  CathetherTipSuprapubic: "SPRPB",
+  EnvironmentalSporeStrip: "SPS",
+  Sputum: "SPT",
+  SputumCoughed: "SPTC",
+  SputumTrachealAspirate: "SPTT",
+  SputumSimulated: "SPUT1",
+  SputumInducted: "SPUTIN",
+  SputumSpontaneous: "SPUTSP",
+  EnvironmentalSterrad: "STER",
+  StoolFecal: "STL",
+  StoneKidney: "STONE",
+  AbscessSubmandibular: "SUBMA",
+  AbscessSubmaxillary: "SUBMX",
+  DrainageSump: "SUMP",
+  SuprapubicTap: "SUP",
+  Suture: "SUTUR",
+  CatheterTipSwanGantz: "SWGZ",
+  Sweat: "SWT",
+  AspirateTracheal: "TASP",
+  Tears: "TEAR",
+  ThrombocytePlatelet: "THRB",
+  Tissue: "TISS",
+  TissueUlcer: "TISU",
+  CathetherTipTripleLumen: "TLC",
+  SiteTracheostomy: "TRAC",
+  Transudate: "TRANS",
+  SerumTrough: "TSERU",
+  AbscessTesticular: "TSTES",
+  AspirateTranstracheal: "TTRA",
+  Tubes: "TUBES",
+  Tumor: "TUMOR",
+  SmearTzanck: "TZANC",
+  SourceUnidentified: "UDENT",
+  UnknownMedicine: "UMED",
+  Urine: "UR",
+  UrineCleanCatch: "URC",
+  UrineBladderWashings: "URINB",
+  UrineCatheterized: "URINC",
+  UrineMidstream: "URINM",
+  UrineNephrostomy: "URINN",
+  UrinePedibag: "URINP",
+  UrineSediment: "URNS",
+  UrineCatheter: "URT",
+  UrineCystoscopy: "USCOP",
+  SourceUnspecified: "USPEC",
+  UnkownSubstance: "USUB",
+  CatheterTipVas: "VASTIP",
+  CatheterTipVentricular: "VENT",
+  VitreousFluid: "VITF",
+  Vomitus: "VOM",
+  Wash: "WASH",
+  WashingEGBronchialWashing: "WASI",
+  Water: "WAT",
+  BloodWhole: "WB",
+  Leukocytes: "WBC",
+  Wen: "WEN",
+  Wick: "WICK",
+  Wound: "WND",
+  WoundAbscess: "WNDA",
+  WoundDrainage: "WNDD",
+  WoundExudate: "WNDE",
+  Worm: "WORM",
+  Wart: "WRT",
+  EnvironmentalWater: "WWA",
+  EnvironmentalWaterOcean: "WWO",
+  EnvironmentalWaterTap: "WWT",
+} as const;
+export type SpecimenType = typeof SpecimenType[keyof typeof SpecimenType];
+
+/** Table 0488 - SpecimenCollectionMethod */
+export const SpecimenCollectionMethod = {
+  AspirationFineNeedle: "FNA",
+  ArterialPuncture: "PNA",
+  Biopsy: "BIO",
+  BloodCultureAerobicBottle: "BCAE",
+  BloodCultureAnaerobicBottle: "BCAN",
+  BloodCulturePediatricBottle: "BCPD",
+  CapillarySpecimen: "CAP",
+  Catheterized: "CATH",
+  EnvironmentalPlate: "EPLA",
+  EnvironmentalSwab: "ESWA",
+  LineArterial: "LNA",
+  LineCvp: "CVP",
+  LineVenous: "LNV",
+  MartinLewisAgar: "MARTL",
+  ModMartinLewisAgar: "ML11",
+  PaceGenProbe: "PACE",
+  PinwormPrep: "PIN",
+  PlateCough: "KOFFP",
+  PlateMartinLewis: "MLP",
+  PlateNewYorkCity: "NYP",
+  PlateThayerMartin: "TMP",
+  PlatesAnaerobic: "ANP",
+  PlatesBloodAgar: "BAP",
+  PumpPrime: "PRIME",
+  PumpSpecimen: "PUMP",
+  QualityControlForMicro: "QC5",
+  ScalpFetalVein: "SCLP",
+  Scrapings: "SCRAPS",
+  Shaving: "SHA",
+  Swab: "SWA",
+  SwabDacronTipped: "SWD",
+  SwabWoodenShaft: "WOOD",
+  TransportMedia: "TMOT",
+  TransportMediaAnaerobic: "TMAN",
+  TransportMediaChalamydia: "TMCH",
+  TransportMediaM4: "TMM4",
+  TransportMediaMycoplasma: "TMMY",
+  TransportMediaPva: "TMPV",
+  TransportMediaStoolCulture: "TMSC",
+  TransportMediaUreaplasma: "TMUP",
+  TransportMediaViral: "TMVI",
+  Venipuncture: "VENIP",
+} as const;
+export type SpecimenCollectionMethod = typeof SpecimenCollectionMethod[keyof typeof SpecimenCollectionMethod];
+
+/** Table 0489 - Risks */
+export const Risks = {
+  Biological: "BIO",
+  Corrosive: "COR",
+  EscapeRisk: "ESC",
+  Aggressive: "AGG",
+  Materialdangerinflammable: "IFL",
+  Explosive: "EXP",
+  Materialdangerinfectious: "INF",
+  Biohazard: "BHZ",
+  InjuryHazard: "INJ",
+  Poison: "POI",
+  Radioactive: "RAD",
+} as const;
+export type Risks = typeof Risks[keyof typeof Risks];
+
+/** Table 0490 - SpecimenRejectReason */
+export const SpecimenRejectReason = {
+  Expired: "EX",
+  QuantityNotSufficient: "QS",
+  BrokenContainer: "RB",
+  Clotting: "RC",
+  MissingCollectionDate: "RD",
+  MissingPatientIdNumber: "RA",
+  MissingPatientName: "RE",
+  Hemolysis: "RH",
+  IdentificationProblem: "RI",
+  Labeling: "RM",
+  Contamination: "RN",
+  MissingPhlebotomistId: "RP",
+  ImproperStorage: "RR",
+  NameMisspelling: "RS",
+} as const;
+export type SpecimenRejectReason = typeof SpecimenRejectReason[keyof typeof SpecimenRejectReason];
+
+/** Table 0491 - SpecimenQuality */
+export const SpecimenQuality = {
+  Excellent: "E",
+  Good: "G",
+  Fair: "F",
+  Poor: "P",
+} as const;
+export type SpecimenQuality = typeof SpecimenQuality[keyof typeof SpecimenQuality];
+
+/** Table 0492 - SpecimenAppropriateness */
+export const SpecimenAppropriateness = {
+  Preferred: "P",
+  Appropriate: "A",
+  Inappropriate: "I",
+  InappropriateDueTo: "??",
+} as const;
+export type SpecimenAppropriateness = typeof SpecimenAppropriateness[keyof typeof SpecimenAppropriateness];
+
+/** Table 0493 - SpecimenCondition */
+export const SpecimenCondition = {
+  Autolyzed: "AUT",
+  Clotted: "CLOT",
+  Contaminated: "CON",
+  Cool: "COOL",
+  Frozen: "FROZ",
+  Hemolyzed: "HEM",
+  Live: "LIVE",
+  RoomTemperature: "ROOM",
+  SampleNotReceived: "SNR",
+  Centrifuged: "CFU",
+} as const;
+export type SpecimenCondition = typeof SpecimenCondition[keyof typeof SpecimenCondition];
+
+/** Table 0494 - SpecimenChildRole */
+export const SpecimenChildRole = {
+  Aliquot: "A",
+  Component: "C",
+  ModifiedFromOriginalSpecimen: "M",
+} as const;
+export type SpecimenChildRole = typeof SpecimenChildRole[keyof typeof SpecimenChildRole];
+
+/** Table 0503 - SequenceResultsFlag */
+export const SequenceResultsFlag = {
+  Sequential: "S",
+  Cyclical: "C",
+  ReservedForFutureUse: "R",
+} as const;
+export type SequenceResultsFlag = typeof SequenceResultsFlag[keyof typeof SequenceResultsFlag];
+
+/** Table 0504 - SequenceCondition */
+export const SequenceCondition = {
+  EndRelatedServiceRequestSEndCurrentServiceRequest: "EE",
+  EndRelatedServiceRequestSStartCurrentServiceRequest: "ES",
+  StartRelatedServiceRequestSStartCurrentServiceRequest: "SS",
+  StartRelatedServiceRequestSEndCurrentServiceRequest: "SE",
+} as const;
+export type SequenceCondition = typeof SequenceCondition[keyof typeof SequenceCondition];
+
+/** Table 0505 - CyclicEntryExitIndicator */
+export const CyclicEntryExitIndicator = {
+  FirstService: "F", // The first service request in a cyclic group
+  LastService: "L", // The last service request in a cyclic group
+  TheFirstServiceRequestInACyclicGroup: "*",
+  TheLastServiceRequestInACyclicGroup: "#",
+} as const;
+export type CyclicEntryExitIndicator = typeof CyclicEntryExitIndicator[keyof typeof CyclicEntryExitIndicator];
+
+/** Table 0506 - ServiceRequestRelationship */
+export const ServiceRequestRelationship = {
+  NursePrerogative: "N",
+  Compound: "C",
+  Tapering: "T",
+  Exclusive: "E",
+  Simultaneous: "S",
+} as const;
+export type ServiceRequestRelationship = typeof ServiceRequestRelationship[keyof typeof ServiceRequestRelationship];
+
+/** Table 0507 - ObservationResultHandling */
+export const ObservationResultHandling = {
+  FilmWithPatient: "F",
+  NotifyProviderWhenReady: "N",
+  AlertProviderWhenAbnormal: "A",
+  CopiesRequested: "CC",
+  BlindCopy: "BCC",
+} as const;
+export type ObservationResultHandling = typeof ObservationResultHandling[keyof typeof ObservationResultHandling];
+
 /** Table 0534 - ClergyNotificationType */
 export const ClergyNotificationType = {
   Yes: "Y",
@@ -1473,3 +2422,30 @@ export const SignatureType = {
   SignatureGeneratedByProviderBecauseThePatientWasNotPhysicallyPresentForServices: "P",
 } as const;
 export type SignatureType = typeof SignatureType[keyof typeof SignatureType];
+
+/** Table 0544 - ContainerCondition */
+export const ContainerCondition = {
+  NoSuggestedValues: "...",
+  NotBodyTemperature: "XC37",
+  NotAmbientTemperature: "XAMB",
+  NotCriticalAmbientTemperature: "XCAMB",
+  NotRefrigeratedTemperature: "XREF",
+  NotCriticalRefrigeratedTemperature: "XCREF",
+  NotFrozenTemperature: "XFRZ",
+  NotCriticalFrozenTemperature: "XCFRZ",
+  NotDeepFrozen: "XDFRZ",
+  NotUltraFrozen: "XUFRZ",
+  NotLiquidNitrogen: "XNTR",
+  NotProtectedFromLight: "XPRTL",
+  ExposedToAir: "XCATM",
+  NotDry: "XDRY",
+  ExposedToShock: "XPSO",
+  Shaken: "XPSA",
+  NotUpright: "XUPR",
+  MetalExposed: "XMTLF",
+  SealBroken: "SB",
+  ContainerCracked: "CC",
+  ContainerTorn: "CT",
+  ContainerLeaking: "CL",
+} as const;
+export type ContainerCondition = typeof ContainerCondition[keyof typeof ContainerCondition];

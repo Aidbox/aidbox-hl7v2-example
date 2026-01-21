@@ -30,7 +30,11 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # IntelliJ based IDEs
 .idea
+*.iml
 
 # Finder (MacOS) folder config
 .DS_Store
 logs/
+
+# AI
+.claude/settings.local.json

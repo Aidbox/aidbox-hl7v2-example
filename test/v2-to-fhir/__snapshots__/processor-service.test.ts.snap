@@ -11,16 +11,16 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
       "resource": {
         "address": [
           {
-            "city": "Anytown",
+            "city": "Testcity",
             "country": "USA",
             "line": [
-              "123 Main St",
+              "100 Test St",
             ],
-            "postalCode": "12345",
-            "state": "CA",
+            "postalCode": "00001",
+            "state": "TS",
           },
         ],
-        "birthDate": "1985-03-15",
+        "birthDate": "2000-01-01",
         "gender": "male",
         "id": "P12345",
         "identifier": [
@@ -61,12 +61,12 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
         },
         "name": [
           {
-            "family": "Smith",
+            "family": "TESTPATIENT",
             "given": [
-              "John",
-              "Robert",
+              "ALPHA",
+              "A",
             ],
-            "text": "John Robert Smith",
+            "text": "ALPHA A TESTPATIENT",
           },
         ],
         "resourceType": "Patient",
@@ -83,12 +83,12 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
               },
               {
                 "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
-                "valueString": "1234567",
+                "valueString": "0000001",
               },
             ],
             "system": "phone",
             "use": "home",
-            "value": "+1 555 1234567",
+            "value": "+1 555 0000001",
           },
           {
             "extension": [
@@ -102,12 +102,12 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
               },
               {
                 "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
-                "valueString": "9876543",
+                "valueString": "0000002",
               },
             ],
             "system": "phone",
             "use": "work",
-            "value": "+1 555 9876543",
+            "value": "+1 555 0000002",
           },
         ],
       },
@@ -158,9 +158,9 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
         "participant": [
           {
             "individual": {
-              "display": "DOCTOR ATTENDING",
+              "display": "PROVIDER TEST",
               "identifier": {
-                "value": "123",
+                "value": "PROV001",
               },
             },
             "type": [
@@ -222,31 +222,31 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
         ],
         "name": [
           {
-            "family": "Smith",
+            "family": "TESTPATIENT",
             "given": [
-              "John",
-              "Robert"
+              "ALPHA",
+              "A"
             ],
-            "text": "John Robert Smith"
+            "text": "ALPHA A TESTPATIENT"
           }
         ],
-        "birthDate": "1985-03-15",
+        "birthDate": "2000-01-01",
         "gender": "male",
         "address": [
           {
             "line": [
-              "123 Main St"
+              "100 Test St"
             ],
-            "city": "Anytown",
-            "state": "CA",
-            "postalCode": "12345",
+            "city": "Testcity",
+            "state": "TS",
+            "postalCode": "00001",
             "country": "USA"
           }
         ],
         "telecom": [
           {
             "system": "phone",
-            "value": "+1 555 1234567",
+            "value": "+1 555 0000001",
             "use": "home",
             "extension": [
               {
@@ -259,13 +259,13 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
               },
               {
                 "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
-                "valueString": "1234567"
+                "valueString": "0000001"
               }
             ]
           },
           {
             "system": "phone",
-            "value": "+1 555 9876543",
+            "value": "+1 555 0000002",
             "use": "work",
             "extension": [
               {
@@ -278,7 +278,7 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
               },
               {
                 "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
-                "valueString": "9876543"
+                "valueString": "0000002"
               }
             ]
           }
@@ -358,9 +358,9 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
               }
             ],
             "individual": {
-              "display": "DOCTOR ATTENDING",
+              "display": "PROVIDER TEST",
               "identifier": {
-                "value": "123"
+                "value": "PROV001"
               }
             }
           }
@@ -395,13 +395,12 @@ exports[`processor-service processes ADT_A01 message and returns correct Bundle 
   ]
 }"
 ,
-  "error": undefined,
   "id": "test-msg-001",
   "message": 
 "MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215143000||ADT^A01^ADT_A01|MSG001|P|2.5.1|||AL|AL
 EVN|A01|20231215143000|||OPERATOR
-PID|1||P12345^^^HOSPITAL^MR||Smith^John^Robert||19850315|M|||123 Main St^^Anytown^CA^12345^USA||^PRN^PH^^1^555^1234567|^WPN^PH^^1^555^9876543||M||P12345
-PV1|1|I|WARD1^ROOM1^BED1||||123^ATTENDING^DOCTOR|||MED||||ADM|||||VN001|||||||||||||||||||||||||||20231215140000"
+PID|1||P12345^^^HOSPITAL^MR||TESTPATIENT^ALPHA^A||20000101|M|||100 Test St^^Testcity^TS^00001^USA||^PRN^PH^^1^555^0000001|^WPN^PH^^1^555^0000002||M||P12345
+PV1|1|I|WARD1^ROOM1^BED1||||PROV001^TEST^PROVIDER|||MED||||ADM|||||VN001|||||||||||||||||||||||||||20231215140000"
 ,
   "patient": {
     "reference": "Patient/P12345",
@@ -423,16 +422,16 @@ exports[`processor-service processes ADT_A08 message and returns correct Bundle 
       "resource": {
         "address": [
           {
-            "city": "Othertown",
+            "city": "Testtown",
             "country": "USA",
             "line": [
-              "456 Oak Ave",
+              "200 Test Ave",
             ],
-            "postalCode": "67890",
-            "state": "NY",
+            "postalCode": "00002",
+            "state": "TS",
           },
         ],
-        "birthDate": "1990-05-21",
+        "birthDate": "2000-02-02",
         "communication": [
           {
             "language": {
@@ -490,12 +489,12 @@ exports[`processor-service processes ADT_A08 message and returns correct Bundle 
         },
         "name": [
           {
-            "family": "Doe",
+            "family": "TESTPATIENT",
             "given": [
-              "Jane",
-              "Marie",
+              "BETA",
+              "B",
             ],
-            "text": "Jane Marie Doe",
+            "text": "BETA B TESTPATIENT",
           },
         ],
         "resourceType": "Patient",
@@ -512,12 +511,12 @@ exports[`processor-service processes ADT_A08 message and returns correct Bundle 
               },
               {
                 "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
-                "valueString": "9876543",
+                "valueString": "0000003",
               },
             ],
             "system": "phone",
             "use": "home",
-            "value": "+1 555 9876543",
+            "value": "+1 555 0000003",
           },
         ],
       },
@@ -553,31 +552,31 @@ exports[`processor-service processes ADT_A08 message and returns correct Bundle 
         ],
         "name": [
           {
-            "family": "Doe",
+            "family": "TESTPATIENT",
             "given": [
-              "Jane",
-              "Marie"
+              "BETA",
+              "B"
             ],
-            "text": "Jane Marie Doe"
+            "text": "BETA B TESTPATIENT"
           }
         ],
-        "birthDate": "1990-05-21",
+        "birthDate": "2000-02-02",
         "gender": "female",
         "address": [
           {
             "line": [
-              "456 Oak Ave"
+              "200 Test Ave"
             ],
-            "city": "Othertown",
-            "state": "NY",
-            "postalCode": "67890",
+            "city": "Testtown",
+            "state": "TS",
+            "postalCode": "00002",
             "country": "USA"
           }
         ],
         "telecom": [
           {
             "system": "phone",
-            "value": "+1 555 9876543",
+            "value": "+1 555 0000003",
             "use": "home",
             "extension": [
               {
@@ -590,7 +589,7 @@ exports[`processor-service processes ADT_A08 message and returns correct Bundle 
               },
               {
                 "url": "http://hl7.org/fhir/StructureDefinition/contactpoint-local",
-                "valueString": "9876543"
+                "valueString": "0000003"
               }
             ]
           }
@@ -645,12 +644,11 @@ exports[`processor-service processes ADT_A08 message and returns correct Bundle 
   ]
 }"
 ,
-  "error": undefined,
   "id": "test-msg-002",
   "message": 
 "MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215143000||ADT^A08^ADT_A08|MSG002|P|2.5.1|||AL|AL
 EVN|A08|20231215143000|||OPERATOR
-PID|1||P67890^^^HOSPITAL^MR||Doe^Jane^Marie||19900521|F|||456 Oak Ave^^Othertown^NY^67890^USA||^PRN^PH^^1^555^9876543||S||P67890"
+PID|1||P67890^^^HOSPITAL^MR||TESTPATIENT^BETA^B||20000202|F|||200 Test Ave^^Testtown^TS^00002^USA||^PRN^PH^^1^555^0000003||S||P67890"
 ,
   "patient": {
     "reference": "Patient/P67890",
@@ -671,7 +669,6 @@ exports[`processor-service handles conversion errors and updates status to error
   "error": "HL7v2 message must start with MSH segment",
   "id": "test-msg-003",
   "message": "INVALID|MESSAGE",
-  "patient": undefined,
   "resourceType": "IncomingHL7v2Message",
   "status": "error",
   "type": "ADT_A01",

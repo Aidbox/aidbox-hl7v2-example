@@ -1,9 +1,10 @@
+// @ts-nocheck
 // AUTO-GENERATED - HL7v2 DataType Interfaces and Segment Builders
-// Generated for: BAR_P01
+// Generated for: BAR_P01, ORU_R01
 
 import type { HL7v2Segment, FieldValue } from "./types";
 import { getComponent } from "./types";
-import { AcceptApplicationAcknowledgmentConditions, AdministrativeSex, AdmissionLevelOfCare, AdmissionType, AdvanceDirective, AllergenType, AllergySeverity, AlternateCharacterSetHandlingScheme, AlternateCharacterSets, AmbulatoryStatus, ArrivalMode, AssignmentOfBenefits, BedStatus, ClergyNotificationType, ContactRole2, CoordinationOfBenefits, CoverageType, DiagnosisClassification, DiagnosisPriority, DiagnosisType, DisabilityInformationRelationship, DrgTransferType, EligibilitySource, EmploymentStatus, EthnicGroup, Event, EventReason, HospitalService, IdentifierType, IdentityReliability, ImmunizationRegistryStatus, InsuranceCompanyContactReason, JobStatus, LivingArrangement, LivingDependency2, LivingWillCodes, MailClaimParty, MaritalStatus, MilitaryService, MilitaryStatus, NatureOfAbnormalTesting, ObservationResultStatusCodesInterpretation, OrganDonorCodes, OrganizationUnitType, OutlierType, PHRaceAndEthnicityCDC, PatientClass, PatientCondition, PatientStatus, PatientsRelationshipToInsured, Precaution, ProblemGoalAction, ProcedureDrgType, ProcedureFunctionalType, ProcedurePriority, ProductionClass, ProviderRole, Publicity, PurgeStatus, ReAdmissionIndicator, RecreationalDrugType, Relationship, Religion2, SegmentAction, SignatureType, SpecialProgram, StudentStatus, TissueType, TypeOfAgreement, VisitIndicator, VisitPriority, VisitUserCodes } from "./tables";
+import { AcceptApplicationAcknowledgmentConditions, AdditivePreservative, AdministrativeSex, AdmissionLevelOfCare, AdmissionType, AdvanceDirective, AdvancedBeneficiaryNotice, AllergenType, AllergySeverity, AlternateCharacterSetHandlingScheme, AlternateCharacterSets, AmbulatoryStatus, ArrivalMode, AssignmentOfBenefits, AuthorizationMode, BedStatus, ClergyNotificationType, CommentType, ConfidentialityCodes, ContactRole2, ContainerCondition, ContinuationStyle, CoordinationOfBenefits, CoverageType, CyclicEntryExitIndicator, DiagnosisClassification, DiagnosisPriority, DiagnosisType, DiagnosticServiceSectionId, DisabilityInformationRelationship, DrgTransferType, EligibilitySource, EmploymentStatus, EscortRequired, EthnicGroup, Event, EventReason, ExtendedPriorityCodes, HospitalService, IdentifierType, IdentityReliability, ImmunizationRegistryStatus, InsuranceCompanyContactReason, JobStatus, LivingArrangement, LivingDependency2, LivingWillCodes, MailClaimParty, MaritalStatus, MilitaryService, MilitaryStatus, NatureOfAbnormalTesting, ObservationResultHandling, ObservationResultStatusCodesInterpretation, OrderControlCodes, OrderStatus, OrderType, OrganDonorCodes, OrganizationUnitType, OutlierType, PHRaceAndEthnicityCDC, PatientClass, PatientCondition, PatientStatus, PatientsRelationshipToInsured, Precaution, PreferredMethodOfContact, ProblemGoalAction, ProcedureDrgType, ProcedureFunctionalType, ProcedurePriority, ProductionClass, ProviderRole, Publicity, PurgeStatus, ReAdmissionIndicator, RecreationalDrugType, Relationship, Religion2, RepeatPattern, ResponseFlag, ResultStatus, RiskManagementIncident, Risks, SegmentAction, SequenceCondition, SequenceResultsFlag, ServiceRequestRelationship, SignatureType, SourceOfComment, SpecialHandling, SpecialProgram, SpecimenAction, SpecimenAppropriateness, SpecimenChildRole, SpecimenCollectionMethod, SpecimenCondition, SpecimenQuality, SpecimenRejectReason, SpecimenRole, SpecimenType, StudentStatus, TissueType, TransactionType, TransportArranged, TransportationMode, TypeOfAgreement, VisitIndicator, VisitPriority, VisitUserCodes } from "./tables";
 
 // ====== DataType Interfaces ======
 
@@ -55,6 +56,32 @@ export interface CNE {
   $9_originalText?: string;
 }
 
+/** CNN DataType */
+export interface CNN {
+  /** CNN.1 - ID Number */
+  $1_value?: string;
+  /** CNN.2 - Family Name */
+  $2_family?: string;
+  /** CNN.3 - Given Name */
+  $3_given?: string;
+  /** CNN.4 - Second and Further Given Names or Initials Thereof */
+  $4_additionalGiven?: string;
+  /** CNN.5 - Suffix (e.g., JR or III) */
+  $5_suffix?: string;
+  /** CNN.6 - Prefix (e.g., DR) */
+  $6_prefix?: string;
+  /** CNN.7 - Degree (e.g., MD */
+  $7_qualification?: string;
+  /** CNN.8 - Source Table */
+  $8_sourceTable?: string;
+  /** CNN.9 - Assigning Authority   - Namespace ID */
+  $9_systemNamespace?: string;
+  /** CNN.10 - Assigning Authority  - Universal ID */
+  $10_systemId?: string;
+  /** CNN.11 - Assigning Authority  - Universal ID Type */
+  $11_systemType?: string;
+}
+
 /** CP DataType */
 export interface CP {
   /** CP.1 - Price */
@@ -69,6 +96,14 @@ export interface CP {
   $5_unit?: CE;
   /** CP.6 - Range Type */
   $6_rangeType?: string;
+}
+
+/** CQ DataType */
+export interface CQ {
+  /** CQ.1 - Quantity */
+  $1_value?: string;
+  /** CQ.2 - Units */
+  $2_unit?: CE;
 }
 
 /** CWE DataType */
@@ -173,6 +208,14 @@ export interface EI {
   $4_systemType?: string;
 }
 
+/** EIP DataType */
+export interface EIP {
+  /** EIP.1 - Placer Assigned Identifier */
+  $1_placer?: EI;
+  /** EIP.2 - Filler Assigned Identifier */
+  $2_filler?: EI;
+}
+
 /** FC DataType */
 export interface FC {
   /** FC.1 - Financial Class Code */
@@ -233,6 +276,14 @@ export interface MO {
   $2_currency?: string;
 }
 
+/** MOC DataType */
+export interface MOC {
+  /** MOC.1 - Monetary Amount */
+  $1_amount?: MO;
+  /** MOC.2 - Charge Code */
+  $2_code?: CE;
+}
+
 /** MOP DataType */
 export interface MOP {
   /** MOP.1 - Money or Percentage Indicator */
@@ -253,12 +304,64 @@ export interface MSG {
   $3_structure?: string;
 }
 
+/** NDL DataType */
+export interface NDL {
+  /** NDL.1 - Name */
+  $1_name?: CNN;
+  /** NDL.2 - Start Date/time */
+  $2_start?: string;
+  /** NDL.3 - End Date/time */
+  $3_end?: string;
+  /** NDL.4 - Point of Care */
+  $4_careSite?: string;
+  /** NDL.5 - Room */
+  $5_room?: string;
+  /** NDL.6 - Bed */
+  $6_bed?: string;
+  /** NDL.7 - Facility */
+  $7_facility?: HD;
+  /** NDL.8 - Location Status */
+  $8_status?: string;
+  /** NDL.9 - Patient Location Type */
+  $9_locationType?: string;
+  /** NDL.10 - Building */
+  $10_building?: string;
+  /** NDL.11 - Floor */
+  $11_floor?: string;
+}
+
 /** OCD DataType */
 export interface OCD {
   /** OCD.1 - Occurrence Code */
   $1_code?: CNE;
   /** OCD.2 - Occurrence Date */
   $2_date?: string;
+}
+
+/** OSD DataType */
+export interface OSD {
+  /** OSD.1 - Sequence/Results Flag */
+  $1_flag?: string;
+  /** OSD.2 - Placer Order Number: Entity Identifier */
+  $2_placerId?: string;
+  /** OSD.3 - Placer Order Number: Namespace ID */
+  $3_placerNamespace?: string;
+  /** OSD.4 - Filler Order Number: Entity Identifier */
+  $4_fillerId?: string;
+  /** OSD.5 - Filler Order Number: Namespace ID */
+  $5_fillerNamespace?: string;
+  /** OSD.6 - Sequence Condition Value */
+  $6_condition?: string;
+  /** OSD.7 - Maximum Number of Repeats */
+  $7_maxRepeats?: string;
+  /** OSD.8 - Placer Order Number: Universal ID */
+  $8_placerSystem?: string;
+  /** OSD.9 - Placer Order Number: Universal ID Type */
+  $9_placerSystemType?: string;
+  /** OSD.10 - Filler Order Number: Universal ID */
+  $10_fillerSystem?: string;
+  /** OSD.11 - Filler Order Number: Universal ID Type */
+  $11_fillerSystemType?: string;
 }
 
 /** OSP DataType */
@@ -297,6 +400,28 @@ export interface PL {
   $11_locationSystem?: HD;
 }
 
+/** PLN DataType */
+export interface PLN {
+  /** PLN.1 - ID Number */
+  $1_value?: string;
+  /** PLN.2 - Type of ID Number */
+  $2_type?: string;
+  /** PLN.3 - State/other Qualifying Information */
+  $3_stateQualifier?: string;
+  /** PLN.4 - Expiration Date */
+  $4_end?: string;
+}
+
+/** PRL DataType */
+export interface PRL {
+  /** PRL.1 - Parent Observation Identifier */
+  $1_parent?: CE;
+  /** PRL.2 - Parent Observation Sub-identifier */
+  $2_parentSubId?: string;
+  /** PRL.3 - Parent Observation Value Descriptor */
+  $3_parentDescriptor?: string;
+}
+
 /** PT DataType */
 export interface PT {
   /** PT.1 - Processing ID */
@@ -317,6 +442,14 @@ export interface PTA {
   $4_basis?: MOP;
 }
 
+/** RI DataType */
+export interface RI {
+  /** RI.1 - Repeat Pattern */
+  $1_pattern?: string;
+  /** RI.2 - Explicit Time Interval */
+  $2_interval?: string;
+}
+
 /** RMC DataType */
 export interface RMC {
   /** RMC.1 - Room Type */
@@ -329,6 +462,32 @@ export interface RMC {
   $4_basis?: MOP;
 }
 
+/** RPT DataType */
+export interface RPT {
+  /** RPT.1 - Repeat Pattern Code */
+  $1_when?: CWE;
+  /** RPT.2 - Calendar Alignment */
+  $2_alignment?: string;
+  /** RPT.3 - Phase Range Begin Value */
+  $3_phaseStart?: string;
+  /** RPT.4 - Phase Range End Value */
+  $4_phaseEnd?: string;
+  /** RPT.5 - Period Quantity */
+  $5_period?: string;
+  /** RPT.6 - Period Units */
+  $6_periodUnit?: string;
+  /** RPT.7 - Institution Specified Time */
+  $7_timeOfDay?: string;
+  /** RPT.8 - Event */
+  $8_event?: string;
+  /** RPT.9 - Event Offset Quantity */
+  $9_offset?: string;
+  /** RPT.10 - Event Offset Units */
+  $10_offsetUnit?: string;
+  /** RPT.11 - General Timing Specification */
+  $11_timing?: string;
+}
+
 /** SAD DataType */
 export interface SAD {
   /** SAD.1 - Street or Mailing Address */
@@ -337,6 +496,52 @@ export interface SAD {
   $2_streetName?: string;
   /** SAD.3 - Dwelling Number */
   $3_houseNumber?: string;
+}
+
+/** SPS DataType */
+export interface SPS {
+  /** SPS.1 - Specimen Source Name or Code */
+  $1_specimen?: CWE;
+  /** SPS.2 - Additives */
+  $2_additives?: CWE;
+  /** SPS.3 - Specimen Collection Method */
+  $3_collectionMethod?: string;
+  /** SPS.4 - Body Site */
+  $4_bodySite?: CWE;
+  /** SPS.5 - Site Modifier */
+  $5_siteModifier?: CWE;
+  /** SPS.6 - Collection Method Modifier Code */
+  $6_collectionModifier?: CWE;
+  /** SPS.7 - Specimen Role */
+  $7_role?: CWE;
+}
+
+/** TQ DataType */
+export interface TQ {
+  /** TQ.1 - Quantity */
+  $1_value?: CQ;
+  /** TQ.2 - Interval */
+  $2_interval?: RI;
+  /** TQ.3 - Duration */
+  $3_duration?: string;
+  /** TQ.4 - Start Date/Time */
+  $4_start?: string;
+  /** TQ.5 - End Date/Time */
+  $5_end?: string;
+  /** TQ.6 - Priority */
+  $6_priority?: string;
+  /** TQ.7 - Condition */
+  $7_condition?: string;
+  /** TQ.8 - Text */
+  $8_text?: string;
+  /** TQ.9 - Conjunction */
+  $9_conjunction?: string;
+  /** TQ.10 - Order Sequencing */
+  $10_sequence?: OSD;
+  /** TQ.11 - Occurrence Duration */
+  $11_occurrenceDuration?: CE;
+  /** TQ.12 - Total Occurrences */
+  $12_totalOccurrences?: string;
 }
 
 /** UVC DataType */
@@ -663,6 +868,70 @@ function fromCNE(fv: FieldValue | undefined): CNE | undefined {
   return result;
 }
 
+/** Convert FieldValue to CNN */
+function fromCNN(fv: FieldValue | undefined): CNN | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_value: fv };
+  if (Array.isArray(fv)) return fromCNN(fv[0]);
+  const result: CNN = {};
+  if (fv[1] !== undefined) {
+    const v1 = fv[1];
+    if (typeof v1 === "string") result.$1_value = v1;
+    else if (typeof v1 === "object" && !Array.isArray(v1) && typeof (v1 as any)[1] === "string") result.$1_value = (v1 as any)[1];
+  }
+  if (fv[2] !== undefined) {
+    const v2 = fv[2];
+    if (typeof v2 === "string") result.$2_family = v2;
+    else if (typeof v2 === "object" && !Array.isArray(v2) && typeof (v2 as any)[1] === "string") result.$2_family = (v2 as any)[1];
+  }
+  if (fv[3] !== undefined) {
+    const v3 = fv[3];
+    if (typeof v3 === "string") result.$3_given = v3;
+    else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_given = (v3 as any)[1];
+  }
+  if (fv[4] !== undefined) {
+    const v4 = fv[4];
+    if (typeof v4 === "string") result.$4_additionalGiven = v4;
+    else if (typeof v4 === "object" && !Array.isArray(v4) && typeof (v4 as any)[1] === "string") result.$4_additionalGiven = (v4 as any)[1];
+  }
+  if (fv[5] !== undefined) {
+    const v5 = fv[5];
+    if (typeof v5 === "string") result.$5_suffix = v5;
+    else if (typeof v5 === "object" && !Array.isArray(v5) && typeof (v5 as any)[1] === "string") result.$5_suffix = (v5 as any)[1];
+  }
+  if (fv[6] !== undefined) {
+    const v6 = fv[6];
+    if (typeof v6 === "string") result.$6_prefix = v6;
+    else if (typeof v6 === "object" && !Array.isArray(v6) && typeof (v6 as any)[1] === "string") result.$6_prefix = (v6 as any)[1];
+  }
+  if (fv[7] !== undefined) {
+    const v7 = fv[7];
+    if (typeof v7 === "string") result.$7_qualification = v7;
+    else if (typeof v7 === "object" && !Array.isArray(v7) && typeof (v7 as any)[1] === "string") result.$7_qualification = (v7 as any)[1];
+  }
+  if (fv[8] !== undefined) {
+    const v8 = fv[8];
+    if (typeof v8 === "string") result.$8_sourceTable = v8;
+    else if (typeof v8 === "object" && !Array.isArray(v8) && typeof (v8 as any)[1] === "string") result.$8_sourceTable = (v8 as any)[1];
+  }
+  if (fv[9] !== undefined) {
+    const v9 = fv[9];
+    if (typeof v9 === "string") result.$9_systemNamespace = v9;
+    else if (typeof v9 === "object" && !Array.isArray(v9) && typeof (v9 as any)[1] === "string") result.$9_systemNamespace = (v9 as any)[1];
+  }
+  if (fv[10] !== undefined) {
+    const v10 = fv[10];
+    if (typeof v10 === "string") result.$10_systemId = v10;
+    else if (typeof v10 === "object" && !Array.isArray(v10) && typeof (v10 as any)[1] === "string") result.$10_systemId = (v10 as any)[1];
+  }
+  if (fv[11] !== undefined) {
+    const v11 = fv[11];
+    if (typeof v11 === "string") result.$11_systemType = v11;
+    else if (typeof v11 === "object" && !Array.isArray(v11) && typeof (v11 as any)[1] === "string") result.$11_systemType = (v11 as any)[1];
+  }
+  return result;
+}
+
 /** Convert FieldValue to CP */
 function fromCP(fv: FieldValue | undefined): CP | undefined {
   if (fv === undefined) return undefined;
@@ -691,6 +960,21 @@ function fromCP(fv: FieldValue | undefined): CP | undefined {
     if (typeof v6 === "string") result.$6_rangeType = v6;
     else if (typeof v6 === "object" && !Array.isArray(v6) && typeof (v6 as any)[1] === "string") result.$6_rangeType = (v6 as any)[1];
   }
+  return result;
+}
+
+/** Convert FieldValue to CQ */
+function fromCQ(fv: FieldValue | undefined): CQ | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_value: fv };
+  if (Array.isArray(fv)) return fromCQ(fv[0]);
+  const result: CQ = {};
+  if (fv[1] !== undefined) {
+    const v1 = fv[1];
+    if (typeof v1 === "string") result.$1_value = v1;
+    else if (typeof v1 === "object" && !Array.isArray(v1) && typeof (v1 as any)[1] === "string") result.$1_value = (v1 as any)[1];
+  }
+  if (fv[2] !== undefined) result.$2_unit = fromCE(fv[2]);
   return result;
 }
 
@@ -921,6 +1205,17 @@ function fromEI(fv: FieldValue | undefined): EI | undefined {
   return result;
 }
 
+/** Convert FieldValue to EIP */
+function fromEIP(fv: FieldValue | undefined): EIP | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_placer: fromEI(fv) };
+  if (Array.isArray(fv)) return fromEIP(fv[0]);
+  const result: EIP = {};
+  if (fv[1] !== undefined) result.$1_placer = fromEI(fv[1]);
+  if (fv[2] !== undefined) result.$2_filler = fromEI(fv[2]);
+  return result;
+}
+
 /** Convert FieldValue to FC */
 function fromFC(fv: FieldValue | undefined): FC | undefined {
   if (fv === undefined) return undefined;
@@ -1065,6 +1360,17 @@ function fromMO(fv: FieldValue | undefined): MO | undefined {
   return result;
 }
 
+/** Convert FieldValue to MOC */
+function fromMOC(fv: FieldValue | undefined): MOC | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_amount: fromMO(fv) };
+  if (Array.isArray(fv)) return fromMOC(fv[0]);
+  const result: MOC = {};
+  if (fv[1] !== undefined) result.$1_amount = fromMO(fv[1]);
+  if (fv[2] !== undefined) result.$2_code = fromCE(fv[2]);
+  return result;
+}
+
 /** Convert FieldValue to MOP */
 function fromMOP(fv: FieldValue | undefined): MOP | undefined {
   if (fv === undefined) return undefined;
@@ -1113,6 +1419,62 @@ function fromMSG(fv: FieldValue | undefined): MSG | undefined {
   return result;
 }
 
+/** Convert FieldValue to NDL */
+function fromNDL(fv: FieldValue | undefined): NDL | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_name: fromCNN(fv) };
+  if (Array.isArray(fv)) return fromNDL(fv[0]);
+  const result: NDL = {};
+  if (fv[1] !== undefined) result.$1_name = fromCNN(fv[1]);
+  if (fv[2] !== undefined) {
+    const v2 = fv[2];
+    if (typeof v2 === "string") result.$2_start = v2;
+    else if (typeof v2 === "object" && !Array.isArray(v2) && typeof (v2 as any)[1] === "string") result.$2_start = (v2 as any)[1];
+  }
+  if (fv[3] !== undefined) {
+    const v3 = fv[3];
+    if (typeof v3 === "string") result.$3_end = v3;
+    else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_end = (v3 as any)[1];
+  }
+  if (fv[4] !== undefined) {
+    const v4 = fv[4];
+    if (typeof v4 === "string") result.$4_careSite = v4;
+    else if (typeof v4 === "object" && !Array.isArray(v4) && typeof (v4 as any)[1] === "string") result.$4_careSite = (v4 as any)[1];
+  }
+  if (fv[5] !== undefined) {
+    const v5 = fv[5];
+    if (typeof v5 === "string") result.$5_room = v5;
+    else if (typeof v5 === "object" && !Array.isArray(v5) && typeof (v5 as any)[1] === "string") result.$5_room = (v5 as any)[1];
+  }
+  if (fv[6] !== undefined) {
+    const v6 = fv[6];
+    if (typeof v6 === "string") result.$6_bed = v6;
+    else if (typeof v6 === "object" && !Array.isArray(v6) && typeof (v6 as any)[1] === "string") result.$6_bed = (v6 as any)[1];
+  }
+  if (fv[7] !== undefined) result.$7_facility = fromHD(fv[7]);
+  if (fv[8] !== undefined) {
+    const v8 = fv[8];
+    if (typeof v8 === "string") result.$8_status = v8;
+    else if (typeof v8 === "object" && !Array.isArray(v8) && typeof (v8 as any)[1] === "string") result.$8_status = (v8 as any)[1];
+  }
+  if (fv[9] !== undefined) {
+    const v9 = fv[9];
+    if (typeof v9 === "string") result.$9_locationType = v9;
+    else if (typeof v9 === "object" && !Array.isArray(v9) && typeof (v9 as any)[1] === "string") result.$9_locationType = (v9 as any)[1];
+  }
+  if (fv[10] !== undefined) {
+    const v10 = fv[10];
+    if (typeof v10 === "string") result.$10_building = v10;
+    else if (typeof v10 === "object" && !Array.isArray(v10) && typeof (v10 as any)[1] === "string") result.$10_building = (v10 as any)[1];
+  }
+  if (fv[11] !== undefined) {
+    const v11 = fv[11];
+    if (typeof v11 === "string") result.$11_floor = v11;
+    else if (typeof v11 === "object" && !Array.isArray(v11) && typeof (v11 as any)[1] === "string") result.$11_floor = (v11 as any)[1];
+  }
+  return result;
+}
+
 /** Convert FieldValue to OCD */
 function fromOCD(fv: FieldValue | undefined): OCD | undefined {
   if (fv === undefined) return undefined;
@@ -1124,6 +1486,70 @@ function fromOCD(fv: FieldValue | undefined): OCD | undefined {
     const v2 = fv[2];
     if (typeof v2 === "string") result.$2_date = v2;
     else if (typeof v2 === "object" && !Array.isArray(v2) && typeof (v2 as any)[1] === "string") result.$2_date = (v2 as any)[1];
+  }
+  return result;
+}
+
+/** Convert FieldValue to OSD */
+function fromOSD(fv: FieldValue | undefined): OSD | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_flag: fv };
+  if (Array.isArray(fv)) return fromOSD(fv[0]);
+  const result: OSD = {};
+  if (fv[1] !== undefined) {
+    const v1 = fv[1];
+    if (typeof v1 === "string") result.$1_flag = v1;
+    else if (typeof v1 === "object" && !Array.isArray(v1) && typeof (v1 as any)[1] === "string") result.$1_flag = (v1 as any)[1];
+  }
+  if (fv[2] !== undefined) {
+    const v2 = fv[2];
+    if (typeof v2 === "string") result.$2_placerId = v2;
+    else if (typeof v2 === "object" && !Array.isArray(v2) && typeof (v2 as any)[1] === "string") result.$2_placerId = (v2 as any)[1];
+  }
+  if (fv[3] !== undefined) {
+    const v3 = fv[3];
+    if (typeof v3 === "string") result.$3_placerNamespace = v3;
+    else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_placerNamespace = (v3 as any)[1];
+  }
+  if (fv[4] !== undefined) {
+    const v4 = fv[4];
+    if (typeof v4 === "string") result.$4_fillerId = v4;
+    else if (typeof v4 === "object" && !Array.isArray(v4) && typeof (v4 as any)[1] === "string") result.$4_fillerId = (v4 as any)[1];
+  }
+  if (fv[5] !== undefined) {
+    const v5 = fv[5];
+    if (typeof v5 === "string") result.$5_fillerNamespace = v5;
+    else if (typeof v5 === "object" && !Array.isArray(v5) && typeof (v5 as any)[1] === "string") result.$5_fillerNamespace = (v5 as any)[1];
+  }
+  if (fv[6] !== undefined) {
+    const v6 = fv[6];
+    if (typeof v6 === "string") result.$6_condition = v6;
+    else if (typeof v6 === "object" && !Array.isArray(v6) && typeof (v6 as any)[1] === "string") result.$6_condition = (v6 as any)[1];
+  }
+  if (fv[7] !== undefined) {
+    const v7 = fv[7];
+    if (typeof v7 === "string") result.$7_maxRepeats = v7;
+    else if (typeof v7 === "object" && !Array.isArray(v7) && typeof (v7 as any)[1] === "string") result.$7_maxRepeats = (v7 as any)[1];
+  }
+  if (fv[8] !== undefined) {
+    const v8 = fv[8];
+    if (typeof v8 === "string") result.$8_placerSystem = v8;
+    else if (typeof v8 === "object" && !Array.isArray(v8) && typeof (v8 as any)[1] === "string") result.$8_placerSystem = (v8 as any)[1];
+  }
+  if (fv[9] !== undefined) {
+    const v9 = fv[9];
+    if (typeof v9 === "string") result.$9_placerSystemType = v9;
+    else if (typeof v9 === "object" && !Array.isArray(v9) && typeof (v9 as any)[1] === "string") result.$9_placerSystemType = (v9 as any)[1];
+  }
+  if (fv[10] !== undefined) {
+    const v10 = fv[10];
+    if (typeof v10 === "string") result.$10_fillerSystem = v10;
+    else if (typeof v10 === "object" && !Array.isArray(v10) && typeof (v10 as any)[1] === "string") result.$10_fillerSystem = (v10 as any)[1];
+  }
+  if (fv[11] !== undefined) {
+    const v11 = fv[11];
+    if (typeof v11 === "string") result.$11_fillerSystemType = v11;
+    else if (typeof v11 === "object" && !Array.isArray(v11) && typeof (v11 as any)[1] === "string") result.$11_fillerSystemType = (v11 as any)[1];
   }
   return result;
 }
@@ -1200,6 +1626,55 @@ function fromPL(fv: FieldValue | undefined): PL | undefined {
   return result;
 }
 
+/** Convert FieldValue to PLN */
+function fromPLN(fv: FieldValue | undefined): PLN | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_value: fv };
+  if (Array.isArray(fv)) return fromPLN(fv[0]);
+  const result: PLN = {};
+  if (fv[1] !== undefined) {
+    const v1 = fv[1];
+    if (typeof v1 === "string") result.$1_value = v1;
+    else if (typeof v1 === "object" && !Array.isArray(v1) && typeof (v1 as any)[1] === "string") result.$1_value = (v1 as any)[1];
+  }
+  if (fv[2] !== undefined) {
+    const v2 = fv[2];
+    if (typeof v2 === "string") result.$2_type = v2;
+    else if (typeof v2 === "object" && !Array.isArray(v2) && typeof (v2 as any)[1] === "string") result.$2_type = (v2 as any)[1];
+  }
+  if (fv[3] !== undefined) {
+    const v3 = fv[3];
+    if (typeof v3 === "string") result.$3_stateQualifier = v3;
+    else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_stateQualifier = (v3 as any)[1];
+  }
+  if (fv[4] !== undefined) {
+    const v4 = fv[4];
+    if (typeof v4 === "string") result.$4_end = v4;
+    else if (typeof v4 === "object" && !Array.isArray(v4) && typeof (v4 as any)[1] === "string") result.$4_end = (v4 as any)[1];
+  }
+  return result;
+}
+
+/** Convert FieldValue to PRL */
+function fromPRL(fv: FieldValue | undefined): PRL | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_parent: fromCE(fv) };
+  if (Array.isArray(fv)) return fromPRL(fv[0]);
+  const result: PRL = {};
+  if (fv[1] !== undefined) result.$1_parent = fromCE(fv[1]);
+  if (fv[2] !== undefined) {
+    const v2 = fv[2];
+    if (typeof v2 === "string") result.$2_parentSubId = v2;
+    else if (typeof v2 === "object" && !Array.isArray(v2) && typeof (v2 as any)[1] === "string") result.$2_parentSubId = (v2 as any)[1];
+  }
+  if (fv[3] !== undefined) {
+    const v3 = fv[3];
+    if (typeof v3 === "string") result.$3_parentDescriptor = v3;
+    else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_parentDescriptor = (v3 as any)[1];
+  }
+  return result;
+}
+
 /** Convert FieldValue to PT */
 function fromPT(fv: FieldValue | undefined): PT | undefined {
   if (fv === undefined) return undefined;
@@ -1244,6 +1719,25 @@ function fromPTA(fv: FieldValue | undefined): PTA | undefined {
   return result;
 }
 
+/** Convert FieldValue to RI */
+function fromRI(fv: FieldValue | undefined): RI | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_pattern: fv };
+  if (Array.isArray(fv)) return fromRI(fv[0]);
+  const result: RI = {};
+  if (fv[1] !== undefined) {
+    const v1 = fv[1];
+    if (typeof v1 === "string") result.$1_pattern = v1;
+    else if (typeof v1 === "object" && !Array.isArray(v1) && typeof (v1 as any)[1] === "string") result.$1_pattern = (v1 as any)[1];
+  }
+  if (fv[2] !== undefined) {
+    const v2 = fv[2];
+    if (typeof v2 === "string") result.$2_interval = v2;
+    else if (typeof v2 === "object" && !Array.isArray(v2) && typeof (v2 as any)[1] === "string") result.$2_interval = (v2 as any)[1];
+  }
+  return result;
+}
+
 /** Convert FieldValue to RMC */
 function fromRMC(fv: FieldValue | undefined): RMC | undefined {
   if (fv === undefined) return undefined;
@@ -1269,6 +1763,66 @@ function fromRMC(fv: FieldValue | undefined): RMC | undefined {
   return result;
 }
 
+/** Convert FieldValue to RPT */
+function fromRPT(fv: FieldValue | undefined): RPT | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_when: fromCWE(fv) };
+  if (Array.isArray(fv)) return fromRPT(fv[0]);
+  const result: RPT = {};
+  if (fv[1] !== undefined) result.$1_when = fromCWE(fv[1]);
+  if (fv[2] !== undefined) {
+    const v2 = fv[2];
+    if (typeof v2 === "string") result.$2_alignment = v2;
+    else if (typeof v2 === "object" && !Array.isArray(v2) && typeof (v2 as any)[1] === "string") result.$2_alignment = (v2 as any)[1];
+  }
+  if (fv[3] !== undefined) {
+    const v3 = fv[3];
+    if (typeof v3 === "string") result.$3_phaseStart = v3;
+    else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_phaseStart = (v3 as any)[1];
+  }
+  if (fv[4] !== undefined) {
+    const v4 = fv[4];
+    if (typeof v4 === "string") result.$4_phaseEnd = v4;
+    else if (typeof v4 === "object" && !Array.isArray(v4) && typeof (v4 as any)[1] === "string") result.$4_phaseEnd = (v4 as any)[1];
+  }
+  if (fv[5] !== undefined) {
+    const v5 = fv[5];
+    if (typeof v5 === "string") result.$5_period = v5;
+    else if (typeof v5 === "object" && !Array.isArray(v5) && typeof (v5 as any)[1] === "string") result.$5_period = (v5 as any)[1];
+  }
+  if (fv[6] !== undefined) {
+    const v6 = fv[6];
+    if (typeof v6 === "string") result.$6_periodUnit = v6;
+    else if (typeof v6 === "object" && !Array.isArray(v6) && typeof (v6 as any)[1] === "string") result.$6_periodUnit = (v6 as any)[1];
+  }
+  if (fv[7] !== undefined) {
+    const v7 = fv[7];
+    if (typeof v7 === "string") result.$7_timeOfDay = v7;
+    else if (typeof v7 === "object" && !Array.isArray(v7) && typeof (v7 as any)[1] === "string") result.$7_timeOfDay = (v7 as any)[1];
+  }
+  if (fv[8] !== undefined) {
+    const v8 = fv[8];
+    if (typeof v8 === "string") result.$8_event = v8;
+    else if (typeof v8 === "object" && !Array.isArray(v8) && typeof (v8 as any)[1] === "string") result.$8_event = (v8 as any)[1];
+  }
+  if (fv[9] !== undefined) {
+    const v9 = fv[9];
+    if (typeof v9 === "string") result.$9_offset = v9;
+    else if (typeof v9 === "object" && !Array.isArray(v9) && typeof (v9 as any)[1] === "string") result.$9_offset = (v9 as any)[1];
+  }
+  if (fv[10] !== undefined) {
+    const v10 = fv[10];
+    if (typeof v10 === "string") result.$10_offsetUnit = v10;
+    else if (typeof v10 === "object" && !Array.isArray(v10) && typeof (v10 as any)[1] === "string") result.$10_offsetUnit = (v10 as any)[1];
+  }
+  if (fv[11] !== undefined) {
+    const v11 = fv[11];
+    if (typeof v11 === "string") result.$11_timing = v11;
+    else if (typeof v11 === "object" && !Array.isArray(v11) && typeof (v11 as any)[1] === "string") result.$11_timing = (v11 as any)[1];
+  }
+  return result;
+}
+
 /** Convert FieldValue to SAD */
 function fromSAD(fv: FieldValue | undefined): SAD | undefined {
   if (fv === undefined) return undefined;
@@ -1289,6 +1843,79 @@ function fromSAD(fv: FieldValue | undefined): SAD | undefined {
     const v3 = fv[3];
     if (typeof v3 === "string") result.$3_houseNumber = v3;
     else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_houseNumber = (v3 as any)[1];
+  }
+  return result;
+}
+
+/** Convert FieldValue to SPS */
+function fromSPS(fv: FieldValue | undefined): SPS | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_specimen: fromCWE(fv) };
+  if (Array.isArray(fv)) return fromSPS(fv[0]);
+  const result: SPS = {};
+  if (fv[1] !== undefined) result.$1_specimen = fromCWE(fv[1]);
+  if (fv[2] !== undefined) result.$2_additives = fromCWE(fv[2]);
+  if (fv[3] !== undefined) {
+    const v3 = fv[3];
+    if (typeof v3 === "string") result.$3_collectionMethod = v3;
+    else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_collectionMethod = (v3 as any)[1];
+  }
+  if (fv[4] !== undefined) result.$4_bodySite = fromCWE(fv[4]);
+  if (fv[5] !== undefined) result.$5_siteModifier = fromCWE(fv[5]);
+  if (fv[6] !== undefined) result.$6_collectionModifier = fromCWE(fv[6]);
+  if (fv[7] !== undefined) result.$7_role = fromCWE(fv[7]);
+  return result;
+}
+
+/** Convert FieldValue to TQ */
+function fromTQ(fv: FieldValue | undefined): TQ | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_value: fromCQ(fv) };
+  if (Array.isArray(fv)) return fromTQ(fv[0]);
+  const result: TQ = {};
+  if (fv[1] !== undefined) result.$1_value = fromCQ(fv[1]);
+  if (fv[2] !== undefined) result.$2_interval = fromRI(fv[2]);
+  if (fv[3] !== undefined) {
+    const v3 = fv[3];
+    if (typeof v3 === "string") result.$3_duration = v3;
+    else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_duration = (v3 as any)[1];
+  }
+  if (fv[4] !== undefined) {
+    const v4 = fv[4];
+    if (typeof v4 === "string") result.$4_start = v4;
+    else if (typeof v4 === "object" && !Array.isArray(v4) && typeof (v4 as any)[1] === "string") result.$4_start = (v4 as any)[1];
+  }
+  if (fv[5] !== undefined) {
+    const v5 = fv[5];
+    if (typeof v5 === "string") result.$5_end = v5;
+    else if (typeof v5 === "object" && !Array.isArray(v5) && typeof (v5 as any)[1] === "string") result.$5_end = (v5 as any)[1];
+  }
+  if (fv[6] !== undefined) {
+    const v6 = fv[6];
+    if (typeof v6 === "string") result.$6_priority = v6;
+    else if (typeof v6 === "object" && !Array.isArray(v6) && typeof (v6 as any)[1] === "string") result.$6_priority = (v6 as any)[1];
+  }
+  if (fv[7] !== undefined) {
+    const v7 = fv[7];
+    if (typeof v7 === "string") result.$7_condition = v7;
+    else if (typeof v7 === "object" && !Array.isArray(v7) && typeof (v7 as any)[1] === "string") result.$7_condition = (v7 as any)[1];
+  }
+  if (fv[8] !== undefined) {
+    const v8 = fv[8];
+    if (typeof v8 === "string") result.$8_text = v8;
+    else if (typeof v8 === "object" && !Array.isArray(v8) && typeof (v8 as any)[1] === "string") result.$8_text = (v8 as any)[1];
+  }
+  if (fv[9] !== undefined) {
+    const v9 = fv[9];
+    if (typeof v9 === "string") result.$9_conjunction = v9;
+    else if (typeof v9 === "object" && !Array.isArray(v9) && typeof (v9 as any)[1] === "string") result.$9_conjunction = (v9 as any)[1];
+  }
+  if (fv[10] !== undefined) result.$10_sequence = fromOSD(fv[10]);
+  if (fv[11] !== undefined) result.$11_occurrenceDuration = fromCE(fv[11]);
+  if (fv[12] !== undefined) {
+    const v12 = fv[12];
+    if (typeof v12 === "string") result.$12_totalOccurrences = v12;
+    else if (typeof v12 === "object" && !Array.isArray(v12) && typeof (v12 as any)[1] === "string") result.$12_totalOccurrences = (v12 as any)[1];
   }
   return result;
 }
@@ -1718,6 +2345,34 @@ export interface AL1 {
   $6_identificationDate?: string;
 }
 
+/** CTD Segment */
+export interface CTD {
+  /** CTD.1 - Contact Role */
+  $1_contactRole: CE[];
+  /** CTD.2 - Contact Name */
+  $2_contactName?: XPN[];
+  /** CTD.3 - Contact Address */
+  $3_contactAddress?: XAD[];
+  /** CTD.4 - Contact Location */
+  $4_contactLocation?: PL;
+  /** CTD.5 - Contact Communication Information */
+  $5_contactCommunicationInformation?: XTN[];
+  /** CTD.6 - Preferred Method of Contact */
+  $6_contactPreference?: CE;
+  /** CTD.7 - Contact Identifiers */
+  $7_contactIdentifiers?: PLN[];
+}
+
+/** CTI Segment */
+export interface CTI {
+  /** CTI.1 - Sponsor Study ID */
+  $1_studyId: EI;
+  /** CTI.2 - Study Phase Identifier */
+  $2_studyPhaseId?: CE;
+  /** CTI.3 - Study Scheduled Time Point */
+  $3_studyScheduledTimePoint?: CE;
+}
+
 /** DB1 Segment */
 export interface DB1 {
   /** DB1.1 - Set ID - DB1 */
@@ -1810,6 +2465,14 @@ export interface DRG {
   $11_drgTransferType?: DrgTransferType | string;
 }
 
+/** DSC Segment */
+export interface DSC {
+  /** DSC.1 - Continuation Pointer */
+  $1_continuationPointer?: string;
+  /** DSC.2 - Continuation Style */
+  $2_continuationStyle?: ContinuationStyle | string;
+}
+
 /** EVN Segment */
 export interface EVN {
   /** EVN.1 - Event Type Code */
@@ -1826,6 +2489,72 @@ export interface EVN {
   $6_eventOccurred?: string;
   /** EVN.7 - Event Facility */
   $7_eventFacility?: HD;
+}
+
+/** FT1 Segment */
+export interface FT1 {
+  /** FT1.1 - Set ID - FT1 */
+  $1_setIdFt1?: string;
+  /** FT1.2 - Transaction ID */
+  $2_transactionId?: string;
+  /** FT1.3 - Transaction Batch ID */
+  $3_transactionBatchId?: string;
+  /** FT1.4 - Transaction Date */
+  $4_transactionDate: DR;
+  /** FT1.5 - Transaction Posting Date */
+  $5_transactionPostingDate?: string;
+  /** FT1.6 - Transaction Type */
+  $6_transactionType: TransactionType | string;
+  /** FT1.7 - Transaction Code */
+  $7_transactionCode: CE;
+  /** FT1.8 - Transaction Description */
+  $8_transactionDescription?: string;
+  /** FT1.9 - Transaction Description - Alt */
+  $9_transactionDescriptionAlt?: string;
+  /** FT1.10 - Transaction Quantity */
+  $10_transactionQuantity?: string;
+  /** FT1.11 - Transaction Amount - Extended */
+  $11_transactionAmountExtended?: CP;
+  /** FT1.12 - Transaction Amount - Unit */
+  $12_transactionAmountUnit?: CP;
+  /** FT1.13 - Department Code */
+  $13_departmentCode?: CE;
+  /** FT1.14 - Insurance Plan ID */
+  $14_insurancePlanId?: CE;
+  /** FT1.15 - Insurance Amount */
+  $15_insuranceAmount?: CP;
+  /** FT1.16 - Assigned Patient Location */
+  $16_assignedPatientLocation?: PL;
+  /** FT1.17 - Fee Schedule */
+  $17_feeSchedule?: string;
+  /** FT1.18 - Patient Type */
+  $18_type?: string;
+  /** FT1.19 - Diagnosis Code - FT1 */
+  $19_diagnosisCodeFt1?: CE[];
+  /** FT1.20 - Performed By Code */
+  $20_performedByCode?: XCN[];
+  /** FT1.21 - Ordered By Code */
+  $21_orderedByCode?: XCN[];
+  /** FT1.22 - Unit Cost */
+  $22_unitCost?: CP;
+  /** FT1.23 - Filler Order Number */
+  $23_fillerOrderNumber?: EI;
+  /** FT1.24 - Entered By Code */
+  $24_enteredByCode?: XCN[];
+  /** FT1.25 - Procedure Code */
+  $25_procedureCode?: CE;
+  /** FT1.26 - Procedure Code Modifier */
+  $26_procedureCodeModifier?: CE[];
+  /** FT1.27 - Advanced Beneficiary Notice Code */
+  $27_advancedBeneficiaryNoticeCode?: CE;
+  /** FT1.28 - Medically Necessary Duplicate Procedure Reason. */
+  $28_medicallyNecessaryDuplicateProcedureReason?: CWE;
+  /** FT1.29 - NDC Code */
+  $29_ndcCode?: CNE;
+  /** FT1.30 - Payment Reference ID */
+  $30_paymentReferenceId?: CX;
+  /** FT1.31 - Transaction Reference Key */
+  $31_transactionReferenceKey?: string[];
 }
 
 /** GT1 Segment */
@@ -2386,6 +3115,122 @@ export interface NK1 {
   $39_vip?: string;
 }
 
+/** NTE Segment */
+export interface NTE {
+  /** NTE.1 - Set ID - NTE */
+  $1_setIdNte?: string;
+  /** NTE.2 - Source of Comment */
+  $2_sourceOfComment?: SourceOfComment | string;
+  /** NTE.3 - Comment */
+  $3_comment?: string[];
+  /** NTE.4 - Comment Type */
+  $4_commentType?: CE;
+}
+
+/** OBR Segment */
+export interface OBR {
+  /** OBR.1 - Set ID - OBR */
+  $1_setIdObr?: string;
+  /** OBR.2 - Placer Order Number */
+  $2_placerOrderNumber?: EI;
+  /** OBR.3 - Filler Order Number */
+  $3_fillerOrderNumber?: EI;
+  /** OBR.4 - Universal Service Identifier */
+  $4_service: CE;
+  /** OBR.5 - Priority - OBR */
+  $5_priorityObr?: string;
+  /** OBR.6 - Requested Date/Time */
+  $6_requestedDateTime?: string;
+  /** OBR.7 - Observation Date/Time */
+  $7_observationDateTime?: string;
+  /** OBR.8 - Observation End Date/Time */
+  $8_observationEndDateTime?: string;
+  /** OBR.9 - Collection Volume */
+  $9_collectionVolume?: CQ;
+  /** OBR.10 - Collector Identifier */
+  $10_collectorIdentifier?: XCN[];
+  /** OBR.11 - Specimen Action Code */
+  $11_specimenActionCode?: SpecimenAction | string;
+  /** OBR.12 - Danger Code */
+  $12_dangerCode?: CE;
+  /** OBR.13 - Relevant Clinical Information */
+  $13_relevantClinicalInformation?: string;
+  /** OBR.14 - Specimen Received Date/Time */
+  $14_specimenReceived?: string;
+  /** OBR.15 - Specimen Source */
+  $15_specimenSource?: SPS;
+  /** OBR.16 - Ordering Provider */
+  $16_orderingProvider?: XCN[];
+  /** OBR.17 - Order Callback Phone Number */
+  $17_callbackPhone?: XTN[];
+  /** OBR.18 - Placer Field 1 */
+  $18_placerField1?: string;
+  /** OBR.19 - Placer Field 2 */
+  $19_placerField2?: string;
+  /** OBR.20 - Filler Field 1 */
+  $20_fillerField1?: string;
+  /** OBR.21 - Filler Field 2 */
+  $21_fillerField2?: string;
+  /** OBR.22 - Results Rpt/Status Chng - Date/Time */
+  $22_resultsRptStatusChngDateTime?: string;
+  /** OBR.23 - Charge to Practice */
+  $23_chargeToPractice?: MOC;
+  /** OBR.24 - Diagnostic Serv Sect ID */
+  $24_diagnosticServSectId?: DiagnosticServiceSectionId | string;
+  /** OBR.25 - Result Status */
+  $25_resultStatus?: ResultStatus | string;
+  /** OBR.26 - Parent Result */
+  $26_parentResult?: PRL;
+  /** OBR.27 - Quantity/Timing */
+  $27_timing?: TQ[];
+  /** OBR.28 - Result Copies To */
+  $28_resultCopiesTo?: XCN[];
+  /** OBR.29 - Parent */
+  $29_parent?: EIP;
+  /** OBR.30 - Transportation Mode */
+  $30_transportationMode?: TransportationMode | string;
+  /** OBR.31 - Reason for Study */
+  $31_reasonForStudy?: CE[];
+  /** OBR.32 - Principal Result Interpreter */
+  $32_principalResultInterpreter?: NDL;
+  /** OBR.33 - Assistant Result Interpreter */
+  $33_assistantResultInterpreter?: NDL[];
+  /** OBR.34 - Technician */
+  $34_technician?: NDL[];
+  /** OBR.35 - Transcriptionist */
+  $35_transcriptionist?: NDL[];
+  /** OBR.36 - Scheduled Date/Time */
+  $36_scheduledDateTime?: string;
+  /** OBR.37 - Number of Sample Containers * */
+  $37_numberOfSampleContainers?: string;
+  /** OBR.38 - Transport Logistics of Collected Sample */
+  $38_transportLogisticsOfCollectedSample?: CE[];
+  /** OBR.39 - Collector's Comment * */
+  $39_collectorsComment?: CE[];
+  /** OBR.40 - Transport Arrangement Responsibility */
+  $40_transportArrangementResponsibility?: CE;
+  /** OBR.41 - Transport Arranged */
+  $41_transportArranged?: TransportArranged | string;
+  /** OBR.42 - Escort Required */
+  $42_escortRequired?: EscortRequired | string;
+  /** OBR.43 - Planned Patient Transport Comment */
+  $43_plannedPatientTransportComment?: CE[];
+  /** OBR.44 - Procedure Code */
+  $44_procedureCode?: CE;
+  /** OBR.45 - Procedure Code Modifier */
+  $45_procedureCodeModifier?: CE[];
+  /** OBR.46 - Placer Supplemental Service Information */
+  $46_placerSupplementalInfo?: CE[];
+  /** OBR.47 - Filler Supplemental Service Information */
+  $47_fillerSupplementalInfo?: CE[];
+  /** OBR.48 - Medically Necessary Duplicate Procedure Reason. */
+  $48_medicallyNecessaryDuplicateProcedureReason?: CWE;
+  /** OBR.49 - Result Handling */
+  $49_resultHandling?: ObservationResultHandling | string;
+  /** OBR.50 - Parent Universal Service Identifier */
+  $50_parentUniversalServiceIdentifier?: CWE;
+}
+
 /** OBX Segment */
 export interface OBX {
   /** OBX.1 - Set ID - OBX */
@@ -2438,6 +3283,72 @@ export interface OBX {
   $24_performingOrganizationAddress?: XAD;
   /** OBX.25 - Performing Organization Medical Director */
   $25_performingOrganizationMedicalDirector?: XCN;
+}
+
+/** ORC Segment */
+export interface ORC {
+  /** ORC.1 - Order Control */
+  $1_orderControl: OrderControlCodes | string;
+  /** ORC.2 - Placer Order Number */
+  $2_placerOrderNumber?: EI;
+  /** ORC.3 - Filler Order Number */
+  $3_fillerOrderNumber?: EI;
+  /** ORC.4 - Placer Group Number */
+  $4_placerGroupNumber?: EI;
+  /** ORC.5 - Order Status */
+  $5_orderStatus?: OrderStatus | string;
+  /** ORC.6 - Response Flag */
+  $6_responseFlag?: ResponseFlag | string;
+  /** ORC.7 - Quantity/Timing */
+  $7_timing?: TQ[];
+  /** ORC.8 - Parent */
+  $8_parent?: EIP;
+  /** ORC.9 - Date/Time of Transaction */
+  $9_transactionDateTime?: string;
+  /** ORC.10 - Entered By */
+  $10_enteredBy?: XCN[];
+  /** ORC.11 - Verified By */
+  $11_verifiedBy?: XCN[];
+  /** ORC.12 - Ordering Provider */
+  $12_orderingProvider?: XCN[];
+  /** ORC.13 - Enterer's Location */
+  $13_enterersLocation?: PL;
+  /** ORC.14 - Call Back Phone Number */
+  $14_callbackPhone?: XTN[];
+  /** ORC.15 - Order Effective Date/Time */
+  $15_orderEffectiveDateTime?: string;
+  /** ORC.16 - Order Control Code Reason */
+  $16_orderControlCodeReason?: CE;
+  /** ORC.17 - Entering Organization */
+  $17_enteringOrganization?: CE;
+  /** ORC.18 - Entering Device */
+  $18_enteringDevice?: CE;
+  /** ORC.19 - Action By */
+  $19_actionBy?: XCN[];
+  /** ORC.20 - Advanced Beneficiary Notice Code */
+  $20_advancedBeneficiaryNoticeCode?: CE;
+  /** ORC.21 - Ordering Facility Name */
+  $21_orderingFacilityName?: XON[];
+  /** ORC.22 - Ordering Facility Address */
+  $22_orderingFacilityAddress?: XAD[];
+  /** ORC.23 - Ordering Facility Phone Number */
+  $23_orderingFacilityPhoneNumber?: XTN[];
+  /** ORC.24 - Ordering Provider Address */
+  $24_orderingProviderAddress?: XAD[];
+  /** ORC.25 - Order Status Modifier */
+  $25_orderStatusModifier?: CWE;
+  /** ORC.26 - Advanced Beneficiary Notice Override Reason */
+  $26_advancedBeneficiaryNoticeOverrideReason?: CWE;
+  /** ORC.27 - Filler's Expected Availability Date/Time */
+  $27_fillersExpectedAvailabilityDateTime?: string;
+  /** ORC.28 - Confidentiality Code */
+  $28_confidentialityCode?: CWE;
+  /** ORC.29 - Order Type */
+  $29_orderType?: CWE;
+  /** ORC.30 - Enterer Authorization Mode */
+  $30_entererAuthorizationMode?: CNE;
+  /** ORC.31 - Parent Universal Service Identifier */
+  $31_parentUniversalServiceIdentifier?: CWE;
 }
 
 /** PD1 Segment */
@@ -2866,6 +3777,124 @@ export interface SFT {
   $6_softwareInstallDate?: string;
 }
 
+/** SPM Segment */
+export interface SPM {
+  /** SPM.1 - Set ID - SPM */
+  $1_setIdSpm?: string;
+  /** SPM.2 - Specimen ID */
+  $2_specimenId?: EIP;
+  /** SPM.3 - Specimen Parent IDs */
+  $3_specimenParentIds?: EIP[];
+  /** SPM.4 - Specimen Type */
+  $4_specimenType: CWE;
+  /** SPM.5 - Specimen Type Modifier */
+  $5_specimenTypeModifier?: CWE[];
+  /** SPM.6 - Specimen Additives */
+  $6_specimenAdditives?: CWE[];
+  /** SPM.7 - Specimen Collection Method */
+  $7_collectionMethod?: CWE;
+  /** SPM.8 - Specimen Source Site */
+  $8_specimenSourceSite?: CWE;
+  /** SPM.9 - Specimen Source Site Modifier */
+  $9_specimenSourceSiteModifier?: CWE[];
+  /** SPM.10 - Specimen Collection Site */
+  $10_specimenCollectionSite?: CWE;
+  /** SPM.11 - Specimen Role */
+  $11_role?: CWE[];
+  /** SPM.12 - Specimen Collection Amount */
+  $12_specimenCollectionAmount?: CQ;
+  /** SPM.13 - Grouped Specimen Count */
+  $13_groupedSpecimenCount?: string;
+  /** SPM.14 - Specimen Description */
+  $14_specimenDescription?: string[];
+  /** SPM.15 - Specimen Handling Code */
+  $15_specimenHandlingCode?: CWE[];
+  /** SPM.16 - Specimen Risk Code */
+  $16_specimenRiskCode?: CWE[];
+  /** SPM.17 - Specimen Collection Date/Time */
+  $17_specimenCollection?: DR;
+  /** SPM.18 - Specimen Received Date/Time */
+  $18_specimenReceived?: string;
+  /** SPM.19 - Specimen Expiration Date/Time */
+  $19_specimenExpiration?: string;
+  /** SPM.20 - Specimen Availability */
+  $20_specimenAvailability?: string;
+  /** SPM.21 - Specimen Reject Reason */
+  $21_specimenRejectReason?: CWE[];
+  /** SPM.22 - Specimen Quality */
+  $22_specimenQuality?: CWE;
+  /** SPM.23 - Specimen Appropriateness */
+  $23_specimenAppropriateness?: CWE;
+  /** SPM.24 - Specimen Condition */
+  $24_specimenCondition?: CWE[];
+  /** SPM.25 - Specimen Current Quantity */
+  $25_specimenCurrentQuantity?: CQ;
+  /** SPM.26 - Number of Specimen Containers */
+  $26_numberOfSpecimenContainers?: string;
+  /** SPM.27 - Container Type */
+  $27_containerType?: CWE;
+  /** SPM.28 - Container Condition */
+  $28_containerCondition?: CWE;
+  /** SPM.29 - Specimen Child Role */
+  $29_specimenChildRole?: CWE;
+}
+
+/** TQ1 Segment */
+export interface TQ1 {
+  /** TQ1.1 - Set ID - TQ1 */
+  $1_setIdTq1?: string;
+  /** TQ1.2 - Quantity */
+  $2_value?: CQ;
+  /** TQ1.3 - Repeat Pattern */
+  $3_pattern?: RPT[];
+  /** TQ1.4 - Explicit Time */
+  $4_explicitTime?: string[];
+  /** TQ1.5 - Relative Time and Units */
+  $5_relativeTimeAndUnit?: CQ[];
+  /** TQ1.6 - Service Duration */
+  $6_serviceDuration?: CQ;
+  /** TQ1.7 - Start date/time */
+  $7_start?: string;
+  /** TQ1.8 - End date/time */
+  $8_end?: string;
+  /** TQ1.9 - Priority */
+  $9_priority?: CWE[];
+  /** TQ1.10 - Condition text */
+  $10_conditionText?: string;
+  /** TQ1.11 - Text instruction */
+  $11_textInstruction?: string;
+  /** TQ1.12 - Conjunction */
+  $12_conjunction?: RiskManagementIncident | string;
+  /** TQ1.13 - Occurrence duration */
+  $13_occurrenceDuration?: CQ;
+  /** TQ1.14 - Total occurrence's */
+  $14_totalOccurrences?: string;
+}
+
+/** TQ2 Segment */
+export interface TQ2 {
+  /** TQ2.1 - Set ID - TQ2 */
+  $1_setIdTq2?: string;
+  /** TQ2.2 - Sequence/Results Flag */
+  $2_flag?: SequenceResultsFlag | string;
+  /** TQ2.3 - Related Placer Number */
+  $3_relatedPlacerNumber?: EI[];
+  /** TQ2.4 - Related Filler Number */
+  $4_relatedFillerNumber?: EI[];
+  /** TQ2.5 - Related Placer Group Number */
+  $5_relatedPlacerGroupNumber?: EI[];
+  /** TQ2.6 - Sequence Condition Code */
+  $6_sequenceConditionCode?: SequenceCondition | string;
+  /** TQ2.7 - Cyclic Entry/Exit Indicator */
+  $7_cyclicEntryExitIndicator?: CyclicEntryExitIndicator | string;
+  /** TQ2.8 - Sequence Condition Time Interval */
+  $8_sequenceConditionTimeInterval?: CQ;
+  /** TQ2.9 - Cyclic Group Maximum Number of Repeats */
+  $9_cyclicGroupMaximumNumberOfRepeats?: string;
+  /** TQ2.10 - Special Service Request Relationship */
+  $10_specialServiceRequestRelationship?: ServiceRequestRelationship | string;
+}
+
 /** UB1 Segment */
 export interface UB1 {
   /** UB1.1 - Set ID - UB1 */
@@ -3071,6 +4100,83 @@ export function fromAL1(segment: HL7v2Segment): AL1 {
   return result;
 }
 
+/** Convert HL7v2Segment to CTD */
+export function fromCTD(segment: HL7v2Segment): CTD {
+  const result: CTD = {} as CTD;
+  if (segment.fields[1] !== undefined) {
+    const fv = segment.fields[1];
+    if (Array.isArray(fv)) {
+      result.$1_contactRole = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$1_contactRole = [converted];
+    }
+  }
+  if (segment.fields[2] !== undefined) {
+    const fv = segment.fields[2];
+    if (Array.isArray(fv)) {
+      result.$2_contactName = fv.map(v => fromXPN(v)).filter((v): v is XPN => v !== undefined);
+    } else {
+      const converted = fromXPN(fv);
+      if (converted) result.$2_contactName = [converted];
+    }
+  }
+  if (segment.fields[3] !== undefined) {
+    const fv = segment.fields[3];
+    if (Array.isArray(fv)) {
+      result.$3_contactAddress = fv.map(v => fromXAD(v)).filter((v): v is XAD => v !== undefined);
+    } else {
+      const converted = fromXAD(fv);
+      if (converted) result.$3_contactAddress = [converted];
+    }
+  }
+  if (segment.fields[4] !== undefined) {
+    const converted = fromPL(segment.fields[4]);
+    if (converted) result.$4_contactLocation = converted;
+  }
+  if (segment.fields[5] !== undefined) {
+    const fv = segment.fields[5];
+    if (Array.isArray(fv)) {
+      result.$5_contactCommunicationInformation = fv.map(v => fromXTN(v)).filter((v): v is XTN => v !== undefined);
+    } else {
+      const converted = fromXTN(fv);
+      if (converted) result.$5_contactCommunicationInformation = [converted];
+    }
+  }
+  if (segment.fields[6] !== undefined) {
+    const converted = fromCE(segment.fields[6]);
+    if (converted) result.$6_contactPreference = converted;
+  }
+  if (segment.fields[7] !== undefined) {
+    const fv = segment.fields[7];
+    if (Array.isArray(fv)) {
+      result.$7_contactIdentifiers = fv.map(v => fromPLN(v)).filter((v): v is PLN => v !== undefined);
+    } else {
+      const converted = fromPLN(fv);
+      if (converted) result.$7_contactIdentifiers = [converted];
+    }
+  }
+  return result;
+}
+
+/** Convert HL7v2Segment to CTI */
+export function fromCTI(segment: HL7v2Segment): CTI {
+  const result: CTI = {} as CTI;
+  if (segment.fields[1] !== undefined) {
+    const converted = fromEI(segment.fields[1]);
+    if (converted) result.$1_studyId = converted;
+  }
+  if (segment.fields[2] !== undefined) {
+    const converted = fromCE(segment.fields[2]);
+    if (converted) result.$2_studyPhaseId = converted;
+  }
+  if (segment.fields[3] !== undefined) {
+    const converted = fromCE(segment.fields[3]);
+    if (converted) result.$3_studyScheduledTimePoint = converted;
+  }
+  return result;
+}
+
 /** Convert HL7v2Segment to DB1 */
 export function fromDB1(segment: HL7v2Segment): DB1 {
   const result: DB1 = {} as DB1;
@@ -3259,6 +4365,20 @@ export function fromDRG(segment: HL7v2Segment): DRG {
   return result;
 }
 
+/** Convert HL7v2Segment to DSC */
+export function fromDSC(segment: HL7v2Segment): DSC {
+  const result: DSC = {} as DSC;
+  if (segment.fields[1] !== undefined) {
+    const v = getComponent(segment.fields[1]);
+    if (v !== undefined) result.$1_continuationPointer = v;
+  }
+  if (segment.fields[2] !== undefined) {
+    const v = getComponent(segment.fields[2]);
+    if (v !== undefined) result.$2_continuationStyle = v;
+  }
+  return result;
+}
+
 /** Convert HL7v2Segment to EVN */
 export function fromEVN(segment: HL7v2Segment): EVN {
   const result: EVN = {} as EVN;
@@ -3294,6 +4414,165 @@ export function fromEVN(segment: HL7v2Segment): EVN {
   if (segment.fields[7] !== undefined) {
     const converted = fromHD(segment.fields[7]);
     if (converted) result.$7_eventFacility = converted;
+  }
+  return result;
+}
+
+/** Convert HL7v2Segment to FT1 */
+export function fromFT1(segment: HL7v2Segment): FT1 {
+  const result: FT1 = {} as FT1;
+  if (segment.fields[1] !== undefined) {
+    const v = getComponent(segment.fields[1]);
+    if (v !== undefined) result.$1_setIdFt1 = v;
+  }
+  if (segment.fields[2] !== undefined) {
+    const v = getComponent(segment.fields[2]);
+    if (v !== undefined) result.$2_transactionId = v;
+  }
+  if (segment.fields[3] !== undefined) {
+    const v = getComponent(segment.fields[3]);
+    if (v !== undefined) result.$3_transactionBatchId = v;
+  }
+  if (segment.fields[4] !== undefined) {
+    const converted = fromDR(segment.fields[4]);
+    if (converted) result.$4_transactionDate = converted;
+  }
+  if (segment.fields[5] !== undefined) {
+    const v = getComponent(segment.fields[5]);
+    if (v !== undefined) result.$5_transactionPostingDate = v;
+  }
+  if (segment.fields[6] !== undefined) {
+    const v = getComponent(segment.fields[6]);
+    if (v !== undefined) result.$6_transactionType = v;
+  }
+  if (segment.fields[7] !== undefined) {
+    const converted = fromCE(segment.fields[7]);
+    if (converted) result.$7_transactionCode = converted;
+  }
+  if (segment.fields[8] !== undefined) {
+    const v = getComponent(segment.fields[8]);
+    if (v !== undefined) result.$8_transactionDescription = v;
+  }
+  if (segment.fields[9] !== undefined) {
+    const v = getComponent(segment.fields[9]);
+    if (v !== undefined) result.$9_transactionDescriptionAlt = v;
+  }
+  if (segment.fields[10] !== undefined) {
+    const v = getComponent(segment.fields[10]);
+    if (v !== undefined) result.$10_transactionQuantity = v;
+  }
+  if (segment.fields[11] !== undefined) {
+    const converted = fromCP(segment.fields[11]);
+    if (converted) result.$11_transactionAmountExtended = converted;
+  }
+  if (segment.fields[12] !== undefined) {
+    const converted = fromCP(segment.fields[12]);
+    if (converted) result.$12_transactionAmountUnit = converted;
+  }
+  if (segment.fields[13] !== undefined) {
+    const converted = fromCE(segment.fields[13]);
+    if (converted) result.$13_departmentCode = converted;
+  }
+  if (segment.fields[14] !== undefined) {
+    const converted = fromCE(segment.fields[14]);
+    if (converted) result.$14_insurancePlanId = converted;
+  }
+  if (segment.fields[15] !== undefined) {
+    const converted = fromCP(segment.fields[15]);
+    if (converted) result.$15_insuranceAmount = converted;
+  }
+  if (segment.fields[16] !== undefined) {
+    const converted = fromPL(segment.fields[16]);
+    if (converted) result.$16_assignedPatientLocation = converted;
+  }
+  if (segment.fields[17] !== undefined) {
+    const v = getComponent(segment.fields[17]);
+    if (v !== undefined) result.$17_feeSchedule = v;
+  }
+  if (segment.fields[18] !== undefined) {
+    const v = getComponent(segment.fields[18]);
+    if (v !== undefined) result.$18_type = v;
+  }
+  if (segment.fields[19] !== undefined) {
+    const fv = segment.fields[19];
+    if (Array.isArray(fv)) {
+      result.$19_diagnosisCodeFt1 = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$19_diagnosisCodeFt1 = [converted];
+    }
+  }
+  if (segment.fields[20] !== undefined) {
+    const fv = segment.fields[20];
+    if (Array.isArray(fv)) {
+      result.$20_performedByCode = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$20_performedByCode = [converted];
+    }
+  }
+  if (segment.fields[21] !== undefined) {
+    const fv = segment.fields[21];
+    if (Array.isArray(fv)) {
+      result.$21_orderedByCode = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$21_orderedByCode = [converted];
+    }
+  }
+  if (segment.fields[22] !== undefined) {
+    const converted = fromCP(segment.fields[22]);
+    if (converted) result.$22_unitCost = converted;
+  }
+  if (segment.fields[23] !== undefined) {
+    const converted = fromEI(segment.fields[23]);
+    if (converted) result.$23_fillerOrderNumber = converted;
+  }
+  if (segment.fields[24] !== undefined) {
+    const fv = segment.fields[24];
+    if (Array.isArray(fv)) {
+      result.$24_enteredByCode = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$24_enteredByCode = [converted];
+    }
+  }
+  if (segment.fields[25] !== undefined) {
+    const converted = fromCE(segment.fields[25]);
+    if (converted) result.$25_procedureCode = converted;
+  }
+  if (segment.fields[26] !== undefined) {
+    const fv = segment.fields[26];
+    if (Array.isArray(fv)) {
+      result.$26_procedureCodeModifier = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$26_procedureCodeModifier = [converted];
+    }
+  }
+  if (segment.fields[27] !== undefined) {
+    const converted = fromCE(segment.fields[27]);
+    if (converted) result.$27_advancedBeneficiaryNoticeCode = converted;
+  }
+  if (segment.fields[28] !== undefined) {
+    const converted = fromCWE(segment.fields[28]);
+    if (converted) result.$28_medicallyNecessaryDuplicateProcedureReason = converted;
+  }
+  if (segment.fields[29] !== undefined) {
+    const converted = fromCNE(segment.fields[29]);
+    if (converted) result.$29_ndcCode = converted;
+  }
+  if (segment.fields[30] !== undefined) {
+    const converted = fromCX(segment.fields[30]);
+    if (converted) result.$30_paymentReferenceId = converted;
+  }
+  if (segment.fields[31] !== undefined) {
+    const fv = segment.fields[31];
+    if (Array.isArray(fv)) {
+      result.$31_transactionReferenceKey = fv.map(v => typeof v === "string" ? v : getComponent(v)).filter((v): v is string => v !== undefined);
+    } else if (typeof fv === "string") {
+      result.$31_transactionReferenceKey = [fv];
+    }
   }
   return result;
 }
@@ -4822,6 +6101,313 @@ export function fromNK1(segment: HL7v2Segment): NK1 {
   return result;
 }
 
+/** Convert HL7v2Segment to NTE */
+export function fromNTE(segment: HL7v2Segment): NTE {
+  const result: NTE = {} as NTE;
+  if (segment.fields[1] !== undefined) {
+    const v = getComponent(segment.fields[1]);
+    if (v !== undefined) result.$1_setIdNte = v;
+  }
+  if (segment.fields[2] !== undefined) {
+    const v = getComponent(segment.fields[2]);
+    if (v !== undefined) result.$2_sourceOfComment = v;
+  }
+  if (segment.fields[3] !== undefined) {
+    const fv = segment.fields[3];
+    if (Array.isArray(fv)) {
+      result.$3_comment = fv.map(v => typeof v === "string" ? v : getComponent(v)).filter((v): v is string => v !== undefined);
+    } else if (typeof fv === "string") {
+      result.$3_comment = [fv];
+    }
+  }
+  if (segment.fields[4] !== undefined) {
+    const converted = fromCE(segment.fields[4]);
+    if (converted) result.$4_commentType = converted;
+  }
+  return result;
+}
+
+/** Convert HL7v2Segment to OBR */
+export function fromOBR(segment: HL7v2Segment): OBR {
+  const result: OBR = {} as OBR;
+  if (segment.fields[1] !== undefined) {
+    const v = getComponent(segment.fields[1]);
+    if (v !== undefined) result.$1_setIdObr = v;
+  }
+  if (segment.fields[2] !== undefined) {
+    const converted = fromEI(segment.fields[2]);
+    if (converted) result.$2_placerOrderNumber = converted;
+  }
+  if (segment.fields[3] !== undefined) {
+    const converted = fromEI(segment.fields[3]);
+    if (converted) result.$3_fillerOrderNumber = converted;
+  }
+  if (segment.fields[4] !== undefined) {
+    const converted = fromCE(segment.fields[4]);
+    if (converted) result.$4_service = converted;
+  }
+  if (segment.fields[5] !== undefined) {
+    const v = getComponent(segment.fields[5]);
+    if (v !== undefined) result.$5_priorityObr = v;
+  }
+  if (segment.fields[6] !== undefined) {
+    const v = getComponent(segment.fields[6]);
+    if (v !== undefined) result.$6_requestedDateTime = v;
+  }
+  if (segment.fields[7] !== undefined) {
+    const v = getComponent(segment.fields[7]);
+    if (v !== undefined) result.$7_observationDateTime = v;
+  }
+  if (segment.fields[8] !== undefined) {
+    const v = getComponent(segment.fields[8]);
+    if (v !== undefined) result.$8_observationEndDateTime = v;
+  }
+  if (segment.fields[9] !== undefined) {
+    const converted = fromCQ(segment.fields[9]);
+    if (converted) result.$9_collectionVolume = converted;
+  }
+  if (segment.fields[10] !== undefined) {
+    const fv = segment.fields[10];
+    if (Array.isArray(fv)) {
+      result.$10_collectorIdentifier = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$10_collectorIdentifier = [converted];
+    }
+  }
+  if (segment.fields[11] !== undefined) {
+    const v = getComponent(segment.fields[11]);
+    if (v !== undefined) result.$11_specimenActionCode = v;
+  }
+  if (segment.fields[12] !== undefined) {
+    const converted = fromCE(segment.fields[12]);
+    if (converted) result.$12_dangerCode = converted;
+  }
+  if (segment.fields[13] !== undefined) {
+    const v = getComponent(segment.fields[13]);
+    if (v !== undefined) result.$13_relevantClinicalInformation = v;
+  }
+  if (segment.fields[14] !== undefined) {
+    const v = getComponent(segment.fields[14]);
+    if (v !== undefined) result.$14_specimenReceived = v;
+  }
+  if (segment.fields[15] !== undefined) {
+    const converted = fromSPS(segment.fields[15]);
+    if (converted) result.$15_specimenSource = converted;
+  }
+  if (segment.fields[16] !== undefined) {
+    const fv = segment.fields[16];
+    if (Array.isArray(fv)) {
+      result.$16_orderingProvider = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$16_orderingProvider = [converted];
+    }
+  }
+  if (segment.fields[17] !== undefined) {
+    const fv = segment.fields[17];
+    if (Array.isArray(fv)) {
+      result.$17_callbackPhone = fv.map(v => fromXTN(v)).filter((v): v is XTN => v !== undefined);
+    } else {
+      const converted = fromXTN(fv);
+      if (converted) result.$17_callbackPhone = [converted];
+    }
+  }
+  if (segment.fields[18] !== undefined) {
+    const v = getComponent(segment.fields[18]);
+    if (v !== undefined) result.$18_placerField1 = v;
+  }
+  if (segment.fields[19] !== undefined) {
+    const v = getComponent(segment.fields[19]);
+    if (v !== undefined) result.$19_placerField2 = v;
+  }
+  if (segment.fields[20] !== undefined) {
+    const v = getComponent(segment.fields[20]);
+    if (v !== undefined) result.$20_fillerField1 = v;
+  }
+  if (segment.fields[21] !== undefined) {
+    const v = getComponent(segment.fields[21]);
+    if (v !== undefined) result.$21_fillerField2 = v;
+  }
+  if (segment.fields[22] !== undefined) {
+    const v = getComponent(segment.fields[22]);
+    if (v !== undefined) result.$22_resultsRptStatusChngDateTime = v;
+  }
+  if (segment.fields[23] !== undefined) {
+    const converted = fromMOC(segment.fields[23]);
+    if (converted) result.$23_chargeToPractice = converted;
+  }
+  if (segment.fields[24] !== undefined) {
+    const v = getComponent(segment.fields[24]);
+    if (v !== undefined) result.$24_diagnosticServSectId = v;
+  }
+  if (segment.fields[25] !== undefined) {
+    const v = getComponent(segment.fields[25]);
+    if (v !== undefined) result.$25_resultStatus = v;
+  }
+  if (segment.fields[26] !== undefined) {
+    const converted = fromPRL(segment.fields[26]);
+    if (converted) result.$26_parentResult = converted;
+  }
+  if (segment.fields[27] !== undefined) {
+    const fv = segment.fields[27];
+    if (Array.isArray(fv)) {
+      result.$27_timing = fv.map(v => fromTQ(v)).filter((v): v is TQ => v !== undefined);
+    } else {
+      const converted = fromTQ(fv);
+      if (converted) result.$27_timing = [converted];
+    }
+  }
+  if (segment.fields[28] !== undefined) {
+    const fv = segment.fields[28];
+    if (Array.isArray(fv)) {
+      result.$28_resultCopiesTo = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$28_resultCopiesTo = [converted];
+    }
+  }
+  if (segment.fields[29] !== undefined) {
+    const converted = fromEIP(segment.fields[29]);
+    if (converted) result.$29_parent = converted;
+  }
+  if (segment.fields[30] !== undefined) {
+    const v = getComponent(segment.fields[30]);
+    if (v !== undefined) result.$30_transportationMode = v;
+  }
+  if (segment.fields[31] !== undefined) {
+    const fv = segment.fields[31];
+    if (Array.isArray(fv)) {
+      result.$31_reasonForStudy = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$31_reasonForStudy = [converted];
+    }
+  }
+  if (segment.fields[32] !== undefined) {
+    const converted = fromNDL(segment.fields[32]);
+    if (converted) result.$32_principalResultInterpreter = converted;
+  }
+  if (segment.fields[33] !== undefined) {
+    const fv = segment.fields[33];
+    if (Array.isArray(fv)) {
+      result.$33_assistantResultInterpreter = fv.map(v => fromNDL(v)).filter((v): v is NDL => v !== undefined);
+    } else {
+      const converted = fromNDL(fv);
+      if (converted) result.$33_assistantResultInterpreter = [converted];
+    }
+  }
+  if (segment.fields[34] !== undefined) {
+    const fv = segment.fields[34];
+    if (Array.isArray(fv)) {
+      result.$34_technician = fv.map(v => fromNDL(v)).filter((v): v is NDL => v !== undefined);
+    } else {
+      const converted = fromNDL(fv);
+      if (converted) result.$34_technician = [converted];
+    }
+  }
+  if (segment.fields[35] !== undefined) {
+    const fv = segment.fields[35];
+    if (Array.isArray(fv)) {
+      result.$35_transcriptionist = fv.map(v => fromNDL(v)).filter((v): v is NDL => v !== undefined);
+    } else {
+      const converted = fromNDL(fv);
+      if (converted) result.$35_transcriptionist = [converted];
+    }
+  }
+  if (segment.fields[36] !== undefined) {
+    const v = getComponent(segment.fields[36]);
+    if (v !== undefined) result.$36_scheduledDateTime = v;
+  }
+  if (segment.fields[37] !== undefined) {
+    const v = getComponent(segment.fields[37]);
+    if (v !== undefined) result.$37_numberOfSampleContainers = v;
+  }
+  if (segment.fields[38] !== undefined) {
+    const fv = segment.fields[38];
+    if (Array.isArray(fv)) {
+      result.$38_transportLogisticsOfCollectedSample = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$38_transportLogisticsOfCollectedSample = [converted];
+    }
+  }
+  if (segment.fields[39] !== undefined) {
+    const fv = segment.fields[39];
+    if (Array.isArray(fv)) {
+      result.$39_collectorsComment = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$39_collectorsComment = [converted];
+    }
+  }
+  if (segment.fields[40] !== undefined) {
+    const converted = fromCE(segment.fields[40]);
+    if (converted) result.$40_transportArrangementResponsibility = converted;
+  }
+  if (segment.fields[41] !== undefined) {
+    const v = getComponent(segment.fields[41]);
+    if (v !== undefined) result.$41_transportArranged = v;
+  }
+  if (segment.fields[42] !== undefined) {
+    const v = getComponent(segment.fields[42]);
+    if (v !== undefined) result.$42_escortRequired = v;
+  }
+  if (segment.fields[43] !== undefined) {
+    const fv = segment.fields[43];
+    if (Array.isArray(fv)) {
+      result.$43_plannedPatientTransportComment = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$43_plannedPatientTransportComment = [converted];
+    }
+  }
+  if (segment.fields[44] !== undefined) {
+    const converted = fromCE(segment.fields[44]);
+    if (converted) result.$44_procedureCode = converted;
+  }
+  if (segment.fields[45] !== undefined) {
+    const fv = segment.fields[45];
+    if (Array.isArray(fv)) {
+      result.$45_procedureCodeModifier = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$45_procedureCodeModifier = [converted];
+    }
+  }
+  if (segment.fields[46] !== undefined) {
+    const fv = segment.fields[46];
+    if (Array.isArray(fv)) {
+      result.$46_placerSupplementalInfo = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$46_placerSupplementalInfo = [converted];
+    }
+  }
+  if (segment.fields[47] !== undefined) {
+    const fv = segment.fields[47];
+    if (Array.isArray(fv)) {
+      result.$47_fillerSupplementalInfo = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$47_fillerSupplementalInfo = [converted];
+    }
+  }
+  if (segment.fields[48] !== undefined) {
+    const converted = fromCWE(segment.fields[48]);
+    if (converted) result.$48_medicallyNecessaryDuplicateProcedureReason = converted;
+  }
+  if (segment.fields[49] !== undefined) {
+    const v = getComponent(segment.fields[49]);
+    if (v !== undefined) result.$49_resultHandling = v;
+  }
+  if (segment.fields[50] !== undefined) {
+    const converted = fromCWE(segment.fields[50]);
+    if (converted) result.$50_parentUniversalServiceIdentifier = converted;
+  }
+  return result;
+}
+
 /** Convert HL7v2Segment to OBX */
 export function fromOBX(segment: HL7v2Segment): OBX {
   const result: OBX = {} as OBX;
@@ -4956,6 +6542,186 @@ export function fromOBX(segment: HL7v2Segment): OBX {
   if (segment.fields[25] !== undefined) {
     const converted = fromXCN(segment.fields[25]);
     if (converted) result.$25_performingOrganizationMedicalDirector = converted;
+  }
+  return result;
+}
+
+/** Convert HL7v2Segment to ORC */
+export function fromORC(segment: HL7v2Segment): ORC {
+  const result: ORC = {} as ORC;
+  if (segment.fields[1] !== undefined) {
+    const v = getComponent(segment.fields[1]);
+    if (v !== undefined) result.$1_orderControl = v;
+  }
+  if (segment.fields[2] !== undefined) {
+    const converted = fromEI(segment.fields[2]);
+    if (converted) result.$2_placerOrderNumber = converted;
+  }
+  if (segment.fields[3] !== undefined) {
+    const converted = fromEI(segment.fields[3]);
+    if (converted) result.$3_fillerOrderNumber = converted;
+  }
+  if (segment.fields[4] !== undefined) {
+    const converted = fromEI(segment.fields[4]);
+    if (converted) result.$4_placerGroupNumber = converted;
+  }
+  if (segment.fields[5] !== undefined) {
+    const v = getComponent(segment.fields[5]);
+    if (v !== undefined) result.$5_orderStatus = v;
+  }
+  if (segment.fields[6] !== undefined) {
+    const v = getComponent(segment.fields[6]);
+    if (v !== undefined) result.$6_responseFlag = v;
+  }
+  if (segment.fields[7] !== undefined) {
+    const fv = segment.fields[7];
+    if (Array.isArray(fv)) {
+      result.$7_timing = fv.map(v => fromTQ(v)).filter((v): v is TQ => v !== undefined);
+    } else {
+      const converted = fromTQ(fv);
+      if (converted) result.$7_timing = [converted];
+    }
+  }
+  if (segment.fields[8] !== undefined) {
+    const converted = fromEIP(segment.fields[8]);
+    if (converted) result.$8_parent = converted;
+  }
+  if (segment.fields[9] !== undefined) {
+    const v = getComponent(segment.fields[9]);
+    if (v !== undefined) result.$9_transactionDateTime = v;
+  }
+  if (segment.fields[10] !== undefined) {
+    const fv = segment.fields[10];
+    if (Array.isArray(fv)) {
+      result.$10_enteredBy = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$10_enteredBy = [converted];
+    }
+  }
+  if (segment.fields[11] !== undefined) {
+    const fv = segment.fields[11];
+    if (Array.isArray(fv)) {
+      result.$11_verifiedBy = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$11_verifiedBy = [converted];
+    }
+  }
+  if (segment.fields[12] !== undefined) {
+    const fv = segment.fields[12];
+    if (Array.isArray(fv)) {
+      result.$12_orderingProvider = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$12_orderingProvider = [converted];
+    }
+  }
+  if (segment.fields[13] !== undefined) {
+    const converted = fromPL(segment.fields[13]);
+    if (converted) result.$13_enterersLocation = converted;
+  }
+  if (segment.fields[14] !== undefined) {
+    const fv = segment.fields[14];
+    if (Array.isArray(fv)) {
+      result.$14_callbackPhone = fv.map(v => fromXTN(v)).filter((v): v is XTN => v !== undefined);
+    } else {
+      const converted = fromXTN(fv);
+      if (converted) result.$14_callbackPhone = [converted];
+    }
+  }
+  if (segment.fields[15] !== undefined) {
+    const v = getComponent(segment.fields[15]);
+    if (v !== undefined) result.$15_orderEffectiveDateTime = v;
+  }
+  if (segment.fields[16] !== undefined) {
+    const converted = fromCE(segment.fields[16]);
+    if (converted) result.$16_orderControlCodeReason = converted;
+  }
+  if (segment.fields[17] !== undefined) {
+    const converted = fromCE(segment.fields[17]);
+    if (converted) result.$17_enteringOrganization = converted;
+  }
+  if (segment.fields[18] !== undefined) {
+    const converted = fromCE(segment.fields[18]);
+    if (converted) result.$18_enteringDevice = converted;
+  }
+  if (segment.fields[19] !== undefined) {
+    const fv = segment.fields[19];
+    if (Array.isArray(fv)) {
+      result.$19_actionBy = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$19_actionBy = [converted];
+    }
+  }
+  if (segment.fields[20] !== undefined) {
+    const converted = fromCE(segment.fields[20]);
+    if (converted) result.$20_advancedBeneficiaryNoticeCode = converted;
+  }
+  if (segment.fields[21] !== undefined) {
+    const fv = segment.fields[21];
+    if (Array.isArray(fv)) {
+      result.$21_orderingFacilityName = fv.map(v => fromXON(v)).filter((v): v is XON => v !== undefined);
+    } else {
+      const converted = fromXON(fv);
+      if (converted) result.$21_orderingFacilityName = [converted];
+    }
+  }
+  if (segment.fields[22] !== undefined) {
+    const fv = segment.fields[22];
+    if (Array.isArray(fv)) {
+      result.$22_orderingFacilityAddress = fv.map(v => fromXAD(v)).filter((v): v is XAD => v !== undefined);
+    } else {
+      const converted = fromXAD(fv);
+      if (converted) result.$22_orderingFacilityAddress = [converted];
+    }
+  }
+  if (segment.fields[23] !== undefined) {
+    const fv = segment.fields[23];
+    if (Array.isArray(fv)) {
+      result.$23_orderingFacilityPhoneNumber = fv.map(v => fromXTN(v)).filter((v): v is XTN => v !== undefined);
+    } else {
+      const converted = fromXTN(fv);
+      if (converted) result.$23_orderingFacilityPhoneNumber = [converted];
+    }
+  }
+  if (segment.fields[24] !== undefined) {
+    const fv = segment.fields[24];
+    if (Array.isArray(fv)) {
+      result.$24_orderingProviderAddress = fv.map(v => fromXAD(v)).filter((v): v is XAD => v !== undefined);
+    } else {
+      const converted = fromXAD(fv);
+      if (converted) result.$24_orderingProviderAddress = [converted];
+    }
+  }
+  if (segment.fields[25] !== undefined) {
+    const converted = fromCWE(segment.fields[25]);
+    if (converted) result.$25_orderStatusModifier = converted;
+  }
+  if (segment.fields[26] !== undefined) {
+    const converted = fromCWE(segment.fields[26]);
+    if (converted) result.$26_advancedBeneficiaryNoticeOverrideReason = converted;
+  }
+  if (segment.fields[27] !== undefined) {
+    const v = getComponent(segment.fields[27]);
+    if (v !== undefined) result.$27_fillersExpectedAvailabilityDateTime = v;
+  }
+  if (segment.fields[28] !== undefined) {
+    const converted = fromCWE(segment.fields[28]);
+    if (converted) result.$28_confidentialityCode = converted;
+  }
+  if (segment.fields[29] !== undefined) {
+    const converted = fromCWE(segment.fields[29]);
+    if (converted) result.$29_orderType = converted;
+  }
+  if (segment.fields[30] !== undefined) {
+    const converted = fromCNE(segment.fields[30]);
+    if (converted) result.$30_entererAuthorizationMode = converted;
+  }
+  if (segment.fields[31] !== undefined) {
+    const converted = fromCWE(segment.fields[31]);
+    if (converted) result.$31_parentUniversalServiceIdentifier = converted;
   }
   return result;
 }
@@ -6028,6 +7794,319 @@ export function fromSFT(segment: HL7v2Segment): SFT {
   if (segment.fields[6] !== undefined) {
     const v = getComponent(segment.fields[6]);
     if (v !== undefined) result.$6_softwareInstallDate = v;
+  }
+  return result;
+}
+
+/** Convert HL7v2Segment to SPM */
+export function fromSPM(segment: HL7v2Segment): SPM {
+  const result: SPM = {} as SPM;
+  if (segment.fields[1] !== undefined) {
+    const v = getComponent(segment.fields[1]);
+    if (v !== undefined) result.$1_setIdSpm = v;
+  }
+  if (segment.fields[2] !== undefined) {
+    const converted = fromEIP(segment.fields[2]);
+    if (converted) result.$2_specimenId = converted;
+  }
+  if (segment.fields[3] !== undefined) {
+    const fv = segment.fields[3];
+    if (Array.isArray(fv)) {
+      result.$3_specimenParentIds = fv.map(v => fromEIP(v)).filter((v): v is EIP => v !== undefined);
+    } else {
+      const converted = fromEIP(fv);
+      if (converted) result.$3_specimenParentIds = [converted];
+    }
+  }
+  if (segment.fields[4] !== undefined) {
+    const converted = fromCWE(segment.fields[4]);
+    if (converted) result.$4_specimenType = converted;
+  }
+  if (segment.fields[5] !== undefined) {
+    const fv = segment.fields[5];
+    if (Array.isArray(fv)) {
+      result.$5_specimenTypeModifier = fv.map(v => fromCWE(v)).filter((v): v is CWE => v !== undefined);
+    } else {
+      const converted = fromCWE(fv);
+      if (converted) result.$5_specimenTypeModifier = [converted];
+    }
+  }
+  if (segment.fields[6] !== undefined) {
+    const fv = segment.fields[6];
+    if (Array.isArray(fv)) {
+      result.$6_specimenAdditives = fv.map(v => fromCWE(v)).filter((v): v is CWE => v !== undefined);
+    } else {
+      const converted = fromCWE(fv);
+      if (converted) result.$6_specimenAdditives = [converted];
+    }
+  }
+  if (segment.fields[7] !== undefined) {
+    const converted = fromCWE(segment.fields[7]);
+    if (converted) result.$7_collectionMethod = converted;
+  }
+  if (segment.fields[8] !== undefined) {
+    const converted = fromCWE(segment.fields[8]);
+    if (converted) result.$8_specimenSourceSite = converted;
+  }
+  if (segment.fields[9] !== undefined) {
+    const fv = segment.fields[9];
+    if (Array.isArray(fv)) {
+      result.$9_specimenSourceSiteModifier = fv.map(v => fromCWE(v)).filter((v): v is CWE => v !== undefined);
+    } else {
+      const converted = fromCWE(fv);
+      if (converted) result.$9_specimenSourceSiteModifier = [converted];
+    }
+  }
+  if (segment.fields[10] !== undefined) {
+    const converted = fromCWE(segment.fields[10]);
+    if (converted) result.$10_specimenCollectionSite = converted;
+  }
+  if (segment.fields[11] !== undefined) {
+    const fv = segment.fields[11];
+    if (Array.isArray(fv)) {
+      result.$11_role = fv.map(v => fromCWE(v)).filter((v): v is CWE => v !== undefined);
+    } else {
+      const converted = fromCWE(fv);
+      if (converted) result.$11_role = [converted];
+    }
+  }
+  if (segment.fields[12] !== undefined) {
+    const converted = fromCQ(segment.fields[12]);
+    if (converted) result.$12_specimenCollectionAmount = converted;
+  }
+  if (segment.fields[13] !== undefined) {
+    const v = getComponent(segment.fields[13]);
+    if (v !== undefined) result.$13_groupedSpecimenCount = v;
+  }
+  if (segment.fields[14] !== undefined) {
+    const fv = segment.fields[14];
+    if (Array.isArray(fv)) {
+      result.$14_specimenDescription = fv.map(v => typeof v === "string" ? v : getComponent(v)).filter((v): v is string => v !== undefined);
+    } else if (typeof fv === "string") {
+      result.$14_specimenDescription = [fv];
+    }
+  }
+  if (segment.fields[15] !== undefined) {
+    const fv = segment.fields[15];
+    if (Array.isArray(fv)) {
+      result.$15_specimenHandlingCode = fv.map(v => fromCWE(v)).filter((v): v is CWE => v !== undefined);
+    } else {
+      const converted = fromCWE(fv);
+      if (converted) result.$15_specimenHandlingCode = [converted];
+    }
+  }
+  if (segment.fields[16] !== undefined) {
+    const fv = segment.fields[16];
+    if (Array.isArray(fv)) {
+      result.$16_specimenRiskCode = fv.map(v => fromCWE(v)).filter((v): v is CWE => v !== undefined);
+    } else {
+      const converted = fromCWE(fv);
+      if (converted) result.$16_specimenRiskCode = [converted];
+    }
+  }
+  if (segment.fields[17] !== undefined) {
+    const converted = fromDR(segment.fields[17]);
+    if (converted) result.$17_specimenCollection = converted;
+  }
+  if (segment.fields[18] !== undefined) {
+    const v = getComponent(segment.fields[18]);
+    if (v !== undefined) result.$18_specimenReceived = v;
+  }
+  if (segment.fields[19] !== undefined) {
+    const v = getComponent(segment.fields[19]);
+    if (v !== undefined) result.$19_specimenExpiration = v;
+  }
+  if (segment.fields[20] !== undefined) {
+    const v = getComponent(segment.fields[20]);
+    if (v !== undefined) result.$20_specimenAvailability = v;
+  }
+  if (segment.fields[21] !== undefined) {
+    const fv = segment.fields[21];
+    if (Array.isArray(fv)) {
+      result.$21_specimenRejectReason = fv.map(v => fromCWE(v)).filter((v): v is CWE => v !== undefined);
+    } else {
+      const converted = fromCWE(fv);
+      if (converted) result.$21_specimenRejectReason = [converted];
+    }
+  }
+  if (segment.fields[22] !== undefined) {
+    const converted = fromCWE(segment.fields[22]);
+    if (converted) result.$22_specimenQuality = converted;
+  }
+  if (segment.fields[23] !== undefined) {
+    const converted = fromCWE(segment.fields[23]);
+    if (converted) result.$23_specimenAppropriateness = converted;
+  }
+  if (segment.fields[24] !== undefined) {
+    const fv = segment.fields[24];
+    if (Array.isArray(fv)) {
+      result.$24_specimenCondition = fv.map(v => fromCWE(v)).filter((v): v is CWE => v !== undefined);
+    } else {
+      const converted = fromCWE(fv);
+      if (converted) result.$24_specimenCondition = [converted];
+    }
+  }
+  if (segment.fields[25] !== undefined) {
+    const converted = fromCQ(segment.fields[25]);
+    if (converted) result.$25_specimenCurrentQuantity = converted;
+  }
+  if (segment.fields[26] !== undefined) {
+    const v = getComponent(segment.fields[26]);
+    if (v !== undefined) result.$26_numberOfSpecimenContainers = v;
+  }
+  if (segment.fields[27] !== undefined) {
+    const converted = fromCWE(segment.fields[27]);
+    if (converted) result.$27_containerType = converted;
+  }
+  if (segment.fields[28] !== undefined) {
+    const converted = fromCWE(segment.fields[28]);
+    if (converted) result.$28_containerCondition = converted;
+  }
+  if (segment.fields[29] !== undefined) {
+    const converted = fromCWE(segment.fields[29]);
+    if (converted) result.$29_specimenChildRole = converted;
+  }
+  return result;
+}
+
+/** Convert HL7v2Segment to TQ1 */
+export function fromTQ1(segment: HL7v2Segment): TQ1 {
+  const result: TQ1 = {} as TQ1;
+  if (segment.fields[1] !== undefined) {
+    const v = getComponent(segment.fields[1]);
+    if (v !== undefined) result.$1_setIdTq1 = v;
+  }
+  if (segment.fields[2] !== undefined) {
+    const converted = fromCQ(segment.fields[2]);
+    if (converted) result.$2_value = converted;
+  }
+  if (segment.fields[3] !== undefined) {
+    const fv = segment.fields[3];
+    if (Array.isArray(fv)) {
+      result.$3_pattern = fv.map(v => fromRPT(v)).filter((v): v is RPT => v !== undefined);
+    } else {
+      const converted = fromRPT(fv);
+      if (converted) result.$3_pattern = [converted];
+    }
+  }
+  if (segment.fields[4] !== undefined) {
+    const fv = segment.fields[4];
+    if (Array.isArray(fv)) {
+      result.$4_explicitTime = fv.map(v => typeof v === "string" ? v : getComponent(v)).filter((v): v is string => v !== undefined);
+    } else if (typeof fv === "string") {
+      result.$4_explicitTime = [fv];
+    }
+  }
+  if (segment.fields[5] !== undefined) {
+    const fv = segment.fields[5];
+    if (Array.isArray(fv)) {
+      result.$5_relativeTimeAndUnit = fv.map(v => fromCQ(v)).filter((v): v is CQ => v !== undefined);
+    } else {
+      const converted = fromCQ(fv);
+      if (converted) result.$5_relativeTimeAndUnit = [converted];
+    }
+  }
+  if (segment.fields[6] !== undefined) {
+    const converted = fromCQ(segment.fields[6]);
+    if (converted) result.$6_serviceDuration = converted;
+  }
+  if (segment.fields[7] !== undefined) {
+    const v = getComponent(segment.fields[7]);
+    if (v !== undefined) result.$7_start = v;
+  }
+  if (segment.fields[8] !== undefined) {
+    const v = getComponent(segment.fields[8]);
+    if (v !== undefined) result.$8_end = v;
+  }
+  if (segment.fields[9] !== undefined) {
+    const fv = segment.fields[9];
+    if (Array.isArray(fv)) {
+      result.$9_priority = fv.map(v => fromCWE(v)).filter((v): v is CWE => v !== undefined);
+    } else {
+      const converted = fromCWE(fv);
+      if (converted) result.$9_priority = [converted];
+    }
+  }
+  if (segment.fields[10] !== undefined) {
+    const v = getComponent(segment.fields[10]);
+    if (v !== undefined) result.$10_conditionText = v;
+  }
+  if (segment.fields[11] !== undefined) {
+    const v = getComponent(segment.fields[11]);
+    if (v !== undefined) result.$11_textInstruction = v;
+  }
+  if (segment.fields[12] !== undefined) {
+    const v = getComponent(segment.fields[12]);
+    if (v !== undefined) result.$12_conjunction = v;
+  }
+  if (segment.fields[13] !== undefined) {
+    const converted = fromCQ(segment.fields[13]);
+    if (converted) result.$13_occurrenceDuration = converted;
+  }
+  if (segment.fields[14] !== undefined) {
+    const v = getComponent(segment.fields[14]);
+    if (v !== undefined) result.$14_totalOccurrences = v;
+  }
+  return result;
+}
+
+/** Convert HL7v2Segment to TQ2 */
+export function fromTQ2(segment: HL7v2Segment): TQ2 {
+  const result: TQ2 = {} as TQ2;
+  if (segment.fields[1] !== undefined) {
+    const v = getComponent(segment.fields[1]);
+    if (v !== undefined) result.$1_setIdTq2 = v;
+  }
+  if (segment.fields[2] !== undefined) {
+    const v = getComponent(segment.fields[2]);
+    if (v !== undefined) result.$2_flag = v;
+  }
+  if (segment.fields[3] !== undefined) {
+    const fv = segment.fields[3];
+    if (Array.isArray(fv)) {
+      result.$3_relatedPlacerNumber = fv.map(v => fromEI(v)).filter((v): v is EI => v !== undefined);
+    } else {
+      const converted = fromEI(fv);
+      if (converted) result.$3_relatedPlacerNumber = [converted];
+    }
+  }
+  if (segment.fields[4] !== undefined) {
+    const fv = segment.fields[4];
+    if (Array.isArray(fv)) {
+      result.$4_relatedFillerNumber = fv.map(v => fromEI(v)).filter((v): v is EI => v !== undefined);
+    } else {
+      const converted = fromEI(fv);
+      if (converted) result.$4_relatedFillerNumber = [converted];
+    }
+  }
+  if (segment.fields[5] !== undefined) {
+    const fv = segment.fields[5];
+    if (Array.isArray(fv)) {
+      result.$5_relatedPlacerGroupNumber = fv.map(v => fromEI(v)).filter((v): v is EI => v !== undefined);
+    } else {
+      const converted = fromEI(fv);
+      if (converted) result.$5_relatedPlacerGroupNumber = [converted];
+    }
+  }
+  if (segment.fields[6] !== undefined) {
+    const v = getComponent(segment.fields[6]);
+    if (v !== undefined) result.$6_sequenceConditionCode = v;
+  }
+  if (segment.fields[7] !== undefined) {
+    const v = getComponent(segment.fields[7]);
+    if (v !== undefined) result.$7_cyclicEntryExitIndicator = v;
+  }
+  if (segment.fields[8] !== undefined) {
+    const converted = fromCQ(segment.fields[8]);
+    if (converted) result.$8_sequenceConditionTimeInterval = converted;
+  }
+  if (segment.fields[9] !== undefined) {
+    const v = getComponent(segment.fields[9]);
+    if (v !== undefined) result.$9_cyclicGroupMaximumNumberOfRepeats = v;
+  }
+  if (segment.fields[10] !== undefined) {
+    const v = getComponent(segment.fields[10]);
+    if (v !== undefined) result.$10_specialServiceRequestRelationship = v;
   }
   return result;
 }

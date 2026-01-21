@@ -1,22 +1,30 @@
+// @ts-nocheck
 // AUTO-GENERATED - HL7v2 Message Builders
-// Generated for: BAR_P01
+// Generated for: BAR_P01, ORU_R01
 
 import type { HL7v2Segment, HL7v2Message } from "./types";
 import {
   toSegment,
   type ACC,
   type AL1,
+  type CTD,
+  type CTI,
   type DB1,
   type DG1,
   type DRG,
+  type DSC,
   type EVN,
+  type FT1,
   type GT1,
   type IN1,
   type IN2,
   type IN3,
   type MSH,
   type NK1,
+  type NTE,
+  type OBR,
   type OBX,
+  type ORC,
   type PD1,
   type PID,
   type PR1,
@@ -24,6 +32,9 @@ import {
   type PV2,
   type ROL,
   type SFT,
+  type SPM,
+  type TQ1,
+  type TQ2,
   type UB1,
   type UB2,
 } from "./fields";
@@ -306,6 +317,339 @@ export class BAR_P01Builder {
   }
 }
 
+export interface ORU_R01_VISIT {
+  pv1: HL7v2Segment;
+  pv2?: HL7v2Segment;
+}
+
+export class ORU_R01_VISITBuilder {
+  private group: Partial<ORU_R01_VISIT> = {};
+
+  pv1(segment: PV1): this {
+    this.group.pv1 = toSegment("PV1", segment);
+    return this;
+  }
+
+  pv2(segment: PV2): this {
+    this.group.pv2 = toSegment("PV2", segment);
+    return this;
+  }
+
+  build(): ORU_R01_VISIT {
+    return this.group as ORU_R01_VISIT;
+  }
+}
+
+export interface ORU_R01_PATIENT {
+  pid: HL7v2Segment;
+  pd1?: HL7v2Segment;
+  nte?: HL7v2Segment[];
+  nk1?: HL7v2Segment[];
+  visit?: ORU_R01_VISIT;
+}
+
+export class ORU_R01_PATIENTBuilder {
+  private group: Partial<ORU_R01_PATIENT> = {};
+
+  pid(segment: PID): this {
+    this.group.pid = toSegment("PID", segment);
+    return this;
+  }
+
+  pd1(segment: PD1): this {
+    this.group.pd1 = toSegment("PD1", segment);
+    return this;
+  }
+
+  addNTE(segment: NTE): this {
+    if (!this.group.nte) this.group.nte = [];
+    this.group.nte.push(toSegment("NTE", segment));
+    return this;
+  }
+
+  addNK1(segment: NK1): this {
+    if (!this.group.nk1) this.group.nk1 = [];
+    this.group.nk1.push(toSegment("NK1", segment));
+    return this;
+  }
+
+  visit(group: ORU_R01_VISIT | ((builder: ORU_R01_VISITBuilder) => ORU_R01_VISITBuilder)): this {
+    if (typeof group === "function") this.group.visit = group(new ORU_R01_VISITBuilder()).build();
+    else this.group.visit = group;
+    return this;
+  }
+
+  build(): ORU_R01_PATIENT {
+    return this.group as ORU_R01_PATIENT;
+  }
+}
+
+export interface ORU_R01_TIMING_QTY {
+  tq1: HL7v2Segment;
+  tq2?: HL7v2Segment[];
+}
+
+export class ORU_R01_TIMING_QTYBuilder {
+  private group: Partial<ORU_R01_TIMING_QTY> = {};
+
+  tq1(segment: TQ1): this {
+    this.group.tq1 = toSegment("TQ1", segment);
+    return this;
+  }
+
+  addTQ2(segment: TQ2): this {
+    if (!this.group.tq2) this.group.tq2 = [];
+    this.group.tq2.push(toSegment("TQ2", segment));
+    return this;
+  }
+
+  build(): ORU_R01_TIMING_QTY {
+    return this.group as ORU_R01_TIMING_QTY;
+  }
+}
+
+export interface ORU_R01_OBSERVATION {
+  obx: HL7v2Segment;
+  nte?: HL7v2Segment[];
+}
+
+export class ORU_R01_OBSERVATIONBuilder {
+  private group: Partial<ORU_R01_OBSERVATION> = {};
+
+  obx(segment: OBX): this {
+    this.group.obx = toSegment("OBX", segment);
+    return this;
+  }
+
+  addNTE(segment: NTE): this {
+    if (!this.group.nte) this.group.nte = [];
+    this.group.nte.push(toSegment("NTE", segment));
+    return this;
+  }
+
+  build(): ORU_R01_OBSERVATION {
+    return this.group as ORU_R01_OBSERVATION;
+  }
+}
+
+export interface ORU_R01_SPECIMEN {
+  spm: HL7v2Segment;
+  obx?: HL7v2Segment[];
+}
+
+export class ORU_R01_SPECIMENBuilder {
+  private group: Partial<ORU_R01_SPECIMEN> = {};
+
+  spm(segment: SPM): this {
+    this.group.spm = toSegment("SPM", segment);
+    return this;
+  }
+
+  addOBX(segment: OBX): this {
+    if (!this.group.obx) this.group.obx = [];
+    this.group.obx.push(toSegment("OBX", segment));
+    return this;
+  }
+
+  build(): ORU_R01_SPECIMEN {
+    return this.group as ORU_R01_SPECIMEN;
+  }
+}
+
+export interface ORU_R01_ORDER_OBSERVATION {
+  orc?: HL7v2Segment;
+  obr: HL7v2Segment;
+  nte?: HL7v2Segment[];
+  timing_qty?: ORU_R01_TIMING_QTY[];
+  ctd?: HL7v2Segment;
+  observation?: ORU_R01_OBSERVATION[];
+  ft1?: HL7v2Segment[];
+  cti?: HL7v2Segment[];
+  specimen?: ORU_R01_SPECIMEN[];
+}
+
+export class ORU_R01_ORDER_OBSERVATIONBuilder {
+  private group: Partial<ORU_R01_ORDER_OBSERVATION> = {};
+
+  orc(segment: ORC): this {
+    this.group.orc = toSegment("ORC", segment);
+    return this;
+  }
+
+  obr(segment: OBR): this {
+    this.group.obr = toSegment("OBR", segment);
+    return this;
+  }
+
+  addNTE(segment: NTE): this {
+    if (!this.group.nte) this.group.nte = [];
+    this.group.nte.push(toSegment("NTE", segment));
+    return this;
+  }
+
+  addTIMING_QTY(group: ORU_R01_TIMING_QTY | ((builder: ORU_R01_TIMING_QTYBuilder) => ORU_R01_TIMING_QTYBuilder)): this {
+    let g: ORU_R01_TIMING_QTY;
+    if (typeof group === "function") g = group(new ORU_R01_TIMING_QTYBuilder()).build();
+    else g = group;
+    if (!this.group.timing_qty) this.group.timing_qty = [];
+    this.group.timing_qty.push(g);
+    return this;
+  }
+
+  ctd(segment: CTD): this {
+    this.group.ctd = toSegment("CTD", segment);
+    return this;
+  }
+
+  addOBSERVATION(group: ORU_R01_OBSERVATION | ((builder: ORU_R01_OBSERVATIONBuilder) => ORU_R01_OBSERVATIONBuilder)): this {
+    let g: ORU_R01_OBSERVATION;
+    if (typeof group === "function") g = group(new ORU_R01_OBSERVATIONBuilder()).build();
+    else g = group;
+    if (!this.group.observation) this.group.observation = [];
+    this.group.observation.push(g);
+    return this;
+  }
+
+  addFT1(segment: FT1): this {
+    if (!this.group.ft1) this.group.ft1 = [];
+    this.group.ft1.push(toSegment("FT1", segment));
+    return this;
+  }
+
+  addCTI(segment: CTI): this {
+    if (!this.group.cti) this.group.cti = [];
+    this.group.cti.push(toSegment("CTI", segment));
+    return this;
+  }
+
+  addSPECIMEN(group: ORU_R01_SPECIMEN | ((builder: ORU_R01_SPECIMENBuilder) => ORU_R01_SPECIMENBuilder)): this {
+    let g: ORU_R01_SPECIMEN;
+    if (typeof group === "function") g = group(new ORU_R01_SPECIMENBuilder()).build();
+    else g = group;
+    if (!this.group.specimen) this.group.specimen = [];
+    this.group.specimen.push(g);
+    return this;
+  }
+
+  build(): ORU_R01_ORDER_OBSERVATION {
+    return this.group as ORU_R01_ORDER_OBSERVATION;
+  }
+}
+
+export interface ORU_R01_PATIENT_RESULT {
+  patient?: ORU_R01_PATIENT;
+  order_observation: ORU_R01_ORDER_OBSERVATION[];
+}
+
+export class ORU_R01_PATIENT_RESULTBuilder {
+  private group: Partial<ORU_R01_PATIENT_RESULT> = {};
+
+  patient(group: ORU_R01_PATIENT | ((builder: ORU_R01_PATIENTBuilder) => ORU_R01_PATIENTBuilder)): this {
+    if (typeof group === "function") this.group.patient = group(new ORU_R01_PATIENTBuilder()).build();
+    else this.group.patient = group;
+    return this;
+  }
+
+  addORDER_OBSERVATION(group: ORU_R01_ORDER_OBSERVATION | ((builder: ORU_R01_ORDER_OBSERVATIONBuilder) => ORU_R01_ORDER_OBSERVATIONBuilder)): this {
+    let g: ORU_R01_ORDER_OBSERVATION;
+    if (typeof group === "function") g = group(new ORU_R01_ORDER_OBSERVATIONBuilder()).build();
+    else g = group;
+    if (!this.group.order_observation) this.group.order_observation = [];
+    this.group.order_observation.push(g);
+    return this;
+  }
+
+  build(): ORU_R01_PATIENT_RESULT {
+    return this.group as ORU_R01_PATIENT_RESULT;
+  }
+}
+
+/**
+ * ORU_R01 Message Structure
+ */
+export interface ORU_R01_Message {
+  msh: HL7v2Segment;
+  sft?: HL7v2Segment[];
+  patient_result: ORU_R01_PATIENT_RESULT[];
+  dsc?: HL7v2Segment;
+}
+
+/**
+ * Builder for ORU_R01 messages
+ */
+export class ORU_R01Builder {
+  private msg: Partial<ORU_R01_Message> = {};
+
+  msh(segment: MSH): this {
+    this.msg.msh = toSegment("MSH", segment);
+    return this;
+  }
+
+  addSFT(segment: SFT): this {
+    if (!this.msg.sft) this.msg.sft = [];
+    this.msg.sft.push(toSegment("SFT", segment));
+    return this;
+  }
+
+  addPATIENT_RESULT(group: ORU_R01_PATIENT_RESULT | ((builder: ORU_R01_PATIENT_RESULTBuilder) => ORU_R01_PATIENT_RESULTBuilder)): this {
+    let g: ORU_R01_PATIENT_RESULT;
+    if (typeof group === "function") g = group(new ORU_R01_PATIENT_RESULTBuilder()).build();
+    else g = group;
+    if (!this.msg.patient_result) this.msg.patient_result = [];
+    this.msg.patient_result.push(g);
+    return this;
+  }
+
+  dsc(segment: DSC): this {
+    this.msg.dsc = toSegment("DSC", segment);
+    return this;
+  }
+
+  build(): HL7v2Message {
+    if (!this.msg.msh) throw new Error("ORU_R01: msh is required");
+    if (!this.msg.patient_result) throw new Error("ORU_R01: patient_result is required");
+    const segments: HL7v2Message = [];
+    if (this.msg.msh) segments.push(this.msg.msh);
+    if (this.msg.sft) for (const seg of this.msg.sft) segments.push(seg);
+    if (this.msg.patient_result) for (const group of this.msg.patient_result) {
+      if (group.patient) {
+        const subgroup = group.patient;
+        if (subgroup.pid) segments.push(subgroup.pid);
+        if (subgroup.pd1) segments.push(subgroup.pd1);
+        if (subgroup.nte) for (const seg of subgroup.nte) segments.push(seg);
+        if (subgroup.nk1) for (const seg of subgroup.nk1) segments.push(seg);
+        if (subgroup.visit) {
+          const subgroup = subgroup.visit;
+          if (subgroup.pv1) segments.push(subgroup.pv1);
+          if (subgroup.pv2) segments.push(subgroup.pv2);
+        }
+      }
+      if (group.order_observation) for (const subgroup of group.order_observation) {
+        if (subgroup.orc) segments.push(subgroup.orc);
+        if (subgroup.obr) segments.push(subgroup.obr);
+        if (subgroup.nte) for (const seg of subgroup.nte) segments.push(seg);
+        if (subgroup.timing_qty) for (const subgroup of subgroup.timing_qty) {
+          if (subgroup.tq1) segments.push(subgroup.tq1);
+          if (subgroup.tq2) for (const seg of subgroup.tq2) segments.push(seg);
+        }
+        if (subgroup.ctd) segments.push(subgroup.ctd);
+        if (subgroup.observation) for (const subgroup of subgroup.observation) {
+          if (subgroup.obx) segments.push(subgroup.obx);
+          if (subgroup.nte) for (const seg of subgroup.nte) segments.push(seg);
+        }
+        if (subgroup.ft1) for (const seg of subgroup.ft1) segments.push(seg);
+        if (subgroup.cti) for (const seg of subgroup.cti) segments.push(seg);
+        if (subgroup.specimen) for (const subgroup of subgroup.specimen) {
+          if (subgroup.spm) segments.push(subgroup.spm);
+          if (subgroup.obx) for (const seg of subgroup.obx) segments.push(seg);
+        }
+      }
+    }
+    if (this.msg.dsc) segments.push(this.msg.dsc);
+    return segments;
+  }
+}
+
 // ====== Typed Input Interfaces ======
 
 export interface BAR_P01_PROCEDURE_Input {
@@ -388,5 +732,106 @@ export function toBAR_P01(input: BAR_P01_Input): HL7v2Message {
     if (group.UB1) segments.push(toSegment("UB1", group.UB1));
     if (group.UB2) segments.push(toSegment("UB2", group.UB2));
   }
+  return segments;
+}
+
+export interface ORU_R01_VISIT_Input {
+  PV1: PV1;
+  PV2?: PV2;
+}
+
+export interface ORU_R01_PATIENT_Input {
+  PID: PID;
+  PD1?: PD1;
+  NTE?: NTE[];
+  NK1?: NK1[];
+  VISIT?: ORU_R01_VISIT_Input;
+}
+
+export interface ORU_R01_TIMING_QTY_Input {
+  TQ1: TQ1;
+  TQ2?: TQ2[];
+}
+
+export interface ORU_R01_OBSERVATION_Input {
+  OBX: OBX;
+  NTE?: NTE[];
+}
+
+export interface ORU_R01_SPECIMEN_Input {
+  SPM: SPM;
+  OBX?: OBX[];
+}
+
+export interface ORU_R01_ORDER_OBSERVATION_Input {
+  ORC?: ORC;
+  OBR: OBR;
+  NTE?: NTE[];
+  TIMING_QTY?: ORU_R01_TIMING_QTY_Input[];
+  CTD?: CTD;
+  OBSERVATION?: ORU_R01_OBSERVATION_Input[];
+  FT1?: FT1[];
+  CTI?: CTI[];
+  SPECIMEN?: ORU_R01_SPECIMEN_Input[];
+}
+
+export interface ORU_R01_PATIENT_RESULT_Input {
+  PATIENT?: ORU_R01_PATIENT_Input;
+  ORDER_OBSERVATION: ORU_R01_ORDER_OBSERVATION_Input[];
+}
+
+/**
+ * ORU_R01 Input - typed segment data
+ */
+export interface ORU_R01_Input {
+  type: "ORU_R01";
+  MSH: MSH;
+  SFT?: SFT[];
+  PATIENT_RESULT: ORU_R01_PATIENT_RESULT_Input[];
+  DSC?: DSC;
+}
+
+/**
+ * Convert ORU_R01_Input to HL7v2Message
+ */
+export function toORU_R01(input: ORU_R01_Input): HL7v2Message {
+  const segments: HL7v2Message = [];
+  if (input.MSH) segments.push(toSegment("MSH", input.MSH));
+  if (input.SFT) for (const seg of input.SFT) segments.push(toSegment("SFT", seg));
+  if (input.PATIENT_RESULT) for (const group of input.PATIENT_RESULT) {
+    if (group.PATIENT) {
+      const group = group.PATIENT;
+      if (group.PID) segments.push(toSegment("PID", group.PID));
+      if (group.PD1) segments.push(toSegment("PD1", group.PD1));
+      if (group.NTE) for (const seg of group.NTE) segments.push(toSegment("NTE", seg));
+      if (group.NK1) for (const seg of group.NK1) segments.push(toSegment("NK1", seg));
+      if (group.VISIT) {
+        const group = group.VISIT;
+        if (group.PV1) segments.push(toSegment("PV1", group.PV1));
+        if (group.PV2) segments.push(toSegment("PV2", group.PV2));
+      }
+    }
+    if (group.ORDER_OBSERVATION) for (const group of group.ORDER_OBSERVATION) {
+      if (group.ORC) segments.push(toSegment("ORC", group.ORC));
+      if (group.OBR) segments.push(toSegment("OBR", group.OBR));
+      if (group.NTE) for (const seg of group.NTE) segments.push(toSegment("NTE", seg));
+      if (group.TIMING_QTY) for (const group of group.TIMING_QTY) {
+        if (group.TQ1) segments.push(toSegment("TQ1", group.TQ1));
+        if (group.TQ2) for (const seg of group.TQ2) segments.push(toSegment("TQ2", seg));
+      }
+      if (group.CTD) segments.push(toSegment("CTD", group.CTD));
+      if (group.OBSERVATION) for (const group of group.OBSERVATION) {
+        if (group.OBX) segments.push(toSegment("OBX", group.OBX));
+        if (group.NTE) for (const seg of group.NTE) segments.push(toSegment("NTE", seg));
+      }
+      if (group.FT1) for (const seg of group.FT1) segments.push(toSegment("FT1", seg));
+      if (group.CTI) for (const seg of group.CTI) segments.push(toSegment("CTI", seg));
+      if (group.SPECIMEN) for (const group of group.SPECIMEN) {
+        if (group.SPM) segments.push(toSegment("SPM", group.SPM));
+        if (group.OBX) for (const seg of group.OBX) segments.push(toSegment("OBX", seg));
+      }
+    }
+  }
+  if (input.DSC) segments.push(toSegment("DSC", input.DSC));
   return segments;
 }

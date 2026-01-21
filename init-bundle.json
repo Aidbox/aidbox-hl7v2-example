@@ -3,7 +3,10 @@
   "resourceType": "Bundle",
   "entry": [
     {
-      "request": { "method": "PUT", "url": "StructureDefinition/IncomingHL7v2Message" },
+      "request": {
+        "method": "PUT",
+        "url": "StructureDefinition/IncomingHL7v2Message"
+      },
       "resource": {
         "resourceType": "StructureDefinition",
         "id": "IncomingHL7v2Message",
@@ -17,20 +20,133 @@
         "derivation": "specialization",
         "differential": {
           "element": [
-            { "id": "IncomingHL7v2Message", "path": "IncomingHL7v2Message", "min": 0, "max": "*" },
-            { "id": "IncomingHL7v2Message.type", "path": "IncomingHL7v2Message.type", "min": 1, "max": "1", "type": [{ "code": "string" }] },
-            { "id": "IncomingHL7v2Message.date", "path": "IncomingHL7v2Message.date", "min": 0, "max": "1", "type": [{ "code": "dateTime" }] },
-            { "id": "IncomingHL7v2Message.patient", "path": "IncomingHL7v2Message.patient", "min": 0, "max": "1", "type": [{ "code": "Reference", "targetProfile": ["http://hl7.org/fhir/StructureDefinition/Patient"] }] },
-            { "id": "IncomingHL7v2Message.message", "path": "IncomingHL7v2Message.message", "min": 1, "max": "1", "type": [{ "code": "string" }] },
-            { "id": "IncomingHL7v2Message.status", "path": "IncomingHL7v2Message.status", "min": 0, "max": "1", "type": [{ "code": "string" }] },
-            { "id": "IncomingHL7v2Message.error", "path": "IncomingHL7v2Message.error", "min": 0, "max": "1", "type": [{ "code": "string" }] },
-            { "id": "IncomingHL7v2Message.bundle", "path": "IncomingHL7v2Message.bundle", "min": 0, "max": "1", "type": [{ "code": "string" }] }
+            {
+              "id": "IncomingHL7v2Message",
+              "path": "IncomingHL7v2Message",
+              "min": 0,
+              "max": "*"
+            },
+            {
+              "id": "IncomingHL7v2Message.type",
+              "path": "IncomingHL7v2Message.type",
+              "min": 1,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.date",
+              "path": "IncomingHL7v2Message.date",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "dateTime" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.patient",
+              "path": "IncomingHL7v2Message.patient",
+              "min": 0,
+              "max": "1",
+              "type": [
+                {
+                  "code": "Reference",
+                  "targetProfile": [
+                    "http://hl7.org/fhir/StructureDefinition/Patient"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "IncomingHL7v2Message.message",
+              "path": "IncomingHL7v2Message.message",
+              "min": 1,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.status",
+              "path": "IncomingHL7v2Message.status",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.error",
+              "path": "IncomingHL7v2Message.error",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.bundle",
+              "path": "IncomingHL7v2Message.bundle",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.sendingApplication",
+              "path": "IncomingHL7v2Message.sendingApplication",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.sendingFacility",
+              "path": "IncomingHL7v2Message.sendingFacility",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.unmappedCodes",
+              "path": "IncomingHL7v2Message.unmappedCodes",
+              "min": 0,
+              "max": "*",
+              "type": [{ "code": "BackboneElement" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.unmappedCodes.localCode",
+              "path": "IncomingHL7v2Message.unmappedCodes.localCode",
+              "min": 1,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.unmappedCodes.localDisplay",
+              "path": "IncomingHL7v2Message.unmappedCodes.localDisplay",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.unmappedCodes.localSystem",
+              "path": "IncomingHL7v2Message.unmappedCodes.localSystem",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.unmappedCodes.mappingTask",
+              "path": "IncomingHL7v2Message.unmappedCodes.mappingTask",
+              "min": 1,
+              "max": "1",
+              "type": [
+                {
+                  "code": "Reference",
+                  "targetProfile": [
+                    "http://hl7.org/fhir/StructureDefinition/Task"
+                  ]
+                }
+              ]
+            }
           ]
         }
       }
     },
     {
-      "request": { "method": "PUT", "url": "StructureDefinition/OutgoingBarMessage" },
+      "request": {
+        "method": "PUT",
+        "url": "StructureDefinition/OutgoingBarMessage"
+      },
       "resource": {
         "resourceType": "StructureDefinition",
         "id": "OutgoingBarMessage",
@@ -44,17 +160,63 @@
         "derivation": "specialization",
         "differential": {
           "element": [
-            { "id": "OutgoingBarMessage", "path": "OutgoingBarMessage", "min": 0, "max": "*" },
-            { "id": "OutgoingBarMessage.patient", "path": "OutgoingBarMessage.patient", "min": 1, "max": "1", "type": [{ "code": "Reference", "targetProfile": ["http://hl7.org/fhir/StructureDefinition/Patient"] }] },
-            { "id": "OutgoingBarMessage.invoice", "path": "OutgoingBarMessage.invoice", "min": 1, "max": "1", "type": [{ "code": "Reference", "targetProfile": ["http://hl7.org/fhir/StructureDefinition/Invoice"] }] },
-            { "id": "OutgoingBarMessage.status", "path": "OutgoingBarMessage.status", "min": 1, "max": "1", "type": [{ "code": "string" }] },
-            { "id": "OutgoingBarMessage.hl7v2", "path": "OutgoingBarMessage.hl7v2", "min": 0, "max": "1", "type": [{ "code": "string" }] }
+            {
+              "id": "OutgoingBarMessage",
+              "path": "OutgoingBarMessage",
+              "min": 0,
+              "max": "*"
+            },
+            {
+              "id": "OutgoingBarMessage.patient",
+              "path": "OutgoingBarMessage.patient",
+              "min": 1,
+              "max": "1",
+              "type": [
+                {
+                  "code": "Reference",
+                  "targetProfile": [
+                    "http://hl7.org/fhir/StructureDefinition/Patient"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "OutgoingBarMessage.invoice",
+              "path": "OutgoingBarMessage.invoice",
+              "min": 1,
+              "max": "1",
+              "type": [
+                {
+                  "code": "Reference",
+                  "targetProfile": [
+                    "http://hl7.org/fhir/StructureDefinition/Invoice"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "OutgoingBarMessage.status",
+              "path": "OutgoingBarMessage.status",
+              "min": 1,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "OutgoingBarMessage.hl7v2",
+              "path": "OutgoingBarMessage.hl7v2",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            }
           ]
         }
       }
     },
     {
-      "request": { "method": "PUT", "url": "StructureDefinition/invoice-processing-status" },
+      "request": {
+        "method": "PUT",
+        "url": "StructureDefinition/invoice-processing-status"
+      },
       "resource": {
         "resourceType": "StructureDefinition",
         "id": "invoice-processing-status",
@@ -70,15 +232,32 @@
         "derivation": "constraint",
         "differential": {
           "element": [
-            { "id": "Extension", "path": "Extension", "short": "Invoice processing status for BAR message generation", "definition": "Tracks the processing status of an Invoice through the BAR message generation and sending pipeline." },
-            { "id": "Extension.url", "path": "Extension.url", "fixedUri": "http://example.org/invoice-processing-status" },
-            { "id": "Extension.value[x]", "path": "Extension.value[x]", "min": 1, "type": [{ "code": "code" }] }
+            {
+              "id": "Extension",
+              "path": "Extension",
+              "short": "Invoice processing status for BAR message generation",
+              "definition": "Tracks the processing status of an Invoice through the BAR message generation and sending pipeline."
+            },
+            {
+              "id": "Extension.url",
+              "path": "Extension.url",
+              "fixedUri": "http://example.org/invoice-processing-status"
+            },
+            {
+              "id": "Extension.value[x]",
+              "path": "Extension.value[x]",
+              "min": 1,
+              "type": [{ "code": "code" }]
+            }
           ]
         }
       }
     },
     {
-      "request": { "method": "PUT", "url": "StructureDefinition/invoice-processing-retry-count" },
+      "request": {
+        "method": "PUT",
+        "url": "StructureDefinition/invoice-processing-retry-count"
+      },
       "resource": {
         "resourceType": "StructureDefinition",
         "id": "invoice-processing-retry-count",
@@ -94,15 +273,32 @@
         "derivation": "constraint",
         "differential": {
           "element": [
-            { "id": "Extension", "path": "Extension", "short": "Number of processing retry attempts", "definition": "Tracks how many times the Invoice processing has been retried after failures." },
-            { "id": "Extension.url", "path": "Extension.url", "fixedUri": "http://example.org/invoice-processing-retry-count" },
-            { "id": "Extension.value[x]", "path": "Extension.value[x]", "min": 1, "type": [{ "code": "integer" }] }
+            {
+              "id": "Extension",
+              "path": "Extension",
+              "short": "Number of processing retry attempts",
+              "definition": "Tracks how many times the Invoice processing has been retried after failures."
+            },
+            {
+              "id": "Extension.url",
+              "path": "Extension.url",
+              "fixedUri": "http://example.org/invoice-processing-retry-count"
+            },
+            {
+              "id": "Extension.value[x]",
+              "path": "Extension.value[x]",
+              "min": 1,
+              "type": [{ "code": "integer" }]
+            }
           ]
         }
       }
     },
     {
-      "request": { "method": "PUT", "url": "StructureDefinition/invoice-processing-error-reason" },
+      "request": {
+        "method": "PUT",
+        "url": "StructureDefinition/invoice-processing-error-reason"
+      },
       "resource": {
         "resourceType": "StructureDefinition",
         "id": "invoice-processing-error-reason",
@@ -118,15 +314,32 @@
         "derivation": "constraint",
         "differential": {
           "element": [
-            { "id": "Extension", "path": "Extension", "short": "Reason for Invoice processing failure", "definition": "Describes the reason why Invoice processing failed or was cancelled." },
-            { "id": "Extension.url", "path": "Extension.url", "fixedUri": "http://example.org/invoice-processing-error-reason" },
-            { "id": "Extension.value[x]", "path": "Extension.value[x]", "min": 1, "type": [{ "code": "string" }] }
+            {
+              "id": "Extension",
+              "path": "Extension",
+              "short": "Reason for Invoice processing failure",
+              "definition": "Describes the reason why Invoice processing failed or was cancelled."
+            },
+            {
+              "id": "Extension.url",
+              "path": "Extension.url",
+              "fixedUri": "http://example.org/invoice-processing-error-reason"
+            },
+            {
+              "id": "Extension.value[x]",
+              "path": "Extension.value[x]",
+              "min": 1,
+              "type": [{ "code": "string" }]
+            }
           ]
         }
       }
     },
     {
-      "request": { "method": "PUT", "url": "SearchParameter/IncomingHL7v2Message-status" },
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/IncomingHL7v2Message-status"
+      },
       "resource": {
         "resourceType": "SearchParameter",
         "id": "IncomingHL7v2Message-status",
@@ -141,7 +354,10 @@
       }
     },
     {
-      "request": { "method": "PUT", "url": "SearchParameter/IncomingHL7v2Message-type" },
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/IncomingHL7v2Message-type"
+      },
       "resource": {
         "resourceType": "SearchParameter",
         "id": "IncomingHL7v2Message-type",
@@ -156,7 +372,29 @@
       }
     },
     {
-      "request": { "method": "PUT", "url": "SearchParameter/OutgoingBarMessage-status" },
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/IncomingHL7v2Message-unmapped-task"
+      },
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "IncomingHL7v2Message-unmapped-task",
+        "url": "http://example.org/SearchParameter/IncomingHL7v2Message-unmapped-task",
+        "name": "unmapped-task",
+        "status": "active",
+        "description": "Search IncomingHL7v2Message by unmapped codes mapping task reference",
+        "code": "unmapped-task",
+        "base": ["IncomingHL7v2Message"],
+        "type": "reference",
+        "expression": "IncomingHL7v2Message.unmappedCodes.mappingTask",
+        "target": ["Task"]
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/OutgoingBarMessage-status"
+      },
       "resource": {
         "resourceType": "SearchParameter",
         "id": "OutgoingBarMessage-status",
@@ -171,7 +409,10 @@
       }
     },
     {
-      "request": { "method": "PUT", "url": "SearchParameter/Invoice-processing-status" },
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/Invoice-processing-status"
+      },
       "resource": {
         "resourceType": "SearchParameter",
         "id": "Invoice-processing-status",
@@ -186,7 +427,10 @@
       }
     },
     {
-      "request": { "method": "PUT", "url": "SearchParameter/Invoice-retry-count" },
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/Invoice-retry-count"
+      },
       "resource": {
         "resourceType": "SearchParameter",
         "id": "Invoice-retry-count",
@@ -198,6 +442,28 @@
         "base": ["Invoice"],
         "type": "number",
         "expression": "Invoice.extension.where(url='http://example.org/invoice-processing-retry-count').value.as(integer)"
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "ValueSet/loinc-all"
+      },
+      "resource": {
+        "resourceType": "ValueSet",
+        "id": "loinc-all",
+        "url": "http://loinc.org/vs",
+        "name": "LOINC",
+        "status": "active",
+        "publisher": "LOINC / HL7",
+        "description": "A ValueSet containing all LOINC codes. Workaround for Aidbox $expand endpoint issue.",
+        "compose": {
+          "include": [
+            {
+              "system": "http://loinc.org"
+            }
+          ]
+        }
       }
     },
     {

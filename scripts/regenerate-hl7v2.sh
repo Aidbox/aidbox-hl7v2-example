@@ -9,6 +9,6 @@ OUTPUT_DIR="$PROJECT_DIR/src/hl7v2/generated"
 
 echo "Regenerating HL7v2 types in $OUTPUT_DIR..."
 cd "$PROJECT_DIR/node_modules/@atomic-ehr/hl7v2"
-bun src/hl7v2/codegen.ts "$OUTPUT_DIR" BAR_P01
+bun src/hl7v2/codegen.ts "$OUTPUT_DIR" BAR_P01 ORU_R01
 
 echo "Done!"

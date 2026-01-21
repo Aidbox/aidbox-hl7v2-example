@@ -1,0 +1,35 @@
+/**
+ * Code Mapping Module
+ *
+ * Provides services for managing local code to LOINC mappings and
+ * tracking unmapped codes via FHIR Task resources.
+ */
+
+export {
+  getOrCreateConceptMap,
+  addMapping,
+  deleteMapping,
+  searchMappings,
+  fetchConceptMap,
+  generateConceptMapId,
+  lookupInConceptMap,
+  resolveToLoinc,
+  buildCodeableConcept,
+  LoincResolutionError,
+  type SenderContext,
+  type CodeResolutionResult,
+} from "./concept-map";
+
+export {
+  generateMappingTaskId,
+  resolveMappingTask,
+  findAffectedMessages,
+  removeResolvedTaskFromMessage,
+} from "./mapping-task-service";
+
+export {
+  searchLoincCodes,
+  validateLoincCode,
+  type LoincSearchResult,
+  type LoincValidationResult,
+} from "./terminology-api";
