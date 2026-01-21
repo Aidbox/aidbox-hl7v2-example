@@ -5,9 +5,15 @@ import type {
   DiagnosticReport,
   Observation,
   Specimen,
+  Encounter,
 } from "../../../src/fhir/hl7-fhir-r4-core";
 import type { OBX } from "../../../src/hl7v2/generated/fields";
 import type { SenderContext } from "../../../src/code-mapping/concept-map";
+import { LoincResolutionError } from "../../../src/code-mapping/concept-map";
+import {
+  convertORU_R01,
+  convertOBXToObservationResolving,
+} from "../../../src/v2-to-fhir/messages/oru-r01";
 
 // Sample ORU_R01 message with single OBR and multiple OBX
 const SIMPLE_ORU_MESSAGE = `MSH|^~\\&|LABSYS|TESTHOSP||RECV|20260106171422||ORU^R01|MSG123|P|2.5.1
@@ -91,8 +97,6 @@ describe("convertORU_R01", () => {
 
   describe("happy path - basic message processing", () => {
     test("converts simple ORU_R01 to FHIR Bundle", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
         .bundle;
 
@@ -103,8 +107,6 @@ describe("convertORU_R01", () => {
     });
 
     test("creates DiagnosticReport from OBR segment", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
         .bundle;
       const diagnosticReports = bundle.entry
@@ -118,8 +120,6 @@ describe("convertORU_R01", () => {
     });
 
     test("creates Observations from OBX segments", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
         .bundle;
       const observations = bundle.entry
@@ -132,8 +132,6 @@ describe("convertORU_R01", () => {
     });
 
     test("links Observations to DiagnosticReport via result array", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
         .bundle;
       const diagnosticReport = bundle.entry?.find(
@@ -145,8 +143,6 @@ describe("convertORU_R01", () => {
     });
 
     test("uses PUT requests with deterministic IDs for idempotency (except Patient uses conditional POST)", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
         .bundle;
 
@@ -164,8 +160,6 @@ describe("convertORU_R01", () => {
     });
 
     test("tags all resources with message control ID", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
         .bundle;
 
@@ -177,12 +171,27 @@ describe("convertORU_R01", () => {
         expect(tag?.code).toBe("MSG123");
       });
     });
+
+    test("tags all resources with sender from PID-3 MR identifier", async () => {
+      const mockPatientNotFound = () => Promise.resolve(null);
+      const result = await convertORU_R01(
+        parseMessage(SIMPLE_ORU_MESSAGE),
+        mockPatientNotFound,
+      );
+
+      result.bundle.entry?.forEach((entry) => {
+        const senderTag = entry.resource?.meta?.tag?.find(
+          (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:sender",
+        );
+        expect(senderTag).toBeDefined();
+        // PID-3 has "HOSPITAL" as assigning authority, lowercased
+        expect(senderTag?.code).toBe("hospital");
+      });
+    });
   });
 
   describe("LOINC code handling", () => {
     test("extracts LOINC from OBX-3 alternate coding", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_LOINC)))
         .bundle;
       const observation = bundle.entry?.find(
@@ -198,8 +207,6 @@ describe("convertORU_R01", () => {
 
   describe("SPM segment handling", () => {
     test("creates Specimen from SPM segment", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_SPM)))
         .bundle;
       const specimens = bundle.entry
@@ -211,8 +218,6 @@ describe("convertORU_R01", () => {
     });
 
     test("links Specimen to DiagnosticReport", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_SPM)))
         .bundle;
       const diagnosticReport = bundle.entry?.find(
@@ -224,8 +229,6 @@ describe("convertORU_R01", () => {
     });
 
     test("links Specimen to Observations", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_SPM)))
         .bundle;
       const observation = bundle.entry?.find(
@@ -238,8 +241,6 @@ describe("convertORU_R01", () => {
 
   describe("NTE segment handling", () => {
     test("attaches NTE comments to preceding Observation as notes", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_NTE)))
         .bundle;
       const observation = bundle.entry?.find(
@@ -251,8 +252,6 @@ describe("convertORU_R01", () => {
     });
 
     test("creates paragraph breaks for empty NTE-3", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_NTE)))
         .bundle;
       const observation = bundle.entry?.find(
@@ -266,8 +265,6 @@ describe("convertORU_R01", () => {
 
   describe("multiple OBR groups", () => {
     test("creates multiple DiagnosticReports for multiple OBR groups", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_MULTIPLE_OBR)))
         .bundle;
       const diagnosticReports = bundle.entry
@@ -280,8 +277,6 @@ describe("convertORU_R01", () => {
     });
 
     test("links OBX to correct parent OBR", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_MULTIPLE_OBR)))
         .bundle;
       const observations = bundle.entry
@@ -300,8 +295,6 @@ describe("convertORU_R01", () => {
 
   describe("idempotency", () => {
     test("same OBR-3 with different MSH-10 updates resources in place", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const message1 = SIMPLE_ORU_MESSAGE.replace("MSG123", "MSG001");
       const message2 = SIMPLE_ORU_MESSAGE.replace("MSG123", "MSG002");
 
@@ -332,8 +325,6 @@ describe("convertORU_R01", () => {
 
   describe("OBX value type handling", () => {
     test("converts NM value type to valueQuantity", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
         .bundle;
       const observation = bundle.entry
@@ -346,8 +337,6 @@ describe("convertORU_R01", () => {
     });
 
     test("converts ST value type to valueString", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
         .bundle;
       const observation = bundle.entry
@@ -359,8 +348,6 @@ describe("convertORU_R01", () => {
     });
 
     test("converts SN with comparator to valueQuantity", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_NTE)))
         .bundle;
       const observation = bundle.entry?.find(
@@ -374,8 +361,6 @@ describe("convertORU_R01", () => {
 
   describe("interpretation and reference range", () => {
     test("converts OBX-8 abnormal flag H to interpretation", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_LOINC)))
         .bundle;
       const observation = bundle.entry?.find(
@@ -386,8 +371,6 @@ describe("convertORU_R01", () => {
     });
 
     test("converts OBX-7 reference range", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(MESSAGE_WITH_LOINC)))
         .bundle;
       const observation = bundle.entry?.find(
@@ -410,8 +393,6 @@ OBR|1|||LAB123|||20260101`;
   });
 
   test("throws error when MSH-3 (sending application) is missing", async () => {
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const invalidMessage = `MSH|^~\\&||HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR||TESTPATIENT^ERROR
 OBR|1||FIL001|LAB123|||20260101
@@ -423,8 +404,6 @@ OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
   });
 
   test("throws error when MSH-4 (sending facility) is missing", async () => {
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const invalidMessage = `MSH|^~\\&|LAB|||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR||TESTPATIENT^ERROR
 OBR|1||FIL001|LAB123|||20260101
@@ -436,8 +415,6 @@ OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
   });
 
   test("throws error when OBR segment is missing", async () => {
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const invalidMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR2||TESTPATIENT^ERROR
 OBX|1|NM|TEST||100|mg/dL||||F`;
@@ -448,8 +425,6 @@ OBX|1|NM|TEST||100|mg/dL||||F`;
   });
 
   test("throws error when OBR-3 filler order number is missing", async () => {
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const invalidMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR3||TESTPATIENT^ERROR
 OBR|1|ORD001||LAB123|||20260101
@@ -463,8 +438,6 @@ OBX|1|NM|TEST||100|mg/dL||||F`;
 
 describe("LOINC validation", () => {
   test("returns mapping_error status when OBX-3 has no LOINC code (local code only)", async () => {
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const messageWithoutLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
@@ -478,8 +451,6 @@ OBX|1|NM|12345^Potassium^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
   });
 
   test("accepts message when OBX-3 has LOINC in primary coding", async () => {
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const messageWithPrimaryLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
@@ -491,8 +462,6 @@ OBX|1|NM|2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.5||||F`;
   });
 
   test("accepts message when OBX-3 has LOINC in alternate coding", async () => {
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const messageWithAltLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
@@ -504,8 +473,6 @@ OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.
   });
 
   test("unmappedCodes contains local code for debugging", async () => {
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const messageWithoutLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
@@ -519,8 +486,6 @@ OBX|3|NM|MYCODE^MyTest^LOCALLAB||100|mg/dL||||F`;
   });
 
   test("collects all unmapped codes when multiple OBX lack LOINC", async () => {
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
     const mixedMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
@@ -570,8 +535,6 @@ describe("ConceptMap code resolution", () => {
     mock.module("../../../src/aidbox", () => mockAidboxWithMapping);
 
     // Re-import to use new mock
-    const { convertORU_R01 } =
-      await import("../../../src/v2-to-fhir/messages/oru-r01");
 
     const messageWithLocalCode = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
@@ -615,8 +578,6 @@ describe("convertOBXToObservationResolving", () => {
 
   describe("with LOINC in primary coding", () => {
     test("returns observation with LOINC code from primary coding", async () => {
-      const { convertOBXToObservationResolving } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -640,8 +601,6 @@ describe("convertOBXToObservationResolving", () => {
     });
 
     test("preserves other observation fields from OBX", async () => {
-      const { convertOBXToObservationResolving } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -666,8 +625,6 @@ describe("convertOBXToObservationResolving", () => {
 
   describe("with LOINC in alternate coding", () => {
     test("returns observation with LOINC from alternate and local from primary", async () => {
-      const { convertOBXToObservationResolving } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -702,8 +659,6 @@ describe("convertOBXToObservationResolving", () => {
     });
 
     test("LOINC coding comes first in the coding array", async () => {
-      const { convertOBXToObservationResolving } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -759,8 +714,6 @@ describe("convertOBXToObservationResolving", () => {
         aidboxFetch: mock(() => Promise.resolve(mockConceptMap)),
       }));
 
-      const { convertOBXToObservationResolving } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -801,10 +754,6 @@ describe("convertOBXToObservationResolving", () => {
     });
 
     test("throws LoincResolutionError when no LOINC and no ConceptMap", async () => {
-      const { convertOBXToObservationResolving } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
-      const { LoincResolutionError } =
-        await import("../../../src/code-mapping/concept-map");
 
       const obx: OBX = {
         ...baseOBX,
@@ -821,8 +770,6 @@ describe("convertOBXToObservationResolving", () => {
     });
 
     test("error includes sender context for debugging", async () => {
-      const { convertOBXToObservationResolving } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -841,8 +788,6 @@ describe("convertOBXToObservationResolving", () => {
 
   describe("ID generation", () => {
     test("generates deterministic ID from filler order number and OBX-1", async () => {
-      const { convertOBXToObservationResolving } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -864,8 +809,6 @@ describe("convertOBXToObservationResolving", () => {
     });
 
     test("includes OBX-4 sub-ID in generated ID when present", async () => {
-      const { convertOBXToObservationResolving } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const obx: OBX = {
         ...baseOBX,
@@ -919,8 +862,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   describe("PID segment validation", () => {
     test("throws error when PID segment is missing", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       await expect(
         convertORU_R01(parseMessage(MESSAGE_WITHOUT_PID)),
@@ -928,8 +869,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
     });
 
     test("throws error when both PID-2 and PID-3 are empty", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       await expect(
         convertORU_R01(parseMessage(MESSAGE_WITH_EMPTY_PID)),
@@ -942,8 +881,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
     const mockPatientNotFound = () => Promise.resolve(null);
 
     test("extracts patient ID from PID-2", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const result = await convertORU_R01(
         parseMessage(MESSAGE_WITH_PID2),
@@ -956,8 +893,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
     });
 
     test("extracts patient ID from PID-3.1 when PID-2 is empty", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const result = await convertORU_R01(
         parseMessage(MESSAGE_WITH_PID3_ONLY),
@@ -972,8 +907,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   describe("patient lookup and draft creation", () => {
     test("creates draft Patient with active=false when patient not found", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const mockPatientNotFound = () => Promise.resolve(null);
       const result = await convertORU_R01(
@@ -997,8 +930,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
     });
 
     test("does not include Patient in bundle when patient exists", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const existingPatient = {
         resourceType: "Patient",
@@ -1020,8 +951,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
     });
 
     test("sets patient reference in messageUpdate regardless of lookup result", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const existingPatient = {
         resourceType: "Patient",
@@ -1039,8 +968,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
     });
 
     test("does not update existing patient data (ADT is source of truth)", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       // Existing patient has different demographics than PID segment
       const existingPatient = {
@@ -1071,8 +998,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   describe("subject reference linking", () => {
     test("links DiagnosticReport to Patient via subject", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const mockPatientNotFound = () => Promise.resolve(null);
       const result = await convertORU_R01(
@@ -1088,8 +1013,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
     });
 
     test("links all Observations to Patient via subject", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const mockPatientNotFound = () => Promise.resolve(null);
       const result = await convertORU_R01(
@@ -1108,8 +1031,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
     });
 
     test("links Specimen to Patient via subject", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const mockPatientNotFound = () => Promise.resolve(null);
       const result = await convertORU_R01(
@@ -1127,8 +1048,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   describe("draft patient demographics", () => {
     test("draft patient includes demographics from PID segment", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const mockPatientNotFound = () => Promise.resolve(null);
       const result = await convertORU_R01(
@@ -1147,8 +1066,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
     });
 
     test("draft patient is tagged with message ID", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const mockPatientNotFound = () => Promise.resolve(null);
       const result = await convertORU_R01(
@@ -1169,8 +1086,6 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   describe("idempotency", () => {
     test("same message processed twice creates same patient ID (PUT idempotency)", async () => {
-      const { convertORU_R01 } =
-        await import("../../../src/v2-to-fhir/messages/oru-r01");
 
       const mockPatientNotFound = () => Promise.resolve(null);
 
@@ -1196,6 +1111,325 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
       expect(patient2?.request?.method).toBe("POST");
       expect(patient1?.request?.ifNoneExist).toBe("_id=TEST-0001");
       expect(patient2?.request?.ifNoneExist).toBe("_id=TEST-0001");
+    });
+  });
+});
+
+describe("encounter handling", () => {
+  // Message without PV1 segment
+  const MESSAGE_WITHOUT_PV1 = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1
+PID|1||TEST-0001^^^HOSPITAL^MR||TESTPATIENT^ALPHA||20000101|F
+ORC|RE|ORD001|FIL001
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+  // Message with PV1 but no PV1-19 (visit number)
+  // PV1 has fields 1-7 only, no visit number at position 19
+  const MESSAGE_WITH_PV1_NO_VISIT_NUMBER = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG002|P|2.5.1
+PID|1||TEST-0002^^^HOSPITAL^MR||TESTPATIENT^BETA||20000202|M
+PV1|1|I|WARD1^ROOM1^BED1||||PROV001^TEST^PROVIDER
+ORC|RE|ORD001|FIL002
+OBR|1|ORD001|FIL002|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+  // Message with PV1-19 (full encounter info)
+  // PV1-19 is Visit Number - need 12 empty fields between PV1-7 and PV1-19
+  const MESSAGE_WITH_ENCOUNTER = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG003|P|2.5.1
+PID|1||TEST-0003^^^HOSPITAL^MR||TESTPATIENT^GAMMA||20000303|F
+PV1|1|I|WARD1^ROOM1^BED1||||PROV001^TEST^PROVIDER||||||||||||ENC-12345
+ORC|RE|ORD001|FIL003
+OBR|1|ORD001|FIL003|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+  const mockPatientNotFound = () => Promise.resolve(null);
+  const mockEncounterNotFound = () => Promise.resolve(null);
+
+  describe("PV1 segment handling", () => {
+    test("proceeds without encounter reference when PV1 segment is missing", async () => {
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITHOUT_PV1),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+
+      // No Encounter in bundle
+      const encounterEntry = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      );
+      expect(encounterEntry).toBeUndefined();
+
+      // DiagnosticReport has no encounter reference
+      const diagnosticReport = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "DiagnosticReport",
+      )?.resource as DiagnosticReport;
+      expect(diagnosticReport.encounter).toBeUndefined();
+
+      // Observations have no encounter reference
+      const observation = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Observation",
+      )?.resource as Observation;
+      expect(observation.encounter).toBeUndefined();
+
+      // Message still processed successfully
+      expect(result.messageUpdate.status).toBe("processed");
+    });
+
+    test("proceeds without encounter reference when PV1-19 (Visit Number) is empty", async () => {
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_PV1_NO_VISIT_NUMBER),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+
+      // No Encounter in bundle
+      const encounterEntry = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      );
+      expect(encounterEntry).toBeUndefined();
+
+      // DiagnosticReport has no encounter reference
+      const diagnosticReport = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "DiagnosticReport",
+      )?.resource as DiagnosticReport;
+      expect(diagnosticReport.encounter).toBeUndefined();
+    });
+  });
+
+  describe("encounter lookup and draft creation", () => {
+    test("creates draft Encounter with status=unknown when encounter not found", async () => {
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_ENCOUNTER),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+
+      const encounterEntry = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      );
+
+      expect(encounterEntry).toBeDefined();
+      expect(encounterEntry?.resource?.id).toBe("lab-hospital-enc-12345");
+      expect((encounterEntry?.resource as Encounter)?.status).toBe("unknown");
+      // Uses POST with If-None-Exist for race condition safety
+      expect(encounterEntry?.request?.method).toBe("POST");
+      expect(encounterEntry?.request?.url).toBe("Encounter");
+      expect(encounterEntry?.request?.ifNoneExist).toBe("_id=lab-hospital-enc-12345");
+    });
+
+    test("does not include Encounter in bundle when encounter exists", async () => {
+
+      const existingEncounter = {
+        resourceType: "Encounter",
+        id: "ENC-12345",
+        status: "in-progress",
+        class: { code: "IMP" },
+      };
+      const mockEncounterFound = () => Promise.resolve(existingEncounter);
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_ENCOUNTER),
+        mockPatientNotFound,
+        mockEncounterFound,
+      );
+
+      const encounterEntry = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      );
+
+      expect(encounterEntry).toBeUndefined();
+    });
+
+    test("does not update existing encounter data (ADT is source of truth)", async () => {
+
+      // Existing encounter has different data than PV1 segment
+      const existingEncounter = {
+        resourceType: "Encounter",
+        id: "ENC-12345",
+        status: "finished",
+        class: { code: "AMB" },
+      };
+      const mockEncounterFound = () => Promise.resolve(existingEncounter);
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_ENCOUNTER),
+        mockPatientNotFound,
+        mockEncounterFound,
+      );
+
+      // No Encounter in bundle - existing encounter is NOT updated
+      const encounterEntry = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      );
+      expect(encounterEntry).toBeUndefined();
+
+      // Resources still reference the existing encounter
+      const diagnosticReport = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "DiagnosticReport",
+      )?.resource as DiagnosticReport;
+      expect(diagnosticReport.encounter?.reference).toBe("Encounter/lab-hospital-enc-12345");
+    });
+  });
+
+  describe("encounter reference linking", () => {
+    test("links DiagnosticReport to Encounter when encounter available", async () => {
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_ENCOUNTER),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+
+      const diagnosticReport = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "DiagnosticReport",
+      )?.resource as DiagnosticReport;
+
+      expect(diagnosticReport.encounter?.reference).toBe("Encounter/lab-hospital-enc-12345");
+    });
+
+    test("links all Observations to Encounter when encounter available", async () => {
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_ENCOUNTER),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+
+      const observations = result.bundle.entry
+        ?.filter((e) => e.resource?.resourceType === "Observation")
+        .map((e) => e.resource as Observation);
+
+      expect(observations?.length).toBeGreaterThan(0);
+      observations?.forEach((obs) => {
+        expect(obs.encounter?.reference).toBe("Encounter/lab-hospital-enc-12345");
+      });
+    });
+
+    test("draft encounter has correct subject reference to Patient", async () => {
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_ENCOUNTER),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+
+      const encounter = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      )?.resource as Encounter;
+
+      expect(encounter.subject?.reference).toBe("Patient/TEST-0003");
+    });
+  });
+
+  describe("draft encounter demographics", () => {
+    test("draft encounter includes data from PV1 segment", async () => {
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_ENCOUNTER),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+
+      const encounter = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      )?.resource as Encounter;
+
+      // PV1-2 class should be preserved (I = inpatient)
+      expect(encounter.class?.code).toBe("IMP");
+    });
+
+    test("draft encounter is tagged with message ID", async () => {
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_ENCOUNTER),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+
+      const encounter = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      )?.resource;
+
+      const messageTag = encounter?.meta?.tag?.find(
+        (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id",
+      );
+      expect(messageTag?.code).toBe("MSG003");
+    });
+  });
+
+  describe("idempotency", () => {
+    test("same message processed twice creates same encounter ID", async () => {
+
+      const result1 = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_ENCOUNTER),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+      const result2 = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_ENCOUNTER),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+
+      const encounter1 = result1.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      );
+      const encounter2 = result2.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      );
+
+      expect(encounter1?.resource?.id).toBe(encounter2?.resource?.id);
+      // Both use POST with If-None-Exist - server handles race condition
+      expect(encounter1?.request?.method).toBe("POST");
+      expect(encounter2?.request?.method).toBe("POST");
+      expect(encounter1?.request?.ifNoneExist).toBe("_id=lab-hospital-enc-12345");
+      expect(encounter2?.request?.ifNoneExist).toBe("_id=lab-hospital-enc-12345");
+    });
+  });
+
+  describe("encounter lookup error handling", () => {
+    test("propagates non-404 errors from encounter lookup", async () => {
+      const networkError = new Error("Network connection failed");
+      const mockEncounterLookupError = () => Promise.reject(networkError);
+
+      await expect(
+        convertORU_R01(
+          parseMessage(MESSAGE_WITH_ENCOUNTER),
+          mockPatientNotFound,
+          mockEncounterLookupError,
+        ),
+      ).rejects.toThrow("Network connection failed");
+    });
+  });
+
+  describe("interaction with mapping errors", () => {
+    test("includes draft encounter in bundle even when mapping_error occurs", async () => {
+
+      // Message with encounter but no LOINC code (will cause mapping_error)
+      // PV1-19 has ENC-99999 at correct position
+      const messageWithMappingError = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG004|P|2.5.1
+PID|1||TEST-0004^^^HOSPITAL^MR||TESTPATIENT^DELTA||20000404|F
+PV1|1|I|WARD1^ROOM1^BED1||||PROV001^TEST^PROVIDER||||||||||||ENC-99999
+ORC|RE|ORD001|FIL004
+OBR|1|ORD001|FIL004|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|LOCAL123^LocalTest^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
+
+      const result = await convertORU_R01(
+        parseMessage(messageWithMappingError),
+        mockPatientNotFound,
+        mockEncounterNotFound,
+      );
+
+      expect(result.messageUpdate.status).toBe("mapping_error");
+
+      // Draft encounter should still be in bundle
+      const encounterEntry = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      );
+      expect(encounterEntry).toBeDefined();
+      expect(encounterEntry?.resource?.id).toBe("lab-hospital-enc-99999");
     });
   });
 });

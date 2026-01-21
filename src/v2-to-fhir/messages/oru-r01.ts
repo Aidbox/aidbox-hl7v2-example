@@ -14,11 +14,13 @@ import type { ConversionResult } from "../converter";
 import {
   fromMSH,
   fromPID,
+  fromPV1,
   fromOBR,
   fromNTE,
   fromSPM,
   type MSH,
   type PID,
+  type PV1,
   type OBR,
   type OBX,
   type NTE,
@@ -32,6 +34,7 @@ import type {
   Observation,
   Specimen,
   Patient,
+  Encounter,
   Coding,
   Meta,
   Resource,
@@ -41,6 +44,7 @@ import type {
 } from "../../fhir/hl7-fhir-r4-core";
 import { getResourceWithETag, NotFoundError } from "../../aidbox";
 import { convertPIDToPatient } from "../segments/pid-patient";
+import { convertPV1ToEncounter } from "../segments/pv1-encounter";
 import type { UnmappedCode } from "../../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { convertOBRToDiagnosticReport } from "../segments/obr-diagnosticreport";
 import { convertOBXToObservation } from "../segments/obx-observation";
@@ -70,6 +74,30 @@ export async function defaultPatientLookup(
 ): Promise<Patient | null> {
   try {
     const { resource } = await getResourceWithETag<Patient>("Patient", patientId);
+    return resource;
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Function type for looking up an Encounter by ID.
+ * Returns the Encounter if found, or null if not found.
+ */
+export type EncounterLookupFn = (encounterId: string) => Promise<Encounter | null>;
+
+/**
+ * Default encounter lookup function using Aidbox.
+ * Returns null on 404 (not found), throws on other errors.
+ */
+export async function defaultEncounterLookup(
+  encounterId: string,
+): Promise<Encounter | null> {
+  try {
+    const { resource } = await getResourceWithETag<Encounter>("Encounter", encounterId);
     return resource;
   } catch (error) {
     if (error instanceof NotFoundError) {
@@ -180,6 +208,37 @@ function extractMetaTags(msh: MSH): Coding[] {
   }
 
   return tags;
+}
+
+/**
+ * Extract sender tag from PID-3 (MR identifier's assigning authority).
+ * Returns undefined if no MR identifier with assigning authority is found.
+ */
+function extractSenderTag(pid: PID): Coding | undefined {
+  if (!pid.$3_identifier) return undefined;
+
+  for (const cx of pid.$3_identifier) {
+    if (cx.$5_type === "MR" && cx.$4_system?.$1_namespace) {
+      return {
+        code: cx.$4_system.$1_namespace.toLowerCase(),
+        system: "urn:aidbox:hl7v2:sender",
+      };
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Add sender tag to meta if not already present.
+ */
+function addSenderTagToMeta(meta: Meta, senderTag: Coding | undefined): void {
+  if (!senderTag || !meta.tag) return;
+
+  const hasSenderTag = meta.tag.some((t) => t.system === senderTag.system);
+  if (!hasSenderTag) {
+    meta.tag.push(senderTag);
+  }
 }
 
 /**
@@ -545,6 +604,123 @@ async function handlePatient(
   return { patientRef, patientEntry };
 }
 
+/**
+ * Parse PV1 segment from ORU_R01 message.
+ * PV1 is optional for ORU_R01 - returns undefined if missing.
+ */
+function parsePV1(message: HL7v2Message): PV1 | undefined {
+  const pv1Segment = findSegment(message, "PV1");
+  if (!pv1Segment) {
+    return undefined;
+  }
+  return fromPV1(pv1Segment);
+}
+
+/**
+ * Extract visit number from PV1 segment.
+ * Uses PV1-19 (Visit Number) as the source.
+ * Returns undefined if PV1-19 is not valued.
+ */
+function extractVisitNumber(pv1: PV1): string | undefined {
+  return pv1.$19_visitNumber?.$1_value;
+}
+
+/**
+ * Generate deterministic Encounter ID from sender context and visit number.
+ * Format: {sendingApp}-{sendingFacility}-{visitNumber} (lowercased, sanitized)
+ */
+function generateEncounterId(senderContext: SenderContext, visitNumber: string): string {
+  const parts = [
+    senderContext.sendingApplication,
+    senderContext.sendingFacility,
+    visitNumber,
+  ];
+  return parts.join("-").toLowerCase().replace(/[^a-z0-9-]/g, "-");
+}
+
+/**
+ * Create a draft encounter from PV1 segment with status=unknown.
+ * Draft encounters are unverified and will be updated when ADT message arrives.
+ */
+function createDraftEncounter(
+  pv1: PV1,
+  encounterId: string,
+  patientRef: Reference<"Patient">,
+  baseMeta: Meta,
+): Encounter {
+  const encounter = convertPV1ToEncounter(pv1);
+  encounter.id = encounterId;
+  encounter.status = "unknown";
+  encounter.subject = patientRef;
+  encounter.meta = { ...encounter.meta, ...baseMeta };
+  return encounter;
+}
+
+interface EncounterHandlingResult {
+  encounterRef: Reference<"Encounter"> | null;
+  encounterEntry: BundleEntry | null;
+}
+
+/**
+ * Create a conditional bundle entry for draft Encounter creation.
+ * Uses POST with If-None-Exist to prevent race conditions when multiple
+ * ORU messages for the same non-existent encounter arrive simultaneously.
+ */
+function createConditionalEncounterEntry(encounter: Encounter): BundleEntry {
+  const encounterId = encounter.id;
+  return {
+    resource: encounter,
+    request: {
+      method: "POST",
+      url: "Encounter",
+      ifNoneExist: `_id=${encounterId}`,
+    },
+  };
+}
+
+/**
+ * Handle encounter lookup and draft creation for ORU_R01.
+ *
+ * - PV1 segment is optional - returns null refs if missing
+ * - Extracts visit number from PV1-19, generates deterministic ID with sender context
+ * - Looks up existing encounter (does NOT update - ADT is source of truth)
+ * - Creates draft encounter with status=unknown if not found
+ *
+ * Race condition handling: Uses POST with If-None-Exist to ensure only one
+ * draft encounter is created even if multiple ORU messages for the same
+ * non-existent encounter arrive simultaneously.
+ */
+async function handleEncounter(
+  pv1: PV1 | undefined,
+  patientRef: Reference<"Patient">,
+  baseMeta: Meta,
+  senderContext: SenderContext,
+  lookupEncounter: EncounterLookupFn,
+): Promise<EncounterHandlingResult> {
+  if (!pv1) {
+    return { encounterRef: null, encounterEntry: null };
+  }
+
+  const visitNumber = extractVisitNumber(pv1);
+  if (!visitNumber) {
+    return { encounterRef: null, encounterEntry: null };
+  }
+
+  const encounterId = generateEncounterId(senderContext, visitNumber);
+  const encounterRef = { reference: `Encounter/${encounterId}` } as Reference<"Encounter">;
+
+  const existingEncounter = await lookupEncounter(encounterId);
+
+  if (existingEncounter) {
+    return { encounterRef, encounterEntry: null };
+  }
+
+  const draftEncounter = createDraftEncounter(pv1, encounterId, patientRef, baseMeta);
+  const encounterEntry = createConditionalEncounterEntry(draftEncounter);
+
+  return { encounterRef, encounterEntry };
+}
+
 function getFillerOrderNumber(obr: OBR): string {
   if (!obr.$3_fillerOrderNumber?.$1_value) {
     throw new Error(
@@ -669,6 +845,24 @@ function linkPatientToResources(
   }
 }
 
+/**
+ * Link encounter reference to DiagnosticReport and Observations.
+ * Specimen does not have an encounter field in FHIR R4.
+ */
+function linkEncounterToResources(
+  encounterRef: Reference<"Encounter"> | null,
+  diagnosticReport: DiagnosticReport,
+  observations: Observation[],
+): void {
+  if (!encounterRef) return;
+
+  diagnosticReport.encounter = encounterRef;
+
+  for (const obs of observations) {
+    obs.encounter = encounterRef;
+  }
+}
+
 function buildBundleEntries(
   diagnosticReport: DiagnosticReport,
   observations: Observation[],
@@ -691,6 +885,7 @@ async function processOBRGroup(
   senderContext: SenderContext,
   baseMeta: Meta,
   patientRef: Reference<"Patient">,
+  encounterRef: Reference<"Encounter"> | null,
 ): Promise<ProcessOBRGroupResult> {
   const obr = fromOBR(group.obr);
   const fillerOrderNumber = getFillerOrderNumber(obr);
@@ -720,6 +915,7 @@ async function processOBRGroup(
 
   linkSpecimensToResources(specimens, diagnosticReport, observations);
   linkPatientToResources(patientRef, diagnosticReport, observations, specimens);
+  linkEncounterToResources(encounterRef, diagnosticReport, observations);
 
   const entries = buildBundleEntries(diagnosticReport, observations, specimens);
   return { entries, mappingErrors };
@@ -731,7 +927,7 @@ async function processOBRGroup(
  * Message Structure:
  * MSH - Message Header (1)
  * PID - Patient Identification (1) - required
- * PV1 - Patient Visit (1) - optional
+ * PV1 - Patient Visit (0..1) - optional
  * { OBR - Observation Request (1)
  *   { OBX - Observation Result (0..*)
  *     NTE - Notes and Comments (0..*)
@@ -744,19 +940,41 @@ async function processOBRGroup(
  * - Looks up existing Patient by ID (does NOT update - ADT is source of truth)
  * - Creates draft Patient with active=false if not found
  * - Links all resources to Patient
+ *
+ * Encounter Handling:
+ * - PV1 segment is optional - proceed without encounter if missing
+ * - Extracts encounter ID from PV1-19 (Visit Number)
+ * - Looks up existing Encounter by ID (does NOT update - ADT is source of truth)
+ * - Creates draft Encounter with status=unknown if not found
+ * - Links DiagnosticReport and Observation to Encounter
  */
 export async function convertORU_R01(
   parsed: HL7v2Message,
   lookupPatient: PatientLookupFn = defaultPatientLookup,
+  lookupEncounter: EncounterLookupFn = defaultEncounterLookup,
 ): Promise<ConversionResult> {
   const { senderContext, baseMeta } = parseMSH(parsed);
   validateOBRPresence(parsed);
 
   const pid = parsePID(parsed);
+
+  // Add sender tag from PID-3 (MR identifier's assigning authority)
+  const senderTag = extractSenderTag(pid);
+  addSenderTagToMeta(baseMeta, senderTag);
+
   const { patientRef, patientEntry } = await handlePatient(
     pid,
     baseMeta,
     lookupPatient,
+  );
+
+  const pv1 = parsePV1(parsed);
+  const { encounterRef, encounterEntry } = await handleEncounter(
+    pv1,
+    patientRef,
+    baseMeta,
+    senderContext,
+    lookupEncounter,
   );
 
   const obrGroups = groupSegmentsByOBR(parsed);
@@ -770,18 +988,24 @@ export async function convertORU_R01(
       senderContext,
       baseMeta,
       patientRef,
+      encounterRef,
     );
     entries.push(...groupEntries);
     allMappingErrors.push(...mappingErrors);
   }
 
   if (allMappingErrors.length > 0) {
-    return buildMappingErrorResult(senderContext, allMappingErrors, patientRef, patientEntry);
+    return buildMappingErrorResult(senderContext, allMappingErrors, patientRef, patientEntry, encounterEntry);
   }
 
   // Include draft patient in bundle if created
   if (patientEntry) {
     entries.unshift(patientEntry);
+  }
+
+  // Include draft encounter in bundle if created
+  if (encounterEntry) {
+    entries.unshift(encounterEntry);
   }
 
   const bundle: Bundle = {
@@ -804,6 +1028,7 @@ function buildMappingErrorResult(
   mappingErrors: LoincResolutionError[],
   patientRef: Reference<"Patient">,
   patientEntry: BundleEntry | null,
+  encounterEntry: BundleEntry | null,
 ): ConversionResult {
   const conceptMapId = generateConceptMapId(senderContext);
   const seenTaskIds = new Set<string>();
@@ -811,6 +1036,9 @@ function buildMappingErrorResult(
 
   if (patientEntry) {
     entries.push(patientEntry);
+  }
+  if (encounterEntry) {
+    entries.push(encounterEntry);
   }
   const unmappedCodes: UnmappedCode[] = [];
 

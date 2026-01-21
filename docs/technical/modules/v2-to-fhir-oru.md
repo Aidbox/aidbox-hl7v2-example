@@ -7,7 +7,7 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 ## Key Behaviors
 
 - Patient: match existing or create draft (`active=false`); PID segment required (error if missing)
-- Encounter: lookup only, never create (proceed without if not found)
+- Encounter: match existing or create draft (`status=unknown`); PV1 segment optional (proceed without if missing)
 - One DiagnosticReport per ORDER_OBSERVATION group (ORC/OBR pair)
 - Deterministic IDs from OBR-3 (filler order number) for idempotency
 - Tag all resources with MSH-10 (message control ID) for audit trail
@@ -28,13 +28,17 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
    - Extract patient ID from PID-2 or PID-3.1 (first identifier's ID) - error if no usable ID
    - Lookup Patient by ID: if exists → use existing (do NOT update - ADT is source of truth)
    - If Patient not found → create draft Patient with `active=false` using POST with `If-None-Exist: _id={patientId}` (handles race condition when multiple ORU messages for the same non-existent patient arrive simultaneously)
-6. Lookup Encounter (PV1-19) - error if not found
+6. Handle Encounter (PV1):
+   - PV1 segment optional - proceed without encounter if missing
+   - Extract encounter ID from PV1-19 (Visit Number) - proceed without encounter if not valued
+   - Lookup Encounter by ID: if exists → use existing (do NOT update - ADT is source of truth)
+   - If Encounter not found → create draft Encounter with `status=unknown` using POST with `If-None-Exist: _id={encounterId}` (handles race conditions)
 7. Convert:
    - Patient (if creating draft) → Patient with `active=false`
    - ORC + OBR → DiagnosticReport (one per ORDER_OBSERVATION group)
    - OBX + trailing NTE → Observation (linked to DiagnosticReport)
    - SPM or OBR-15 → Specimen (linked to DiagnosticReport and Observations)
-8. Submit transaction bundle (PUT for most resources; POST with If-None-Exist for draft Patient to handle race conditions), update status to `processed`
+8. Submit transaction bundle (PUT for most resources; POST with If-None-Exist for draft Patient and draft Encounter to handle race conditions), update status to `processed`
 
 ### Code Mapping Failure Handling
 
@@ -136,7 +140,9 @@ When a message contains OBX codes that cannot be resolved to LOINC, ORU processi
 | PID segment missing | Reject message with error |
 | PID without usable ID (PID-2/PID-3 empty) | Reject message with error |
 | Patient not found (PID-2/PID-3) | Create draft Patient with `active=false` (also applies to previously deleted patients - treated as new) |
-| Encounter not found (PV1-19) | Reject message with error |
+| PV1 segment missing | Proceed without encounter reference (not an error) |
+| PV1-19 (Visit Number) empty | Proceed without encounter reference (not an error) |
+| Encounter not found (PV1-19) | Create draft Encounter with `status=unknown` |
 | OBR-25 missing or Y/Z | Reject message |
 | OBX-11 missing or N | Reject message |
 | OBR without OBX | Create DiagnosticReport with empty result |
