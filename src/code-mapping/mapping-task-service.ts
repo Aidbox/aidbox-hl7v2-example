@@ -83,7 +83,8 @@ export async function removeResolvedTaskFromMessage(
 
   const updatedMessage: IncomingHL7v2Message = {
     ...currentMessage,
-    unmappedCodes: updatedUnmappedCodes,
+    unmappedCodes:
+      updatedUnmappedCodes.length > 0 ? updatedUnmappedCodes : undefined,
     status: updatedUnmappedCodes.length === 0 ? "received" : "mapping_error",
   };
 
