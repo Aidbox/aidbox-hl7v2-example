@@ -101,7 +101,7 @@ function convertDTMToInstant(dtm: string | undefined): string | undefined {
 }
 
 /**
- * Generate deterministic ID from EI (OBR-3 Filler Order Number)
+ * Generate deterministic ID from EI (Entity Identifier)
  * Converts to lowercase and replaces invalid characters
  */
 function generateIdFromEI(ei: EI | undefined): string | undefined {
@@ -154,14 +154,15 @@ function convertServiceToCodeableConcept(
  * Convert OBR segment to FHIR DiagnosticReport
  *
  * Field mappings:
- * - OBR-3 (Filler Order Number) → id (deterministic)
+ * - OBR-3 (Filler Order Number) or OBR-2 (Placer Order Number) → id (deterministic)
  * - OBR-4 (Universal Service ID) → code
  * - OBR-7 (Observation Date/Time) → effectiveDateTime
  * - OBR-22 (Results Report/Status Change) → issued
  * - OBR-25 (Result Status) → status
  */
 export function convertOBRToDiagnosticReport(obr: OBR): DiagnosticReport {
-  const id = generateIdFromEI(obr.$3_fillerOrderNumber);
+  const id = generateIdFromEI(obr.$3_fillerOrderNumber) 
+          ?? generateIdFromEI(obr.$2_placerOrderNumber);
 
   const diagnosticReport: DiagnosticReport = {
     resourceType: "DiagnosticReport",

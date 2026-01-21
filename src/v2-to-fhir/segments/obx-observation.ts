@@ -294,15 +294,14 @@ function getInterpretationDisplay(code: string): string {
  * Convert OBX segment to FHIR Observation
  *
  * @param obx - The OBX segment to convert
- * @param obrFillerOrderNumber - The filler order number from parent OBR (for deterministic ID)
- * @param options - Optional conversion options including pre-resolved code
+ * @param orderNumber - The order number from parent OBR (OBR-3 or OBR-2) for deterministic ID
  */
 export function convertOBXToObservation(
   obx: OBX,
-  obrFillerOrderNumber: string,
+  orderNumber: string,
 ): Observation {
-  // Generate deterministic ID: {OBR-3}-obx-{OBX-1}[-{OBX-4}]
-  let id = `${obrFillerOrderNumber.toLowerCase()}-obx-${obx.$1_setIdObx || "0"}`;
+  // Generate deterministic ID: {orderNumber}-obx-{OBX-1}[-{OBX-4}]
+  let id = `${orderNumber.toLowerCase()}-obx-${obx.$1_setIdObx || "0"}`;
   if (obx.$4_observationSubId) {
     id += `-${obx.$4_observationSubId.toLowerCase()}`;
   }

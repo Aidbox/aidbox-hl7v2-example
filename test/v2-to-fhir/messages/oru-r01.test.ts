@@ -424,15 +424,35 @@ OBX|1|NM|TEST||100|mg/dL||||F`;
     );
   });
 
-  test("throws error when OBR-3 filler order number is missing", async () => {
+  test("throws error when both OBR-2 and OBR-3 are missing", async () => {
     const invalidMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR3||TESTPATIENT^ERROR
-OBR|1|ORD001||LAB123|||20260101
+OBR|1|||LAB123|||20260101
 OBX|1|NM|TEST||100|mg/dL||||F`;
 
     await expect(convertORU_R01(parseMessage(invalidMessage))).rejects.toThrow(
-      /OBR-3/,
+      /OBR-3.*OBR-2/,
     );
+  });
+
+  test("uses OBR-2 as fallback when OBR-3 is missing", async () => {
+    const messageWithOBR2Only = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
+PID|1||TEST-PLACER||TESTPATIENT^PLACER
+OBR|1|PLACER123||85025^CBC^LN|||20260101||||||||||||||||||Lab|F
+OBX|1|NM|718-7^Hemoglobin^LN||14.5|g/dL|12.0-16.0||||F`;
+
+    const result = await convertORU_R01(parseMessage(messageWithOBR2Only));
+    expect(result.messageUpdate.status).toBe("processed");
+
+    const diagnosticReport = result.bundle.entry?.find(
+      (e) => e.resource?.resourceType === "DiagnosticReport"
+    )?.resource;
+    expect(diagnosticReport?.id).toBe("placer123");
+
+    const observation = result.bundle.entry?.find(
+      (e) => e.resource?.resourceType === "Observation"
+    )?.resource;
+    expect(observation?.id).toContain("placer123-obx");
   });
 });
 

@@ -143,7 +143,7 @@ function createDraftPatient(pid: PID, patientId: string, baseMeta: Meta): Patien
 
 export async function convertOBXToObservationResolving(
   obx: OBX,
-  obrFillerOrderNumber: string,
+  orderNumber: string,
   senderContext: SenderContext,
 ): Promise<Observation> {
   const resolution = await resolveToLoinc(
@@ -152,7 +152,7 @@ export async function convertOBXToObservationResolving(
     fetchConceptMap,
   );
   const resolvedCode = buildCodeableConcept(resolution);
-  const observation = convertOBXToObservation(obx, obrFillerOrderNumber);
+  const observation = convertOBXToObservation(obx, orderNumber);
   observation.code = resolvedCode;
   return observation;
 }
@@ -401,11 +401,11 @@ function groupSegmentsByOBR(message: HL7v2Message): OBRGroup[] {
  */
 function convertSPMToSpecimen(
   spm: SPM,
-  fillerOrderNumber: string,
+  orderNumber: string,
   index: number,
 ): Specimen {
-  // Generate ID: {OBR-3}-specimen-{index}
-  const id = `${fillerOrderNumber.toLowerCase()}-specimen-${index}`.replace(
+  // Generate ID: {orderNumber}-specimen-{index}
+  const id = `${orderNumber.toLowerCase()}-specimen-${index}`.replace(
     /[^a-z0-9-]/g,
     "-",
   );
@@ -451,12 +451,12 @@ function convertSPMToSpecimen(
  */
 function createSpecimenFromOBR15(
   obr: OBR,
-  fillerOrderNumber: string,
+  orderNumber: string,
 ): Specimen | undefined {
   if (!obr.$15_specimenSource) return undefined;
 
   const sps = obr.$15_specimenSource;
-  const id = `${fillerOrderNumber.toLowerCase()}-specimen-obr15`.replace(
+  const id = `${orderNumber.toLowerCase()}-specimen-obr15`.replace(
     /[^a-z0-9-]/g,
     "-",
   );
@@ -721,13 +721,21 @@ async function handleEncounter(
   return { encounterRef, encounterEntry };
 }
 
-function getFillerOrderNumber(obr: OBR): string {
-  if (!obr.$3_fillerOrderNumber?.$1_value) {
-    throw new Error(
-      "OBR-3 (Filler Order Number) is required for deterministic ID generation",
-    );
+function getOrderNumber(obr: OBR): string {
+  // Prefer OBR-3 (Filler Order Number), fallback to OBR-2 (Placer Order Number)
+  const fillerOrderNumber = obr.$3_fillerOrderNumber?.$1_value;
+  if (fillerOrderNumber) {
+    return fillerOrderNumber;
   }
-  return obr.$3_fillerOrderNumber.$1_value;
+
+  const placerOrderNumber = obr.$2_placerOrderNumber?.$1_value;
+  if (placerOrderNumber) {
+    return placerOrderNumber;
+  }
+
+  throw new Error(
+    "Either OBR-3 (Filler Order Number) or OBR-2 (Placer Order Number) is required for deterministic ID generation",
+  );
 }
 
 interface ProcessObservationsResult {
@@ -737,7 +745,7 @@ interface ProcessObservationsResult {
 
 async function processObservations(
   observationGroups: OBRGroup["observations"],
-  fillerOrderNumber: string,
+  orderNumber: string,
   senderContext: SenderContext,
   baseMeta: Meta,
 ): Promise<ProcessObservationsResult> {
@@ -751,7 +759,7 @@ async function processObservations(
     try {
       observation = await convertOBXToObservationResolving(
         obx,
-        fillerOrderNumber,
+        orderNumber,
         senderContext,
       );
     } catch (error) {
@@ -781,7 +789,7 @@ async function processObservations(
 function processSpecimens(
   specimenSegments: HL7v2Segment[],
   obr: OBR,
-  fillerOrderNumber: string,
+  orderNumber: string,
   baseMeta: Meta,
 ): Specimen[] {
   const specimens: Specimen[] = [];
@@ -789,12 +797,12 @@ function processSpecimens(
   if (specimenSegments.length > 0) {
     for (const [index, segment] of specimenSegments.entries()) {
       const spm = fromSPM(segment);
-      const specimen = convertSPMToSpecimen(spm, fillerOrderNumber, index + 1);
+      const specimen = convertSPMToSpecimen(spm, orderNumber, index + 1);
       specimen.meta = { ...specimen.meta, ...baseMeta };
       specimens.push(specimen);
     }
   } else {
-    const specimen = createSpecimenFromOBR15(obr, fillerOrderNumber);
+    const specimen = createSpecimenFromOBR15(obr, orderNumber);
     if (specimen) {
       specimen.meta = { ...specimen.meta, ...baseMeta };
       specimens.push(specimen);
@@ -888,7 +896,7 @@ async function processOBRGroup(
   encounterRef: Reference<"Encounter"> | null,
 ): Promise<ProcessOBRGroupResult> {
   const obr = fromOBR(group.obr);
-  const fillerOrderNumber = getFillerOrderNumber(obr);
+  const orderNumber = getOrderNumber(obr);
 
   const diagnosticReport = convertOBRToDiagnosticReport(obr);
   diagnosticReport.meta = { ...diagnosticReport.meta, ...baseMeta };
@@ -896,7 +904,7 @@ async function processOBRGroup(
 
   const { observations, mappingErrors } = await processObservations(
     group.observations,
-    fillerOrderNumber,
+    orderNumber,
     senderContext,
     baseMeta,
   );
@@ -909,7 +917,7 @@ async function processOBRGroup(
   const specimens = processSpecimens(
     group.specimens,
     obr,
-    fillerOrderNumber,
+    orderNumber,
     baseMeta,
   );
 

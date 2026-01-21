@@ -9,7 +9,7 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 - Patient: match existing or create draft (`active=false`); PID segment required (error if missing)
 - Encounter: match existing or create draft (`status=unknown`); PV1 segment optional (proceed without if missing)
 - One DiagnosticReport per ORDER_OBSERVATION group (ORC/OBR pair)
-- Deterministic IDs from OBR-3 (filler order number) for idempotency
+- Deterministic IDs from OBR-3 (filler order number) or OBR-2 (placer order number) for idempotency
 - Tag all resources with MSH-10 (message control ID) for audit trail
 - OBX-3 must resolve to LOINC code (inline or via sender-specific ConceptMap, see Appendix E)
 - Unmapped OBX-3 codes block processing with `mapping_error` and create/track mapping Tasks
@@ -20,7 +20,7 @@ Convert ORU_R01 messages to FHIR DiagnosticReport + Observation + Specimen resou
 ## Processing Flow
 
 1. MLLP receives ORU_R01 → `IncomingHL7v2Message` with `status=received`
-2. Parse message structure; validate MSH, OBR-3, OBR-25, OBX-11 required fields
+2. Parse message structure; validate MSH, OBR-3 or OBR-2, OBR-25, OBX-11 required fields
 3. Resolve all OBX-3 codes to LOINC (inline or via sender-specific ConceptMap, see Appendix E)
 4. If any OBX-3 cannot be resolved → set `status=mapping_error`, create mapping Tasks (see Code Mapping), stop processing
 5. Handle Patient (PID):
@@ -82,7 +82,7 @@ When a message contains OBX codes that cannot be resolved to LOINC, ORU processi
 
 | FHIR field | Source | Notes |
 |------------|--------|-------|
-| id | `{OBR-3}` | Filler order number (stable across updates) |
+| id | `{OBR-3}` or `{OBR-2}` | Filler order number preferred, placer order number as fallback (stable across updates) |
 | identifier | OBR-2, OBR-3 | Placer and filler order numbers |
 | status | OBR-25 | See Appendix A |
 | category | OBR-24 | Diagnostic Service Section ID (if valued) |
@@ -100,7 +100,7 @@ When a message contains OBX codes that cannot be resolved to LOINC, ORU processi
 
 | FHIR field | Source | Notes |
 |------------|--------|-------|
-| id | `{OBR-3}-obx-{OBX-1}` | Deterministic |
+| id | `{orderNumber}-obx-{OBX-1}` | Deterministic; orderNumber = OBR-3 or OBR-2 |
 | status | OBX-11 | See Appendix B |
 | category | (fixed) | `laboratory` (http://terminology.hl7.org/CodeSystem/observation-category) |
 | code | OBX-3 | Extract LOINC from CE/CWE (see Appendix E) |
@@ -119,7 +119,7 @@ When a message contains OBX codes that cannot be resolved to LOINC, ORU processi
 
 | FHIR field | Source | Notes |
 |------------|--------|-------|
-| id | `{OBR-3}-specimen-{SPM-2 or 1}` | Deterministic; use SPM-2 if present, else sequence number |
+| id | `{orderNumber}-specimen-{SPM-2 or 1}` | Deterministic; orderNumber = OBR-3 or OBR-2; use SPM-2 if present, else sequence number |
 | type | SPM-4 or OBR-15 | SPM preferred; OBR-15 is repeating (`~` separator), use first value |
 | subject | PID-3 | Patient lookup |
 | collection.collectedDateTime | SPM-17 | |
@@ -133,7 +133,7 @@ When a message contains OBX codes that cannot be resolved to LOINC, ORU processi
 |-----------|--------|
 | Missing MSH | Reject message |
 | Missing OBR | Reject message |
-| Missing OBR-3 | Reject message (required for resource IDs) |
+| Missing OBR-3 and OBR-2 | Reject message (at least one required for resource IDs) |
 | OBX without parent OBR | Reject message |
 | OBX-3 has no LOINC (inline or ConceptMap) | Set `mapping_error`, create/update mapping Task(s), store `unmappedCodes[]` |
 | ConceptMap not found for sender | Set `mapping_error` when OBX-3 has no inline LOINC |
