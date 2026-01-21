@@ -377,11 +377,12 @@ export async function deleteConceptMapEntry(
     }
   }
 
-  // Remove empty groups
+  // Remove empty groups (set to undefined if all groups removed to avoid FHIR validation error)
   if (conceptMap.group) {
-    conceptMap.group = conceptMap.group.filter(
+    const nonEmptyGroups = conceptMap.group.filter(
       (g) => g.element && g.element.length > 0,
     );
+    conceptMap.group = nonEmptyGroups.length > 0 ? nonEmptyGroups : undefined;
   }
 
   // Save
