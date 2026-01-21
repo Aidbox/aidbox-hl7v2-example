@@ -754,7 +754,7 @@ export async function convertORU_R01(
   }
 
   if (allMappingErrors.length > 0) {
-    return buildMappingErrorResult(senderContext, allMappingErrors, patientRef);
+    return buildMappingErrorResult(senderContext, allMappingErrors, patientRef, patientEntry);
   }
 
   // Include draft patient in bundle if created
@@ -781,10 +781,15 @@ function buildMappingErrorResult(
   senderContext: SenderContext,
   mappingErrors: LoincResolutionError[],
   patientRef: Reference<"Patient">,
+  patientEntry: BundleEntry | null,
 ): ConversionResult {
   const conceptMapId = generateConceptMapId(senderContext);
   const seenTaskIds = new Set<string>();
-  const taskEntries: BundleEntry[] = [];
+  const entries: BundleEntry[] = [];
+
+  if (patientEntry) {
+    entries.push(patientEntry);
+  }
   const unmappedCodes: UnmappedCode[] = [];
 
   for (const error of mappingErrors) {
@@ -800,7 +805,7 @@ function buildMappingErrorResult(
     seenTaskIds.add(taskId);
 
     const task = createMappingTask(senderContext, error);
-    taskEntries.push(createTaskBundleEntry(task));
+    entries.push(createTaskBundleEntry(task));
 
     unmappedCodes.push({
       localCode: error.localCode,
@@ -813,7 +818,7 @@ function buildMappingErrorResult(
   const bundle: Bundle = {
     resourceType: "Bundle",
     type: "transaction",
-    entry: taskEntries,
+    entry: entries,
   };
 
   return {
