@@ -35,6 +35,7 @@ const ENCOUNTER_CLASS_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ActCode
 // ============================================================================
 
 const PATIENT_CLASS_MAP: Record<string, { code: string; display: string }> = {
+  // Standard HL7 Table 0004 codes
   E: { code: "EMER", display: "emergency" },
   I: { code: "IMP", display: "inpatient encounter" },
   O: { code: "AMB", display: "ambulatory" },
@@ -45,6 +46,8 @@ const PATIENT_CLASS_MAP: Record<string, { code: string; display: string }> = {
   N: { code: "IMP", display: "inpatient encounter" },  // Not Applicable
   U: { code: "AMB", display: "ambulatory" },           // Unknown
 };
+
+const PATIENT_CLASS_V2_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0004";
 
 // ============================================================================
 // Patient Class to Status Mapping (when PV1-45 not valued)
@@ -305,15 +308,17 @@ export function convertPV1ToEncounter(pv1: PV1): Encounter {
   }
 
   const classMapping = PATIENT_CLASS_MAP[classCode];
-  if (!classMapping) {
-    throw new Error(`Unknown patient class code: ${classCode}`);
-  }
 
-  const encounterClass: Coding = {
-    system: ENCOUNTER_CLASS_SYSTEM,
-    code: classMapping.code,
-    display: classMapping.display,
-  };
+  const encounterClass: Coding = classMapping
+    ? {
+        system: ENCOUNTER_CLASS_SYSTEM,
+        code: classMapping.code,
+        display: classMapping.display,
+      }
+    : {
+        system: PATIENT_CLASS_V2_SYSTEM,
+        code: classCode,
+      };
 
   // =========================================================================
   // Status

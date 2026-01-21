@@ -70,6 +70,19 @@ describe("convertPV1ToEncounter", () => {
 
       expect(encounter.status).toBe("in-progress");
     });
+
+    test("preserves unknown patient class codes in v2-0004 system", () => {
+      const pv1: PV1 = {
+        $2_class: "1",
+      };
+
+      const encounter = convertPV1ToEncounter(pv1);
+
+      expect(encounter.class.system).toBe("http://terminology.hl7.org/CodeSystem/v2-0004");
+      expect(encounter.class.code).toBe("1");
+      expect(encounter.class.display).toBeUndefined();
+      expect(encounter.status).toBe("unknown");
+    });
   });
 
   describe("identifiers", () => {
