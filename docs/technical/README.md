@@ -16,3 +16,4 @@ Documentation for developers who want to understand, extend, or extract modules 
 - [Code Mapping Infrastructure](modules/code-mapping-infrastructure.md) - ConceptMap and Task data model
 - [Code Mapping UI](modules/code-mapping-ui.md) - UI workflows for resolving unmapped codes
 - [MLLP Server](modules/mllp-server.md) - MLLP protocol implementation
+- [Extending Field Mappings](modules/extending-field-mappings.md) - Adding new FHIR↔HL7v2 field mappings

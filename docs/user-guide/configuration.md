@@ -1,8 +1,54 @@
 # Configuration
 
-## Environment Variables
+## Quick Setup
 
-Bun automatically loads `.env` files. Create a `.env` file in the project root to override defaults.
+For most deployments, you only need to configure these settings in a `.env` file:
+
+| Setting | Example | When to Change |
+|---------|---------|----------------|
+| `AIDBOX_URL` | `http://aidbox.internal:8080` | Aidbox not on localhost |
+| `MLLP_PORT` | `2575` | Port conflict or firewall rules |
+| `FHIR_APP` / `FHIR_FAC` | `HOSPITAL_FHIR` / `MAIN_CAMPUS` | Identify your system in outbound messages |
+| `BILLING_APP` / `BILLING_FAC` | `BILLING_SYS` / `BILLING_DEPT` | Identify the receiving billing system |
+
+## Configuration by Use Case
+
+### Connecting to a Remote Aidbox
+
+If Aidbox runs on a different host:
+
+```env
+AIDBOX_URL=http://aidbox.yournetwork.local:8080
+AIDBOX_CLIENT_ID=your-client-id
+AIDBOX_CLIENT_SECRET=your-client-secret
+```
+
+### Setting Up Outbound BAR Messages
+
+Configure the message header fields so receiving systems know who sent the message:
+
+```env
+# Your system (appears in MSH-3 and MSH-4)
+FHIR_APP=HOSPITAL_FHIR
+FHIR_FAC=MAIN_CAMPUS
+
+# Destination billing system (appears in MSH-5 and MSH-6)
+BILLING_APP=BILLING_SYSTEM
+BILLING_FAC=BILLING_DEPT
+```
+
+### Using a Different Terminology Server
+
+LOINC lookups use an external terminology server. To use your own:
+
+Edit `docker-compose.yaml`:
+```yaml
+BOX_FHIR_TERMINOLOGY_SERVICE_BASE_URL: https://your-terminology-server/fhir
+```
+
+Then restart Aidbox: `docker compose restart aidbox`
+
+## Environment Variable Reference
 
 ### Aidbox Connection
 
@@ -12,9 +58,7 @@ Bun automatically loads `.env` files. Create a `.env` file in the project root t
 | `AIDBOX_CLIENT_ID` | `root` | Aidbox client ID |
 | `AIDBOX_CLIENT_SECRET` | `Vbro4upIT1` | Aidbox client secret |
 
-### BAR Message Configuration
-
-Configure HL7v2 message header fields (MSH segment) for outbound BAR messages.
+### BAR Message Headers
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -23,150 +67,43 @@ Configure HL7v2 message header fields (MSH segment) for outbound BAR messages.
 | `BILLING_APP` | (empty) | Receiving application name (MSH-5) |
 | `BILLING_FAC` | (empty) | Receiving facility name (MSH-6) |
 
-Example `.env` for production:
-```
-FHIR_APP=HOSPITAL_FHIR
-FHIR_FAC=MAIN_CAMPUS
-BILLING_APP=BILLING_SYSTEM
-BILLING_FAC=BILLING_DEPT
-```
-
-### MLLP Server
+### Network
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MLLP_PORT` | `2575` | MLLP server listening port |
 
-## Docker Compose Configuration
+## Docker Configuration
 
-The `docker-compose.yaml` starts two services: PostgreSQL (database) and Aidbox (FHIR server).
+### Changing Aidbox Port
 
-### Changing Ports
-
-**Aidbox port** (default 8080):
+Edit `docker-compose.yaml`:
 ```yaml
 services:
   aidbox:
     ports:
-    - 9000:8080  # Change 9000 to desired external port
+    - 9000:8080  # External:Internal
 ```
 
-If you change the port, also update `BOX_WEB_BASE_URL` and your `AIDBOX_URL` environment variable.
+Also update `BOX_WEB_BASE_URL` in the same file and your `AIDBOX_URL` environment variable.
 
-### Persistent Data
+### Resetting the Database
 
-PostgreSQL data is stored in a Docker volume named `postgres_data`. Data persists across container restarts.
+PostgreSQL data persists in a Docker volume. To start fresh:
 
-To reset the database:
 ```sh
 docker compose down -v   # -v removes volumes
 docker compose up -d
+bun migrate
 ```
 
 ### Aidbox License
 
-On first run, Aidbox requires license activation:
+On first run, activate the license:
 1. Navigate to http://localhost:8080
 2. Log in at aidbox.app
-3. License is automatically activated
-
-### Key Aidbox Settings
-
-| Setting | Value | Purpose |
-|---------|-------|---------|
-| `BOX_FHIR_COMPLIANT_MODE` | `true` | Strict FHIR R4 compliance |
-| `BOX_FHIR_SCHEMA_VALIDATION` | `true` | Validate resources against FHIR schemas |
-| `BOX_FHIR_TERMINOLOGY_ENGINE` | `hybrid` | Use external terminology server for LOINC lookups |
-| `BOX_INIT_BUNDLE` | `file:///init-bundle.json` | Load custom resources on startup |
-
-### Terminology Server
-
-LOINC code lookup uses the Health Samurai terminology server:
-```yaml
-BOX_FHIR_TERMINOLOGY_SERVICE_BASE_URL: https://tx.health-samurai.io/fhir
-```
-
-To use a different terminology server, change this URL.
+3. License is stored in the database and persists across restarts
 
 ## Custom FHIR Resources
 
-Custom resources are defined in `init-bundle.json` and loaded automatically when Aidbox starts.
-
-### OutgoingBarMessage
-
-Stores generated BAR messages pending transmission.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `patient` | Reference(Patient) | Yes | Patient the message is about |
-| `invoice` | Reference(Invoice) | Yes | Source invoice |
-| `status` | string | Yes | `pending`, `sent`, or `error` |
-| `hl7v2` | string | No | The HL7v2 message content |
-
-### IncomingHL7v2Message
-
-Stores received HL7v2 messages and their processing status.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `type` | string | Yes | Message type (e.g., `ADT^A01`, `ORU^R01`) |
-| `date` | dateTime | No | Message timestamp |
-| `message` | string | Yes | Raw HL7v2 message content |
-| `status` | string | No | `received`, `processed`, `error`, `mapping_error` |
-| `error` | string | No | Error message if processing failed |
-| `bundle` | string | No | JSON of created FHIR resources |
-| `sendingApplication` | string | No | MSH-3 sending application |
-| `sendingFacility` | string | No | MSH-4 sending facility |
-| `patient` | Reference(Patient) | No | Linked patient after processing |
-| `unmappedCodes` | BackboneElement[] | No | OBX codes needing LOINC mapping |
-
-**unmappedCodes structure:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `localCode` | string | Yes | The unmapped code |
-| `localDisplay` | string | No | Code description |
-| `localSystem` | string | No | Source code system |
-| `mappingTask` | Reference(Task) | Yes | Task for resolving this code |
-
-### Invoice Extensions
-
-The Invoice resource uses extensions to track processing status:
-
-| Extension URL | Value Type | Description |
-|--------------|------------|-------------|
-| `http://example.org/invoice-processing-status` | code | `pending`, `completed`, `error`, `failed` |
-| `http://example.org/invoice-processing-retry-count` | integer | Number of retry attempts |
-| `http://example.org/invoice-processing-error-reason` | string | Error description |
-
-## Adding Custom Resources
-
-To add new custom resources:
-
-1. Edit `init-bundle.json` and add a StructureDefinition entry
-2. Add SearchParameter entries if you need to query by custom fields
-3. Restart Aidbox: `docker compose restart aidbox`
-4. Run migrations: `bun migrate`
-
-Example StructureDefinition pattern:
-```json
-{
-  "request": { "method": "PUT", "url": "StructureDefinition/MyResource" },
-  "resource": {
-    "resourceType": "StructureDefinition",
-    "id": "MyResource",
-    "name": "MyResource",
-    "type": "MyResource",
-    "status": "active",
-    "kind": "resource",
-    "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
-    "derivation": "specialization",
-    "differential": {
-      "element": [
-        { "id": "MyResource", "path": "MyResource", "min": 0, "max": "*" },
-        { "id": "MyResource.myField", "path": "MyResource.myField", "min": 1, "max": "1", "type": [{ "code": "string" }] }
-      ]
-    }
-  }
-}
-```
+The system uses custom FHIR resources defined in `init-bundle.json`. For details on their structure, see [Technical Documentation](../technical/README.md).

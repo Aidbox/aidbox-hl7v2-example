@@ -1,5 +1,7 @@
 # Getting Started
 
+Before diving in, you may want to read [Concepts](concepts.md) to understand HL7v2, FHIR, and how the system processes messages.
+
 ## Prerequisites
 
 - [Bun](https://bun.sh) v1.2+
@@ -104,6 +106,6 @@ docker compose down
 
 ## Next Steps
 
-- [Web UI Guide](web-ui.md) - Learn how to use each page
+- [Overview](overview.md) - Understand the system architecture and workflows
 - [Configuration](configuration.md) - Customize environment variables
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions

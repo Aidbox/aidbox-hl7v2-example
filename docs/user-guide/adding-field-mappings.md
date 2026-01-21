@@ -1,206 +1,37 @@
 # Adding Field Mappings
 
-This guide explains how to extend field mappings for BAR message generation and ORU message processing.
+This guide explains how to add code mappings for laboratory codes that arrive without standard LOINC codes.
 
-## BAR Message: Adding a New FHIR → HL7v2 Field
+## When You Need This
 
-When you need to include additional FHIR data in outgoing BAR messages, follow these steps.
+When your system receives ORU (lab results) messages from external labs, those labs often use their own local codes instead of standard LOINC codes. For example, a lab might send `K_SERUM` instead of the LOINC code `2823-3` for a potassium test.
 
-### Step 1: Identify the Target HL7v2 Field
+The system needs to know how to translate these local codes to LOINC. You have three options:
 
-Determine which HL7v2 segment and field should receive the data. Common BAR segments:
+- **Via the Web UI** - Resolve codes one-by-one as they appear
+- **Bulk import** - Load many mappings at once from a file
 
-| Segment | Purpose |
-|---------|---------|
-| PID | Patient identification |
-| PV1 | Patient visit/encounter |
-| GT1 | Guarantor information |
-| IN1 | Insurance information |
-| DG1 | Diagnosis codes |
-| PR1 | Procedure codes |
+**Extending the converter:**
+If you need to map additional HL7v2 fields beyond what's currently supported, see [Technical Documentation: Extending Field Mappings](../technical/modules/extending-field-mappings.md)
 
-### Step 2: Locate the Segment Builder
+## Using the Web UI
 
-Open `src/bar/generator.ts` and find the builder function for your target segment:
+The simplest approach is using the Mapping Tasks and Code Mappings pages. When a message arrives with an unmapped code:
 
-- `buildPID()` - Patient demographics
-- `buildPV1()` - Visit/encounter info
-- `buildGT1()` - Guarantor info
-- `buildIN1()` - Insurance info
-- `buildDG1()` - Diagnoses
-- `buildPR1()` - Procedures
+1. The message gets `status=mapping_error`
+2. A task appears on the Mapping Tasks page (`/mapping/tasks`)
+3. You search for the matching LOINC code and resolve it
+4. The mapping is saved and the message can be reprocessed
 
-### Step 3: Add the Field
+See [Overview](overview.md) for more context on the code mapping workflow.
 
-Add a new property to the return object. Field names follow the pattern `$N_fieldName` where N is the HL7v2 field sequence number.
+## Bulk Import via ConceptMap
 
-**Example: Adding PID-14 (Business Phone)**
+For importing many mappings at once (e.g., when onboarding a new lab), you can load a ConceptMap directly into Aidbox.
 
-```typescript
-function buildPID(input: BarMessageInput): PID {
-  const { patient, account } = input;
-  const businessPhone = patient.telecom?.find(t => t.system === "phone" && t.use === "work");
+### ConceptMap Structure
 
-  return {
-    // ... existing fields ...
-    $13_homePhone: [{ $1_value: phone?.value }],
-
-    // Add PID-14: Business Phone
-    $14_businessPhone: [{
-      $1_value: businessPhone?.value,
-    }],
-
-    $18_accountNumber: { $1_value: account.identifier?.[0]?.value }
-  }
-}
-```
-
-### Step 4: Check Type Definitions
-
-The field types are defined in `src/hl7v2/generated/fields.ts`. Each segment has a TypeScript interface showing available fields and their structure.
-
-```typescript
-// From fields.ts - shows PID structure
-interface PID {
-  $14_businessPhone?: XTN[];  // XTN is a phone number datatype
-  // ...
-}
-
-// XTN structure for phone numbers
-interface XTN {
-  $1_value?: string;
-  $2_telecomUseCode?: string;
-  // ...
-}
-```
-
-### Step 5: Test Your Change
-
-```sh
-# Create a test invoice with the new data
-bun scripts/load-test-data.ts
-
-# Generate a BAR message
-# Go to http://localhost:3000/invoices
-# Create invoice → Build BAR → View in Outgoing Messages
-```
-
-## ORU Processing: Adding a New HL7v2 → FHIR Field
-
-When you need to extract additional data from incoming ORU messages into FHIR resources.
-
-### Step 1: Identify the Source HL7v2 Field
-
-Common ORU segments to extend:
-
-| Segment | Converter File | FHIR Output |
-|---------|---------------|-------------|
-| OBR | `segments/obr-diagnosticreport.ts` | DiagnosticReport |
-| OBX | `segments/obx-observation.ts` | Observation |
-| PID | `segments/pid-patient.ts` | Patient |
-| PV1 | `segments/pv1-encounter.ts` | Encounter |
-
-### Step 2: Locate the Segment Converter
-
-Open the relevant file in `src/v2-to-fhir/segments/`.
-
-### Step 3: Add the Field Mapping
-
-Extract the HL7v2 field and map it to the appropriate FHIR element.
-
-**Example: Adding OBX-17 (Observation Method) to Observation**
-
-```typescript
-// In src/v2-to-fhir/segments/obx-observation.ts
-
-export function convertOBXToObservation(
-  obx: OBX,
-  obrFillerOrderNumber: string,
-): Observation {
-  // ... existing code ...
-
-  const observation: Observation = {
-    resourceType: "Observation",
-    id,
-    status: mapOBXStatusToFHIR(obx.$11_observationResultStatus as string),
-    code,
-  };
-
-  // Add OBX-17: Observation Method → method
-  if (obx.$17_observationMethod && obx.$17_observationMethod.length > 0) {
-    const method = obx.$17_observationMethod[0];
-    observation.method = {
-      coding: [{
-        code: method.$1_code,
-        display: method.$2_text,
-        system: normalizeSystem(method.$3_system),
-      }],
-    };
-  }
-
-  // ... rest of function ...
-  return observation;
-}
-```
-
-### Step 4: Check HL7v2 Field Types
-
-Field types are in `src/hl7v2/generated/fields.ts`:
-
-```typescript
-// OBX segment fields
-interface OBX {
-  $17_observationMethod?: CE[];  // CE is Coded Element
-  // ...
-}
-```
-
-### Step 5: Test Your Change
-
-```sh
-# Send a test ORU message with the field populated
-# Go to http://localhost:3000/mllp-client
-# Send an ORU^R01 message
-# Check Incoming Messages → Process → View created Observation in Aidbox
-```
-
-## Datatype Converters
-
-For complex datatypes, use the converters in `src/v2-to-fhir/datatypes/`:
-
-| HL7v2 Type | FHIR Output | Converter |
-|------------|-------------|-----------|
-| CWE | CodeableConcept | `cwe-codeableconcept.ts` |
-| XPN | HumanName | `xpn-humanname.ts` |
-| XAD | Address | `xad-address.ts` |
-| XTN | ContactPoint | `xtn-contactpoint.ts` |
-| CX | Identifier | `cx-identifier.ts` |
-| DTM | dateTime | `dtm-datetime.ts` |
-
-**Example using a datatype converter:**
-
-```typescript
-import { convertCWEToCodeableConcept } from "../datatypes/cwe-codeableconcept";
-
-// In your segment converter:
-if (obx.$17_observationMethod) {
-  observation.method = convertCWEToCodeableConcept(obx.$17_observationMethod[0]);
-}
-```
-
-## Code Mappings: Local-to-LOINC via ConceptMap
-
-For mapping local lab codes to LOINC codes (used in OBX-3 resolution).
-
-### Using the Web UI
-
-The simplest approach is using the Mapping Tasks and Code Mappings pages. See [Web UI Guide](web-ui.md#mapping-tasks-page).
-
-### Programmatic ConceptMap Updates
-
-ConceptMaps are stored as FHIR resources in Aidbox, one per sender (MSH-3 + MSH-4 combination).
-
-**ConceptMap Structure:**
+ConceptMaps are stored as FHIR resources, one per sender (identified by sending application + facility from the message header).
 
 ```json
 {
@@ -224,23 +55,28 @@ ConceptMaps are stored as FHIR resources in Aidbox, one per sender (MSH-3 + MSH-
 }
 ```
 
-**Adding a mapping via API:**
+**Key fields:**
+- `id` - Format: `{SendingApplication}-{SendingFacility}` (from message header MSH-3 and MSH-4)
+- `group[].source` - The local code system identifier
+- `group[].element[]` - Array of local codes with their LOINC mappings
+
+### Loading via API
 
 ```sh
-# Get existing ConceptMap
+# Get existing ConceptMap (if any)
 curl -u root:Vbro4upIT1 \
   "http://localhost:8080/fhir/ConceptMap/LabSystem-MainFacility"
 
-# Update with new mapping (add to group[0].element array)
+# Create or update ConceptMap
 curl -X PUT -u root:Vbro4upIT1 \
   -H "Content-Type: application/json" \
   "http://localhost:8080/fhir/ConceptMap/LabSystem-MainFacility" \
   -d @conceptmap.json
 ```
 
-### Bulk Import
+### Loading via Script
 
-For importing many mappings at once, create a ConceptMap JSON file and PUT it to Aidbox:
+Create a script to transform your mapping data into ConceptMap format:
 
 ```typescript
 // scripts/import-mappings.ts
@@ -276,30 +112,16 @@ Run with:
 bun scripts/import-mappings.ts
 ```
 
-## Testing Field Mappings
+### Verifying Imported Mappings
 
-### BAR Testing
+After import, you can verify the mappings:
 
-1. Create test FHIR resources with the new field populated
-2. Generate a BAR message via the UI or service
-3. Inspect the HL7v2 output in Outgoing Messages
+1. Go to the Code Mappings page (`/mapping/table`) in the web UI
+2. Select the sender from the dropdown
+3. You should see all imported mappings in the table
 
-### ORU Testing
-
-1. Create a sample HL7v2 message with the new field
-2. Send via MLLP Test Client
-3. Process the message
-4. Query Aidbox for the created FHIR resource
-
+Or via API:
 ```sh
-# Query for Observations
 curl -u root:Vbro4upIT1 \
-  "http://localhost:8080/fhir/Observation?_sort=-_lastUpdated&_count=5"
+  "http://localhost:8080/fhir/ConceptMap/LabSystem-MainFacility"
 ```
-
-## Technical Documentation
-
-For detailed segment-to-FHIR mapping tables and supported datatypes, see:
-- [FHIR to HL7v2 (BAR)](../technical/modules/fhir-to-hl7v2.md)
-- [HL7v2 to FHIR (ORU)](../technical/modules/v2-to-fhir-oru.md)
-- [V2-to-FHIR Specification](../v2-to-fhir-spec/)

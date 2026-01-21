@@ -1,5 +1,7 @@
 # Troubleshooting
 
+For background on message types, statuses, and terminology, see [Concepts](concepts.md).
+
 ## Message Status Reference
 
 ### IncomingHL7v2Message Status
