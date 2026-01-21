@@ -144,15 +144,22 @@ describe("convertORU_R01", () => {
       expect(diagnosticReport.result?.[0]?.reference).toContain("Observation/");
     });
 
-    test("uses PUT requests with deterministic IDs for idempotency", async () => {
+    test("uses PUT requests with deterministic IDs for idempotency (except Patient uses conditional POST)", async () => {
       const { convertORU_R01 } =
         await import("../../../src/v2-to-fhir/messages/oru-r01");
       const bundle = (await convertORU_R01(parseMessage(SIMPLE_ORU_MESSAGE)))
         .bundle;
 
       bundle.entry?.forEach((entry) => {
-        expect(entry.request?.method).toBe("PUT");
-        expect(entry.request?.url).toContain(entry.resource?.id);
+        if (entry.resource?.resourceType === "Patient") {
+          // Patient uses POST with If-None-Exist for race condition safety
+          expect(entry.request?.method).toBe("POST");
+          expect(entry.request?.url).toBe("Patient");
+          expect(entry.request?.ifNoneExist).toBe(`_id=${entry.resource?.id}`);
+        } else {
+          expect(entry.request?.method).toBe("PUT");
+          expect(entry.request?.url).toContain(entry.resource?.id);
+        }
       });
     });
 
@@ -983,7 +990,10 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
       expect((patientEntry?.resource as { active?: boolean })?.active).toBe(
         false,
       );
-      expect(patientEntry?.request?.method).toBe("PUT");
+      // Uses POST with If-None-Exist for race condition safety
+      expect(patientEntry?.request?.method).toBe("POST");
+      expect(patientEntry?.request?.url).toBe("Patient");
+      expect(patientEntry?.request?.ifNoneExist).toBe("_id=TEST-0001");
     });
 
     test("does not include Patient in bundle when patient exists", async () => {
@@ -1181,8 +1191,11 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
       );
 
       expect(patient1?.resource?.id).toBe(patient2?.resource?.id);
-      expect(patient1?.request?.method).toBe("PUT");
-      expect(patient2?.request?.method).toBe("PUT");
+      // Both use POST with If-None-Exist - server handles race condition
+      expect(patient1?.request?.method).toBe("POST");
+      expect(patient2?.request?.method).toBe("POST");
+      expect(patient1?.request?.ifNoneExist).toBe("_id=TEST-0001");
+      expect(patient2?.request?.ifNoneExist).toBe("_id=TEST-0001");
     });
   });
 });

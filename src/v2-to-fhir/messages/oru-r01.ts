@@ -495,16 +495,35 @@ interface PatientHandlingResult {
 }
 
 /**
+ * Create a conditional bundle entry for draft Patient creation.
+ * Uses POST with If-None-Exist to prevent race conditions when multiple
+ * ORU messages for the same non-existent patient arrive simultaneously.
+ *
+ * If the patient already exists (created by a concurrent message), the
+ * server will return the existing patient instead of creating a duplicate.
+ */
+function createConditionalPatientEntry(patient: Patient): BundleEntry {
+  const patientId = patient.id;
+  return {
+    resource: patient,
+    request: {
+      method: "POST",
+      url: "Patient",
+      ifNoneExist: `_id=${patientId}`,
+    },
+  };
+}
+
+/**
  * Handle patient lookup and draft creation for ORU_R01.
  *
  * - Extracts patient ID from PID-2 or PID-3.1
  * - Looks up existing patient (does NOT update - ADT is source of truth)
  * - Creates draft patient with active=false if not found
  *
- * Race condition note: If two ORU messages for the same non-existent patient
- * arrive simultaneously, both will PUT the same draft patient. This is acceptable
- * because draft patients are temporary placeholders that ADT will overwrite with
- * authoritative data.
+ * Race condition handling: Uses POST with If-None-Exist to ensure only one
+ * draft patient is created even if multiple ORU messages for the same
+ * non-existent patient arrive simultaneously.
  */
 async function handlePatient(
   pid: PID,
@@ -521,7 +540,7 @@ async function handlePatient(
   }
 
   const draftPatient = createDraftPatient(pid, patientId, baseMeta);
-  const patientEntry = createBundleEntry(draftPatient);
+  const patientEntry = createConditionalPatientEntry(draftPatient);
 
   return { patientRef, patientEntry };
 }

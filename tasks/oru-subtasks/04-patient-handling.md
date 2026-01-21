@@ -39,6 +39,12 @@ function createDraftPatient(pid: PID, patientId: string): Patient {
 - ADT_A01/A08 for same patient ID overwrites with `active = true` (PUT is idempotent)
 - Lab results remain linked via unchanged reference
 
+**Race condition handling:**
+- Uses POST with `If-None-Exist: _id={patientId}` for conditional creation
+- If patient already exists (created by concurrent message), server returns existing patient
+- Prevents duplicate patients when multiple ORU messages for same non-existent patient arrive simultaneously
+- More robust than PUT: guarantees exactly one patient created regardless of timing
+
 ## Error Conditions
 
 | Condition | Action |
@@ -60,7 +66,7 @@ function createDraftPatient(pid: PID, patientId: string): Patient {
 - [ ] Existing patient found → resources linked, patient NOT updated, no Patient in bundle
 - [ ] Patient not found → draft Patient created and included in bundle
 - [ ] Missing PID → message rejected with error
-- [ ] Idempotency: same message twice → no duplicate patients (PUT)
+- [ ] Idempotency: same message twice → no duplicate patients (POST with If-None-Exist)
 - [ ] Draft lifecycle: ORU creates draft, ADT updates to active, lab results still linked
 
 ## Implementation Tasks
@@ -71,7 +77,7 @@ function createDraftPatient(pid: PID, patientId: string): Patient {
 - [ ] **4.4** Check for existing patient before creating draft
 - [ ] **4.5** Link subject reference to DiagnosticReport, Observation, Specimen
 - [ ] **4.6** Set `IncomingHL7v2Message.patient` reference
-- [ ] **4.7** Include Patient in bundle (if creating draft, PUT for idempotency)
+- [ ] **4.7** Include Patient in bundle (if creating draft, POST with If-None-Exist for race condition safety)
 
 ## Querying Draft Patients
 
