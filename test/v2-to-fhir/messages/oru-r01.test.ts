@@ -61,10 +61,24 @@ OBX|2|NM|52098^Sodium^LOCAL^2951-2^Sodium^LN||140|mmol/L|133-145||||F`;
 
 // Mock aidbox module to avoid actual API calls
 // All test messages have inline LOINC, so ConceptMap lookup is not needed
+class MockNotFoundError extends Error {
+  constructor(resourceType: string, id: string) {
+    super(`${resourceType}/${id} not found`);
+    this.name = "NotFoundError";
+  }
+}
+
 const mockAidbox = {
+  // Used by oru-r01.ts for patient lookup
+  getResourceWithETag: mock(() => {
+    throw new MockNotFoundError("Patient", "unknown");
+  }),
+  NotFoundError: MockNotFoundError,
+  // Used by code-mapping/concept-map/service.ts for ConceptMap lookup
   aidboxFetch: mock(() =>
     Promise.reject(new Error("HTTP 404: ConceptMap not found")),
   ),
+  putResource: mock(() => Promise.resolve({})),
 };
 
 // Apply mock before importing the module
@@ -72,7 +86,7 @@ mock.module("../../../src/aidbox", () => mockAidbox);
 
 describe("convertORU_R01", () => {
   beforeEach(() => {
-    mockAidbox.aidboxFetch.mockClear();
+    mockAidbox.getResourceWithETag.mockClear();
   });
 
   describe("happy path - basic message processing", () => {
@@ -864,6 +878,311 @@ describe("convertOBXToObservationResolving", () => {
       );
 
       expect(observation.id).toBe("fil001-obx-1-a");
+    });
+  });
+});
+
+describe("patient handling", () => {
+  // Message without PID segment for error testing
+  const MESSAGE_WITHOUT_PID = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1
+ORC|RE|ORD001|FIL001
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+  // Message with PID-2 for patient ID
+  const MESSAGE_WITH_PID2 = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG002|P|2.5.1
+PID|1|PAT-FROM-PID2||||||F
+ORC|RE|ORD001|FIL002
+OBR|1|ORD001|FIL002|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+  // Message with PID-3 only (no PID-2) for patient ID
+  const MESSAGE_WITH_PID3_ONLY = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG003|P|2.5.1
+PID|1||PAT-FROM-PID3^^^HOSPITAL^MR||PATIENT^TEST||20000101|M
+ORC|RE|ORD001|FIL003
+OBR|1|ORD001|FIL003|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+  // Message with empty PID-2 and PID-3 for error testing
+  const MESSAGE_WITH_EMPTY_PID = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG004|P|2.5.1
+PID|1||||PATIENT^TEST||20000101|M
+ORC|RE|ORD001|FIL004
+OBR|1|ORD001|FIL004|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+  describe("PID segment validation", () => {
+    test("throws error when PID segment is missing", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      await expect(
+        convertORU_R01(parseMessage(MESSAGE_WITHOUT_PID)),
+      ).rejects.toThrow("PID segment is required for ORU_R01 messages");
+    });
+
+    test("throws error when both PID-2 and PID-3 are empty", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      await expect(
+        convertORU_R01(parseMessage(MESSAGE_WITH_EMPTY_PID)),
+      ).rejects.toThrow("Patient ID (PID-2 or PID-3) is required");
+    });
+  });
+
+  describe("patient ID extraction", () => {
+    // Mock patient not found for draft creation tests
+    const mockPatientNotFound = () => Promise.resolve(null);
+
+    test("extracts patient ID from PID-2", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_PID2),
+        mockPatientNotFound,
+      );
+
+      expect(result.messageUpdate.patient?.reference).toBe(
+        "Patient/PAT-FROM-PID2",
+      );
+    });
+
+    test("extracts patient ID from PID-3.1 when PID-2 is empty", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_PID3_ONLY),
+        mockPatientNotFound,
+      );
+
+      expect(result.messageUpdate.patient?.reference).toBe(
+        "Patient/PAT-FROM-PID3",
+      );
+    });
+  });
+
+  describe("patient lookup and draft creation", () => {
+    test("creates draft Patient with active=false when patient not found", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const mockPatientNotFound = () => Promise.resolve(null);
+      const result = await convertORU_R01(
+        parseMessage(SIMPLE_ORU_MESSAGE),
+        mockPatientNotFound,
+      );
+
+      const patientEntry = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Patient",
+      );
+
+      expect(patientEntry).toBeDefined();
+      expect(patientEntry?.resource?.id).toBe("TEST-0001");
+      expect((patientEntry?.resource as { active?: boolean })?.active).toBe(
+        false,
+      );
+      expect(patientEntry?.request?.method).toBe("PUT");
+    });
+
+    test("does not include Patient in bundle when patient exists", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const existingPatient = {
+        resourceType: "Patient",
+        id: "TEST-0001",
+        active: true,
+      };
+      const mockPatientFound = () => Promise.resolve(existingPatient);
+
+      const result = await convertORU_R01(
+        parseMessage(SIMPLE_ORU_MESSAGE),
+        mockPatientFound,
+      );
+
+      const patientEntry = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Patient",
+      );
+
+      expect(patientEntry).toBeUndefined();
+    });
+
+    test("sets patient reference in messageUpdate regardless of lookup result", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const existingPatient = {
+        resourceType: "Patient",
+        id: "TEST-0001",
+        active: true,
+      };
+      const mockPatientFound = () => Promise.resolve(existingPatient);
+
+      const result = await convertORU_R01(
+        parseMessage(SIMPLE_ORU_MESSAGE),
+        mockPatientFound,
+      );
+
+      expect(result.messageUpdate.patient?.reference).toBe("Patient/TEST-0001");
+    });
+
+    test("does not update existing patient data (ADT is source of truth)", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      // Existing patient has different demographics than PID segment
+      const existingPatient = {
+        resourceType: "Patient",
+        id: "TEST-0001",
+        active: true,
+        name: [{ family: "DIFFERENT", given: ["NAME"] }],
+        gender: "male",
+        birthDate: "1990-01-01",
+      };
+      const mockPatientFound = () => Promise.resolve(existingPatient);
+
+      const result = await convertORU_R01(
+        parseMessage(SIMPLE_ORU_MESSAGE),
+        mockPatientFound,
+      );
+
+      // No Patient in bundle - existing patient is NOT updated
+      const patientEntry = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Patient",
+      );
+      expect(patientEntry).toBeUndefined();
+
+      // Resources still reference the existing patient
+      expect(result.messageUpdate.patient?.reference).toBe("Patient/TEST-0001");
+    });
+  });
+
+  describe("subject reference linking", () => {
+    test("links DiagnosticReport to Patient via subject", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const mockPatientNotFound = () => Promise.resolve(null);
+      const result = await convertORU_R01(
+        parseMessage(SIMPLE_ORU_MESSAGE),
+        mockPatientNotFound,
+      );
+
+      const diagnosticReport = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "DiagnosticReport",
+      )?.resource as DiagnosticReport;
+
+      expect(diagnosticReport.subject?.reference).toBe("Patient/TEST-0001");
+    });
+
+    test("links all Observations to Patient via subject", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const mockPatientNotFound = () => Promise.resolve(null);
+      const result = await convertORU_R01(
+        parseMessage(SIMPLE_ORU_MESSAGE),
+        mockPatientNotFound,
+      );
+
+      const observations = result.bundle.entry
+        ?.filter((e) => e.resource?.resourceType === "Observation")
+        .map((e) => e.resource as Observation);
+
+      expect(observations).toHaveLength(2);
+      observations?.forEach((obs) => {
+        expect(obs.subject?.reference).toBe("Patient/TEST-0001");
+      });
+    });
+
+    test("links Specimen to Patient via subject", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const mockPatientNotFound = () => Promise.resolve(null);
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_SPM),
+        mockPatientNotFound,
+      );
+
+      const specimen = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Specimen",
+      )?.resource as Specimen;
+
+      expect(specimen.subject?.reference).toBe("Patient/TEST-0003");
+    });
+  });
+
+  describe("draft patient demographics", () => {
+    test("draft patient includes demographics from PID segment", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const mockPatientNotFound = () => Promise.resolve(null);
+      const result = await convertORU_R01(
+        parseMessage(MESSAGE_WITH_PID3_ONLY),
+        mockPatientNotFound,
+      );
+
+      const patient = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Patient",
+      )?.resource as { name?: Array<{ family?: string; given?: string[] }>; gender?: string; birthDate?: string };
+
+      expect(patient.name?.[0]?.family).toBe("PATIENT");
+      expect(patient.name?.[0]?.given).toContain("TEST");
+      expect(patient.gender).toBe("male");
+      expect(patient.birthDate).toBe("2000-01-01");
+    });
+
+    test("draft patient is tagged with message ID", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const mockPatientNotFound = () => Promise.resolve(null);
+      const result = await convertORU_R01(
+        parseMessage(SIMPLE_ORU_MESSAGE),
+        mockPatientNotFound,
+      );
+
+      const patient = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Patient",
+      )?.resource;
+
+      const messageTag = patient?.meta?.tag?.find(
+        (t: { system?: string }) => t.system === "urn:aidbox:hl7v2:message-id",
+      );
+      expect(messageTag?.code).toBe("MSG123");
+    });
+  });
+
+  describe("idempotency", () => {
+    test("same message processed twice creates same patient ID (PUT idempotency)", async () => {
+      const { convertORU_R01 } =
+        await import("../../../src/v2-to-fhir/messages/oru-r01");
+
+      const mockPatientNotFound = () => Promise.resolve(null);
+
+      const result1 = await convertORU_R01(
+        parseMessage(SIMPLE_ORU_MESSAGE),
+        mockPatientNotFound,
+      );
+      const result2 = await convertORU_R01(
+        parseMessage(SIMPLE_ORU_MESSAGE),
+        mockPatientNotFound,
+      );
+
+      const patient1 = result1.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Patient",
+      );
+      const patient2 = result2.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "Patient",
+      );
+
+      expect(patient1?.resource?.id).toBe(patient2?.resource?.id);
+      expect(patient1?.request?.method).toBe("PUT");
+      expect(patient2?.request?.method).toBe("PUT");
     });
   });
 });

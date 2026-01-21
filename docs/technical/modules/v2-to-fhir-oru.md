@@ -135,7 +135,7 @@ When a message contains OBX codes that cannot be resolved to LOINC, ORU processi
 | ConceptMap not found for sender | Set `mapping_error` when OBX-3 has no inline LOINC |
 | PID segment missing | Reject message with error |
 | PID without usable ID (PID-2/PID-3 empty) | Reject message with error |
-| Patient not found (PID-2/PID-3) | Create draft Patient with `active=false` |
+| Patient not found (PID-2/PID-3) | Create draft Patient with `active=false` (also applies to previously deleted patients - treated as new) |
 | Encounter not found (PV1-19) | Reject message with error |
 | OBR-25 missing or Y/Z | Reject message |
 | OBX-11 missing or N | Reject message |

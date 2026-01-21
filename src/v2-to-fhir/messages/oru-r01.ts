@@ -13,10 +13,12 @@ import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
 import type { ConversionResult } from "../converter";
 import {
   fromMSH,
+  fromPID,
   fromOBR,
   fromNTE,
   fromSPM,
   type MSH,
+  type PID,
   type OBR,
   type OBX,
   type NTE,
@@ -29,6 +31,7 @@ import type {
   DiagnosticReport,
   Observation,
   Specimen,
+  Patient,
   Coding,
   Meta,
   Resource,
@@ -36,6 +39,8 @@ import type {
   Task,
   TaskInput,
 } from "../../fhir/hl7-fhir-r4-core";
+import { getResourceWithETag, NotFoundError } from "../../aidbox";
+import { convertPIDToPatient } from "../segments/pid-patient";
 import type { UnmappedCode } from "../../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { convertOBRToDiagnosticReport } from "../segments/obr-diagnosticreport";
 import { convertOBXToObservation } from "../segments/obx-observation";
@@ -49,6 +54,64 @@ import {
   type SenderContext,
 } from "../../code-mapping/concept-map";
 import { simpleHash } from "../../utils/string";
+
+/**
+ * Function type for looking up a Patient by ID.
+ * Returns the Patient if found, or null if not found.
+ */
+export type PatientLookupFn = (patientId: string) => Promise<Patient | null>;
+
+/**
+ * Default patient lookup function using Aidbox.
+ * Returns null on 404 (not found), throws on other errors.
+ */
+export async function defaultPatientLookup(
+  patientId: string,
+): Promise<Patient | null> {
+  try {
+    const { resource } = await getResourceWithETag<Patient>("Patient", patientId);
+    return resource;
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Extract patient ID from PID segment.
+ * Tries PID-2 first, then falls back to PID-3.1 (first identifier).
+ *
+ * Design note: PID-2 was deprecated in HL7 v2.4+ in favor of PID-3, but many
+ * legacy systems still use PID-2. We check PID-2 first for backward compatibility
+ * with older message formats.
+ */
+function extractPatientId(pid: PID): string {
+  if (pid.$2_patientId?.$1_value) {
+    return pid.$2_patientId.$1_value;
+  }
+  if (pid.$3_identifier?.[0]?.$1_value) {
+    return pid.$3_identifier[0].$1_value;
+  }
+  throw new Error("Patient ID (PID-2 or PID-3) is required");
+}
+
+/**
+ * Create a draft patient from PID segment with active=false.
+ * Draft patients are unverified and will be updated when ADT message arrives.
+ *
+ * Note: If a patient was previously created via ADT and then deleted, receiving
+ * an ORU message will recreate them as a new draft patient. This is intentional -
+ * we treat it as a new patient since the previous record no longer exists.
+ */
+function createDraftPatient(pid: PID, patientId: string, baseMeta: Meta): Patient {
+  const patient = convertPIDToPatient(pid);
+  patient.id = patientId;
+  patient.active = false;
+  patient.meta = { ...patient.meta, ...baseMeta };
+  return patient;
+}
 
 export async function convertOBXToObservationResolving(
   obx: OBX,
@@ -411,6 +474,55 @@ function validateOBRPresence(message: HL7v2Message): void {
   }
 }
 
+/**
+ * Parse and validate PID segment from ORU_R01 message.
+ * PID is required for ORU_R01 - throws if missing.
+ */
+function parsePID(message: HL7v2Message): PID {
+  const pidSegment = findSegment(message, "PID");
+  if (!pidSegment) {
+    throw new Error("PID segment is required for ORU_R01 messages");
+  }
+  return fromPID(pidSegment);
+}
+
+interface PatientHandlingResult {
+  patientRef: Reference<"Patient">;
+  patientEntry: BundleEntry | null;
+}
+
+/**
+ * Handle patient lookup and draft creation for ORU_R01.
+ *
+ * - Extracts patient ID from PID-2 or PID-3.1
+ * - Looks up existing patient (does NOT update - ADT is source of truth)
+ * - Creates draft patient with active=false if not found
+ *
+ * Race condition note: If two ORU messages for the same non-existent patient
+ * arrive simultaneously, both will PUT the same draft patient. This is acceptable
+ * because draft patients are temporary placeholders that ADT will overwrite with
+ * authoritative data.
+ */
+async function handlePatient(
+  pid: PID,
+  baseMeta: Meta,
+  lookupPatient: PatientLookupFn,
+): Promise<PatientHandlingResult> {
+  const patientId = extractPatientId(pid);
+  const patientRef = { reference: `Patient/${patientId}` } as Reference<"Patient">;
+
+  const existingPatient = await lookupPatient(patientId);
+
+  if (existingPatient) {
+    return { patientRef, patientEntry: null };
+  }
+
+  const draftPatient = createDraftPatient(pid, patientId, baseMeta);
+  const patientEntry = createBundleEntry(draftPatient);
+
+  return { patientRef, patientEntry };
+}
+
 function getFillerOrderNumber(obr: OBR): string {
   if (!obr.$3_fillerOrderNumber?.$1_value) {
     throw new Error(
@@ -515,6 +627,26 @@ function linkSpecimensToResources(
   }
 }
 
+/**
+ * Link patient reference to all resources in an OBR group.
+ */
+function linkPatientToResources(
+  patientRef: Reference<"Patient">,
+  diagnosticReport: DiagnosticReport,
+  observations: Observation[],
+  specimens: Specimen[],
+): void {
+  diagnosticReport.subject = patientRef;
+
+  for (const obs of observations) {
+    obs.subject = patientRef;
+  }
+
+  for (const spec of specimens) {
+    spec.subject = patientRef;
+  }
+}
+
 function buildBundleEntries(
   diagnosticReport: DiagnosticReport,
   observations: Observation[],
@@ -536,6 +668,7 @@ async function processOBRGroup(
   group: OBRGroup,
   senderContext: SenderContext,
   baseMeta: Meta,
+  patientRef: Reference<"Patient">,
 ): Promise<ProcessOBRGroupResult> {
   const obr = fromOBR(group.obr);
   const fillerOrderNumber = getFillerOrderNumber(obr);
@@ -564,6 +697,7 @@ async function processOBRGroup(
   );
 
   linkSpecimensToResources(specimens, diagnosticReport, observations);
+  linkPatientToResources(patientRef, diagnosticReport, observations, specimens);
 
   const entries = buildBundleEntries(diagnosticReport, observations, specimens);
   return { entries, mappingErrors };
@@ -574,7 +708,7 @@ async function processOBRGroup(
  *
  * Message Structure:
  * MSH - Message Header (1)
- * PID - Patient Identification (1) - optional
+ * PID - Patient Identification (1) - required
  * PV1 - Patient Visit (1) - optional
  * { OBR - Observation Request (1)
  *   { OBX - Observation Result (0..*)
@@ -582,12 +716,26 @@ async function processOBRGroup(
  *   }
  *   SPM - Specimen (0..*)
  * }
+ *
+ * Patient Handling:
+ * - PID segment is required - error if missing
+ * - Looks up existing Patient by ID (does NOT update - ADT is source of truth)
+ * - Creates draft Patient with active=false if not found
+ * - Links all resources to Patient
  */
 export async function convertORU_R01(
   parsed: HL7v2Message,
+  lookupPatient: PatientLookupFn = defaultPatientLookup,
 ): Promise<ConversionResult> {
   const { senderContext, baseMeta } = parseMSH(parsed);
   validateOBRPresence(parsed);
+
+  const pid = parsePID(parsed);
+  const { patientRef, patientEntry } = await handlePatient(
+    pid,
+    baseMeta,
+    lookupPatient,
+  );
 
   const obrGroups = groupSegmentsByOBR(parsed);
 
@@ -599,13 +747,19 @@ export async function convertORU_R01(
       group,
       senderContext,
       baseMeta,
+      patientRef,
     );
     entries.push(...groupEntries);
     allMappingErrors.push(...mappingErrors);
   }
 
   if (allMappingErrors.length > 0) {
-    return buildMappingErrorResult(senderContext, allMappingErrors);
+    return buildMappingErrorResult(senderContext, allMappingErrors, patientRef);
+  }
+
+  // Include draft patient in bundle if created
+  if (patientEntry) {
+    entries.unshift(patientEntry);
   }
 
   const bundle: Bundle = {
@@ -618,6 +772,7 @@ export async function convertORU_R01(
     bundle,
     messageUpdate: {
       status: "processed",
+      patient: patientRef,
     },
   };
 }
@@ -625,6 +780,7 @@ export async function convertORU_R01(
 function buildMappingErrorResult(
   senderContext: SenderContext,
   mappingErrors: LoincResolutionError[],
+  patientRef: Reference<"Patient">,
 ): ConversionResult {
   const conceptMapId = generateConceptMapId(senderContext);
   const seenTaskIds = new Set<string>();
@@ -665,6 +821,7 @@ function buildMappingErrorResult(
     messageUpdate: {
       status: "mapping_error",
       unmappedCodes,
+      patient: patientRef,
     },
   };
 }
