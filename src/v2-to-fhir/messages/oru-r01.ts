@@ -202,19 +202,22 @@ function createBundleEntry(
 }
 
 /**
- * Create a bundle entry for a Task (conditional create - skips if exists)
+ * Create a bundle entry for a Task.
+ * Uses PUT for upsert - creates new or resets existing (even if completed) to requested.
  */
 function createTaskBundleEntry(task: Task): BundleEntry {
   return {
     resource: task,
     request: {
-      method: "POST",
-      url: "Task",
-      ifNoneExist: `_id=${task.id}`,
+      method: "PUT",
+      url: `Task/${task.id}`,
     },
   };
 }
 
+/**
+ * Generate a deterministic Task ID based on sender and code.
+ */
 function generateMappingTaskId(
   conceptMapId: string,
   localSystem: string,
