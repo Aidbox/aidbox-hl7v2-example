@@ -253,6 +253,108 @@ describe("deleteMapping", () => {
   });
 });
 
+describe("addMappingToConceptMap", () => {
+  test("omits source when localSystem is undefined", async () => {
+    // Import the function directly for pure function testing
+    const { addMappingToConceptMap } = await import(
+      "../../src/code-mapping/concept-map"
+    );
+
+    const emptyConceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "test-concept-map",
+      status: "active",
+      targetUri: "http://loinc.org",
+      group: [],
+    };
+
+    // When localSystem is undefined (OBX-3 like "BFTYPE^BF Type" has no third component)
+    const result = addMappingToConceptMap(
+      emptyConceptMap,
+      undefined, // localSystem is undefined
+      "BFTYPE",
+      "BF Type",
+      "12345-6",
+      "Body Fluid Type",
+    );
+
+    // The group should NOT have a source property (Aidbox rejects empty strings)
+    expect(result.group).toHaveLength(1);
+    expect(result.group![0].source).toBeUndefined();
+    expect(result.group![0].target).toBe("http://loinc.org");
+    expect(result.group![0].element).toHaveLength(1);
+    expect(result.group![0].element![0].code).toBe("BFTYPE");
+  });
+
+  test("includes source when localSystem is provided", async () => {
+    const { addMappingToConceptMap } = await import(
+      "../../src/code-mapping/concept-map"
+    );
+
+    const emptyConceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "test-concept-map",
+      status: "active",
+      targetUri: "http://loinc.org",
+      group: [],
+    };
+
+    const result = addMappingToConceptMap(
+      emptyConceptMap,
+      "ACME-LAB-CODES",
+      "K_SERUM",
+      "Potassium",
+      "2823-3",
+      "Potassium [Moles/volume]",
+    );
+
+    expect(result.group).toHaveLength(1);
+    expect(result.group![0].source).toBe("ACME-LAB-CODES");
+  });
+
+  test("finds existing group with undefined source", async () => {
+    const { addMappingToConceptMap } = await import(
+      "../../src/code-mapping/concept-map"
+    );
+
+    const conceptMapWithUndefinedSource: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "test-concept-map",
+      status: "active",
+      targetUri: "http://loinc.org",
+      group: [
+        {
+          // No source property - for codes without system
+          target: "http://loinc.org",
+          element: [
+            {
+              code: "BFTYPE",
+              display: "BF Type",
+              target: [{ code: "12345-6", equivalence: "equivalent" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    // Add another code without system - should go into the same group
+    const result = addMappingToConceptMap(
+      conceptMapWithUndefinedSource,
+      undefined,
+      "PH-O",
+      "pH BF",
+      "2746-6",
+      "pH of Body fluid",
+    );
+
+    // Should still have just one group
+    expect(result.group).toHaveLength(1);
+    expect(result.group![0].source).toBeUndefined();
+    // Should have both elements
+    expect(result.group![0].element).toHaveLength(2);
+  });
+});
+
 describe("searchMappings", () => {
   test("returns all mappings when no query specified", async () => {
     const mockAidbox = {

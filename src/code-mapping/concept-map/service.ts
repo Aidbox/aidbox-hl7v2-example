@@ -49,7 +49,7 @@ export function createEmptyConceptMap(sender: SenderContext): ConceptMap {
  */
 export function addMappingToConceptMap(
   conceptMap: ConceptMap,
-  localSystem: string,
+  localSystem: string | undefined,
   localCode: string,
   localDisplay: string,
   loincCode: string,
@@ -64,7 +64,7 @@ export function addMappingToConceptMap(
 
   if (groupIndex === -1) {
     updated.group!.push({
-      source: localSystem,
+      ...(localSystem && { source: localSystem }),
       target: "http://loinc.org",
       element: [],
     });
