@@ -36,15 +36,7 @@ flowchart TB
 
 [Aidbox](https://www.health-samurai.io/aidbox) is a FHIR R4 compliant server that serves as the central data store and API layer. See `docker-compose.yaml` for configuration details.
 
-**Standard FHIR Resources:**
-- `Patient` - Patient demographics
-- `Invoice` - Billing invoices (status: draft, processing-status extension: pending → completed)
-- `Coverage` - Insurance coverage information
-- `Encounter` - Patient visits
-- `Condition` - Diagnoses (→ DG1 segments)
-- `Procedure` - Medical procedures (→ PR1 segments)
-- `Organization` - Insurance companies, facilities
-- `RelatedPerson` - Guarantors
+**Standard FHIR Resources:** Patient, Invoice, Coverage, Encounter, Condition, Procedure, Organization, RelatedPerson. See [User Guide > Concepts](../user-guide/concepts.md#fhir-resources) for descriptions.
 
 **Custom Resources (defined via StructureDefinition):**
 - `OutgoingBarMessage` - Queued BAR messages (status: pending → sent)
@@ -85,21 +77,7 @@ putResource<T>(type, id, res)  // Create/update resource
 
 Bun HTTP server serving server-rendered HTML pages with Tailwind CSS.
 
-**Routes:**
-
-| Route                | Method | Description                                                   |
-|----------------------|--------|---------------------------------------------------------------|
-| `/`                  | GET    | Redirect to invoices                                          |
-| `/invoices`          | GET    | List invoices with status filter                              |
-| `/invoices`          | POST   | Create new invoice                                            |
-| `/outgoing-messages` | GET    | List BAR messages with status filter                          |
-| `/outgoing-messages` | POST   | Create outgoing message                                       |
-| `/incoming-messages` | GET    | List received messages with status filter                     |
-| `/mllp-client`       | GET    | MLLP test client UI                                           |
-| `/mllp-client`       | POST   | Send HL7v2 message via MLLP                                   |
-| `/build-bar`         | POST   | Trigger BAR generation for pending invoices (background)      |
-| `/reprocess-errors`  | POST   | Retry failed invoices (up to 3 attempts, then mark as failed) |
-| `/send-messages`     | POST   | Trigger sending of pending messages                           |
+**Routes:** The Web UI provides pages for managing invoices, messages, and code mappings. See [User Guide > Overview](../user-guide/overview.md#web-ui-pages) for the complete list.
 
 ### Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
 
@@ -125,30 +103,11 @@ Background service that delivers queued BAR messages.
 
 TCP server implementing the Minimal Lower Layer Protocol (MLLP) for receiving HL7v2 messages from external systems.
 
-**Configuration:**
-- Port: 2575 (default, configurable via `MLLP_PORT` env var)
-- Protocol: TCP with MLLP framing (see [MLLP Server](mllp-server.md#mllp-framing) for protocol details)
+- Default port: 2575 (configurable via `MLLP_PORT`)
+- Stores messages as `IncomingHL7v2Message` resources
+- Sends HL7v2 ACK responses
 
-**Process:**
-1. Accept TCP connection from external system
-2. Parse MLLP-framed HL7v2 message (handle fragmented TCP delivery)
-3. Extract message type from MSH-9 field
-4. Create `IncomingHL7v2Message` resource in Aidbox
-5. Generate and send HL7v2 ACK response (AA/AE/AR)
-
-**Features:**
-- Handles multiple concurrent connections
-- Buffers fragmented TCP packets
-- Generates proper HL7v2 ACK messages with original message control ID
-- Swaps sending/receiving application in ACK
-
-### MLLP Test Client (Web UI)
-
-The Web UI includes an MLLP Test Client at `/mllp-client` for testing:
-- Configure target MLLP server host and port
-- Select from sample messages (ADT^A01, ADT^A08, BAR^P01, ORM^O01)
-- Send custom HL7v2 messages
-- View ACK responses
+See [MLLP Server](mllp-server.md) for protocol details, framing format, and implementation walkthrough.
 
 ## Pull Architecture
 
@@ -249,18 +208,7 @@ stateDiagram-v2
 
 ### Invoice Retry Mechanism
 
-Invoices that fail BAR generation are marked with `processing-status=error`. The Web UI provides a "Reprocess Errors" button that:
-
-1. Fetches all invoices with `processing-status=error`
-2. Checks retry count (stored in `invoice-processing-retry-count` extension)
-3. If retry count < 3: increments retry count and sets status to `pending`
-4. If retry count >= 3: marks as `failed` (terminal state)
-5. Processes all pending invoices
-
-**Extensions used:**
-- `http://example.org/invoice-processing-status` - processing status (pending/completed/error/failed)
-- `http://example.org/invoice-processing-error-reason` - error message from last failure
-- `http://example.org/invoice-processing-retry-count` - number of retry attempts
+Failed invoices can be retried up to 3 times before being marked as permanently failed. See [BAR Generation > Error Handling](bar-generation.md#error-handling) for the retry logic and extension details.
 
 ## HL7v2 Message Generation
 

@@ -117,24 +117,7 @@ function buildPID(input: BarMessageInput): PID {
 
 ### Field Naming Convention
 
-HL7v2 field properties use the pattern `$N_fieldName` where N is the field sequence number:
-
-```typescript
-{
-  $3_identifier: [...],     // PID-3
-  $5_name: [...],           // PID-5
-  $18_accountNumber: {...}  // PID-18
-}
-```
-
-Component properties follow the same pattern for nested structures:
-
-```typescript
-$5_name: [{
-  $1_family: { $1_family: "Smith" },  // XPN.1.1 (FN.1)
-  $2_given: "John"                     // XPN.2
-}]
-```
+HL7v2 fields use the `$N_fieldName` pattern. See [HL7v2 Module](hl7v2-module.md#field-naming-convention) for details and examples.
 
 ### Helper Functions
 

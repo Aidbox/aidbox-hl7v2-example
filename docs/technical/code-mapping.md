@@ -20,6 +20,8 @@ src/v2-to-fhir/code-mapping/         # Integration with ORU processing
 └── coding-systems.ts                # System URI normalization
 ```
 
+The `src/v2-to-fhir/code-mapping/` directory contains thin wrappers that integrate the core mapping infrastructure with ORU message processing. The actual mapping logic lives in `src/code-mapping/`.
+
 **Key entry points:**
 
 - `resolveToLoinc(ce, sender, fetch)` in `concept-map/lookup.ts` - Main resolution function
