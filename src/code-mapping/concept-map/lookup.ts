@@ -35,6 +35,19 @@ export class LoincResolutionError extends Error {
   }
 }
 
+export class MissingLocalSystemError extends Error {
+  constructor(
+    message: string,
+    public readonly localCode: string | undefined,
+    public readonly localDisplay: string | undefined,
+    public readonly sendingApplication: string,
+    public readonly sendingFacility: string,
+  ) {
+    super(message);
+    this.name = "MissingLocalSystemError";
+  }
+}
+
 /**
  * Generate ConceptMap ID from sender context
  * Format: hl7v2-{sendingApplication}-{sendingFacility}-to-loinc
@@ -163,6 +176,17 @@ async function resolveFromConceptMap(
       undefined,
       undefined,
       localSystem,
+      sender.sendingApplication,
+      sender.sendingFacility,
+    );
+  }
+
+  if (!localSystem) {
+    throw new MissingLocalSystemError(
+      `OBX-3 local code "${localCode}" is missing coding system (component 3). ` +
+        `Messages without local code system are not supported.`,
+      localCode,
+      localDisplay,
       sender.sendingApplication,
       sender.sendingFacility,
     );

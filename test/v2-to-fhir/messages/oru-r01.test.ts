@@ -10,7 +10,10 @@ import type {
 } from "../../../src/fhir/hl7-fhir-r4-core";
 import type { OBX } from "../../../src/hl7v2/generated/fields";
 import type { SenderContext } from "../../../src/code-mapping/concept-map";
-import { LoincResolutionError } from "../../../src/code-mapping/concept-map";
+import {
+  LoincResolutionError,
+  MissingLocalSystemError,
+} from "../../../src/code-mapping/concept-map";
 import {
   convertORU_R01,
   convertOBXToObservationResolving,
@@ -520,32 +523,31 @@ OBX|2|NM|67890^Sodium^LOCAL||140|mmol/L||||F`;
     expect(result.messageUpdate.unmappedCodes![0].localCode).toBe("67890");
   });
 
-  test("creates mapping task when OBX-3 has no system (only code and display)", async () => {
+  test("throws MissingLocalSystemError when OBX-3 has no system (only code and display)", async () => {
     // OBX-3 is "BFTYPE^BF Type" - no third component (system)
+    // Messages without local code system are rejected with error (not mapping_error)
     const messageWithoutSystem = `MSH|^~\\&|MILL|MCHS||DEST|20260104||ORU^R01|MSG1|T|2.3
 PID|1||6163072|||||||||||||||||||
 ORC|RE||||
 OBR|1|4566983397||PH-BF^pH Body Fluid|||20260104110000|||||||||||||||||General Lab|F
 OBX|1|TXT|BFTYPE^BF Type||Other|||N/A|||F|||20260104112732`;
 
-    const result = await convertORU_R01(parseMessage(messageWithoutSystem));
-
-    expect(result.messageUpdate.status).toBe("mapping_error");
-    expect(result.messageUpdate.unmappedCodes).toBeDefined();
-    expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
-    expect(result.messageUpdate.unmappedCodes![0].localCode).toBe("BFTYPE");
-    expect(result.messageUpdate.unmappedCodes![0].localDisplay).toBe("BF Type");
-    expect(result.messageUpdate.unmappedCodes![0].localSystem).toBeUndefined();
-
-    // Should create a Task for the unmapped code
-    const taskEntries = result.bundle.entry?.filter(
-      (e) => e.resource?.resourceType === "Task",
-    );
-    expect(taskEntries).toHaveLength(1);
+    try {
+      await convertORU_R01(parseMessage(messageWithoutSystem));
+      expect.unreachable("Should have thrown MissingLocalSystemError");
+    } catch (error) {
+      expect(error).toBeInstanceOf(MissingLocalSystemError);
+      const missingSystemError = error as MissingLocalSystemError;
+      expect(missingSystemError.localCode).toBe("BFTYPE");
+      expect(missingSystemError.localDisplay).toBe("BF Type");
+      expect(missingSystemError.sendingApplication).toBe("MILL");
+      expect(missingSystemError.sendingFacility).toBe("MCHS");
+    }
   });
 
-  test("creates mapping tasks for multiple OBX codes without system", async () => {
+  test("throws MissingLocalSystemError on first OBX without system (multiple OBX)", async () => {
     // Both OBX-3 segments have no system component
+    // Message is rejected on first missing system - entire message fails
     const messageWithMultipleNoSystem = `MSH|^~\\&|MILL|MCHS||DEST|20260104||ORU^R01|MSG1|T|2.3
 PID|1||6163072|||||||||||||||||||
 ORC|RE||||
@@ -553,23 +555,20 @@ OBR|1|4566983397||PH-BF^pH Body Fluid|||20260104110000|||||||||||||||||General L
 OBX|1|TXT|BFTYPE^BF Type||Other|||N/A|||F|||20260104112732
 OBX|2|NUM|PH-O^pH BF||6.9|||N/A|||F|||20260104112732`;
 
-    const result = await convertORU_R01(parseMessage(messageWithMultipleNoSystem));
-
-    expect(result.messageUpdate.status).toBe("mapping_error");
-    expect(result.messageUpdate.unmappedCodes).toHaveLength(2);
-    expect(result.messageUpdate.unmappedCodes![0].localCode).toBe("BFTYPE");
-    expect(result.messageUpdate.unmappedCodes![1].localCode).toBe("PH-O");
-
-    // Should create Tasks for both unmapped codes
-    const taskEntries = result.bundle.entry?.filter(
-      (e) => e.resource?.resourceType === "Task",
-    );
-    expect(taskEntries).toHaveLength(2);
+    try {
+      await convertORU_R01(parseMessage(messageWithMultipleNoSystem));
+      expect.unreachable("Should have thrown MissingLocalSystemError");
+    } catch (error) {
+      expect(error).toBeInstanceOf(MissingLocalSystemError);
+      const missingSystemError = error as MissingLocalSystemError;
+      // First OBX without system causes the failure
+      expect(missingSystemError.localCode).toBe("BFTYPE");
+    }
   });
 
-  test("bundle entry is valid when patient exists and OBX has no system", async () => {
-    // Simulates the case where patient already exists (patientEntry is null)
-    // and OBX-3 has no system - bundle should still have Task entries
+  test("throws MissingLocalSystemError even when patient exists and OBX has no system", async () => {
+    // Simulates the case where patient already exists
+    // but OBX-3 has no system - message is rejected with error
     const messageWithoutSystem = `MSH|^~\\&|MILL|MCHS||DEST|20260104||ORU^R01|MSG1|T|2.3
 PID|1||EXISTING-PATIENT|||||||||||||||||||
 ORC|RE||||
@@ -584,64 +583,30 @@ OBX|1|TXT|BFTYPE^BF Type||Other|||N/A|||F|||20260104112732`;
     };
     const mockPatientLookup = mock(() => Promise.resolve(existingPatient));
 
-    const result = await convertORU_R01(
-      parseMessage(messageWithoutSystem),
-      mockPatientLookup,
-    );
-
-    expect(result.messageUpdate.status).toBe("mapping_error");
-    // Bundle should have Task entry (not be empty)
-    expect(result.bundle.entry).toBeDefined();
-    expect(result.bundle.entry!.length).toBeGreaterThan(0);
-
-    const taskEntries = result.bundle.entry?.filter(
-      (e) => e.resource?.resourceType === "Task",
-    );
-    expect(taskEntries).toHaveLength(1);
+    await expect(
+      convertORU_R01(parseMessage(messageWithoutSystem), mockPatientLookup),
+    ).rejects.toThrow(MissingLocalSystemError);
   });
 
-  test("Task inputs omit empty values when localSystem is missing", async () => {
+  test("MissingLocalSystemError includes helpful error message", async () => {
     // OBX-3 is "BFTYPE^BF Type" - no third component (system)
-    // Aidbox rejects empty valueString, so we must omit the input entirely
+    // Error message should explain why the message was rejected
     const messageWithoutSystem = `MSH|^~\\&|MILL|MCHS||DEST|20260104||ORU^R01|MSG1|T|2.3
 PID|1||6163072|||||||||||||||||||
 ORC|RE||||
 OBR|1|4566983397||PH-BF^pH Body Fluid|||20260104110000|||||||||||||||||General Lab|F
 OBX|1|TXT|BFTYPE^BF Type||Other|||N/A|||F|||20260104112732`;
 
-    const result = await convertORU_R01(parseMessage(messageWithoutSystem));
-
-    const taskEntry = result.bundle.entry?.find(
-      (e) => e.resource?.resourceType === "Task",
-    );
-    expect(taskEntry).toBeDefined();
-
-    const task = taskEntry!.resource as Task;
-    expect(task.input).toBeDefined();
-
-    // Verify no input has an empty valueString
-    for (const input of task.input!) {
-      expect(input.valueString).not.toBe("");
+    try {
+      await convertORU_R01(parseMessage(messageWithoutSystem));
+      expect.unreachable("Should have thrown MissingLocalSystemError");
+    } catch (error) {
+      expect(error).toBeInstanceOf(MissingLocalSystemError);
+      const missingSystemError = error as MissingLocalSystemError;
+      expect(missingSystemError.message).toContain("BFTYPE");
+      expect(missingSystemError.message).toContain("missing coding system");
+      expect(missingSystemError.message).toContain("component 3");
     }
-
-    // Verify "Local system" input is not present (since it would be empty)
-    const localSystemInput = task.input!.find(
-      (i) => i.type?.text === "Local system",
-    );
-    expect(localSystemInput).toBeUndefined();
-
-    // Verify other inputs are present
-    const localCodeInput = task.input!.find(
-      (i) => i.type?.text === "Local code",
-    );
-    expect(localCodeInput).toBeDefined();
-    expect(localCodeInput!.valueString).toBe("BFTYPE");
-
-    const localDisplayInput = task.input!.find(
-      (i) => i.type?.text === "Local display",
-    );
-    expect(localDisplayInput).toBeDefined();
-    expect(localDisplayInput!.valueString).toBe("BF Type");
   });
 });
 

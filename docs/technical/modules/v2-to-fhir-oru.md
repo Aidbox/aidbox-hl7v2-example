@@ -135,6 +135,7 @@ When a message contains OBX codes that cannot be resolved to LOINC, ORU processi
 | Missing OBR | Reject message |
 | Missing OBR-3 and OBR-2 | Reject message (at least one required for resource IDs) |
 | OBX without parent OBR | Reject message |
+| OBX-3 local code without system (component 3 empty) | Reject message with error (not supported) |
 | OBX-3 has no LOINC (inline or ConceptMap) | Set `mapping_error`, create/update mapping Task(s), store `unmappedCodes[]` |
 | ConceptMap not found for sender | Set `mapping_error` when OBX-3 has no inline LOINC |
 | PID segment missing | Reject message with error |
@@ -243,6 +244,7 @@ OBX-3 is a CE (Coded Element) or CWE (Coded With Exceptions) data type with the 
 1. Check if component 3 (Name of Coding System) = "LN" → use components 1-3 as LOINC
 2. Else check if component 6 (Name of Alternate Coding System) = "LN" → use components 4-6 as LOINC
 3. If neither has "LN", lookup local code (components 1-3) in sender-specific ConceptMap:
+   - **Requirement:** Component 3 (Name of Coding System) must be present. Messages with local codes that lack a coding system are rejected with `status=error`.
    - ConceptMap ID: `hl7v2-{sendingApplication}-{sendingFacility}-to-loinc`
    - If ConceptMap exists and mapping found → use mapped LOINC code
    - If ConceptMap not found or mapping not found → set `status=mapping_error`, create/update mapping Task(s), and store `unmappedCodes[]`

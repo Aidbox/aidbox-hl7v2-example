@@ -52,7 +52,7 @@ export async function resolveTaskWithMapping(
   const sender = extractSenderFromTask(task);
   const localCode = getTaskInputValue(task, "Local code") || "";
   const localDisplay = getTaskInputValue(task, "Local display") || "";
-  const localSystem = getTaskInputValue(task, "Local system");
+  const localSystem = getTaskInputValue(task, "Local system")!;
 
   const conceptMapId = generateConceptMapId(sender);
 
