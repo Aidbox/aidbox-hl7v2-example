@@ -1,34 +1,27 @@
 # Extending Field Mappings
 
-This guide explains how to extend field mappings by modifying the source code. The examples below use BAR message generation and ORU message processing, but the same patterns apply to other message types.
+How to add new FHIR↔HL7v2 field mappings by modifying the source code.
 
-## BAR Message: Adding a New FHIR → HL7v2 Field
+## BAR Message: Adding FHIR → HL7v2 Fields
 
-When you need to include additional FHIR data in outgoing BAR messages, follow these steps.
+When you need to include additional FHIR data in outgoing BAR messages.
 
 ### Step 1: Identify the Target HL7v2 Field
 
-Determine which HL7v2 segment and field should receive the data. Common BAR segments:
+Determine which segment and field should receive the data:
 
-| Segment | Purpose |
-|---------|---------|
-| PID | Patient identification |
-| PV1 | Patient visit/encounter |
-| GT1 | Guarantor information |
-| IN1 | Insurance information |
-| DG1 | Diagnosis codes |
-| PR1 | Procedure codes |
+| Segment | Purpose | Builder Location |
+|---------|---------|------------------|
+| PID | Patient identification | `buildPID()` |
+| PV1 | Patient visit/encounter | `buildPV1()` |
+| GT1 | Guarantor information | `buildGT1()` |
+| IN1 | Insurance information | `buildIN1()` |
+| DG1 | Diagnosis codes | `buildDG1()` |
+| PR1 | Procedure codes | `buildPR1()` |
 
 ### Step 2: Locate the Segment Builder
 
-Open `src/bar/generator.ts` and find the builder function for your target segment:
-
-- `buildPID()` - Patient demographics
-- `buildPV1()` - Visit/encounter info
-- `buildGT1()` - Guarantor info
-- `buildIN1()` - Insurance info
-- `buildDG1()` - Diagnoses
-- `buildPR1()` - Procedures
+Open `src/bar/generator.ts` and find the builder function for your target segment.
 
 ### Step 3: Add the Field
 
@@ -57,16 +50,16 @@ function buildPID(input: BarMessageInput): PID {
 
 ### Step 4: Check Type Definitions
 
-The field types are defined in `src/hl7v2/generated/fields.ts`. Each segment has a TypeScript interface showing available fields and their structure.
+Field types are defined in `src/hl7v2/generated/fields.ts`. Each segment has a TypeScript interface:
 
 ```typescript
-// From fields.ts - shows PID structure
+// Shows PID structure
 interface PID {
-  $14_businessPhone?: XTN[];  // XTN is a phone number datatype
+  $14_businessPhone?: XTN[];  // XTN is phone number datatype
   // ...
 }
 
-// XTN structure for phone numbers
+// XTN structure
 interface XTN {
   $1_value?: string;
   $2_telecomUseCode?: string;
@@ -85,13 +78,13 @@ bun scripts/load-test-data.ts
 # Create invoice → Build BAR → View in Outgoing Messages
 ```
 
-## ORU Processing: Adding a New HL7v2 → FHIR Field
+## ORU Processing: Adding HL7v2 → FHIR Fields
 
 When you need to extract additional data from incoming ORU messages into FHIR resources.
 
 ### Step 1: Identify the Source HL7v2 Field
 
-Common ORU segments to extend:
+Common segments to extend:
 
 | Segment | Converter File | FHIR Output |
 |---------|---------------|-------------|
@@ -138,7 +131,6 @@ export function convertOBXToObservation(
     };
   }
 
-  // ... rest of function ...
   return observation;
 }
 ```
@@ -148,7 +140,6 @@ export function convertOBXToObservation(
 Field types are in `src/hl7v2/generated/fields.ts`:
 
 ```typescript
-// OBX segment fields
 interface OBX {
   $17_observationMethod?: CE[];
   // ...
@@ -166,7 +157,7 @@ interface OBX {
 
 ## Datatype Converters
 
-For complex datatypes, use the converters in `src/v2-to-fhir/datatypes/`:
+For complex datatypes, use existing converters in `src/v2-to-fhir/datatypes/`:
 
 | HL7v2 Type | FHIR Output | Converter |
 |------------|-------------|-----------|
@@ -176,21 +167,20 @@ For complex datatypes, use the converters in `src/v2-to-fhir/datatypes/`:
 | XTN | ContactPoint | `xtn-contactpoint.ts` |
 | CX | Identifier | `cx-identifier.ts` |
 | DTM | dateTime | `dtm-datetime.ts` |
+| CE | CodeableConcept | `ce-codeableconcept.ts` |
 
 **Example using a datatype converter:**
 
 ```typescript
 import { convertCWEToCodeableConcept } from "../datatypes/cwe-codeableconcept";
 
-// In your segment converter:
 if (obx.$17_observationMethod) {
   observation.method = convertCWEToCodeableConcept(obx.$17_observationMethod[0]);
 }
 ```
 
-## Related Documentation
+## See Also
 
-- [FHIR to HL7v2 (BAR)](fhir-to-hl7v2.md) - Field mapping tables
-- [HL7v2 to FHIR (ORU)](v2-to-fhir-oru.md) - ORU processing pipeline
-- [HL7v2 Builders](hl7v2-builders.md) - Segment builder API and datatype interfaces
-- [V2-to-FHIR Specification](../../v2-to-fhir-spec/) - Supported segments and datatypes
+- [BAR Generation](../bar-generation.md) - Full BAR message specification
+- [ORU Processing](../oru-processing.md) - ORU processing pipeline
+- [HL7v2 Module](../hl7v2-module.md) - Segment builders and datatype interfaces

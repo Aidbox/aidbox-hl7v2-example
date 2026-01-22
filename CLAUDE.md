@@ -12,7 +12,7 @@ This project integrates with Aidbox FHIR server for HL7v2 message processing. It
 
 See `docs/technical/architecture.md` for system diagrams, pull-based polling architecture, data flow sequences, and resource status transitions - useful when understanding how components interact or debugging message flow issues.
 
-**Note:** The `docs/` directory contains documentation for human readers. Some content overlaps with this file intentionally - CLAUDE.md is optimized for AI agents, while user-guide is written for humans who prefer a different structure and presentation.
+**Note:** CLAUDE.md intentionally duplicates key information from `docs/technical/` so AI agents have immediate access to architectural context without reading multiple files. The `docs/` directory is the primary documentation for human readers. When updating system behavior, update both: CLAUDE.md for AI context, and the relevant docs/ files for human readers.
 
 ## Quick Start
 

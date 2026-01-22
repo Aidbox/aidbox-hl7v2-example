@@ -93,19 +93,20 @@ putResource<T>(type, id, res)  // Create/update resource
 Bun HTTP server serving server-rendered HTML pages with Tailwind CSS.
 
 **Routes:**
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/` | GET | Redirect to invoices |
-| `/invoices` | GET | List invoices with status filter |
-| `/invoices` | POST | Create new invoice |
-| `/outgoing-messages` | GET | List BAR messages with status filter |
-| `/outgoing-messages` | POST | Create outgoing message |
-| `/incoming-messages` | GET | List received messages with status filter |
-| `/mllp-client` | GET | MLLP test client UI |
-| `/mllp-client` | POST | Send HL7v2 message via MLLP |
-| `/build-bar` | POST | Trigger BAR generation for pending invoices (background) |
-| `/reprocess-errors` | POST | Retry failed invoices (up to 3 attempts, then mark as failed) |
-| `/send-messages` | POST | Trigger sending of pending messages |
+
+| Route                | Method | Description                                                   |
+|----------------------|--------|---------------------------------------------------------------|
+| `/`                  | GET    | Redirect to invoices                                          |
+| `/invoices`          | GET    | List invoices with status filter                              |
+| `/invoices`          | POST   | Create new invoice                                            |
+| `/outgoing-messages` | GET    | List BAR messages with status filter                          |
+| `/outgoing-messages` | POST   | Create outgoing message                                       |
+| `/incoming-messages` | GET    | List received messages with status filter                     |
+| `/mllp-client`       | GET    | MLLP test client UI                                           |
+| `/mllp-client`       | POST   | Send HL7v2 message via MLLP                                   |
+| `/build-bar`         | POST   | Trigger BAR generation for pending invoices (background)      |
+| `/reprocess-errors`  | POST   | Retry failed invoices (up to 3 attempts, then mark as failed) |
+| `/send-messages`     | POST   | Trigger sending of pending messages                           |
 
 ### Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
 
@@ -166,7 +167,7 @@ The Web UI includes an MLLP Test Client at `/mllp-client` for testing:
 
 ## Pull Architecture
 
-Both background services use a **pull-based polling pattern** rather than push notifications:
+Both background services use a **pull-based polling pattern** rather than push notifications (webhooks, FHIR subscriptions, or message queues).
 
 ```mermaid
 flowchart LR
@@ -280,16 +281,16 @@ Invoices that fail BAR generation are marked with `processing-status=error`. The
 
 The system generates HL7v2 BAR (Billing/Accounts Receivable) messages from FHIR resources:
 
-| FHIR Resource | HL7v2 Segment | Purpose |
-|---------------|---------------|---------|
-| - | MSH | Message header |
-| - | EVN | Event type (P01/P05/P06) |
-| Patient | PID | Patient identification |
-| Encounter | PV1 | Patient visit |
-| Coverage | IN1 | Insurance |
-| Condition | DG1 | Diagnosis |
-| Procedure | PR1 | Procedures |
-| RelatedPerson/Patient | GT1 | Guarantor |
+| FHIR Resource         | HL7v2 Segment | Purpose                  |
+|-----------------------|---------------|--------------------------|
+| -                     | MSH           | Message header           |
+| -                     | EVN           | Event type (P01/P05/P06) |
+| Patient               | PID           | Patient identification   |
+| Encounter             | PV1           | Patient visit            |
+| Coverage              | IN1           | Insurance                |
+| Condition             | DG1           | Diagnosis                |
+| Procedure             | PR1           | Procedures               |
+| RelatedPerson/Patient | GT1           | Guarantor                |
 
 **Trigger Events:**
 - `P01` - Add patient account
@@ -339,6 +340,3 @@ sequenceDiagram
 
     UI->>User: Display ACK (success/error)
 ```
-
-
-

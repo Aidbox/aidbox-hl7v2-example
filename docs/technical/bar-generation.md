@@ -1,28 +1,49 @@
-# HL7v2 BAR Message Specification
+# BAR Generation
 
-## Overview
+Generates HL7v2 BAR (Billing Account Record) messages from FHIR resources for transmission to billing/AR systems. BAR messages are account-level (who the patient is, what encounter/account, who pays). Line-item charges use DFT messages with FT1 segments (not implemented here).
 
-BAR (Billing Account Record) messages communicate the state and demographics of a billing account from an ADT/registration/EHR source to a patient accounting/billing/AR system. BAR is account-level (who the patient is, what encounter/account this is, who pays). Line-item charges and payments are sent in DFT messages with FT1 segments.
+## How It Works
 
-## Trigger Events
+### Processing Flow
 
-| Event | Name | Purpose |
-|-------|------|---------|
-| `BAR^P01` | Add Patient Account | Create a new billing account. EVN-2 = account start date. |
-| `BAR^P05` | Update Patient Account | Update existing account (insurance, guarantor, visit, coded data). |
+1. **Poll**: Invoice BAR Builder polls for `Invoice` with `processing-status=pending` (oldest first)
+
+2. **Fetch Resources**: Load related FHIR resources:
+   - Patient (required) → PID segment
+   - Account (required) → PID-18 account number
+   - Encounter → PV1 segment
+   - Coverage[] → IN1 segments
+   - RelatedPerson or Patient → GT1 segment (guarantor)
+   - Condition[] → DG1 segments
+   - Procedure[] → PR1 segments
+
+3. **Generate Message**: Build BAR message using segment builders with appropriate trigger event
+
+4. **Store**: Create `OutgoingBarMessage` with `status=pending`
+
+5. **Update Invoice**: Set `processing-status=completed`
+
+6. **Send**: BAR Message Sender polls OutgoingBarMessage, delivers, sets `status=sent`
+
+### Trigger Events
+
+| Event | Name | When to Use |
+|-------|------|-------------|
+| `BAR^P01` | Add Patient Account | Create new billing account. EVN-2 = account start date. |
+| `BAR^P05` | Update Patient Account | Update existing account (insurance, guarantor, coded data). Send full current state. |
 | `BAR^P06` | End Patient Account | Close account. EVN-2 = account end date. No new charges should accrue. |
 | `BAR^P02` | Purge Patient Account | Delete/purge account (rare). |
 | `BAR^P12` | Update Diagnosis/Procedure | Explicit DG1/PR1 update after coding finalization (v2.5.1+). |
 
-## Message Structure
+### Message Structure
 
 ```
 MSH         Message Header (required)
 EVN         Event Type (required)
 PID         Patient Identification (required)
 [PD1]       Patient Demographics
-[PV1]       Patient Visit (usually required in practice)
-[PV2]       Patient Visit - Additional Info
+[PV1]       Patient Visit (usually required)
+[PV2]       Patient Visit - Additional
 {DG1}       Diagnosis (repeating)
 {PR1}       Procedure (repeating)
 [DRG]       Diagnosis Related Group
@@ -37,7 +58,20 @@ PID         Patient Identification (required)
 [UB2]       UB92 Data
 ```
 
-## FHIR to BAR Segment Mapping
+## Implementation Details
+
+### Code Locations
+
+| Component         | File                                 | Entry Point                      |
+|-------------------|--------------------------------------|----------------------------------|
+| Invoice poller    | `src/bar/invoice-builder-service.ts` | `processNextInvoice()`           |
+| Message generator | `src/bar/generator.ts`               | `generateBarMessage()`           |
+| Type definitions  | `src/bar/types.ts`                   | `BarMessageInput`                |
+| Message sender    | `src/bar/sender-service.ts`          | `sendNextMessage()`              |
+| Segment builders  | `src/hl7v2/generated/fields.ts`      | `PIDBuilder`, `PV1Builder`, etc. |
+| Message builder   | `src/hl7v2/generated/messages.ts`    | `BAR_P01Builder`                 |
+
+### FHIR to Segment Mapping
 
 | BAR Segment | FHIR Resource | Purpose |
 |-------------|---------------|---------|
@@ -49,10 +83,6 @@ PID         Patient Identification (required)
 | IN1/IN2/IN3 | Coverage + Organization | Insurance |
 | DG1 | Condition | Diagnosis codes |
 | PR1 | Procedure | Procedure codes |
-
----
-
-## Segment Details
 
 ### MSH - Message Header
 
@@ -126,7 +156,7 @@ PID         Patient Identification (required)
 | IN1-12 | Plan Effective Date | `Coverage.period.start` |
 | IN1-13 | Plan Expiration Date | `Coverage.period.end` |
 | IN1-15 | Plan Type | `Coverage.type` |
-| IN1-16 | Name of Insured | `Coverage.subscriber` → Patient/RelatedPerson name |
+| IN1-16 | Name of Insured | `Coverage.subscriber` → name |
 | IN1-17 | Insured's Relationship | `Coverage.relationship` |
 | IN1-36 | Policy Number | `Coverage.subscriberId` or `Coverage.identifier` |
 
@@ -154,63 +184,28 @@ PID         Patient Identification (required)
 | PR1-11 | Surgeon | `Procedure.performer.actor` → Practitioner |
 | PR1-14 | Procedure Priority | Extension (1=primary) |
 
----
+### Implementation Rules
 
-## FHIR Resources Required
+1. **Account Key Consistency** - Use PID-18 as billing account number. Keep constant across P01 → P05 → P06.
 
-### Minimal Set (for BAR^P01/P05/P06)
+2. **Full Snapshot Updates** - P05 sends complete current state. HL7v2 doesn't support partial updates well.
 
-| Resource | Purpose | Required |
-|----------|---------|----------|
-| Patient | PID segment | Yes |
-| Account | Account number (PID-18), service period | Yes |
-| Encounter | PV1/PV2 segments | Usually |
-| Coverage | IN1/IN2/IN3 segments | Usually |
+3. **Coded Elements** - Always include code + text + coding system (ICD-10, CPT).
 
-### Optional Resources
+4. **Message Ordering** - Ensure P01 arrives before P05s, and P06 last.
 
-| Resource | Purpose |
-|----------|---------|
-| RelatedPerson | Guarantor (GT1) if not patient |
-| Condition | Diagnosis codes (DG1) |
-| Procedure | Procedure codes (PR1) |
-| Practitioner | Providers in PV1, PR1 |
-| Organization | Insurance companies, facilities |
+5. **ACK Handling** - Unique MSH-10 per message. Parse ACK, alert on AE/AR, retry or queue.
 
----
+### Minimal Content by Trigger
 
-## Implementation Rules
+**BAR^P01 (Add Account):** MSH, EVN (start date), PID (with account), PV1, GT1, IN1
 
-1. **Account Key Consistency** - Use PID-18 as billing account number. Keep it constant across P01 → P05 → P06.
+**BAR^P05 (Update Account):** Same as P01 plus DG1/PR1/coverage changes. Send full current state.
 
-2. **Event Lifecycle**
-   - Open account → `BAR^P01`
-   - Update account → `BAR^P05`
-   - Close account → `BAR^P06`
+**BAR^P06 (End Account):** MSH, EVN (end date), PID, PV1 (with discharge date). May omit insurance.
 
-3. **Full Snapshot Updates** - P05 should send complete current state. HL7v2 doesn't support partial updates well.
+## See Also
 
-4. **Code Mapping** - Map all local codes (financial class, plan IDs, location codes) to receiver vocabulary.
-
-5. **Coded Elements** - Always include code + text + coding system (ICD-10, CPT).
-
-6. **Message Ordering** - Ensure P01 arrives before P05s, and P06 last.
-
-7. **ACK Handling** - Unique MSH-10 per message. Parse ACK, alert on AE/AR, retry or queue.
-
----
-
-## Minimal Content by Trigger
-
-### BAR^P01 (Add Account)
-- MSH, EVN (start date), PID (with account)
-- PV1, GT1, IN1
-
-### BAR^P05 (Update Account)
-- Same as P01 plus DG1/PR1/coverage changes
-- Send full current state
-
-### BAR^P06 (End Account)
-- MSH, EVN (end date), PID
-- PV1 (with discharge date)
-- May omit insurance unless required
+- [Architecture](architecture.md) - System overview and polling pattern
+- [HL7v2 Module](hl7v2-module.md) - Segment builders and message construction
+- [How-To: Extending Fields](how-to/extending-fields.md) - Adding new FHIR→HL7v2 mappings

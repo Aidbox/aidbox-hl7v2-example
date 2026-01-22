@@ -1,19 +1,31 @@
 # Technical Documentation
 
-Documentation for developers who want to understand, extend, or extract modules from this project.
+Documentation for developers who need to understand, extend, or integrate with this project.
 
-## Contents
+## New to the Codebase?
 
-- [Architecture](architecture.md) - System design, data flow, pull-based polling pattern
-- [Integration Guide](integration-guide.md) - How to extract and integrate modules into your project
+Start with **[Architecture](architecture.md)** for:
+- System overview and component diagram
+- Data flow sequences
+- Design decisions explaining why things work the way they do
 
-### Module Documentation
+## Understanding a Specific Feature?
 
-- [HL7v2 Builders](modules/hl7v2-builders.md) - Type-safe HL7v2 message construction
-- [FHIR to HL7v2 (BAR)](modules/fhir-to-hl7v2.md) - BAR message generation from FHIR resources
-- [HL7v2 to FHIR (ORU)](modules/v2-to-fhir-oru.md) - ORU_R01 lab results processing
-- [HL7v2 to FHIR (Spec)](../v2-to-fhir-spec/) - Supported segments and datatypes
-- [Code Mapping Infrastructure](modules/code-mapping-infrastructure.md) - ConceptMap and Task data model
-- [Code Mapping UI](modules/code-mapping-ui.md) - UI workflows for resolving unmapped codes
-- [MLLP Server](modules/mllp-server.md) - MLLP protocol implementation
-- [Extending Field Mappings](modules/extending-field-mappings.md) - Adding new FHIR↔HL7v2 field mappings
+Each document explains how the feature works, implementation details, and where to find the code.
+
+| Document                            | Description                                                         |
+|-------------------------------------|---------------------------------------------------------------------|
+| [BAR Generation](bar-generation.md) | FHIR → HL7v2 BAR message pipeline, segment mappings, trigger events |
+| [ORU Processing](oru-processing.md) | HL7v2 ORU → FHIR conversion, status codes, error handling           |
+| [Code Mapping](code-mapping.md)     | ConceptMap workflow, Task creation, LOINC resolution                |
+| [MLLP Server](mllp-server.md)       | TCP/MLLP protocol, ACK generation, message storage                  |
+| [HL7v2 Module](hl7v2-module.md)     | Type-safe builders, datatypes, wire format                          |
+
+## Extending or Modifying?
+
+Step-by-step guides for common tasks.
+
+| Guide                                              | Description                           |
+|----------------------------------------------------|---------------------------------------|
+| [Extending Fields](how-to/extending-fields.md)     | Add new FHIR↔HL7v2 field mappings     |
+| [Extracting Modules](how-to/extracting-modules.md) | Use modules in your own project       |
