@@ -1,6 +1,6 @@
 # HL7v2 Module
 
-Type-safe HL7v2 message building and parsing with schema-driven code generation.
+Type-safe HL7v2 message building and parsing with schema-driven code generation. For conceptual background on HL7v2 message structure, see the [User Guide](../user-guide/concepts.md#hl7v2).
 
 ## Overview
 
@@ -11,6 +11,64 @@ This module provides:
 - Serialization to wire format (pipe-delimited)
 
 All types are generated from HL7v2 schema files, ensuring correctness and IDE autocomplete support.
+
+## When to Use What
+
+| Task | Approach | Example |
+|------|----------|---------|
+| **Build outgoing message** | Message builder + segment builders | `BAR_P01Builder().msh(buildMSH()).pid(buildPID()).build()` |
+| **Read incoming message** | `fromXXX()` functions + typed interfaces | `const pid = fromPID(segment); pid.$5_name[0].$1_family` |
+| **Access single field** | Field helper functions | `PID_5_1_family_name(segment)` |
+| **Modify existing segment** | Setter functions | `set_PID_5_1_family_name(segment, "Smith")` |
+
+### Building Messages (Outgoing)
+
+Use **message builders** for constructing complete messages with proper structure:
+
+```typescript
+import { BAR_P01Builder } from "./hl7v2/generated/messages";
+
+const message = new BAR_P01Builder()
+  .msh(mshData)
+  .evn(evnData)
+  .pid(pidData)
+  .addVISIT(visit => visit.pv1(pv1Data))
+  .build();
+```
+
+Builders enforce:
+- Required segments are present
+- Segment order matches schema
+- Repeating groups use `addXXX()` methods
+
+### Reading Messages (Incoming)
+
+Use **typed interfaces** with `fromXXX()` functions for parsing:
+
+```typescript
+import { fromPID, fromOBX, type PID, type OBX } from "./hl7v2/generated/fields";
+
+const pidSegment = message.find(s => s.segment === "PID");
+const pid: PID = fromPID(pidSegment);
+
+// Access fields with IDE autocomplete
+const familyName = pid.$5_name?.[0]?.$1_family?.$1_family;
+const birthDate = pid.$7_birthDate;
+```
+
+### Direct Field Access
+
+Use **field helpers** for simple reads or modifications:
+
+```typescript
+import { PID_5_1_family_name, set_PID_5_1_family_name } from "./hl7v2/generated/fields";
+
+// Read
+const name = PID_5_1_family_name(pidSegment);
+
+// Write
+set_PID_5_1_family_name(pidSegment, "Smith");
+```
 
 ## How It Works
 

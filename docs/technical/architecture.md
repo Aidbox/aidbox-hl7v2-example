@@ -340,3 +340,22 @@ sequenceDiagram
 
     UI->>User: Display ACK (success/error)
 ```
+
+## Where to Go Next
+
+This document covers system-level architecture. For implementation details on specific features:
+
+| Feature | Document | What You'll Learn |
+|---------|----------|-------------------|
+| **Outgoing BAR messages** | [BAR Generation](bar-generation.md) | FHIR→HL7v2 mapping, segment builders, trigger events |
+| **Incoming lab results** | [ORU Processing](oru-processing.md) | HL7v2→FHIR conversion, draft resources, segment grouping |
+| **LOINC code mapping** | [Code Mapping](code-mapping.md) | Resolution cascade, ConceptMap structure, Task workflow |
+| **HL7v2 transport** | [MLLP Server](mllp-server.md) | TCP handling, framing, ACK generation |
+| **Message building** | [HL7v2 Module](hl7v2-module.md) | Builders, field naming, code generation |
+
+For extending the system:
+
+| Task | Guide |
+|------|-------|
+| Add new FHIR→HL7v2 fields | [How-To: Extending Fields](how-to/extending-fields.md) |
+| Extract modules for reuse | [How-To: Extracting Modules](how-to/extracting-modules.md) |
