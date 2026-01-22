@@ -174,6 +174,22 @@ const eventDateTime = input.triggerEvent === "P01"
     : nowHL7();
 ```
 
+## Error Handling
+
+### Invoice Retry Mechanism
+
+Invoices that fail BAR generation are marked with `processing-status=error`. The Web UI provides a "Reprocess Errors" button that:
+
+1. Fetches all invoices with `processing-status=error`
+2. Checks retry count (stored in `invoice-processing-retry-count` extension)
+3. If retry count < 3: increments retry count and sets status to `pending`
+4. If retry count >= 3: marks as `failed` (terminal state)
+
+**Extensions used:**
+- `http://example.org/invoice-processing-status` - processing status (pending/completed/error/failed)
+- `http://example.org/invoice-processing-error-reason` - error message from last failure
+- `http://example.org/invoice-processing-retry-count` - number of retry attempts
+
 ## Extension Points
 
 ### Adding a New Field
@@ -223,6 +239,8 @@ PID         Patient Identification (required)
 | PR1 | Procedure | Procedure codes |
 
 ### Field Mapping Tables
+
+For complete field mappings, see `buildPID()`, `buildPV1()`, etc. in `src/bar/generator.ts`.
 
 <details>
 <summary>MSH - Message Header</summary>

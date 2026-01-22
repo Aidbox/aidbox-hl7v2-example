@@ -71,12 +71,12 @@ bun run dev
 ### Technical Documentation
 
 - [Architecture](docs/technical/architecture.md) — System design, data flow, pull-based polling pattern
-- [Integration Guide](docs/technical/integration-guide.md) — Extract and reuse modules in your project
-- [HL7v2 Builders](docs/technical/modules/hl7v2-builders.md) — Type-safe message construction API
-- [FHIR to HL7v2](docs/technical/modules/fhir-to-hl7v2.md) — BAR message generation details
-- [HL7v2 to FHIR](docs/technical/modules/v2-to-fhir-oru.md) — ORU processing pipeline
-- [Code Mapping](docs/technical/modules/code-mapping-infrastructure.md) — ConceptMap and Task data model
-- [Extending Field Mappings](docs/technical/modules/extending-field-mappings.md) — Add new FHIR↔HL7v2 field mappings
+- [Extracting Modules](docs/technical/how-to/extracting-modules.md) — Extract and reuse modules in your project
+- [HL7v2 Module](docs/technical/hl7v2-module.md) — Type-safe message construction API
+- [BAR Generation](docs/technical/bar-generation.md) — BAR message generation details
+- [ORU Processing](docs/technical/oru-processing.md) — ORU processing pipeline
+- [Code Mapping](docs/technical/code-mapping.md) — ConceptMap and Task data model
+- [Extending Fields](docs/technical/how-to/extending-fields.md) — Add new FHIR↔HL7v2 field mappings
 
 ## Supported Message Types
 

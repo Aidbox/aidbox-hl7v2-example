@@ -225,24 +225,6 @@ External terminology server integration:
 | `GET /api/terminology/loinc?q={query}` | Search by code or display text (max 10 results) |
 | `GET /api/terminology/loinc/{code}` | Validate specific code exists |
 
-## Extension Points
-
-### Adding New Terminology Targets
-
-To support mapping to terminologies other than LOINC:
-
-1. Create resolution function similar to `resolveToLoinc()`
-2. Generate ConceptMap IDs with different suffix (e.g., `-to-snomed`)
-3. Update Task code to identify mapping type
-
-### Custom ConceptMap Sources
-
-To load ConceptMaps from external systems:
-
-1. Implement custom `fetchConceptMap()` function
-2. Pass to `resolveToLoinc()` as third parameter
-3. Cache results for performance
-
 ## See Also
 
 - [ORU Processing](oru-processing.md) - How ORU messages trigger code mapping

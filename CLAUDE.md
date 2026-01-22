@@ -142,7 +142,7 @@ const message = new BAR_P01Builder()
 console.log(formatMessage(message));
 ```
 
-See `docs/technical/modules/hl7v2-builders.md` for segment builder fluent API, field naming conventions, and datatype interfaces (XPN, CX, HD, etc.) - useful when building or parsing HL7v2 messages.
+See `docs/technical/hl7v2-module.md` for segment interfaces, field naming conventions, and datatype interfaces (XPN, CX, HD, etc.) - useful when building or parsing HL7v2 messages.
 
 ## BAR Message Generator (`src/bar/`)
 
@@ -172,7 +172,7 @@ const barMessage = generateBarMessage({
 console.log(formatMessage(barMessage));
 ```
 
-See `docs/technical/modules/fhir-to-hl7v2.md` for FHIR→HL7v2 field mappings per segment (PID, PV1, IN1, DG1, PR1, GT1) and trigger event semantics (P01/P05/P06) - useful when debugging or extending BAR generation.
+See `docs/technical/bar-generation.md` for FHIR→HL7v2 field mappings per segment (PID, PV1, IN1, DG1, PR1, GT1) and trigger event semantics (P01/P05/P06) - useful when debugging or extending BAR generation.
 
 ## Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
 
@@ -265,7 +265,7 @@ See `docs/v2-to-fhir-spec/spec.md` for supported segments/datatypes.
 Converts lab results to DiagnosticReport + Observation + Specimen resources.
 Blocks message conversion with status `mapping_error` if failed to resolve OBX code to LOINC.
 
-See `docs/technical/modules/v2-to-fhir-oru.md` for ORU_R01 processing pipeline details.
+See `docs/technical/oru-processing.md` for ORU_R01 processing pipeline details.
 
 ## Code Mapping (`src/code-mapping/`)
 
@@ -275,7 +275,7 @@ Handles local-to-LOINC code mappings for laboratory codes that arrive without st
 - `mapping-task-service.ts` - Task lifecycle: create for unmapped codes, resolve with LOINC, update affected messages
 - `terminology-api.ts` - LOINC search and validation via external terminology service
 
-See `docs/technical/modules/code-mapping-infrastructure.md` for data model and `docs/technical/modules/code-mapping-ui.md` for UI workflows.
+See `docs/technical/code-mapping.md` for data model and UI workflows.
 
 ## Custom FHIR Resources
 

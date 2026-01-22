@@ -245,14 +245,6 @@ const server = createMLLPServer(2575, {
 });
 ```
 
-### Adding TLS Support
-
-The current implementation uses plain TCP. For TLS:
-
-1. Replace `net.createServer()` with `tls.createServer()`
-2. Provide certificate options
-3. Keep the same socket event handlers
-
 ## Reference
 
 ### IncomingHL7v2Message Resource

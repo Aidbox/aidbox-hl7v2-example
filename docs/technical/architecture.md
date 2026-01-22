@@ -34,14 +34,7 @@ flowchart TB
 
 ### Aidbox FHIR Server
 
-[Aidbox](https://www.health-samurai.io/aidbox) is a FHIR R4 compliant server that serves as the central data store and API layer.
-
-**Configuration:**
-- Image: `healthsamurai/aidboxone:edge`
-- Port: 8080
-- Database: PostgreSQL 18
-- FHIR Version: R4 (`hl7.fhir.r4.core#4.0.1`)
-- Init Bundle: `file:///init-bundle.json`
+[Aidbox](https://www.health-samurai.io/aidbox) is a FHIR R4 compliant server that serves as the central data store and API layer. See `docker-compose.yaml` for configuration details.
 
 **Standard FHIR Resources:**
 - `Patient` - Patient demographics
@@ -134,15 +127,7 @@ TCP server implementing the Minimal Lower Layer Protocol (MLLP) for receiving HL
 
 **Configuration:**
 - Port: 2575 (default, configurable via `MLLP_PORT` env var)
-- Protocol: TCP with MLLP framing
-
-**MLLP Protocol Framing:**
-```
-┌────────┬─────────────────┬────────┬────────┐
-│  VT    │   HL7v2 Message │   FS   │   CR   │
-│ (0x0B) │                 │ (0x1C) │ (0x0D) │
-└────────┴─────────────────┴────────┴────────┘
-```
+- Protocol: TCP with MLLP framing (see [MLLP Server](mllp-server.md#mllp-framing) for protocol details)
 
 **Process:**
 1. Accept TCP connection from external system

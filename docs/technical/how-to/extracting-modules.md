@@ -73,14 +73,21 @@ Used for: `formatMessage()`, `highlightHL7Message()`
 
 ```typescript
 import { BAR_P01Builder } from "./hl7v2/generated/messages";
+import type { MSH, PID } from "./hl7v2/generated/fields";
 import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
 
+const msh: MSH = {
+  $3_sendingApplication: { $1_namespace: "MY_APP" },
+  $10_messageControlId: "MSG001",
+};
+
+const pid: PID = {
+  $3_identifier: [{ $1_value: "12345" }],
+};
+
 const message = new BAR_P01Builder()
-  .msh(msh => msh
-    .set_msh3_sendingApplication({ namespaceId__1: "MY_APP" })
-    .set_msh10_messageControlId("MSG001"))
-  .pid(pid => pid
-    .set_pid3_patientIdentifierList([{ idNumber__1: "12345" }]))
+  .msh(msh)
+  .pid(pid)
   .build();
 
 console.log(formatMessage(message));

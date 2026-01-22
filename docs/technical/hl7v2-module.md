@@ -126,121 +126,106 @@ bun src/hl7v2/codegen.ts BAR_P01 --messages > src/hl7v2/generated/messages.ts
 
 ## Implementation Details
 
-### Segment Builders
+### Segment Interfaces
 
-Fluent API for building segments. Method pattern: `set_{segment}{N}_{fieldName}`:
+Segments are defined as TypeScript interfaces with `$N_fieldName` property names:
 
 ```typescript
-import { PIDBuilder } from "./hl7v2/generated/fields";
+import type { PID, MSH } from "./hl7v2/generated/fields";
 
-const pid = new PIDBuilder()
-  .set_pid1_setIdPid("1")
-  .set_pid8_administrativeSex("M")
-  .set_pid5_patientName([{
-    familyName__1: { surname__1: "Smith" },
-    givenName__2: "John"
-  }])
-  .set_pid3_patientIdentifierList([{
-    idNumber__1: "12345",
-    identifierTypeCode__5: "MR"
-  }])
-  .add_pid3_patientIdentifierList({
-    idNumber__1: "67890",
-    identifierTypeCode__5: "SSN"
-  })
-  .build();
+const pid: PID = {
+  $1_setIdPid: "1",
+  $3_identifier: [{
+    $1_value: "12345",
+    $5_type: "MR",
+  }],
+  $5_name: [{
+    $1_family: { $1_family: "Smith" },
+    $2_given: "John",
+  }],
+  $7_birthDate: "19900101",
+  $8_gender: "M",
+};
 ```
-
-**Method patterns:**
-
-| Schema | Method | Example |
-|--------|--------|---------|
-| Primitive, single | `set_{seg}{N}_{name}(value)` | `set_pid8_administrativeSex("M")` |
-| Complex, single | `set_{seg}{N}_{name}(record)` | `set_msh9_messageType({ messageCode__1: "BAR" })` |
-| Complex, repeating | `set_{seg}{N}_{name}(records[])` | `set_pid3_patientIdentifierList([...])` |
-| Complex, repeating | `add_{seg}{N}_{name}(record)` | `add_pid3_patientIdentifierList({...})` |
 
 ### Field Naming Convention
 
-Field names use `__N` suffix for HL7v2 component position:
+Field names use `$N_fieldName` prefix where N is the HL7v2 field/component number:
 
 ```
-{name}__N     →  component N
-{name}__N__M  →  component N, subcomponent M (flattened)
+$N_fieldName         →  field N
+$N_componentName     →  component N (within complex types)
 ```
 
 Examples:
-- `givenName__2` → XPN.2
-- `surname__1` → FN.1 (when nested in `familyName__1`)
-- `idNumber__1` → CX.1
+- `$5_name` → PID-5
+- `$1_family` → XPN.1 (family name component)
+- `$2_given` → XPN.2 (given name component)
 
 ### Datatype Interfaces
 
 Generated interfaces match HL7v2 datatype structure:
 
 ```typescript
-// XPN - Extended Person Name
+// XPN - Extended Person Name (used in PID-5)
 interface XPN {
-  familyName__1?: FN;
-  givenName__2?: string;
-  middleName__3?: string;
-  suffix__4?: string;
-  prefix__5?: string;
-  nameTypeCode__7?: string;
+  $1_family?: FN;
+  $2_given?: string;
+  $3_additionalGiven?: string;
+  $4_suffix?: string;
+  $5_prefix?: string;
 }
 
-// FN - Family Name (nested in XPN.1)
+// FN - Family Name (nested in XPN.$1_family)
 interface FN {
-  surname__1?: string;
-  ownSurnamePrefix__2?: string;
-  ownSurname__3?: string;
+  $1_family?: string;
 }
 
-// CX - Composite ID
+// CX - Composite ID (used in PID-3)
 interface CX {
-  idNumber__1?: string;
-  checkDigit__2?: string;
-  assigningAuthority__4?: HD;
-  identifierTypeCode__5?: string;
+  $1_value?: string;
+  $4_authority?: HD;
+  $5_type?: string;
 }
 
 // HD - Hierarchic Designator
 interface HD {
-  namespaceId__1?: string;
-  universalId__2?: string;
-  universalIdType__3?: string;
+  $1_namespace?: string;
+  $2_universalId?: string;
+  $3_universalIdType?: string;
 }
 ```
 
 ### Message Builders
 
-Type-safe builders enforce message structure from schema:
+Message builders accept segment data objects directly:
 
 ```typescript
 import { BAR_P01Builder } from "./hl7v2/generated/messages";
+import type { MSH, EVN, PID, PV1, DG1 } from "./hl7v2/generated/fields";
+
+const msh: MSH = {
+  $3_sendingApplication: { $1_namespace: "FHIR_APP" },
+  $9_messageType: { $1_code: "BAR", $2_event: "P01" },
+  $10_messageControlId: "MSG001",
+};
+
+const pid: PID = {
+  $1_setIdPid: "1",
+  $3_identifier: [{ $1_value: "12345", $5_type: "MR" }],
+  $5_name: [{ $1_family: { $1_family: "Smith" }, $2_given: "John" }],
+};
 
 const message = new BAR_P01Builder()
-  .msh(msh => msh
-    .set_msh3_sendingApplication({ namespaceId__1: "FHIR_APP" })
-    .set_msh9_messageType({
-      messageCode__1: "BAR",
-      triggerEvent__2: "P01"
-    })
-    .set_msh10_messageControlId("MSG001"))
-  .evn(evn => evn
-    .set_evn1_eventTypeCode("P01"))
-  .pid(pid => pid
-    .set_pid3_patientIdentifierList([{
-      idNumber__1: "12345",
-      identifierTypeCode__5: "MR"
-    }]))
+  .msh(msh)
+  .evn({ $1_eventTypeCode: "P01" })
+  .pid(pid)
   .addVISIT(visit => visit
-    .pv1(pv1 => pv1.set_pv12_patientClass("I"))
-    .addDG1(dg1 => dg1
-      .set_dg13_diagnosisCodeDg1({
-        identifier__1: "J20.9",
-        nameOfCodingSystem__3: "ICD10"
-      })))
+    .pv1({ $2_class: "I" })
+    .addDG1({
+      $1_setIdDg1: "1",
+      $3_diagnosisCodeDg1: { $1_code: "J20.9", $3_system: "ICD10" },
+    }))
   .build();
 ```
 
@@ -305,14 +290,12 @@ hl7v2/schema/
 
 | Component | File | Entry Point |
 |-----------|------|-------------|
-| Core types | `src/hl7v2/types.ts` | `HL7v2Message`, `HL7v2Segment` |
-| Segment builders | `src/hl7v2/generated/fields.ts` | `PIDBuilder`, `MSHBuilder`, etc. |
+| Core types | `src/hl7v2/generated/types.ts` | `HL7v2Message`, `HL7v2Segment` |
+| Segment interfaces | `src/hl7v2/generated/fields.ts` | `PID`, `MSH`, `OBX`, `fromPID()`, etc. |
 | Message builders | `src/hl7v2/generated/messages.ts` | `BAR_P01Builder`, `ORU_R01Builder` |
 | Table constants | `src/hl7v2/generated/tables.ts` | HL7 table values |
-| Code generator | `src/hl7v2/codegen.ts` | `generateFields()`, `generateMessages()` |
 | Wire format | `@atomic-ehr/hl7v2` | `formatMessage()` |
 | Regeneration script | `scripts/regenerate-hl7v2.sh` | - |
-| Schema files | `hl7v2/schema/` | JSON definitions |
 
 ## See Also
 
