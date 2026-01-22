@@ -51,67 +51,16 @@ processNextInvoice()
 
 ### Message Generation Detail
 
-The `generateBarMessage()` function in `generator.ts:343` builds the message using the fluent `BAR_P01Builder`:
-
-```typescript
-export function generateBarMessage(input: BarMessageInput): HL7v2Message {
-  return new BAR_P01Builder()
-    .msh(buildMSH(input))      // Message header with routing info
-    .evn(buildEVN(input))      // Event type and timestamps
-    .pid(buildPID(input))      // Patient demographics from Patient + Account
-    .addVISIT(buildVisit(input)) // Visit group with all clinical segments
-    .build();
-}
-```
-
-The `buildVisit()` function (`generator.ts:305`) populates the VISIT segment group:
-
-```typescript
-const buildVisit = (input: BarMessageInput) => (visit: BAR_P01_VISITBuilder) => {
-  if (encounter) visit.pv1(buildPV1(encounter));
-
-  conditions?.forEach((condition, idx) => {
-    visit.addDG1(buildDG1(condition, idx + 1));
-  });
-
-  procedures?.forEach((procedure, idx) => {
-    visit.addPROCEDURE(proc => proc.pr1(buildPR1(procedure, idx + 1)));
-  });
-
-  if (guarantor) visit.addGT1(buildGT1(guarantor, 1));
-
-  coverages?.forEach((coverage, idx) => {
-    visit.addINSURANCE(ins => ins.in1(buildIN1(coverage, idx + 1, payorOrg)));
-  });
-};
-```
+The `generateBarMessage()` function (`generator.ts:343`) orchestrates message construction using the fluent `BAR_P01Builder`. It delegates to segment builders (`buildMSH`, `buildEVN`, `buildPID`) and the `buildVisit()` function which populates PV1, DG1, PR1, GT1, and IN1 segments from the FHIR input.
 
 ### Segment Builder Pattern
 
-Each segment has a dedicated builder function that maps FHIR to HL7v2 fields:
+Each segment has a dedicated builder function in `generator.ts` that:
+1. Extracts data from FHIR resources
+2. Maps values using helper functions (`formatHL7Date`, `mapGender`, etc.)
+3. Returns a typed segment object using the `$N_fieldName` convention
 
-```typescript
-// generator.ts:155
-function buildPID(input: BarMessageInput): PID {
-  const { patient, account } = input;
-  const name = patient.name?.[0];
-
-  return {
-    $1_setIdPid: "1",
-    $3_identifier: [{
-      $1_value: patient.identifier?.[0]?.value,
-      $5_type: "MR",
-    }],
-    $5_name: [{
-      $1_family: { $1_family: name?.family },
-      $2_given: name?.given?.[0],
-    }],
-    $7_birthDate: formatHL7Date(patient.birthDate),
-    $8_gender: mapGender(patient.gender),
-    $18_accountNumber: { $1_value: account.identifier?.[0]?.value }
-  };
-}
-```
+See `buildPID()` at `generator.ts:155`, `buildPV1()` at `generator.ts:191`, etc. for implementations.
 
 ## Key Patterns
 

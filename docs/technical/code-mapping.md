@@ -136,9 +136,10 @@ function normalizeSystem(system: string | undefined): string | undefined {
 
 ## Implementation Details
 
-### Task Resource Structure
+<details>
+<summary>Task Resource Structure</summary>
 
-Each unmapped code creates one Task:
+Each unmapped code creates one Task with sender info and local code details in `input`. When resolved, `status` becomes `completed` and `output` contains the LOINC mapping.
 
 ```json
 {
@@ -156,14 +157,7 @@ Each unmapped code creates one Task:
     { "type": { "text": "Local code" }, "valueString": "K_SERUM" },
     { "type": { "text": "Local display" }, "valueString": "Potassium [Serum/Plasma]" },
     { "type": { "text": "Local system" }, "valueString": "ACME-LAB-CODES" }
-  ]
-}
-```
-
-When resolved, `status` becomes `completed` and `output` contains the LOINC:
-
-```json
-{
+  ],
   "output": [{
     "type": { "text": "Resolved LOINC" },
     "valueCodeableConcept": {
@@ -173,7 +167,10 @@ When resolved, `status` becomes `completed` and `output` contains the LOINC:
 }
 ```
 
-### ConceptMap Structure
+</details>
+
+<details>
+<summary>ConceptMap Structure</summary>
 
 One ConceptMap per sender containing all local→LOINC mappings:
 
@@ -200,23 +197,28 @@ One ConceptMap per sender containing all local→LOINC mappings:
 }
 ```
 
-### IncomingHL7v2Message Tracking
+</details>
 
-Messages with unmapped codes store references:
+<details>
+<summary>IncomingHL7v2Message Tracking</summary>
 
-```typescript
+Messages with unmapped codes store references in `unmappedCodes[]`:
+
+```json
 {
-  status: "mapping_error",
-  sendingApplication: "ACME_LAB",
-  sendingFacility: "ACME_HOSP",
-  unmappedCodes: [{
-    localCode: "K_SERUM",
-    localDisplay: "Potassium [Serum/Plasma]",
-    localSystem: "urn:oid:acme-lab-codes",
-    mappingTask: { reference: "Task/map-acme-lab-k-serum" }
+  "status": "mapping_error",
+  "sendingApplication": "ACME_LAB",
+  "sendingFacility": "ACME_HOSP",
+  "unmappedCodes": [{
+    "localCode": "K_SERUM",
+    "localDisplay": "Potassium [Serum/Plasma]",
+    "localSystem": "urn:oid:acme-lab-codes",
+    "mappingTask": { "reference": "Task/map-acme-lab-k-serum" }
   }]
 }
 ```
+
+</details>
 
 ### LOINC Terminology API
 

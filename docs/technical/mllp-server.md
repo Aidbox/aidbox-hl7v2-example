@@ -49,75 +49,13 @@ createMLLPServer(port)
         })
 ```
 
-### Message Parsing Detail
+### Message Parsing
 
-The `MLLPParser` class in `mllp-server.ts:133` handles TCP fragmentation:
-
-```typescript
-class MLLPParser {
-  private buffer: Buffer = Buffer.alloc(0);
-  private inMessage = false;
-
-  processData(data: Buffer): string[] {
-    this.buffer = Buffer.concat([this.buffer, data]);
-    const messages: string[] = [];
-
-    while (true) {
-      if (!this.inMessage) {
-        // Look for start block (VT = 0x0B)
-        const startIndex = this.buffer.indexOf(VT);
-        if (startIndex === -1) {
-          this.buffer = Buffer.alloc(0);  // Discard non-message data
-          break;
-        }
-        this.buffer = this.buffer.subarray(startIndex + 1);
-        this.inMessage = true;
-      }
-
-      // Look for end block (FS + CR = 0x1C 0x0D)
-      let endIndex = -1;
-      for (let i = 0; i < this.buffer.length - 1; i++) {
-        if (this.buffer[i] === FS && this.buffer[i + 1] === CR) {
-          endIndex = i;
-          break;
-        }
-      }
-
-      if (endIndex === -1) break;  // Wait for more data
-
-      // Extract complete message
-      const message = this.buffer.subarray(0, endIndex).toString("utf-8");
-      messages.push(message);
-      this.buffer = this.buffer.subarray(endIndex + 2);
-      this.inMessage = false;
-    }
-
-    return messages;
-  }
-}
-```
+The `MLLPParser` class (`mllp-server.ts:133`) handles TCP stream reassembly. It buffers incoming data, scans for MLLP framing bytes (VT start, FS+CR end), and extracts complete messages. The parser maintains state across `processData()` calls to handle messages split across multiple TCP packets.
 
 ### ACK Generation
 
-The `generateAck()` function in `mllp-server.ts:51` creates HL7v2 acknowledgment messages:
-
-```typescript
-function generateAck(originalMessage: string, ackCode: "AA" | "AE" | "AR", errorMessage?: string): string {
-  // Parse original MSH to get routing info
-  const fields = mshLine.split("|");
-  const sendingApp = fields[2];
-  const sendingFacility = fields[3];
-  const receivingApp = fields[4];
-  const receivingFacility = fields[5];
-  const messageControlId = fields[9];
-
-  // Build ACK - swap sender/receiver
-  return [
-    `MSH|^~\\&|${receivingApp}|${receivingFacility}|${sendingApp}|${sendingFacility}|${timestamp}||ACK|${newControlId}|P|2.4`,
-    `MSA|${ackCode}|${messageControlId}${errorMessage ? `|${errorMessage}` : ""}`,
-  ].join("\r");
-}
-```
+The `generateAck()` function (`mllp-server.ts:51`) creates HL7v2 acknowledgment messages by swapping sender/receiver routing from the original MSH segment and including the original Message Control ID for correlation.
 
 ## Key Patterns
 
@@ -153,19 +91,7 @@ TCP doesn't guarantee message boundaries. A single HL7v2 message might arrive as
 - One large packet with multiple messages
 - Partial message waiting for more data
 
-The `MLLPParser` maintains state across `processData()` calls:
-
-```typescript
-// Connection receives 3 packets:
-// Packet 1: [VT] + "MSH|^~\\&|APP|..."  (partial message)
-// Packet 2: "...|PID|..." (continuation)
-// Packet 3: "...|PV1|..." + [FS][CR]    (end of message)
-
-// processData() buffers until complete:
-parser.processData(packet1);  // Returns []
-parser.processData(packet2);  // Returns []
-parser.processData(packet3);  // Returns ["MSH|^~\\&|APP|...|PID|...|PV1|..."]
-```
+The `MLLPParser` maintains state across `processData()` calls, buffering partial data until complete MLLP frames are received. It returns an empty array until all framing bytes are present, then returns the complete message(s).
 
 ### ACK Response Codes
 
@@ -186,21 +112,7 @@ MSA|AA|MSG001234|
 
 ### MSH Field Extraction
 
-The `extractMSHFields()` function parses the MSH segment for routing and storage:
-
-```typescript
-function extractMSHFields(hl7Message: string) {
-  const lines = hl7Message.split(/\r?\n|\r/);
-  const mshLine = lines.find(line => line.startsWith("MSH"));
-  const fields = mshLine.split("|");
-
-  return {
-    messageType: fields[8].replace("^", "_"),  // ADT^A01 → ADT_A01
-    sendingApplication: fields[2],              // MSH-3
-    sendingFacility: fields[3],                 // MSH-4
-  };
-}
-```
+The `extractMSHFields()` function (`mllp-server.ts:22`) parses the MSH segment to extract message type (MSH-9), sending application (MSH-3), and sending facility (MSH-4) for storage in the IncomingHL7v2Message resource.
 
 ## Usage
 

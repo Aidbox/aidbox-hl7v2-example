@@ -126,108 +126,18 @@ bun src/hl7v2/codegen.ts BAR_P01 --messages > src/hl7v2/generated/messages.ts
 
 ## Implementation Details
 
-### Segment Interfaces
-
-Segments are defined as TypeScript interfaces with `$N_fieldName` property names:
-
-```typescript
-import type { PID, MSH } from "./hl7v2/generated/fields";
-
-const pid: PID = {
-  $1_setIdPid: "1",
-  $3_identifier: [{
-    $1_value: "12345",
-    $5_type: "MR",
-  }],
-  $5_name: [{
-    $1_family: { $1_family: "Smith" },
-    $2_given: "John",
-  }],
-  $7_birthDate: "19900101",
-  $8_gender: "M",
-};
-```
-
 ### Field Naming Convention
 
-Field names use `$N_fieldName` prefix where N is the HL7v2 field/component number:
+All generated interfaces use the `$N_fieldName` pattern where N is the HL7v2 field or component position:
 
-```
-$N_fieldName         →  field N
-$N_componentName     →  component N (within complex types)
-```
+| Pattern | Meaning | Example |
+|---------|---------|---------|
+| `$N_fieldName` | Field N in segment | `$5_name` → PID-5 |
+| `$N_componentName` | Component N in datatype | `$1_family` → XPN.1 |
 
-Examples:
-- `$5_name` → PID-5
-- `$1_family` → XPN.1 (family name component)
-- `$2_given` → XPN.2 (given name component)
+Nested structures follow HL7v2 hierarchy. For example, `pid.$5_name[0].$1_family.$1_family` navigates: PID-5 (patient name) → first repetition → XPN.1 (family name component) → FN.1 (surname string).
 
-### Datatype Interfaces
-
-Generated interfaces match HL7v2 datatype structure:
-
-```typescript
-// XPN - Extended Person Name (used in PID-5)
-interface XPN {
-  $1_family?: FN;
-  $2_given?: string;
-  $3_additionalGiven?: string;
-  $4_suffix?: string;
-  $5_prefix?: string;
-}
-
-// FN - Family Name (nested in XPN.$1_family)
-interface FN {
-  $1_family?: string;
-}
-
-// CX - Composite ID (used in PID-3)
-interface CX {
-  $1_value?: string;
-  $4_authority?: HD;
-  $5_type?: string;
-}
-
-// HD - Hierarchic Designator
-interface HD {
-  $1_namespace?: string;
-  $2_universalId?: string;
-  $3_universalIdType?: string;
-}
-```
-
-### Message Builders
-
-Message builders accept segment data objects directly:
-
-```typescript
-import { BAR_P01Builder } from "./hl7v2/generated/messages";
-import type { MSH, EVN, PID, PV1, DG1 } from "./hl7v2/generated/fields";
-
-const msh: MSH = {
-  $3_sendingApplication: { $1_namespace: "FHIR_APP" },
-  $9_messageType: { $1_code: "BAR", $2_event: "P01" },
-  $10_messageControlId: "MSG001",
-};
-
-const pid: PID = {
-  $1_setIdPid: "1",
-  $3_identifier: [{ $1_value: "12345", $5_type: "MR" }],
-  $5_name: [{ $1_family: { $1_family: "Smith" }, $2_given: "John" }],
-};
-
-const message = new BAR_P01Builder()
-  .msh(msh)
-  .evn({ $1_eventTypeCode: "P01" })
-  .pid(pid)
-  .addVISIT(visit => visit
-    .pv1({ $2_class: "I" })
-    .addDG1({
-      $1_setIdDg1: "1",
-      $3_diagnosisCodeDg1: { $1_code: "J20.9", $3_system: "ICD10" },
-    }))
-  .build();
-```
+See `src/hl7v2/generated/fields.ts` for all segment and datatype interface definitions.
 
 ### Wire Format Serialization
 
@@ -265,18 +175,7 @@ hl7v2/schema/
 └── structure/    # index.json - message code mapping
 ```
 
-**Message schema example:**
-```json
-{
-  "BAR_P01": {
-    "elements": [
-      { "segment": "MSH", "minOccurs": "1", "maxOccurs": "1" },
-      { "segment": "PID", "minOccurs": "1", "maxOccurs": "1" },
-      { "group": "VISIT", "minOccurs": "1", "maxOccurs": "unbounded" }
-    ]
-  }
-}
-```
+Message schemas define required/optional segments, cardinality, and segment groups. The code generator reads these to produce type-safe builders.
 
 ### Design Benefits
 

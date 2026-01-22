@@ -160,34 +160,11 @@ OBX-3 (Observation Identifier) uses the CE/CWE datatype with primary and alterna
 
 **Resolution algorithm** (`code-mapping/concept-map/lookup.ts:223`):
 
-```typescript
-export async function resolveToLoinc(observationIdentifier, sender, fetchConceptMap) {
-  // 1. Check primary coding (components 1-3)
-  if (observationIdentifier.$3_system === "LN") {
-    return { loinc: extractLoincFromPrimary(observationIdentifier) };
-  }
+1. **Check primary coding** (components 1-3): If OBX-3.3 is "LN", use OBX-3.1 as LOINC code
+2. **Check alternate coding** (components 4-6): If OBX-3.6 is "LN", use OBX-3.4 as LOINC code (preserving local code from primary)
+3. **Lookup in ConceptMap**: Query sender-specific ConceptMap for local→LOINC mapping
 
-  // 2. Check alternate coding (components 4-6)
-  if (observationIdentifier.$6_altSystem === "LN") {
-    return {
-      loinc: extractLoincFromAlternate(observationIdentifier),
-      local: extractLocalFromPrimary(observationIdentifier),
-    };
-  }
-
-  // 3. Lookup in sender's ConceptMap
-  const conceptMap = await fetchConceptMap(generateConceptMapId(sender));
-  const loincCoding = lookupInConceptMap(conceptMap, localCode, localSystem);
-
-  if (!loincCoding) {
-    throw new LoincResolutionError(...);  // Triggers mapping_error status
-  }
-
-  return { loinc: loincCoding, local: extractLocalFromPrimary(...) };
-}
-```
-
-When LOINC resolution fails, the message gets `status=mapping_error` and a Task is created for manual mapping. See [Code Mapping](code-mapping.md) for the full workflow.
+If all three steps fail, `LoincResolutionError` is thrown, which triggers `status=mapping_error` and Task creation for manual mapping. See [Code Mapping](code-mapping.md) for the full workflow.
 
 ### Draft Resource Creation
 
