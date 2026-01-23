@@ -203,6 +203,9 @@ stateDiagram-v2
         [*] --> received: Message arrives
         received --> processed: Handler processes
         received --> error: Processing failed
+        received --> mapping_error: Unmapped codes (ORU)
+        error --> received: Mark for retry
+        mapping_error --> received: Codes resolved
     }
 ```
 

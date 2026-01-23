@@ -12,21 +12,13 @@ This module provides:
 
 All types are generated from HL7v2 schema files, ensuring correctness and IDE autocomplete support.
 
-## When to Use What
+## Building Messages (Outgoing)
 
-| Task | Approach | Example |
-|------|----------|---------|
-| **Build outgoing message** | Message builder + segment builders | `BAR_P01Builder().msh(buildMSH()).pid(buildPID()).build()` |
-| **Read incoming message** | `fromXXX()` functions + typed interfaces | `const pid = fromPID(segment); pid.$5_name[0].$1_family` |
-| **Access single field** | Field helper functions | `PID_5_1_family_name(segment)` |
-| **Modify existing segment** | Setter functions | `set_PID_5_1_family_name(segment, "Smith")` |
-
-### Building Messages (Outgoing)
-
-Use **message builders** for constructing complete messages with proper structure:
+Use **message builders** to construct messages, then `formatMessage()` to serialize:
 
 ```typescript
 import { BAR_P01Builder } from "./hl7v2/generated/messages";
+import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
 
 const message = new BAR_P01Builder()
   .msh(mshData)
@@ -34,19 +26,24 @@ const message = new BAR_P01Builder()
   .pid(pidData)
   .addVISIT(visit => visit.pv1(pv1Data))
   .build();
+
+const wireFormat = formatMessage(message);
+// MSH|^~\&|FHIR_APP||...
+// PID|1||12345^^^MRN||Smith^John||19900101|M
 ```
 
 Builders enforce:
 - Required segments are present
 - Segment order matches schema
 - Repeating groups use `addXXX()` methods
+- Typed segment data via interfaces
 
-### Reading Messages (Incoming)
+## Reading Messages (Incoming)
 
 Use **typed interfaces** with `fromXXX()` functions for parsing:
 
 ```typescript
-import { fromPID, fromOBX, type PID, type OBX } from "./hl7v2/generated/fields";
+import { fromPID, type PID } from "./hl7v2/generated/fields";
 
 const pidSegment = message.find(s => s.segment === "PID");
 const pid: PID = fromPID(pidSegment);
@@ -56,19 +53,26 @@ const familyName = pid.$5_name?.[0]?.$1_family?.$1_family;
 const birthDate = pid.$7_birthDate;
 ```
 
-### Direct Field Access
+### Field Naming Convention
 
-Use **field helpers** for simple reads or modifications:
+All generated interfaces use the `$N_fieldName` pattern where N is the HL7v2 field or component position:
+
+| Pattern | Meaning | Example |
+|---------|---------|---------|
+| `$N_fieldName` | Field N in segment | `$5_name` → PID-5 |
+| `$N_componentName` | Component N in datatype | `$1_family` → XPN.1 |
+
+Nested structures follow HL7v2 hierarchy. For example, `pid.$5_name[0].$1_family.$1_family` navigates: PID-5 (patient name) → first repetition → XPN.1 (family name component) → FN.1 (surname string).
+
+### Wrappers
+
+The `src/hl7v2/wrappers/` directory contains fixes for edge cases in the generated parsers. Use wrappers instead of generated functions where available:
 
 ```typescript
-import { PID_5_1_family_name, set_PID_5_1_family_name } from "./hl7v2/generated/fields";
-
-// Read
-const name = PID_5_1_family_name(pidSegment);
-
-// Write
-set_PID_5_1_family_name(pidSegment, "Smith");
+import { fromOBX } from "./hl7v2/wrappers";  // Instead of from generated/fields
 ```
+
+Currently: `obx.ts` fixes SN (Structured Numeric) value parsing where `^` is data, not a component separator.
 
 ## How It Works
 
@@ -113,77 +117,13 @@ const msg: HL7v2Message = [
 
 ### Code Generation
 
-Generate TypeScript bindings from HL7v2 schema:
+Regenerate TypeScript bindings from the `@atomic-ehr/hl7v2` package:
 
 ```sh
-# Regenerate all HL7v2 types
 bun run regenerate-hl7v2
-
-# Or manually for specific message types
-bun src/hl7v2/codegen.ts BAR_P01 > src/hl7v2/generated/fields.ts
-bun src/hl7v2/codegen.ts BAR_P01 --messages > src/hl7v2/generated/messages.ts
 ```
 
-## Implementation Details
-
-### Field Naming Convention
-
-All generated interfaces use the `$N_fieldName` pattern where N is the HL7v2 field or component position:
-
-| Pattern | Meaning | Example |
-|---------|---------|---------|
-| `$N_fieldName` | Field N in segment | `$5_name` → PID-5 |
-| `$N_componentName` | Component N in datatype | `$1_family` → XPN.1 |
-
-Nested structures follow HL7v2 hierarchy. For example, `pid.$5_name[0].$1_family.$1_family` navigates: PID-5 (patient name) → first repetition → XPN.1 (family name component) → FN.1 (surname string).
-
-See `src/hl7v2/generated/fields.ts` for all segment and datatype interface definitions.
-
-### Wire Format Serialization
-
-Convert internal representation to pipe-delimited HL7v2:
-
-```typescript
-import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
-
-const wireFormat = formatMessage(message);
-// MSH|^~\&|FHIR_APP||...
-// PID|1||12345^^^MRN||Smith^John||19900101|M
-```
-
-### Field Helper Functions
-
-Auto-generated getters/setters for direct field access:
-
-```typescript
-import { PID_5_1_family_name, set_PID_5_1_family_name } from "./hl7v2/generated/fields";
-
-const familyName = PID_5_1_family_name(pidSegment);
-set_PID_5_1_family_name(pidSegment, "Smith");
-```
-
-Pattern: `{SEGMENT}_{FIELD}_{COMPONENT}_{name}`
-
-### Schema Files
-
-```
-hl7v2/schema/
-├── messages/     # ADT_A01.json, BAR_P01.json - message structure
-├── segments/     # PID.json, MSH.json - segment field lists
-├── fields/       # PID.5.json - field metadata
-├── dataTypes/    # XPN.json - complex type components
-└── structure/    # index.json - message code mapping
-```
-
-Message schemas define required/optional segments, cardinality, and segment groups. The code generator reads these to produce type-safe builders.
-
-### Design Benefits
-
-- **1:1 mapping to wire format** - Serialization is trivial
-- **Schema-validatable** - Fields validated against `hl7v2/schema/`
-- **IDE autocomplete** - Type definitions enable discovery
-- **Compile-time safety** - Message builders catch missing required segments
-- **Auto-generated** - Regenerate when schema updates
+The script runs the code generator from the package to produce type definitions in `src/hl7v2/generated/`. This provides type safety and IDE autocomplete.
 
 ## Code Locations
 
@@ -193,6 +133,7 @@ Message schemas define required/optional segments, cardinality, and segment grou
 | Segment interfaces | `src/hl7v2/generated/fields.ts` | `PID`, `MSH`, `OBX`, `fromPID()`, etc. |
 | Message builders | `src/hl7v2/generated/messages.ts` | `BAR_P01Builder`, `ORU_R01Builder` |
 | Table constants | `src/hl7v2/generated/tables.ts` | HL7 table values |
+| Wrappers | `src/hl7v2/wrappers/` | Parser fixes (e.g., OBX SN values) |
 | Wire format | `@atomic-ehr/hl7v2` | `formatMessage()` |
 | Regeneration script | `scripts/regenerate-hl7v2.sh` | - |
 

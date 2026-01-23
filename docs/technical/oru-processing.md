@@ -10,7 +10,8 @@ The `src/v2-to-fhir/` module handles HL7v2 to FHIR conversion:
 src/v2-to-fhir/
 ├── messages/
 │   ├── oru-r01.ts        # ORU_R01 message converter (main entry point)
-│   └── adt-a01.ts        # ADT_A01 message converter
+│   ├── adt-a01.ts        # ADT_A01 message converter
+│   └── adt-a08.ts        # ADT_A08 message converter
 ├── segments/
 │   ├── pid-patient.ts    # PID → Patient
 │   ├── pv1-encounter.ts  # PV1 → Encounter

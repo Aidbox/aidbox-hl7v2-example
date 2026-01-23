@@ -8,8 +8,8 @@ How to extract and integrate modules from this project into your own application
 hl7v2/          → standalone (no project dependencies)
 mllp/           → depends on hl7v2/
 bar/            → depends on hl7v2/, fhir/
+code-mapping/   → depends on fhir/
 v2-to-fhir/     → depends on hl7v2/, fhir/, code-mapping/
-code-mapping/   → depends on fhir/ (for ConceptMap, Task types)
 ```
 
 ## Code Generation
@@ -42,19 +42,14 @@ The `src/hl7v2/` module provides type-safe HL7v2 message building and parsing. T
 
 ```
 src/hl7v2/
-├── types.ts           # Core types
 ├── generated/
-│   ├── fields.ts      # Segment interfaces and builders
+│   ├── types.ts       # Core types (HL7v2Message, HL7v2Segment)
+│   ├── fields.ts      # Segment interfaces and fromXXX() parsers
 │   ├── messages.ts    # Message builders
 │   └── tables.ts      # HL7 table constants
-└── index.ts           # Module exports
-
-hl7v2/schema/          # Only if regeneration needed
-├── messages/
-├── segments/
-├── fields/
-├── dataTypes/
-└── structure/
+└── wrappers/
+    ├── index.ts       # Wrapper exports
+    └── obx.ts         # OBX SN value parsing fix
 ```
 
 ### External Dependencies
@@ -175,7 +170,7 @@ The `src/v2-to-fhir/` module converts incoming HL7v2 messages to FHIR resources.
 ```
 src/v2-to-fhir/
 ├── converter.ts       # Core conversion logic
-├── messages/          # Message-level converters (adt-a01.ts, oru-r01.ts)
+├── messages/          # Message-level converters (adt-a01.ts, adt-a08.ts, oru-r01.ts)
 ├── segments/          # Segment converters (pid-patient.ts, obx-observation.ts)
 ├── datatypes/         # Datatype converters (xpn-humanname.ts, cwe-codeableconcept.ts)
 └── index.ts           # Module exports
@@ -185,7 +180,16 @@ src/v2-to-fhir/
 
 - `src/hl7v2/` - For message parsing
 - `src/fhir/` - For FHIR type definitions
-- `src/code-mapping/` - For LOINC code resolution (can be stubbed if not needed)
+- `src/code-mapping/` - For LOINC code resolution
+
+### Custom Resources Required
+
+If using the processor service with Aidbox, you need custom resource definitions:
+
+- `IncomingHL7v2Message` - StructureDefinition for storing received messages
+- SearchParameter `unmapped-task` - For querying messages by mapping task reference
+
+See `src/migrate.ts` and `init-bundle.json` for loading these definitions.
 
 ### Customization
 
@@ -224,7 +228,7 @@ src/code-mapping/
 
 ### Customization Points
 
-1. **Storage**: Replace Aidbox calls with your FHIR server
+1. **Storage**: Requires Aidbox or your FHIR server
 2. **Terminology**: Replace terminology API with your LOINC source
 3. **Task handling**: Customize Task resource structure if needed
 
