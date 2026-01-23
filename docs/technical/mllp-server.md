@@ -51,11 +51,11 @@ createMLLPServer(port)
 
 ### Message Parsing
 
-The `MLLPParser` class (`mllp-server.ts:133`) handles TCP stream reassembly. It buffers incoming data, scans for MLLP framing bytes (VT start, FS+CR end), and extracts complete messages. The parser maintains state across `processData()` calls to handle messages split across multiple TCP packets.
+The `MLLPParser` class in `mllp-server.ts` handles TCP stream reassembly. It buffers incoming data, scans for MLLP framing bytes (VT start, FS+CR end), and extracts complete messages. The parser maintains state across `processData()` calls to handle messages split across multiple TCP packets.
 
 ### ACK Generation
 
-The `generateAck()` function (`mllp-server.ts:51`) creates HL7v2 acknowledgment messages by swapping sender/receiver routing from the original MSH segment and including the original Message Control ID for correlation.
+The `generateAck()` function in `mllp-server.ts` creates HL7v2 acknowledgment messages by swapping sender/receiver routing from the original MSH segment and including the original Message Control ID for correlation.
 
 ## Key Patterns
 
@@ -112,7 +112,7 @@ MSA|AA|MSG001234|
 
 ### MSH Field Extraction
 
-The `extractMSHFields()` function (`mllp-server.ts:22`) parses the MSH segment to extract message type (MSH-9), sending application (MSH-3), and sending facility (MSH-4) for storage in the IncomingHL7v2Message resource.
+The `extractMSHFields()` function in `mllp-server.ts` parses the MSH segment to extract message type (MSH-9), sending application (MSH-3), and sending facility (MSH-4) for storage in the IncomingHL7v2Message resource.
 
 ## Usage
 

@@ -57,7 +57,7 @@ processNextMessage()
 
 ### ORU_R01 Conversion Detail
 
-The `convertORU_R01()` function in `messages/oru-r01.ts:955` orchestrates the conversion:
+The `convertORU_R01()` function in `messages/oru-r01.ts` orchestrates the conversion:
 
 ```
 convertORU_R01(parsed, lookupPatient, lookupEncounter)
@@ -158,7 +158,7 @@ OBX-3 (Observation Identifier) uses the CE/CWE datatype with primary and alterna
 | 5 | Alternate Text | LOINC display |
 | 6 | Name of Alternate Coding System | `LN` |
 
-**Resolution algorithm** (`code-mapping/concept-map/lookup.ts:223`):
+**Resolution algorithm** (see `resolveToLoinc()` in `code-mapping/concept-map/lookup.ts`):
 
 1. **Check primary coding** (components 1-3): If OBX-3.3 is "LN", use OBX-3.1 as LOINC code
 2. **Check alternate coding** (components 4-6): If OBX-3.6 is "LN", use OBX-3.4 as LOINC code (preserving local code from primary)

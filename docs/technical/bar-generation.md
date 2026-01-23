@@ -51,7 +51,28 @@ processNextInvoice()
 
 ### Message Generation Detail
 
-The `generateBarMessage()` function (`generator.ts:343`) orchestrates message construction using the fluent `BAR_P01Builder`. It delegates to segment builders (`buildMSH`, `buildEVN`, `buildPID`) and the `buildVisit()` function which populates PV1, DG1, PR1, GT1, and IN1 segments from the FHIR input.
+The `generateBarMessage()` function in `generator.ts` orchestrates message construction using the fluent `BAR_P01Builder`. It delegates to segment builders (`buildMSH`, `buildEVN`, `buildPID`) and the `buildVisit()` function which populates PV1, DG1, PR1, GT1, and IN1 segments from the FHIR input.
+
+### Quick Example
+
+```typescript
+import { generateBarMessage } from "./bar";
+import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
+
+const barMessage = generateBarMessage({
+  patient,           // FHIR Patient resource
+  account,           // FHIR Account resource
+  encounter,         // FHIR Encounter resource (optional)
+  coverages,         // FHIR Coverage[] (optional)
+  conditions,        // FHIR Condition[] (optional)
+  procedures,        // FHIR Procedure[] (optional)
+  guarantor,         // RelatedPerson or Patient (optional)
+  messageControlId: "MSG001",
+  triggerEvent: "P01",
+});
+
+console.log(formatMessage(barMessage));
+```
 
 ### Segment Builder Pattern
 
@@ -60,7 +81,7 @@ Each segment has a dedicated builder function in `generator.ts` that:
 2. Maps values using helper functions (`formatHL7Date`, `mapGender`, etc.)
 3. Returns a typed segment object using the `$N_fieldName` convention
 
-See `buildPID()` at `generator.ts:155`, `buildPV1()` at `generator.ts:191`, etc. for implementations.
+See `buildPID()`, `buildPV1()`, and similar functions in `generator.ts` for implementations.
 
 ## Key Patterns
 
@@ -96,7 +117,7 @@ conditions?.forEach((condition, idx) => {
 | `BAR^P05` | Update Patient Account | Update existing account. Send full current state. |
 | `BAR^P06` | End Patient Account | Close account. EVN-2 = account end date. |
 
-The trigger event affects EVN-2 timestamp (`generator.ts:141`):
+The trigger event affects EVN-2 timestamp:
 
 ```typescript
 const eventDateTime = input.triggerEvent === "P01"
