@@ -2,7 +2,12 @@
 
 Documentation for developers who need to understand, extend, or integrate with this project.
 
-## New to the Codebase?
+## Getting Started
+
+1. **[User Guide: Getting Started](../user-guide/getting-started.md)** — Setup, installation, running services
+2. **[Development Guide](how-to/development-guide.md)** — Testing, debugging, troubleshooting for contributors
+
+## Understanding the System
 
 Start with **[Architecture](architecture.md)** for:
 - System overview and component diagram
@@ -27,5 +32,6 @@ Step-by-step guides for common tasks.
 
 | Guide                                              | Description                           |
 |----------------------------------------------------|---------------------------------------|
+| [Development Guide](how-to/development-guide.md)   | Testing, debugging, troubleshooting        |
 | [Extending Fields](how-to/extending-fields.md)     | Add new FHIR↔HL7v2 field mappings     |
 | [Extracting Modules](how-to/extracting-modules.md) | Use modules in your own project       |

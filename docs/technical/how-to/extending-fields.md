@@ -71,10 +71,7 @@ function buildPID(input: BarMessageInput): PID {
   const name = patient.name?.[0];
   const address = patient.address?.[0];
 
-  // Find home phone (existing)
-  const homePhone = patient.telecom?.find(
-    t => t.system === "phone" && (t.use === "home" || !t.use)
-  );
+  // ... (existing code)
 
   // Find work phone (new)
   const workPhone = patient.telecom?.find(
@@ -82,36 +79,13 @@ function buildPID(input: BarMessageInput): PID {
   );
 
   return {
-    $1_setIdPid: "1",
-    $3_identifier: [{
-      $1_value: patient.identifier?.[0]?.value,
-      $5_type: "MR",
-    }],
-    $5_name: [{
-      $1_family: { $1_family: name?.family },
-      $2_given: name?.given?.[0],
-      $3_additionalGiven: name?.given?.[1],
-    }],
-    $7_birthDate: formatHL7Date(patient.birthDate),
-    $8_gender: mapGender(patient.gender),
-    $11_address: [{
-      $1_line1: { $1_line: address?.line?.[0] },
-      $3_city: address?.city,
-      $4_state: address?.state,
-      $5_postalCode: address?.postalCode,
-      $6_country: address?.country,
-    }],
-    $13_homePhone: [{
-      $1_value: homePhone?.value,
-    }],
+    // ... (existing code)
+
     // NEW: Add PID-14 Business Phone
     $14_businessPhone: workPhone ? [{
       $1_value: workPhone.value,
       $2_telecomUseCode: "WPN",  // Work Phone Number
-    }] : undefined,
-    $18_accountNumber: {
-      $1_value: account.identifier?.[0]?.value
-    }
+    }] : undefined
   };
 }
 ```
@@ -155,26 +129,6 @@ PID|1||12345^^^MRN||Smith^John||19900101|M|||123 Main St^^City^ST^12345||555-123
                                                                           └─ PID-13 (existing)
 ```
 
-## BAR Message: Adding FHIR → HL7v2 Fields
-
-### Quick Reference
-
-| Segment | Purpose | Builder Function |
-|---------|---------|------------------|
-| PID | Patient identification | `buildPID()` |
-| PV1 | Patient visit/encounter | `buildPV1()` |
-| GT1 | Guarantor information | `buildGT1()` |
-| IN1 | Insurance information | `buildIN1()` |
-| DG1 | Diagnosis codes | `buildDG1()` |
-| PR1 | Procedure codes | `buildPR1()` |
-
-### Steps Summary
-
-1. **Identify the target** - Which HL7v2 segment and field?
-2. **Check the type** - Look in `src/hl7v2/generated/fields.ts`
-3. **Locate the builder** - Find `buildXXX()` in `src/bar/generator.ts`
-4. **Add the mapping** - Extract FHIR data, set HL7v2 field
-5. **Test** - Create data, generate message, verify output
 
 ## ORU Processing: Adding HL7v2 → FHIR Fields
 
@@ -255,19 +209,7 @@ interface OBX {
 
 ## Datatype Converters
 
-For complex datatypes, use existing converters in `src/v2-to-fhir/datatypes/`:
-
-| HL7v2 Type | FHIR Output | Converter |
-|------------|-------------|-----------|
-| CWE | CodeableConcept | `cwe-codeableconcept.ts` |
-| XPN | HumanName | `xpn-humanname.ts` |
-| XAD | Address | `xad-address.ts` |
-| XTN | ContactPoint | `xtn-contactpoint.ts` |
-| CX | Identifier | `cx-identifier.ts` |
-| DTM | dateTime | `dtm-datetime.ts` |
-| CE | CodeableConcept | `ce-codeableconcept.ts` |
-
-**Example using a datatype converter:**
+For complex datatypes, use existing converters in `src/v2-to-fhir/datatypes/`. For example:
 
 ```typescript
 import { convertCWEToCodeableConcept } from "../datatypes/cwe-codeableconcept";

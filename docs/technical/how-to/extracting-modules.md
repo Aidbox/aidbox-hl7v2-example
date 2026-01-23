@@ -66,27 +66,7 @@ Used for: `formatMessage()`, `highlightHL7Message()`
 
 ### Usage Example
 
-```typescript
-import { BAR_P01Builder } from "./hl7v2/generated/messages";
-import type { MSH, PID } from "./hl7v2/generated/fields";
-import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
-
-const msh: MSH = {
-  $3_sendingApplication: { $1_namespace: "MY_APP" },
-  $10_messageControlId: "MSG001",
-};
-
-const pid: PID = {
-  $3_identifier: [{ $1_value: "12345" }],
-};
-
-const message = new BAR_P01Builder()
-  .msh(msh)
-  .pid(pid)
-  .build();
-
-console.log(formatMessage(message));
-```
+See [BAR Generation: Quick Example](../bar-generation.md#quick-example) for message building with FHIR resources, or [HL7v2 Module: Building Messages](../hl7v2-module.md#building-messages-outgoing) for lower-level builder usage.
 
 ## Extracting the MLLP Server
 
@@ -238,6 +218,8 @@ src/code-mapping/
 bun test              # Run all tests
 bun run typecheck     # TypeScript type checking
 ```
+
+See [Development Guide](development-guide.md) for test organization, writing tests, and debugging.
 
 ## See Also
 
