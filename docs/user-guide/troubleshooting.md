@@ -58,7 +58,7 @@ docker compose logs aidbox
 
 4. **Database corruption**
    - Reset the database: `docker compose down -v && docker compose up -d`
-   - Re-run migrations: `bun migrate`
+   - Re-run migrations: `bun run migrate`
 
 ### Messages stuck in "received" status
 
@@ -239,7 +239,7 @@ This deletes all data and starts fresh:
 ```sh
 docker compose down -v
 docker compose up -d
-bun migrate
+bun run migrate
 bun scripts/load-test-data.ts  # Optional: reload test data
 ```
 

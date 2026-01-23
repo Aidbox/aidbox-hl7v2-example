@@ -97,41 +97,6 @@ convertORU_R01(parsed, lookupPatient, lookupEncounter)
         └─► Return bundle with all resources
 ```
 
-### Segment Converter Pattern
-
-Each segment converter follows a consistent pattern:
-
-```typescript
-// segments/obx-observation.ts
-export function convertOBXToObservation(
-  obx: OBX,
-  orderNumber: string,
-): Observation {
-  // Generate deterministic ID
-  const setId = obx.$1_setIdObx || "1";
-  const id = `${orderNumber.toLowerCase()}-obx-${setId}`.replace(/[^a-z0-9-]/g, "-");
-
-  // Map fields
-  const observation: Observation = {
-    resourceType: "Observation",
-    id,
-    status: mapOBXStatus(obx.$11_observationResultStatus),
-    category: [{ coding: [{ system: "...", code: "laboratory" }] }],
-    // code is set by caller after LOINC resolution
-  };
-
-  // Map value based on OBX-2 (value type)
-  if (obx.$2_valueType === "NM") {
-    observation.valueQuantity = { value: parseFloat(obx.$5_value), ... };
-  } else if (obx.$2_valueType === "ST") {
-    observation.valueString = obx.$5_value;
-  }
-  // ... other value types
-
-  return observation;
-}
-```
-
 ## Key Patterns
 
 ### Deterministic Resource IDs
@@ -307,6 +272,31 @@ OBR (Order)
 | Encounter not found | Create draft Encounter (`status=unknown`) |
 | OBX-3 has no LOINC | Set `mapping_error`, create Task |
 | Invalid OBR-25 or OBX-11 | Reject message |
+
+### Message Rejection Behavior
+
+When a message is rejected during processing, the system:
+
+1. **Stores the message**: The raw HL7v2 message is always stored in `IncomingHL7v2Message` with `status=received` upon MLLP receipt, before processing begins. Rejection happens during the conversion phase, not receipt.
+
+2. **Updates status to `error`**: The `IncomingHL7v2Message.status` changes from `received` to `error`.
+
+3. **Records the error reason**: The error message is stored in `IncomingHL7v2Message.error`. Common error strings:
+   - `"Missing required MSH segment"`
+   - `"Missing required OBR segment"`
+   - `"Missing required PID segment"`
+   - `"PID segment has no usable patient identifier (PID-2 or PID-3)"`
+   - `"OBR missing both filler order number (OBR-3) and placer order number (OBR-2)"`
+   - `"Invalid OBR-25 result status: {value}"`
+   - `"Invalid OBX-11 observation status: {value}"`
+
+4. **Creates no FHIR resources**: Rejected messages produce no Patient, DiagnosticReport, Observation, or other FHIR resources. The transaction is atomic—either all resources are created or none.
+
+5. **MLLP ACK is unaffected**: The MLLP server sends `AA` (Application Accept) when the message is successfully stored, regardless of later processing outcome. Processing happens asynchronously. The ACK confirms receipt, not successful conversion.
+
+**Recovery:** Users can fix the source system and resend the message, or use "Mark for Retry" in the UI to reset status to `received` and reprocess (useful if the issue was transient or the code was fixed).
+
+**Distinguishing rejection from mapping errors:** Rejected messages have `status=error`. Messages with unmapped LOINC codes have `status=mapping_error` and can be resolved via the Mapping Tasks UI without resending.
 
 ## See Also
 

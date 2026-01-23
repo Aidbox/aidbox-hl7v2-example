@@ -129,7 +129,7 @@ Transmission can happen two ways:
 
 ## On-Demand vs Background Processing
 
-The system uses a pull-based architecture where services poll Aidbox for work. This means if a service restarts, no work is lost—unprocessed items remain in the queue. For technical details, see [Architecture](../technical/architecture.md).
+The system uses a pull-based architecture where services poll Aidbox for work. This means if a service restarts, no work is lost—unprocessed items remain in the queue. For technical details, see [Architecture](../developer-guide/architecture.md).
 
 You can trigger processing two ways:
 

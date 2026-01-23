@@ -47,11 +47,15 @@ flowchart TB
 Aidbox executes the init bundle at startup before the HTTP server starts. Used for database initialization that must be idempotent.
 
 **Current contents:**
+- Custom StructureDefinitions for IncomingHL7v2Message and OutgoingBarMessage
+- Invoice processing status extensions (status, retry count, error reason)
+- SearchParameters for custom resources and invoice extensions
+- LOINC ValueSet used by the terminology workflow
 - PostgreSQL partial index for pending invoices
 
 ```sql
 CREATE INDEX IF NOT EXISTS invoice_pending_ts_idx
-ON invoice (ts DESC)
+ON invoice (ts ASC)
 WHERE resource @> '{"extension": [{"url": "http://example.org/invoice-processing-status", "value": {"code": "pending"}}]}'
 ```
 

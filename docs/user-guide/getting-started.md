@@ -37,7 +37,7 @@ On first run, Aidbox requires license activation:
 This creates the custom FHIR resources (OutgoingBarMessage, IncomingHL7v2Message):
 
 ```sh
-bun migrate
+bun run migrate
 ```
 
 ### 3. Start the Web Server

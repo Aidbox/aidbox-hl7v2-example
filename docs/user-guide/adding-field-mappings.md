@@ -13,8 +13,8 @@ The system needs to know how to translate these local codes to LOINC. You have t
 
 **Extending the converter:**
 If you need to map additional HL7v2 fields beyond what's currently supported, see:
-- [Extending Outgoing Fields](../technical/how-to/extending-outgoing-fields.md) — FHIR→HL7v2
-- [Extending Incoming Fields](../technical/how-to/extending-incoming-fields.md) — HL7v2→FHIR
+- [Extending Outgoing Fields](../developer-guide/how-to/extending-outgoing-fields.md) — FHIR→HL7v2
+- [Extending Incoming Fields](../developer-guide/how-to/extending-incoming-fields.md) — HL7v2→FHIR
 
 ## Using the Web UI
 
@@ -38,7 +38,7 @@ ConceptMaps are stored as FHIR resources, one per sender (identified by sending 
 ```json
 {
   "resourceType": "ConceptMap",
-  "id": "LabSystem-MainFacility",
+  "id": "hl7v2-labsystem-mainfacility-to-loinc",
   "title": "LabSystem|MainFacility",
   "status": "active",
   "group": [{
@@ -58,7 +58,7 @@ ConceptMaps are stored as FHIR resources, one per sender (identified by sending 
 ```
 
 **Key fields:**
-- `id` - Format: `{SendingApplication}-{SendingFacility}` (from message header MSH-3 and MSH-4)
+- `id` - Format: `hl7v2-{sendingApplication}-{sendingFacility}-to-loinc` (kebab-cased from MSH-3 and MSH-4)
 - `group[].source` - The local code system identifier
 - `group[].element[]` - Array of local codes with their LOINC mappings
 
@@ -67,12 +67,12 @@ ConceptMaps are stored as FHIR resources, one per sender (identified by sending 
 ```sh
 # Get existing ConceptMap (if any)
 curl -u root:Vbro4upIT1 \
-  "http://localhost:8080/fhir/ConceptMap/LabSystem-MainFacility"
+  "http://localhost:8080/fhir/ConceptMap/hl7v2-labsystem-mainfacility-to-loinc"
 
 # Create or update ConceptMap
 curl -X PUT -u root:Vbro4upIT1 \
   -H "Content-Type: application/json" \
-  "http://localhost:8080/fhir/ConceptMap/LabSystem-MainFacility" \
+  "http://localhost:8080/fhir/ConceptMap/hl7v2-labsystem-mainfacility-to-loinc" \
   -d @conceptmap.json
 ```
 
@@ -92,7 +92,7 @@ const mappings = [
 
 const conceptMap = {
   resourceType: "ConceptMap",
-  id: "LabSystem-MainFacility",
+  id: "hl7v2-labsystem-mainfacility-to-loinc",
   title: "LabSystem|MainFacility",
   status: "active",
   group: [{
@@ -125,5 +125,5 @@ After import, you can verify the mappings:
 Or via API:
 ```sh
 curl -u root:Vbro4upIT1 \
-  "http://localhost:8080/fhir/ConceptMap/LabSystem-MainFacility"
+  "http://localhost:8080/fhir/ConceptMap/hl7v2-labsystem-mainfacility-to-loinc"
 ```

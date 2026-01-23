@@ -1,4 +1,4 @@
-# Technical Documentation
+# Developer Guide
 
 Documentation for developers who need to understand, extend, or integrate with this project.
 
