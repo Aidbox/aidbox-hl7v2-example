@@ -83,6 +83,10 @@ async function applyMessageUpdate(
     bundle: bundle ? JSON.stringify(bundle, null, 2) : undefined,
   };
 
+  if (update.status === "processed") {
+    delete updated.error;
+  }
+
   await putResource<IncomingHL7v2Message>(
     "IncomingHL7v2Message",
     message.id!,

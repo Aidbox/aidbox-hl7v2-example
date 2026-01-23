@@ -138,6 +138,45 @@ describe("processor-service", () => {
     expect(updatedMessage).toMatchSnapshot();
   });
 
+  test("clears error field when message transitions from error to processed", async () => {
+    // Mock message with existing error (simulating retry scenario)
+    mockAidbox.aidboxFetch.mockImplementation((path: string, options?: any) => {
+      if (path.includes("IncomingHL7v2Message?status=received")) {
+        return Promise.resolve({
+          entry: [
+            {
+              resource: {
+                resourceType: "IncomingHL7v2Message",
+                id: "test-msg-retry",
+                type: "ADT_A01",
+                status: "received",
+                message: sampleADT_A01,
+                error: "Previous processing error", // Existing error from previous failure
+              } as IncomingHL7v2Message,
+            },
+          ],
+        });
+      }
+
+      if (path === "/fhir" && options?.method === "POST") {
+        submittedBundle = JSON.parse(options.body);
+        return Promise.resolve({});
+      }
+
+      return Promise.resolve({});
+    });
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+
+    const { processNextMessage } = await import("../../src/v2-to-fhir/processor-service");
+
+    const result = await processNextMessage();
+
+    expect(result).toBe(true);
+    expect(updatedMessage?.status).toBe("processed");
+    expect(updatedMessage?.error).toBeUndefined(); // Error should be cleared
+  });
+
   test("handles conversion errors and updates status to error", async () => {
     // Mock invalid message
     mockAidbox.aidboxFetch.mockImplementation((path: string, options?: any) => {
