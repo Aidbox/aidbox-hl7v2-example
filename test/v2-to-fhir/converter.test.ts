@@ -1,5 +1,6 @@
 import { test, expect, describe, mock } from "bun:test";
 import { convertToFHIR } from "../../src/v2-to-fhir/converter";
+import { HttpError } from "../../src/aidbox";
 
 const ADT_A01_MESSAGE = `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|20231215143000||ADT^A01^ADT_A01|MSG001|P|2.5.1|||AL|AL
 EVN|A01|20231215143000|||OPERATOR
@@ -19,8 +20,9 @@ IN2||000-00-0000|||L|||||||||||||||N|||||||||||||||||||||||||||||||||||||||||||(
 
 // Mock aidbox module to avoid actual API calls
 const mockAidbox = {
+  HttpError: HttpError,
   aidboxFetch: mock(() =>
-    Promise.reject(new Error("HTTP 404: ConceptMap not found")),
+    Promise.reject(new HttpError(404, "ConceptMap not found")),
   ),
 };
 

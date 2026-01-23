@@ -6,6 +6,16 @@ const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString(
   "base64",
 );
 
+export class HttpError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly body: string,
+  ) {
+    super(`HTTP ${status}: ${body}`);
+    this.name = "HttpError";
+  }
+}
+
 export async function aidboxFetch<T = unknown>(
   path: string,
   options: RequestInit = {},
@@ -20,7 +30,7 @@ export async function aidboxFetch<T = unknown>(
   });
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    throw new HttpError(response.status, await response.text());
   }
 
   return response.json() as Promise<T>;

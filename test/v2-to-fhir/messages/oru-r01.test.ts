@@ -18,6 +18,7 @@ import {
   convertORU_R01,
   convertOBXToObservationResolving,
 } from "../../../src/v2-to-fhir/messages/oru-r01";
+import { HttpError } from "../../../src/aidbox";
 
 // Sample ORU_R01 message with single OBR and multiple OBX
 const SIMPLE_ORU_MESSAGE = `MSH|^~\\&|LABSYS|TESTHOSP||RECV|20260106171422||ORU^R01|MSG123|P|2.5.1
@@ -84,9 +85,10 @@ const mockAidbox = {
     throw new MockNotFoundError("Patient", "unknown");
   }),
   NotFoundError: MockNotFoundError,
+  HttpError: HttpError,
   // Used by code-mapping/concept-map/service.ts for ConceptMap lookup
   aidboxFetch: mock(() =>
-    Promise.reject(new Error("HTTP 404: ConceptMap not found")),
+    Promise.reject(new HttpError(404, "ConceptMap not found")),
   ),
   putResource: mock(() => Promise.resolve({})),
 };
@@ -612,26 +614,22 @@ OBX|1|TXT|BFTYPE^BF Type||Other|||N/A|||F|||20260104112732`;
 
 describe("ConceptMap code resolution", () => {
   test("resolves local code via ConceptMap when no inline LOINC", async () => {
-    // Setup mock to return a ConceptMap with the local code mapping
-    const mockConceptMap = {
-      resourceType: "ConceptMap",
-      id: "hl7v2-lab-hosp-to-loinc",
-      status: "active",
-      group: [
+    // Setup mock to return a successful $translate response
+    const mockTranslateResponse = {
+      resourceType: "Parameters",
+      parameter: [
+        { name: "result", valueBoolean: true },
         {
-          source: "LOCAL",
-          target: "http://loinc.org",
-          element: [
+          name: "match",
+          part: [
+            { name: "relationship", valueCode: "equivalent" },
             {
-              code: "12345",
-              display: "Potassium",
-              target: [
-                {
-                  code: "2823-3",
-                  display: "Potassium SerPl-sCnc",
-                  equivalence: "equivalent",
-                },
-              ],
+              name: "concept",
+              valueCoding: {
+                system: "http://loinc.org",
+                code: "2823-3",
+                display: "Potassium SerPl-sCnc",
+              },
             },
           ],
         },
@@ -639,7 +637,7 @@ describe("ConceptMap code resolution", () => {
     };
 
     const mockAidboxWithMapping = {
-      aidboxFetch: mock(() => Promise.resolve(mockConceptMap)),
+      aidboxFetch: mock(() => Promise.resolve(mockTranslateResponse)),
     };
 
     mock.module("../../../src/aidbox", () => mockAidboxWithMapping);
@@ -795,25 +793,22 @@ describe("convertOBXToObservationResolving", () => {
 
   describe("with ConceptMap lookup", () => {
     test("resolves local code to LOINC via ConceptMap", async () => {
-      const mockConceptMap = {
-        resourceType: "ConceptMap",
-        id: "hl7v2-lab-hospital-to-loinc",
-        status: "active",
-        group: [
+      // Setup mock to return a successful $translate response
+      const mockTranslateResponse = {
+        resourceType: "Parameters",
+        parameter: [
+          { name: "result", valueBoolean: true },
           {
-            source: "LOCALLAB",
-            target: "http://loinc.org",
-            element: [
+            name: "match",
+            part: [
+              { name: "relationship", valueCode: "equivalent" },
               {
-                code: "K123",
-                display: "Potassium Local",
-                target: [
-                  {
-                    code: "2823-3",
-                    display: "Potassium SerPl-sCnc",
-                    equivalence: "equivalent",
-                  },
-                ],
+                name: "concept",
+                valueCoding: {
+                  system: "http://loinc.org",
+                  code: "2823-3",
+                  display: "Potassium SerPl-sCnc",
+                },
               },
             ],
           },
@@ -821,7 +816,7 @@ describe("convertOBXToObservationResolving", () => {
       };
 
       mock.module("../../../src/aidbox", () => ({
-        aidboxFetch: mock(() => Promise.resolve(mockConceptMap)),
+        aidboxFetch: mock(() => Promise.resolve(mockTranslateResponse)),
       }));
 
 
@@ -857,8 +852,9 @@ describe("convertOBXToObservationResolving", () => {
   describe("error handling", () => {
     beforeEach(() => {
       mock.module("../../../src/aidbox", () => ({
+        HttpError: HttpError,
         aidboxFetch: mock(() =>
-          Promise.reject(new Error("HTTP 404: ConceptMap not found")),
+          Promise.reject(new HttpError(404, "ConceptMap not found")),
         ),
       }));
     });

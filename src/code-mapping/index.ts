@@ -12,12 +12,13 @@ export {
   searchMappings,
   fetchConceptMap,
   generateConceptMapId,
-  lookupInConceptMap,
+  translateCode,
   resolveToLoinc,
   buildCodeableConcept,
   LoincResolutionError,
   type SenderContext,
   type CodeResolutionResult,
+  type TranslateResult,
 } from "./concept-map";
 
 export {

@@ -1,48 +1,52 @@
-import { describe, test, expect, beforeEach, mock } from "bun:test";
-import type { ConceptMap } from "../../src/fhir/hl7-fhir-r4-core/ConceptMap";
+import { describe, test, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
+import * as aidboxModule from "../../src/aidbox";
+import { HttpError } from "../../src/aidbox";
 
 // ============================================================================
 // Test Fixtures
 // ============================================================================
 
-// Sample ConceptMap for sender "EPIC" / "UIHEALTH"
-const sampleConceptMap: ConceptMap = {
-  resourceType: "ConceptMap",
-  id: "hl7v2-epic-uihealth-to-loinc",
-  status: "active",
-  sourceUri: "http://example.org/fhir/ValueSet/local-lab-codes",
-  targetUri: "http://loinc.org",
-  group: [
+// Sample $translate response for successful mapping
+const successfulTranslateResponse = {
+  resourceType: "Parameters",
+  parameter: [
+    { name: "result", valueBoolean: true },
     {
-      source: "LABBLRR",
-      target: "http://loinc.org",
-      element: [
+      name: "match",
+      part: [
+        { name: "relationship", valueCode: "equivalent" },
         {
-          code: "1230148171",
-          display: "JAK2 V617F",
-          target: [
-            {
-              code: "46342-2",
-              display: "JAK2 gene mutation analysis",
-              equivalence: "equivalent",
-            },
-          ],
-        },
-        {
-          code: "1230148217",
-          display: "VARIANT ALLELE FREQUENCY (VAF) % (V617F)",
-          target: [
-            {
-              code: "81246-9",
-              display: "Variant allelic frequency",
-              equivalence: "equivalent",
-            },
-          ],
+          name: "concept",
+          valueCoding: {
+            system: "http://loinc.org",
+            code: "46342-2",
+            display: "JAK2 gene mutation analysis",
+          },
         },
       ],
     },
   ],
 };
+
+// Sample $translate response when no mapping found
+const noMappingTranslateResponse = {
+  resourceType: "Parameters",
+  parameter: [{ name: "result", valueBoolean: false }],
+};
+
+// ============================================================================
+// Helper to set up and tear down aidboxFetch spy
+// ============================================================================
+
+let aidboxFetchSpy: ReturnType<typeof spyOn>;
+
+function setupAidboxSpy() {
+  aidboxFetchSpy = spyOn(aidboxModule, "aidboxFetch");
+}
+
+function teardownAidboxSpy() {
+  aidboxFetchSpy.mockRestore();
+}
 
 // ============================================================================
 // Unit Tests: generateConceptMapId
@@ -89,90 +93,123 @@ describe("generateConceptMapId", () => {
 });
 
 // ============================================================================
-// Unit Tests: lookupInConceptMap
+// Unit Tests: translateCode
 // ============================================================================
 
-describe("lookupInConceptMap", () => {
-  test("returns LOINC coding when mapping exists", async () => {
-    const { lookupInConceptMap } =
+describe("translateCode", () => {
+  beforeEach(() => {
+    setupAidboxSpy();
+  });
+
+  afterEach(() => {
+    teardownAidboxSpy();
+  });
+
+  test("returns 'found' status with coding when $translate finds mapping", async () => {
+    aidboxFetchSpy.mockResolvedValue(successfulTranslateResponse);
+
+    const { translateCode } =
       await import("../../src/code-mapping/concept-map");
 
-    const result = lookupInConceptMap(
-      sampleConceptMap,
+    const result = await translateCode(
+      "hl7v2-epic-uihealth-to-loinc",
       "1230148171",
       "LABBLRR",
     );
 
-    expect(result).not.toBeNull();
-    expect(result?.code).toBe("46342-2");
-    expect(result?.display).toBe("JAK2 gene mutation analysis");
-    expect(result?.system).toBe("http://loinc.org");
+    expect(result.status).toBe("found");
+    if (result.status === "found") {
+      expect(result.coding.code).toBe("46342-2");
+      expect(result.coding.display).toBe("JAK2 gene mutation analysis");
+      expect(result.coding.system).toBe("http://loinc.org");
+    }
+
+    expect(aidboxFetchSpy).toHaveBeenCalledWith(
+      "/fhir/ConceptMap/hl7v2-epic-uihealth-to-loinc/$translate",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
   });
 
-  test("returns null when code not found in ConceptMap", async () => {
-    const { lookupInConceptMap } =
+  test("returns 'no_mapping' status when $translate finds no mapping", async () => {
+    aidboxFetchSpy.mockResolvedValue(noMappingTranslateResponse);
+
+    const { translateCode } =
       await import("../../src/code-mapping/concept-map");
 
-    const result = lookupInConceptMap(
-      sampleConceptMap,
+    const result = await translateCode(
+      "hl7v2-epic-uihealth-to-loinc",
       "UNKNOWN_CODE",
       "LABBLRR",
     );
 
-    expect(result).toBeNull();
+    expect(result.status).toBe("no_mapping");
   });
 
-  test("returns null when system doesn't match", async () => {
-    const { lookupInConceptMap } =
+  test("returns 'not_found' status when ConceptMap not found (404)", async () => {
+    aidboxFetchSpy.mockRejectedValue(new HttpError(404, "Not Found"));
+
+    const { translateCode } =
       await import("../../src/code-mapping/concept-map");
 
-    const result = lookupInConceptMap(
-      sampleConceptMap,
-      "1230148171",
-      "WRONG_SYSTEM",
+    const result = await translateCode(
+      "nonexistent-conceptmap",
+      "CODE",
+      "SYSTEM",
     );
 
-    expect(result).toBeNull();
+    expect(result.status).toBe("not_found");
   });
 
-  test("returns null when ConceptMap has no groups", async () => {
-    const { lookupInConceptMap } =
+  test("throws on server error", async () => {
+    aidboxFetchSpy.mockRejectedValue(new HttpError(500, "Internal Server Error"));
+
+    const { translateCode } =
       await import("../../src/code-mapping/concept-map");
 
-    const emptyConceptMap: ConceptMap = {
-      resourceType: "ConceptMap",
-      status: "active",
-    };
-
-    const result = lookupInConceptMap(emptyConceptMap, "1230148171", "LABBLRR");
-
-    expect(result).toBeNull();
+    await expect(
+      translateCode("concept-map-id", "CODE", "SYSTEM"),
+    ).rejects.toThrow("HTTP 500");
   });
 
-  test("handles lookup without system (matches any source)", async () => {
-    const { lookupInConceptMap } =
+  test("sends system parameter when provided", async () => {
+    aidboxFetchSpy.mockResolvedValue(noMappingTranslateResponse);
+
+    const { translateCode } =
       await import("../../src/code-mapping/concept-map");
 
-    // Create ConceptMap without source system specified
-    const conceptMapNoSource: ConceptMap = {
-      resourceType: "ConceptMap",
-      status: "active",
-      group: [
-        {
-          target: "http://loinc.org",
-          element: [
-            {
-              code: "TEST123",
-              target: [{ code: "99999-9", equivalence: "equivalent" }],
-            },
-          ],
-        },
-      ],
-    };
+    await translateCode("map-id", "CODE", "http://example.org/system");
 
-    const result = lookupInConceptMap(conceptMapNoSource, "TEST123", undefined);
+    expect(aidboxFetchSpy).toHaveBeenCalledTimes(1);
+    const callArgs = aidboxFetchSpy.mock.calls[0];
+    const body = JSON.parse(callArgs[1].body);
 
-    expect(result?.code).toBe("99999-9");
+    expect(body.parameter).toContainEqual({
+      name: "code",
+      valueCode: "CODE",
+    });
+    expect(body.parameter).toContainEqual({
+      name: "system",
+      valueUri: "http://example.org/system",
+    });
+  });
+
+  test("omits system parameter when undefined", async () => {
+    aidboxFetchSpy.mockResolvedValue(noMappingTranslateResponse);
+
+    const { translateCode } =
+      await import("../../src/code-mapping/concept-map");
+
+    await translateCode("map-id", "CODE", undefined);
+
+    expect(aidboxFetchSpy).toHaveBeenCalledTimes(1);
+    const callArgs = aidboxFetchSpy.mock.calls[0];
+    const body = JSON.parse(callArgs[1].body);
+
+    // Should only have the code parameter, not system
+    expect(body.parameter).toHaveLength(1);
+    expect(body.parameter[0].name).toBe("code");
   });
 });
 
@@ -181,10 +218,12 @@ describe("lookupInConceptMap", () => {
 // ============================================================================
 
 describe("resolveToLoinc - inline LOINC detection", () => {
-  const mockFetchConceptMap = mock(() => Promise.resolve(null));
-
   beforeEach(() => {
-    mockFetchConceptMap.mockClear();
+    setupAidboxSpy();
+  });
+
+  afterEach(() => {
+    teardownAidboxSpy();
   });
 
   test("returns LOINC from primary coding when system is LN", async () => {
@@ -198,15 +237,14 @@ describe("resolveToLoinc - inline LOINC detection", () => {
         $3_system: "LN",
       },
       { sendingApplication: "TEST", sendingFacility: "FAC" },
-      mockFetchConceptMap,
     );
 
     expect(result.loinc.code).toBe("2823-3");
     expect(result.loinc.display).toBe("Potassium SerPl-sCnc");
     expect(result.loinc.system).toBe("http://loinc.org");
     expect(result.local).toBeUndefined();
-    // Should NOT call fetchConceptMap since LOINC is inline
-    expect(mockFetchConceptMap).not.toHaveBeenCalled();
+    // Should NOT call aidboxFetch since LOINC is inline
+    expect(aidboxFetchSpy).not.toHaveBeenCalled();
   });
 
   test("returns LOINC from alternate coding when system is LN", async () => {
@@ -223,7 +261,6 @@ describe("resolveToLoinc - inline LOINC detection", () => {
         $6_altSystem: "LN",
       },
       { sendingApplication: "TEST", sendingFacility: "FAC" },
-      mockFetchConceptMap,
     );
 
     expect(result.loinc.code).toBe("2823-3");
@@ -232,8 +269,8 @@ describe("resolveToLoinc - inline LOINC detection", () => {
     // Should include local coding as well
     expect(result.local?.code).toBe("51998");
     expect(result.local?.display).toBe("Potassium");
-    // Should NOT call fetchConceptMap since LOINC is inline
-    expect(mockFetchConceptMap).not.toHaveBeenCalled();
+    // Should NOT call aidboxFetch since LOINC is inline
+    expect(aidboxFetchSpy).not.toHaveBeenCalled();
   });
 
   test("handles case-insensitive LN system check", async () => {
@@ -247,20 +284,29 @@ describe("resolveToLoinc - inline LOINC detection", () => {
         $3_system: "ln", // lowercase
       },
       { sendingApplication: "TEST", sendingFacility: "FAC" },
-      mockFetchConceptMap,
     );
 
     expect(result.loinc.code).toBe("2823-3");
+    // Should NOT call aidboxFetch since LOINC is inline
+    expect(aidboxFetchSpy).not.toHaveBeenCalled();
   });
 });
 
 // ============================================================================
-// Unit Tests: resolveToLoinc - ConceptMap Lookup
+// Unit Tests: resolveToLoinc - ConceptMap Lookup via $translate
 // ============================================================================
 
 describe("resolveToLoinc - ConceptMap lookup", () => {
-  test("looks up local code in ConceptMap when no inline LOINC", async () => {
-    const mockFetchConceptMap = mock(() => Promise.resolve(sampleConceptMap));
+  beforeEach(() => {
+    setupAidboxSpy();
+  });
+
+  afterEach(() => {
+    teardownAidboxSpy();
+  });
+
+  test("looks up local code via $translate when no inline LOINC", async () => {
+    aidboxFetchSpy.mockResolvedValue(successfulTranslateResponse);
 
     const { resolveToLoinc } =
       await import("../../src/code-mapping/concept-map");
@@ -272,19 +318,20 @@ describe("resolveToLoinc - ConceptMap lookup", () => {
         $3_system: "LABBLRR",
       },
       { sendingApplication: "EPIC", sendingFacility: "UIHEALTH" },
-      mockFetchConceptMap,
     );
 
     expect(result.loinc.code).toBe("46342-2");
     expect(result.loinc.display).toBe("JAK2 gene mutation analysis");
     expect(result.local?.code).toBe("1230148171");
-    expect(mockFetchConceptMap).toHaveBeenCalledWith(
-      "hl7v2-epic-uihealth-to-loinc",
+
+    expect(aidboxFetchSpy).toHaveBeenCalledWith(
+      "/fhir/ConceptMap/hl7v2-epic-uihealth-to-loinc/$translate",
+      expect.anything(),
     );
   });
 
-  test("throws LoincResolutionError when ConceptMap not found", async () => {
-    const mockFetchConceptMap = mock(() => Promise.resolve(null));
+  test("throws LoincResolutionError with 'No LOINC mapping' message when mapping not found", async () => {
+    aidboxFetchSpy.mockResolvedValue(noMappingTranslateResponse);
 
     const { resolveToLoinc, LoincResolutionError } =
       await import("../../src/code-mapping/concept-map");
@@ -297,7 +344,6 @@ describe("resolveToLoinc - ConceptMap lookup", () => {
           $3_system: "LOCAL",
         },
         { sendingApplication: "UNKNOWN", sendingFacility: "LAB" },
-        mockFetchConceptMap,
       ),
     ).rejects.toThrow(LoincResolutionError);
 
@@ -309,7 +355,6 @@ describe("resolveToLoinc - ConceptMap lookup", () => {
           $3_system: "LOCAL",
         },
         { sendingApplication: "UNKNOWN", sendingFacility: "LAB" },
-        mockFetchConceptMap,
       );
     } catch (error) {
       expect(error).toBeInstanceOf(LoincResolutionError);
@@ -317,44 +362,54 @@ describe("resolveToLoinc - ConceptMap lookup", () => {
       expect(loincError.localCode).toBe("UNMAPPED");
       expect(loincError.sendingApplication).toBe("UNKNOWN");
       expect(loincError.sendingFacility).toBe("LAB");
-      expect(loincError.message).toContain("ConceptMap not found");
+      expect(loincError.message).toContain("No LOINC mapping found");
+      expect(loincError.message).not.toContain("ConceptMap not found");
     }
   });
 
-  test("throws LoincResolutionError when mapping not found in ConceptMap", async () => {
-    const mockFetchConceptMap = mock(() => Promise.resolve(sampleConceptMap));
+  test("throws LoincResolutionError with 'ConceptMap not found' message when 404", async () => {
+    aidboxFetchSpy.mockRejectedValue(new HttpError(404, "Not Found"));
 
     const { resolveToLoinc, LoincResolutionError } =
+      await import("../../src/code-mapping/concept-map");
+
+    try {
+      await resolveToLoinc(
+        {
+          $1_code: "CODE",
+          $2_text: "Test",
+          $3_system: "SYSTEM",
+        },
+        { sendingApplication: "APP", sendingFacility: "FAC" },
+      );
+    } catch (error) {
+      expect(error).toBeInstanceOf(LoincResolutionError);
+      const loincError = error as InstanceType<typeof LoincResolutionError>;
+      expect(loincError.localCode).toBe("CODE");
+      expect(loincError.sendingApplication).toBe("APP");
+      expect(loincError.sendingFacility).toBe("FAC");
+      expect(loincError.message).toContain("ConceptMap not found");
+      expect(loincError.message).toContain("hl7v2-app-fac-to-loinc");
+      expect(loincError.message).not.toContain("No LOINC mapping found");
+    }
+  });
+
+  test("propagates server errors from $translate", async () => {
+    aidboxFetchSpy.mockRejectedValue(new HttpError(500, "Internal Server Error"));
+
+    const { resolveToLoinc } =
       await import("../../src/code-mapping/concept-map");
 
     await expect(
       resolveToLoinc(
         {
-          $1_code: "UNKNOWN_CODE",
-          $2_text: "Unknown Test",
-          $3_system: "LABBLRR",
+          $1_code: "CODE",
+          $2_text: "Test",
+          $3_system: "SYSTEM",
         },
-        { sendingApplication: "EPIC", sendingFacility: "UIHEALTH" },
-        mockFetchConceptMap,
+        { sendingApplication: "APP", sendingFacility: "FAC" },
       ),
-    ).rejects.toThrow(LoincResolutionError);
-
-    try {
-      await resolveToLoinc(
-        {
-          $1_code: "UNKNOWN_CODE",
-          $2_text: "Unknown Test",
-          $3_system: "LABBLRR",
-        },
-        { sendingApplication: "EPIC", sendingFacility: "UIHEALTH" },
-        mockFetchConceptMap,
-      );
-    } catch (error) {
-      expect(error).toBeInstanceOf(LoincResolutionError);
-      const loincError = error as InstanceType<typeof LoincResolutionError>;
-      expect(loincError.localCode).toBe("UNKNOWN_CODE");
-      expect(loincError.message).toContain("No LOINC mapping found");
-    }
+    ).rejects.toThrow("HTTP 500");
   });
 });
 
@@ -363,10 +418,12 @@ describe("resolveToLoinc - ConceptMap lookup", () => {
 // ============================================================================
 
 describe("resolveToLoinc - error cases", () => {
-  const mockFetchConceptMap = mock(() => Promise.resolve(null));
-
   beforeEach(() => {
-    mockFetchConceptMap.mockClear();
+    setupAidboxSpy();
+  });
+
+  afterEach(() => {
+    teardownAidboxSpy();
   });
 
   test("throws error when OBX-3 has no code value", async () => {
@@ -377,9 +434,11 @@ describe("resolveToLoinc - error cases", () => {
       resolveToLoinc(
         { $2_text: "Test without code" }, // Missing $1_code
         { sendingApplication: "TEST", sendingFacility: "FAC" },
-        mockFetchConceptMap,
       ),
     ).rejects.toThrow(LoincResolutionError);
+
+    // Should not call aidboxFetch - fails before reaching translation
+    expect(aidboxFetchSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -434,8 +493,16 @@ describe("buildCodeableConcept", () => {
 // ============================================================================
 
 describe("edge cases", () => {
+  beforeEach(() => {
+    setupAidboxSpy();
+  });
+
+  afterEach(() => {
+    teardownAidboxSpy();
+  });
+
   test("OBX-3.4-6 partially populated (code but no system) - treats as no inline LOINC", async () => {
-    const mockFetchConceptMap = mock(() => Promise.resolve(sampleConceptMap));
+    aidboxFetchSpy.mockResolvedValue(successfulTranslateResponse);
 
     const { resolveToLoinc } =
       await import("../../src/code-mapping/concept-map");
@@ -451,16 +518,15 @@ describe("edge cases", () => {
         // $6_altSystem is missing - NOT LOINC
       },
       { sendingApplication: "EPIC", sendingFacility: "UIHEALTH" },
-      mockFetchConceptMap,
     );
 
-    // Should have called ConceptMap lookup
-    expect(mockFetchConceptMap).toHaveBeenCalled();
+    // Should have called $translate
+    expect(aidboxFetchSpy).toHaveBeenCalled();
     expect(result.loinc.code).toBe("46342-2");
   });
 
   test("OBX-3.6 is not LN - treats as no inline LOINC", async () => {
-    const mockFetchConceptMap = mock(() => Promise.resolve(sampleConceptMap));
+    aidboxFetchSpy.mockResolvedValue(successfulTranslateResponse);
 
     const { resolveToLoinc } =
       await import("../../src/code-mapping/concept-map");
@@ -475,10 +541,9 @@ describe("edge cases", () => {
         $6_altSystem: "SCT", // SNOMED, not LOINC
       },
       { sendingApplication: "EPIC", sendingFacility: "UIHEALTH" },
-      mockFetchConceptMap,
     );
 
-    // Should have called ConceptMap lookup
-    expect(mockFetchConceptMap).toHaveBeenCalled();
+    // Should have called $translate
+    expect(aidboxFetchSpy).toHaveBeenCalled();
   });
 });

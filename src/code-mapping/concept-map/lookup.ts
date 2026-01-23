@@ -7,9 +7,21 @@
 
 import type { CE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
-import type { ConceptMap } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
 import { normalizeSystem } from "../../v2-to-fhir/code-mapping/coding-systems";
 import { toKebabCase } from "../../utils/string";
+import { aidboxFetch, HttpError } from "../../aidbox";
+
+interface TranslateResponseParameter {
+  name: string;
+  valueBoolean?: boolean;
+  valueCoding?: Coding;
+  part?: TranslateResponseParameter[];
+}
+
+interface TranslateResponse {
+  resourceType: "Parameters";
+  parameter?: TranslateResponseParameter[];
+}
 
 export interface SenderContext {
   sendingApplication: string;
@@ -106,42 +118,79 @@ function extractLocalFromPrimary(ce: CE): Coding | undefined {
   };
 }
 
-/**
- * Look up a local code in a ConceptMap to find its LOINC mapping.
- *
- * @param conceptMap - The ConceptMap to search in
- * @param localCode - The local code to look up
- * @param localSystem - The coding system URI (must be pre-normalized by caller using normalizeSystem())
- * @returns LOINC Coding if found, null otherwise
- */
-export function lookupInConceptMap(
-  conceptMap: ConceptMap,
-  localCode: string,
-  localSystem: string | undefined,
+export type TranslateResult =
+  | { status: "found"; coding: Coding }
+  | { status: "no_mapping" }
+  | { status: "not_found" };
+
+function extractCodingFromTranslateResponse(
+  response: TranslateResponse,
 ): Coding | null {
-  if (!conceptMap.group) return null;
-
-  for (const mappingSystem of conceptMap.group) {
-    const mapsToLoinc = mappingSystem.target === "http://loinc.org";
-    const matchingSystem = mappingSystem.source === localSystem;
-
-    if (!mapsToLoinc || !matchingSystem) continue;
-
-    for (const mapping of mappingSystem.element) {
-      if (mapping.code === localCode) {
-        const target = mapping.target?.[0];
-        if (target && target.code) {
-          return {
-            code: target.code,
-            display: target.display,
-            system: "http://loinc.org",
-          };
-        }
-      }
-    }
+  const resultParam = response.parameter?.find((p) => p.name === "result");
+  if (!resultParam?.valueBoolean) {
+    return null;
   }
 
-  return null;
+  const matchParam = response.parameter?.find((p) => p.name === "match");
+  if (!matchParam?.part) {
+    return null;
+  }
+
+  const conceptPart = matchParam.part.find((p) => p.name === "concept");
+  if (!conceptPart?.valueCoding?.code) {
+    return null;
+  }
+
+  return {
+    code: conceptPart.valueCoding.code,
+    display: conceptPart.valueCoding.display,
+    system: "http://loinc.org",
+  };
+}
+
+/**
+ * Translate a local code to LOINC using Aidbox $translate operation.
+ *
+ * @param conceptMapId - The ConceptMap resource ID
+ * @param localCode - The local code to translate
+ * @param localSystem - The local coding system URI
+ * @returns Discriminated result: "found" with coding, "no_mapping", or "not_found"
+ */
+export async function translateCode(
+  conceptMapId: string,
+  localCode: string,
+  localSystem: string | undefined,
+): Promise<TranslateResult> {
+  const requestBody = {
+    resourceType: "Parameters",
+    parameter: [
+      { name: "code", valueCode: localCode },
+      ...(localSystem ? [{ name: "system", valueUri: localSystem }] : []),
+    ],
+  };
+
+  let response: TranslateResponse;
+  try {
+    response = await aidboxFetch<TranslateResponse>(
+      `/fhir/ConceptMap/${conceptMapId}/$translate`,
+      {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+      },
+    );
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 404) {
+      return { status: "not_found" };
+    }
+    throw error;
+  }
+
+  const coding = extractCodingFromTranslateResponse(response);
+  if (!coding) {
+    return { status: "no_mapping" };
+  }
+
+  return { status: "found", coding };
 }
 
 function tryResolveFromInlineLoinc(
@@ -164,7 +213,6 @@ function tryResolveFromInlineLoinc(
 async function resolveFromConceptMap(
   observationIdentifier: CE,
   sender: SenderContext,
-  fetchConceptMap: (id: string) => Promise<ConceptMap | null>,
 ): Promise<CodeResolutionResult> {
   const localCode = observationIdentifier.$1_code;
   const localDisplay = observationIdentifier.$2_text;
@@ -193,30 +241,28 @@ async function resolveFromConceptMap(
   }
 
   const conceptMapId = generateConceptMapId(sender);
-  const conceptMap = await fetchConceptMap(conceptMapId);
+  const localSystemNormalized = normalizeSystem(localSystem);
 
-  if (!conceptMap) {
+  const result = await translateCode(
+    conceptMapId,
+    localCode,
+    localSystemNormalized,
+  );
+
+  if (result.status === "not_found") {
     throw new LoincResolutionError(
       `ConceptMap not found: ${conceptMapId}. ` +
         `No LOINC code in OBX-3 and no ConceptMap exists for sender ` +
         `${sender.sendingApplication}/${sender.sendingFacility}.`,
       localCode,
       localDisplay,
-      localSystem,
+      localSystemNormalized,
       sender.sendingApplication,
       sender.sendingFacility,
     );
   }
 
-  const localSystemNormalized = normalizeSystem(localSystem);
-
-  const loincCoding = lookupInConceptMap(
-    conceptMap,
-    localCode,
-    localSystemNormalized,
-  );
-
-  if (!loincCoding) {
+  if (result.status === "no_mapping") {
     throw new LoincResolutionError(
       `No LOINC mapping found for local code "${localCode}" (system: ${localSystemNormalized || "none"}) ` +
         `in ConceptMap ${conceptMapId}. ` +
@@ -230,7 +276,7 @@ async function resolveFromConceptMap(
   }
 
   return {
-    loinc: loincCoding,
+    loinc: result.coding,
     local: extractLocalFromPrimary(observationIdentifier),
   };
 }
@@ -241,18 +287,17 @@ async function resolveFromConceptMap(
  * Resolution algorithm (per spec Appendix E):
  * 1. Check if component 3 (Name of Coding System) = "LN" → use components 1-3 as LOINC
  * 2. Else check if component 6 (Name of Alternate Coding System) = "LN" → use components 4-6 as LOINC
- * 3. If neither has "LN", lookup local code (components 1-3) in sender-specific ConceptMap
+ * 3. If neither has "LN", lookup local code (components 1-3) in sender-specific ConceptMap via $translate
  * 4. If ConceptMap not found or mapping not found → throw error
  */
 export async function resolveToLoinc(
   observationIdentifier: CE,
   sender: SenderContext,
-  fetchConceptMap: (id: string) => Promise<ConceptMap | null>,
 ): Promise<CodeResolutionResult> {
   const inlineResult = tryResolveFromInlineLoinc(observationIdentifier);
   if (inlineResult) return inlineResult;
 
-  return resolveFromConceptMap(observationIdentifier, sender, fetchConceptMap);
+  return resolveFromConceptMap(observationIdentifier, sender);
 }
 
 /**

@@ -9,10 +9,11 @@ export * from "./coding-systems";
 // Re-export from consolidated concept-map module
 export {
   generateConceptMapId,
-  lookupInConceptMap,
+  translateCode,
   resolveToLoinc,
   buildCodeableConcept,
   LoincResolutionError,
   type SenderContext,
   type CodeResolutionResult,
+  type TranslateResult,
 } from "../../code-mapping/concept-map";

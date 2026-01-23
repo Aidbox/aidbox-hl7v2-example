@@ -53,7 +53,6 @@ import {
   buildCodeableConcept,
   LoincResolutionError,
   resolveToLoinc,
-  fetchConceptMap,
   generateConceptMapId,
   type SenderContext,
 } from "../../code-mapping/concept-map";
@@ -149,7 +148,6 @@ export async function convertOBXToObservationResolving(
   const resolution = await resolveToLoinc(
     obx.$3_observationIdentifier,
     senderContext,
-    fetchConceptMap,
   );
   const resolvedCode = buildCodeableConcept(resolution);
   const observation = convertOBXToObservation(obx, orderNumber);
