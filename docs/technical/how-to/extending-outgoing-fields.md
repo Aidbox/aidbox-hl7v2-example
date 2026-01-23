@@ -1,6 +1,6 @@
-# Extending Field Mappings
+# Extending Outgoing Field Mappings
 
-How to add new FHIR↔HL7v2 field mappings by modifying the source code.
+How to add new FHIR→HL7v2 field mappings for outgoing messages.
 
 ## Complete Worked Example: Adding PID-14 (Business Phone)
 
@@ -129,98 +129,7 @@ PID|1||12345^^^MRN||Smith^John||19900101|M|||123 Main St^^City^ST^12345||555-123
                                                                           └─ PID-13 (existing)
 ```
 
-
-## ORU Processing: Adding HL7v2 → FHIR Fields
-
-When you need to extract additional data from incoming ORU messages into FHIR resources.
-
-### Step 1: Identify the Source HL7v2 Field
-
-Common segments to extend:
-
-| Segment | Converter File | FHIR Output |
-|---------|---------------|-------------|
-| OBR | `segments/obr-diagnosticreport.ts` | DiagnosticReport |
-| OBX | `segments/obx-observation.ts` | Observation |
-| PID | `segments/pid-patient.ts` | Patient |
-| PV1 | `segments/pv1-encounter.ts` | Encounter |
-
-### Step 2: Locate the Segment Converter
-
-Open the relevant file in `src/v2-to-fhir/segments/`.
-
-### Step 3: Add the Field Mapping
-
-Extract the HL7v2 field and map it to the appropriate FHIR element.
-
-**Example: Adding OBX-17 (Observation Method) to Observation**
-
-```typescript
-// In src/v2-to-fhir/segments/obx-observation.ts
-
-export function convertOBXToObservation(
-  obx: OBX,
-  obrFillerOrderNumber: string,
-): Observation {
-  // ... existing code ...
-
-  const observation: Observation = {
-    resourceType: "Observation",
-    id,
-    status: mapOBXStatusToFHIR(obx.$11_observationResultStatus as string),
-    code,
-  };
-
-  // Add OBX-17: Observation Method → method
-  if (obx.$17_observationMethod && obx.$17_observationMethod.length > 0) {
-    const method = obx.$17_observationMethod[0];
-    observation.method = {
-      coding: [{
-        code: method.$1_code,
-        display: method.$2_text,
-        system: normalizeSystem(method.$3_system),
-      }],
-    };
-  }
-
-  return observation;
-}
-```
-
-### Step 4: Check HL7v2 Field Types
-
-Field types are in `src/hl7v2/generated/fields.ts`:
-
-```typescript
-interface OBX {
-  $17_observationMethod?: CE[];
-  // ...
-}
-```
-
-### Step 5: Test Your Change
-
-```sh
-# Send a test ORU message with the field populated
-# Go to http://localhost:3000/mllp-client
-# Send an ORU^R01 message with OBX-17 populated
-# Check Incoming Messages → Process → View created Observation in Aidbox
-```
-
-## Datatype Converters
-
-For complex datatypes, use existing converters in `src/v2-to-fhir/datatypes/`. For example:
-
-```typescript
-import { convertCWEToCodeableConcept } from "../datatypes/cwe-codeableconcept";
-
-if (obx.$17_observationMethod) {
-  observation.method = convertCWEToCodeableConcept(obx.$17_observationMethod[0]);
-}
-```
-
 ## See Also
 
 - [BAR Generation](../bar-generation.md) - BAR message structure and code flow
-- [ORU Processing](../oru-processing.md) - ORU processing pipeline
 - [HL7v2 Module](../hl7v2-module.md) - Segment builders and datatype interfaces

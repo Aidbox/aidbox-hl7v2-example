@@ -293,5 +293,6 @@ For extending the system:
 
 | Task | Guide |
 |------|-------|
-| Add new FHIR→HL7v2 fields | [How-To: Extending Fields](how-to/extending-fields.md) |
+| Add new FHIR→HL7v2 fields | [How-To: Extending Outgoing Fields](how-to/extending-outgoing-fields.md) |
+| Add new HL7v2→FHIR fields | [How-To: Extending Incoming Fields](how-to/extending-incoming-fields.md) |
 | Extract modules for reuse | [How-To: Extracting Modules](how-to/extracting-modules.md) |

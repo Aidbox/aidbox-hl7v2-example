@@ -12,7 +12,9 @@ The system needs to know how to translate these local codes to LOINC. You have t
 - **Bulk import** - Load many mappings at once from a file
 
 **Extending the converter:**
-If you need to map additional HL7v2 fields beyond what's currently supported, see [Technical Documentation: Extending Fields](../technical/how-to/extending-fields.md)
+If you need to map additional HL7v2 fields beyond what's currently supported, see:
+- [Extending Outgoing Fields](../technical/how-to/extending-outgoing-fields.md) — FHIR→HL7v2
+- [Extending Incoming Fields](../technical/how-to/extending-incoming-fields.md) — HL7v2→FHIR
 
 ## Using the Web UI
 

@@ -141,5 +141,6 @@ The script runs the code generator from the package to produce type definitions 
 
 - [BAR Generation](bar-generation.md) - Using builders for outgoing messages
 - [ORU Processing](oru-processing.md) - Parsing incoming messages
-- [How-To: Extending Fields](how-to/extending-fields.md) - Adding new field mappings
+- [How-To: Extending Outgoing Fields](how-to/extending-outgoing-fields.md) - Adding FHIR→HL7v2 mappings
+- [How-To: Extending Incoming Fields](how-to/extending-incoming-fields.md) - Adding HL7v2→FHIR mappings
 - [How-To: Extracting Modules](how-to/extracting-modules.md) - Using this module standalone

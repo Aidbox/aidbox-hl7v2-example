@@ -153,7 +153,7 @@ To add a new FHIR→HL7v2 field mapping:
 2. Add the field property using `$N_fieldName` pattern
 3. Check field type in `src/hl7v2/generated/fields.ts` for the expected structure
 
-See [How-To: Extending Fields](how-to/extending-fields.md) for a complete example.
+See [How-To: Extending Outgoing Fields](how-to/extending-outgoing-fields.md) for a complete example.
 
 ### Supporting New Trigger Events
 
@@ -303,4 +303,4 @@ For complete field mappings, see `buildPID()`, `buildPV1()`, etc. in `src/bar/ge
 
 - [Architecture](architecture.md) - System overview and polling pattern
 - [HL7v2 Module](hl7v2-module.md) - Segment builders and message construction
-- [How-To: Extending Fields](how-to/extending-fields.md) - Adding new FHIR→HL7v2 mappings
+- [How-To: Extending Outgoing Fields](how-to/extending-outgoing-fields.md) - Adding new FHIR→HL7v2 mappings

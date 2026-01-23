@@ -76,7 +76,8 @@ bun run dev
 - [BAR Generation](docs/technical/bar-generation.md) — BAR message generation details
 - [ORU Processing](docs/technical/oru-processing.md) — ORU processing pipeline
 - [Code Mapping](docs/technical/code-mapping.md) — ConceptMap and Task data model
-- [Extending Fields](docs/technical/how-to/extending-fields.md) — Add new FHIR↔HL7v2 field mappings
+- [Extending Outgoing Fields](docs/technical/how-to/extending-outgoing-fields.md) — Add FHIR→HL7v2 field mappings
+- [Extending Incoming Fields](docs/technical/how-to/extending-incoming-fields.md) — Add HL7v2→FHIR field mappings
 
 ## Supported Message Types
 

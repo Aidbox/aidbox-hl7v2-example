@@ -33,5 +33,6 @@ Step-by-step guides for common tasks.
 | Guide                                              | Description                           |
 |----------------------------------------------------|---------------------------------------|
 | [Development Guide](how-to/development-guide.md)   | Testing, debugging, troubleshooting        |
-| [Extending Fields](how-to/extending-fields.md)     | Add new FHIR↔HL7v2 field mappings     |
+| [Extending Outgoing Fields](how-to/extending-outgoing-fields.md) | Add FHIR→HL7v2 field mappings     |
+| [Extending Incoming Fields](how-to/extending-incoming-fields.md) | Add HL7v2→FHIR field mappings     |
 | [Extracting Modules](how-to/extracting-modules.md) | Use modules in your own project       |
