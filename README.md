@@ -68,16 +68,16 @@ bun run dev
 - [Adding Field Mappings](docs/user-guide/adding-field-mappings.md) — Add code mappings for lab codes
 - [Troubleshooting](docs/user-guide/troubleshooting.md) — Common issues and solutions
 
-### Technical Documentation
+### Developer Guide
 
-- [Architecture](docs/technical/architecture.md) — System design, data flow, pull-based polling pattern
-- [Extracting Modules](docs/technical/how-to/extracting-modules.md) — Extract and reuse modules in your project
-- [HL7v2 Module](docs/technical/hl7v2-module.md) — Type-safe message construction API
-- [BAR Generation](docs/technical/bar-generation.md) — BAR message generation details
-- [ORU Processing](docs/technical/oru-processing.md) — ORU processing pipeline
-- [Code Mapping](docs/technical/code-mapping.md) — ConceptMap and Task data model
-- [Extending Outgoing Fields](docs/technical/how-to/extending-outgoing-fields.md) — Add FHIR→HL7v2 field mappings
-- [Extending Incoming Fields](docs/technical/how-to/extending-incoming-fields.md) — Add HL7v2→FHIR field mappings
+- [Architecture](docs/developer-guide/architecture.md) — System design, data flow, pull-based polling pattern
+- [Extracting Modules](docs/developer-guide/how-to/extracting-modules.md) — Extract and reuse modules in your project
+- [HL7v2 Module](docs/developer-guide/hl7v2-module.md) — Type-safe message construction API
+- [BAR Generation](docs/developer-guide/bar-generation.md) — BAR message generation details
+- [ORU Processing](docs/developer-guide/oru-processing.md) — ORU processing pipeline
+- [Code Mapping](docs/developer-guide/code-mapping.md) — ConceptMap and Task data model
+- [Extending Outgoing Fields](docs/developer-guide/how-to/extending-outgoing-fields.md) — Add FHIR→HL7v2 field mappings
+- [Extending Incoming Fields](docs/developer-guide/how-to/extending-incoming-fields.md) — Add HL7v2→FHIR field mappings
 
 ## Supported Message Types
 

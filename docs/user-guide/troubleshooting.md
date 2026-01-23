@@ -256,7 +256,7 @@ curl -X DELETE -u root:Vbro4upIT1 \
 
 If you're still stuck:
 
-1. Check the technical documentation in `docs/technical/`
+1. Check the developer guide in `docs/developer-guide/`
 2. Review the source code in `src/`
 3. Open an issue with:
    - Steps to reproduce
