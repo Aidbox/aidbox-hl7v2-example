@@ -253,10 +253,20 @@ export function renderLayout(
         results.forEach((r, i) => {
           const item = document.createElement('div');
           item.className = 'loinc-dropdown-item';
+
+          const axisParts = [
+            r.component ? 'Component: ' + r.component : null,
+            r.property ? 'Property: ' + r.property : null,
+            r.timing,
+            r.scale
+          ].filter(Boolean);
+
           item.innerHTML = \`
-            <div class="font-mono font-medium text-sm">\${r.code}</div>
-            <div class="text-sm text-gray-700">\${r.display}</div>
-            \${r.component ? \`<div class="text-xs text-gray-500 mt-1">\${[r.component, r.property, r.timing, r.scale].filter(Boolean).join(' | ')}</div>\` : ''}
+            <div class="flex items-baseline gap-2">
+              <span class="font-mono font-medium text-sm text-blue-600">\${r.code}</span>
+              <span class="text-sm text-gray-800 truncate">\${r.display}</span>
+            </div>
+            \${axisParts.length > 0 ? \`<div class="text-xs text-gray-500 mt-0.5">\${axisParts.join(' · ')}</div>\` : ''}
           \`;
           item.addEventListener('click', () => selectItem(r, input, wrapper));
           dropdown.appendChild(item);
