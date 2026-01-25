@@ -7,11 +7,8 @@
 | **Integration tests** | Full E2E (submit to Aidbox, verify stored resources) |
 | **Fixtures** | File-based (.hl7 files) |
 | **Aidbox instance** | Separate test instance via `docker-compose.test.yaml` |
-| **Test isolation** | Fresh Aidbox per test suite (`down -v` + `up`) |
-| **Cleanup between tests** | Tag-based cleanup (no production code changes) |
-| **Test Run ID** | Random only: `test-${randomBytes(6).toString("hex")}` |
+| **Test isolation** | Fresh Aidbox per `bun test` command (`down -v` + `up`) |
 | **IncomingHL7v2Message creation** | POST (server-assigned ID, like production) |
-| **Tag injection** | Modify MSH-10 in fixtures dynamically (Strategy B) |
 | **Scope** | Just oru-r01.test.ts first, then expand |
 
 ---
@@ -118,97 +115,27 @@ services:
 ### Test Lifecycle
 
 ```
-Per test suite (file):
+Per bun test command:
   1. Start fresh Aidbox (down -v, up, wait for health, migrate)
-  2. Run all tests in file
+  2. Run all test files
   3. Stop Aidbox (down -v)
 
-Per test (within suite):
-  1. Generate unique test run ID
-  2. Load fixture with injected test ID in MSH-10
-  3. Create IncomingHL7v2Message via POST
-  4. Process message
-  5. Verify resources
-  6. Cleanup by tag (delete resources with MSH-10 = test ID)
+Per test:
+  1. Load fixture
+  2. Create IncomingHL7v2Message via POST
+  3. Process message
+  4. Verify resources
 ```
 
----
+Test isolation is achieved by starting a fresh Aidbox instance per test run. No cleanup between individual tests is needed since the entire database is wiped at the start of each test run.
 
-## Tag-Based Cleanup Strategy
-
-### How It Works (No Production Code Changes)
-
-The converter already tags all created resources with `MSH-10` (message control ID):
-
-```typescript
-// In oru-r01.ts (existing code, line 519-522)
-const baseMeta: Meta = {
-  tag: extractMetaTags(msh),  // Includes MSH-10 as message-id tag
-};
-// This baseMeta is spread into Patient, DiagnosticReport, Observation, etc.
-```
-
-### Test Approach: Inject Test ID into MSH-10
-
-Fixtures use a placeholder in MSH-10:
-
-```
-MSH|^~\&|LAB|HOSP||DEST|20260101||ORU^R01|{{MSG_ID}}|P|2.5.1
-```
-
-Test code replaces placeholder with test run ID:
-
-```typescript
-function loadFixtureWithTestId(fixturePath: string, testRunId: string): string {
-  const fixture = Bun.file(`test/fixtures/hl7v2/${fixturePath}`).text();
-  return fixture.replace(/\{\{MSG_ID\}\}/g, testRunId);
-}
-```
-
-### Cleanup by Tag
-
-```typescript
-async function cleanupTestResources(testRunId: string): Promise<void> {
-  const resourceTypes = [
-    "IncomingHL7v2Message",
-    "Patient",
-    "Encounter",
-    "DiagnosticReport",
-    "Observation",
-    "Specimen",
-    "Task",
-  ];
-
-  for (const type of resourceTypes) {
-    await aidboxFetch(`/fhir/${type}?_tag=${testRunId}`, { method: "DELETE" });
-  }
-}
-```
-
----
-
-## Test Run ID Generation
-
-Uses random bytes only (no timestamp needed):
-
-```typescript
-import { randomBytes } from "crypto";
-
-export function getTestRunId(): string {
-  return `test-${randomBytes(6).toString("hex")}`;
-  // Example: "test-a3f2b1c9d4e5"
-}
-```
-
-- 6 bytes = 12 hex chars = 281 trillion combinations
-- No collision risk even with parallel execution
-- Resources have `meta.lastUpdated` for debugging if needed
+This uses Bun's global test lifecycle hooks in a preload file.
 
 ---
 
 ## Fixture Analysis
 
-I analyzed all 36 inline message definitions in `oru-r01.test.ts`. Here's the breakdown:
+I analyzed all 12 inline message definitions in `oru-r01.test.ts`. Here's the breakdown:
 
 ### Core Fixtures (5 files) - Happy Path Tests
 
@@ -240,12 +167,11 @@ I analyzed all 36 inline message definitions in `oru-r01.test.ts`. Here's the br
 
 | Fixture File | Tests |
 |--------------|-------|
-| `loinc/primary-loinc.hl7` | LOINC in OBX-3.1 |
-| `loinc/alternate-loinc.hl7` | LOINC in OBX-3.4 (alternate) |
+| `loinc/primary.hl7` | LOINC in OBX-3.1 |
+| `loinc/alternate.hl7` | LOINC in OBX-3.4 (alternate) |
 | `loinc/local-only.hl7` | Local code, no LOINC → mapping_error |
-| `loinc/mixed-loinc.hl7` | Some OBX with LOINC, some without |
+| `loinc/mixed.hl7` | Some OBX with LOINC, some without |
 | `loinc/no-system.hl7` | OBX-3 without system → MissingLocalSystemError |
-| `loinc/conceptmap-resolve.hl7` | Local code that resolves via ConceptMap |
 | `valid-preliminary.hl7` | OBR-25=P, OBX-11=P → preliminary status |
 
 ### Patient/Encounter Fixtures (6 files)
@@ -259,14 +185,28 @@ I analyzed all 36 inline message definitions in `oru-r01.test.ts`. Here's the br
 | `encounter/with-visit.hl7` | Full PV1-19 encounter |
 | `encounter/mapping-error.hl7` | Encounter + unmapped LOINC |
 
-### Edge Cases (2 files)
+### Valid Edge Cases (2 files)
 
 | Fixture File | Tests |
 |--------------|-------|
-| `edge/obr2-fallback.hl7` | OBR-2 as fallback when OBR-3 missing |
-| `edge/multiple-no-system.hl7` | Multiple OBX without system |
+| `valid-obr2-fallback.hl7` | OBR-2 as fallback when OBR-3 missing |
+| `loinc/multiple-no-system.hl7` | Multiple OBX without system |
 
 ### Summary: ~25 fixture files total (consolidated)
+
+---
+
+## Unit vs Integration Test Strategy
+
+**Unit tests** (`test/unit/`) use inline HL7v2 message strings. This is intentional:
+- Better test locality and readability
+- Easier to understand what each test verifies without jumping to external files
+- Tests pure conversion logic without Aidbox dependency
+
+**Integration tests** (`test/integration/`) use fixture files:
+- E2E testing against real Aidbox instance
+- Verify complete message processing pipeline
+- Test resource creation and persistence
 
 ---
 
@@ -278,85 +218,62 @@ I analyzed all 36 inline message definitions in `oru-r01.test.ts`. Here's the br
 - Separate Aidbox instance on port 8888
 - Separate PostgreSQL with isolated volume
 
-**File:** `test/integration/setup.ts`
+**File:** `test/integration/preload.ts` (global setup/teardown)
 
 ```typescript
-import { randomBytes } from "crypto";
+import { beforeAll, afterAll } from "bun:test";
+import { $ } from "bun";
 
 const TEST_AIDBOX_URL = "http://localhost:8888";
-const TEST_CLIENT_ID = "root";
 const TEST_CLIENT_SECRET = "test_secret";
 
-// Start fresh Aidbox instance
-export async function startTestAidbox(): Promise<void> {
+// Set environment variables for the test Aidbox instance
+process.env.AIDBOX_URL = TEST_AIDBOX_URL;
+process.env.AIDBOX_CLIENT_SECRET = TEST_CLIENT_SECRET;
+
+beforeAll(async () => {
+  console.log("Starting test Aidbox...");
+  
   // Stop and remove existing
-  await $`docker-compose -f docker-compose.test.yaml down -v`.quiet();
+  await $`docker compose -f docker-compose.test.yaml down -v`.quiet();
   
   // Start fresh
-  await $`docker-compose -f docker-compose.test.yaml up -d`.quiet();
+  await $`docker compose -f docker-compose.test.yaml up -d`.quiet();
   
   // Wait for health
-  await waitForAidbox();
-  
-  // Run migrations
-  await $`AIDBOX_URL=${TEST_AIDBOX_URL} AIDBOX_CLIENT_SECRET=${TEST_CLIENT_SECRET} bun src/migrate.ts`.quiet();
-}
-
-// Stop Aidbox instance
-export async function stopTestAidbox(): Promise<void> {
-  await $`docker-compose -f docker-compose.test.yaml down -v`.quiet();
-}
-
-// Health check with retry
-export async function waitForAidbox(maxRetries = 60): Promise<void> {
-  for (let i = 0; i < maxRetries; i++) {
+  for (let i = 0; i < 90; i++) {
     try {
       const response = await fetch(`${TEST_AIDBOX_URL}/health`);
-      if (response.ok) return;
+      if (response.ok) break;
     } catch {
       // Not ready yet
     }
     await new Promise(r => setTimeout(r, 1000));
   }
-  throw new Error("Aidbox failed to start within timeout");
+  
+  // Run migrations
+  await $`bun src/migrate.ts`.quiet();
+  
+  console.log("Test Aidbox ready");
+});
+
+afterAll(async () => {
+  console.log("Stopping test Aidbox...");
+  await $`docker compose -f docker-compose.test.yaml down -v`.quiet();
+});
+```
+
+**File:** `test/integration/helpers.ts` (test utilities)
+
+```typescript
+export const TEST_AIDBOX_URL = "http://localhost:8888";
+export const TEST_CLIENT_ID = "root";
+export const TEST_CLIENT_SECRET = "test_secret";
+
+export async function loadFixture(fixturePath: string): Promise<string> {
+  return Bun.file(`test/fixtures/hl7v2/${fixturePath}`).text();
 }
 
-// Generate unique test run ID
-export function getTestRunId(): string {
-  return `test-${randomBytes(6).toString("hex")}`;
-}
-
-// Load fixture with test ID injected into MSH-10
-export async function loadFixtureWithTestId(
-  fixturePath: string, 
-  testRunId: string
-): Promise<string> {
-  const fixture = await Bun.file(`test/fixtures/hl7v2/${fixturePath}`).text();
-  return fixture.replace(/\{\{MSG_ID\}\}/g, testRunId);
-}
-
-// Cleanup resources by tag
-export async function cleanupTestResources(testRunId: string): Promise<void> {
-  const resourceTypes = [
-    "IncomingHL7v2Message",
-    "Patient",
-    "Encounter",
-    "DiagnosticReport",
-    "Observation",
-    "Specimen",
-    "Task",
-  ];
-
-  for (const type of resourceTypes) {
-    try {
-      await testAidboxFetch(`/fhir/${type}?_tag=${testRunId}`, { method: "DELETE" });
-    } catch {
-      // Ignore errors (resource type may not exist)
-    }
-  }
-}
-
-// Aidbox fetch for test instance
 export async function testAidboxFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const auth = Buffer.from(`${TEST_CLIENT_ID}:${TEST_CLIENT_SECRET}`).toString("base64");
   const response = await fetch(`${TEST_AIDBOX_URL}${path}`, {
@@ -384,6 +301,7 @@ test/fixtures/hl7v2/oru-r01/
 ├── with-notes.hl7              # NTE segments
 ├── multiple-obr.hl7            # Multiple OBR groups
 ├── valid-preliminary.hl7       # Preliminary status
+├── valid-obr2-fallback.hl7     # OBR-2 fallback when OBR-3 missing
 ├── error/
 │   ├── missing-obr25.hl7
 │   ├── obr25-y.hl7
@@ -402,74 +320,34 @@ test/fixtures/hl7v2/oru-r01/
 │   ├── local-only.hl7
 │   ├── mixed.hl7
 │   ├── no-system.hl7
-│   └── conceptmap.hl7
+│   └── multiple-no-system.hl7
 ├── patient/
 │   ├── pid2-only.hl7
-│   └── pid3-only.hl7
-├── encounter/
-│   ├── no-pv1.hl7
-│   ├── no-visit-number.hl7
-│   ├── with-visit.hl7
-│   └── with-mapping-error.hl7
-└── README.md
+│   ├── pid3-only.hl7
+│   ├── without-pid.hl7
+│   └── empty-pid.hl7
+└── encounter/
+    ├── without-pv1.hl7
+    ├── no-visit-number.hl7
+    ├── with-visit.hl7
+    └── with-mapping-error.hl7
 ```
-
-**Fixture template (base.hl7):**
-
-```
-MSH|^~\&|LABSYS|TESTHOSP||RECV|20260106171422||ORU^R01|{{MSG_ID}}|P|2.5.1
-PID|1||TEST-0001^^^HOSPITAL^MR||TESTPATIENT^ALPHA^^^^^D||20000101|F
-PV1|1|I|WARD1^ROOM1^BED1||||PROV001^TEST^PROVIDER|||||||||VN001
-ORC|RE|R26-0002636^External|26H-006MP0004^Beaker
-OBR|1|R26-0002636^External|26H-006MP0004^Beaker|LAB5524^JAK 2 MUTATION^LABBEAP|||20260106154900|||||||Blood|PROV001^TEST^PROVIDER|||||||20260106171411||Lab|F
-OBX|1|ST|1230148171^JAK2 V617F^LABBLRR^46342-2^JAK2 gene mutation^LN||Detected||||||F|||20260106154900
-OBX|2|NM|1230148217^VAF %^LABBLRR^81246-9^Variant allelic frequency^LN||1.0|%|||||F|||20260106154900
-```
-
-Note: `{{MSG_ID}}` placeholder in MSH-10 gets replaced with test run ID.
 
 ### Step 3: Create integration test file
 
 **File:** `test/integration/v2-to-fhir/oru-r01.integration.test.ts`
 
 ```typescript
-import { describe, test, expect, beforeAll, afterAll, afterEach } from "bun:test";
-import {
-  startTestAidbox,
-  stopTestAidbox,
-  getTestRunId,
-  loadFixtureWithTestId,
-  cleanupTestResources,
-  testAidboxFetch,
-} from "../setup";
+import { describe, test, expect } from "bun:test";
+import { loadFixture, testAidboxFetch } from "../helpers";
 import { processNextMessage } from "../../../src/v2-to-fhir/processor-service";
 
-beforeAll(async () => {
-  await startTestAidbox();
-}, 120000); // 2 min timeout for startup
-
-afterAll(async () => {
-  await stopTestAidbox();
-});
-
 describe("ORU_R01 E2E", () => {
-  let testRunId: string;
-
-  beforeEach(() => {
-    testRunId = getTestRunId();
-  });
-
-  afterEach(async () => {
-    await cleanupTestResources(testRunId);
-  });
-
   describe("happy path", () => {
     test("processes message and creates FHIR resources in Aidbox", async () => {
-      // 1. Load fixture with test ID
-      const hl7Message = await loadFixtureWithTestId("oru-r01/base.hl7", testRunId);
+      const hl7Message = await loadFixture("oru-r01/base.hl7");
 
-      // 2. Create IncomingHL7v2Message via POST
-      const incomingMessage = await testAidboxFetch<{ id: string }>("/fhir/IncomingHL7v2Message", {
+      await testAidboxFetch("/fhir/IncomingHL7v2Message", {
         method: "POST",
         body: JSON.stringify({
           resourceType: "IncomingHL7v2Message",
@@ -479,24 +357,16 @@ describe("ORU_R01 E2E", () => {
         }),
       });
 
-      // 3. Process the message
       await processNextMessage();
 
-      // 4. Verify resources in Aidbox (tagged with testRunId via MSH-10)
-      const patients = await testAidboxFetch<{ total: number }>(`/fhir/Patient?_tag=${testRunId}`);
+      const patients = await testAidboxFetch<{ total: number }>("/fhir/Patient");
       expect(patients.total).toBe(1);
 
       const diagnosticReports = await testAidboxFetch<{ total: number; entry: any[] }>(
-        `/fhir/DiagnosticReport?_tag=${testRunId}`
+        "/fhir/DiagnosticReport"
       );
       expect(diagnosticReports.total).toBe(1);
       expect(diagnosticReports.entry[0].resource.status).toBe("final");
-
-      // 5. Verify message status updated
-      const updatedMessage = await testAidboxFetch<{ status: string }>(
-        `/fhir/IncomingHL7v2Message/${incomingMessage.id}`
-      );
-      expect(updatedMessage.status).toBe("processed");
     });
   });
 
@@ -506,12 +376,11 @@ describe("ORU_R01 E2E", () => {
 
 ### Step 4: Keep unit tests for pure functions
 
-**File:** `test/unit/v2-to-fhir/oru-r01.test.ts` (refactored from original)
+**File:** `test/unit/v2-to-fhir/messages/oru-r01.test.ts` (refactored from original)
 
 - Keep error validation tests (they test error messages, don't need Aidbox)
 - Keep datatype conversion tests
 - Remove `convertOBXToObservationResolving` tests (test through integration)
-- Replace inline messages with fixture imports
 
 ### Step 5: Update test scripts
 
@@ -521,11 +390,13 @@ describe("ORU_R01 E2E", () => {
 {
   "scripts": {
     "test": "bun test test/unit",
-    "test:integration": "bun test test/integration",
-    "test:all": "bun test"
+    "test:integration": "bun test --preload ./test/integration/preload.ts test/integration",
+    "test:all": "bun test --preload ./test/integration/preload.ts"
   }
 }
 ```
+
+The `--preload` flag loads `preload.ts` before any tests run, ensuring Aidbox starts once at the beginning and stops once at the end of the entire test run.
 
 ---
 
@@ -534,9 +405,9 @@ describe("ORU_R01 E2E", () => {
 | File | Action |
 |------|--------|
 | `docker-compose.test.yaml` | Create |
-| `test/integration/setup.ts` | Create |
+| `test/integration/preload.ts` | Create (global setup/teardown) |
+| `test/integration/helpers.ts` | Create (test utilities) |
 | `test/fixtures/hl7v2/oru-r01/*.hl7` | Create (~25 files) |
-| `test/fixtures/hl7v2/oru-r01/README.md` | Create |
 | `test/integration/v2-to-fhir/oru-r01.integration.test.ts` | Create |
 | `test/v2-to-fhir/messages/oru-r01.test.ts` | Refactor → move to `test/unit/` |
 | `package.json` | Add test scripts |
@@ -545,25 +416,23 @@ describe("ORU_R01 E2E", () => {
 
 ## Verification
 
-1. **Start test Aidbox**: `docker-compose -f docker-compose.test.yaml up -d`
-2. **Run unit tests**: `bun test test/unit` (fast, no Aidbox needed)
-3. **Run integration tests**: `bun test test/integration` (starts/stops Aidbox automatically)
-4. **Verify cleanup**: Check that test Aidbox is stopped after tests
-5. **Check no dev impact**: Verify `docker-compose up -d` (dev) still works on port 8080
+1. **Run unit tests**: `bun run test` (fast, no Aidbox needed)
+2. **Run integration tests**: `bun run test:integration` (starts/stops Aidbox automatically)
+3. **Verify cleanup**: Check that test Aidbox is stopped after tests
+4. **Check no dev impact**: Verify `docker-compose up -d` (dev) still works on port 8080
 
 ---
 
 ## Migration Path
 
 1. Create `docker-compose.test.yaml`
-2. Create `test/integration/setup.ts`
+2. Create `test/integration/preload.ts` and `test/integration/helpers.ts`
 3. Create fixture directory and extract fixtures from inline messages
 4. Create integration tests using fixtures
 5. Refactor original test file to use fixtures
 6. Move unit tests to `test/unit/`
 7. Remove `convertOBXToObservationResolving` describe block
 8. Update package.json scripts
-9. Document in README how to run tests
 
 ---
 

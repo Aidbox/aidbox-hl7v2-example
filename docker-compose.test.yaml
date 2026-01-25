@@ -1,0 +1,65 @@
+volumes:
+  postgres_test_data: {}
+
+services:
+  postgres-test:
+    image: docker.io/library/postgres:18
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/18/docker:delegated
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+    environment:
+      POSTGRES_USER: aidbox
+      POSTGRES_PORT: '5432'
+      POSTGRES_DB: aidbox_test
+      POSTGRES_PASSWORD: test_password
+
+  aidbox-test:
+    image: docker.io/healthsamurai/aidboxone:edge
+    pull_policy: always
+    depends_on:
+      - postgres-test
+    ports:
+      - "8888:8080"
+    volumes:
+      - ./init-bundle.json:/init-bundle.json:ro
+    environment:
+      AIDBOX_LICENSE: ${AIDBOX_LICENSE}
+      BOX_INIT_BUNDLE: file:///init-bundle.json
+      BOX_ADMIN_PASSWORD: test_admin_password
+      BOX_BOOTSTRAP_FHIR_PACKAGES: hl7.fhir.r4.core#4.0.1
+      BOX_COMPATIBILITY_VALIDATION_JSON__SCHEMA_REGEX: '#{:fhir-datetime}'
+      BOX_DB_DATABASE: aidbox_test
+      BOX_DB_HOST: postgres-test
+      BOX_DB_PASSWORD: test_password
+      BOX_DB_PORT: '5432'
+      BOX_DB_USER: aidbox
+      BOX_FHIR_BUNDLE_EXECUTION_VALIDATION_MODE: limited
+      BOX_FHIR_COMPLIANT_MODE: 'true'
+      BOX_FHIR_CORRECT_AIDBOX_FORMAT: 'true'
+      BOX_FHIR_CREATEDAT_URL: https://aidbox.app/ex/createdAt
+      BOX_FHIR_SCHEMA_VALIDATION: 'true'
+      BOX_FHIR_SEARCH_AUTHORIZE_INLINE_REQUESTS: 'true'
+      BOX_FHIR_SEARCH_CHAIN_SUBSELECT: 'true'
+      BOX_FHIR_SEARCH_COMPARISONS: 'true'
+      BOX_FHIR_TERMINOLOGY_ENGINE: hybrid
+      BOX_FHIR_TERMINOLOGY_ENGINE_HYBRID_EXTERNAL_TX_SERVER: https://tx.health-samurai.io/fhir
+      BOX_FHIR_TERMINOLOGY_SERVICE_BASE_URL: https://tx.health-samurai.io/fhir
+      BOX_FHIR_VALIDATOR_STRICT_EXTENSION_RESOLUTION: 'true'
+      BOX_MODULE_SDC_STRICT_ACCESS_CONTROL: 'true'
+      BOX_ROOT_CLIENT_SECRET: test_secret
+      BOX_RUNME_UUID: test-instance-uuid
+      BOX_SEARCH_INCLUDE_CONFORMANT: 'true'
+      BOX_SECURITY_AUDIT_LOG_ENABLED: 'true'
+      BOX_SECURITY_DEV_MODE: 'true'
+      BOX_SETTINGS_MODE: read-write
+      BOX_WEB_BASE_URL: http://localhost:8888
+      BOX_WEB_PORT: 8080
+    healthcheck:
+      test: curl -f http://localhost:8080/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 90
+      start_period: 30s
