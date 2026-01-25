@@ -13,11 +13,11 @@ import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { normalizeSystem } from "../code-mapping/coding-systems";
 
 // ============================================================================
-// Status Mapping
+// Status Validation and Mapping
 // ============================================================================
 
 /**
- * Map OBR-25 Result Status to FHIR DiagnosticReport.status
+ * OBR-25 Result Status to FHIR DiagnosticReport.status mapping
  *
  * HL7 v2 Table 0123 (Result Status):
  * - O = Order received; specimen not yet received
@@ -32,32 +32,36 @@ import { normalizeSystem } from "../code-mapping/coding-systems";
  * - F = Final results
  * - X = No results available; order cancelled
  */
+const OBR25_STATUS_MAP: Record<string, DiagnosticReport["status"]> = {
+  O: "registered",
+  I: "registered",
+  S: "registered",
+  P: "preliminary",
+  A: "partial",
+  R: "partial",
+  N: "partial",
+  C: "corrected",
+  M: "corrected",
+  F: "final",
+  X: "cancelled",
+};
+
+const VALID_OBR25_STATUSES = Object.keys(OBR25_STATUS_MAP).join(", ");
+
+/**
+ * Map OBR-25 Result Status to FHIR DiagnosticReport.status.
+ * Throws Error if status is missing or invalid (e.g., Y, Z).
+ */
 export function mapOBRStatusToFHIR(
   status: string | undefined
 ): DiagnosticReport["status"] {
-  if (!status) return "unknown";
-
-  switch (status.toUpperCase()) {
-    case "O":
-    case "I":
-    case "S":
-      return "registered";
-    case "P":
-      return "preliminary";
-    case "A":
-    case "R":
-    case "N":
-      return "partial";
-    case "C":
-    case "M":
-      return "corrected";
-    case "F":
-      return "final";
-    case "X":
-      return "cancelled";
-    default:
-      return "unknown";
+  if (status === undefined || !(status.toUpperCase() in OBR25_STATUS_MAP)) {
+    const statusDesc = status === undefined ? "missing" : `"${status}"`;
+    throw new Error(
+      `Invalid OBR-25 Result Status: ${statusDesc}. Must be one of: ${VALID_OBR25_STATUSES}`,
+    );
   }
+  return OBR25_STATUS_MAP[status.toUpperCase()]!;
 }
 
 // ============================================================================
@@ -167,7 +171,7 @@ export function convertOBRToDiagnosticReport(obr: OBR): DiagnosticReport {
   const diagnosticReport: DiagnosticReport = {
     resourceType: "DiagnosticReport",
     id,
-    status: mapOBRStatusToFHIR(obr.$25_resultStatus as string),
+    status: mapOBRStatusToFHIR(obr.$25_resultStatus),
     code: convertServiceToCodeableConcept(obr.$4_service) || {
       text: "Unknown",
     },

@@ -34,7 +34,7 @@ const MESSAGE_WITH_LOINC = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105091743||ORU^R01
 PID|1||TEST-0002^^^HOSPITAL^MR||TESTPATIENT^BETA||20000202|F
 PV1|1||UNIT1|||||||||||||||VN002
 ORC|RE|R26-TEST00012^External|26ORM-005CH00006^Beaker
-OBR|1|R26-TEST00012^External|26ORM-005CH00006^Beaker|LAB90^HEMOGLOBIN A1C^4MEAP|||20260105091000|||||||Blood|PROV002^TEST^LABTECH||||||||20260105091739||Lab|F
+OBR|1|R26-TEST00012^External|26ORM-005CH00006^Beaker|LAB90^HEMOGLOBIN A1C^4MEAP|||20260105091000|||||||Blood|PROV002^TEST^LABTECH|||||||20260105091739||Lab|F
 OBX|0|NM|1237770270^HBA1C^4MLRR^4548-4^Hemoglobin A1c^LN||6.2|%|4.0-6.0|H|||F|||20260105091000`;
 
 // Message with SPM segment
@@ -42,7 +42,7 @@ const MESSAGE_WITH_SPM = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105091743||ORU^R01^O
 PID|1||TEST-0003^^^HOSPITAL^MR||TESTPATIENT^GAMMA||20000303|M
 PV1|1||ICU|||||||||||||||VN003
 ORC|RE|ORD001|FIL001
-OBR|1|ORD001|FIL001|LAB17^METABOLIC PANEL^LOCAL|||20260105091000|||||||Blood|PROV003^TEST^DOCTOR||||||||20260105091739||Lab|F
+OBR|1|ORD001|FIL001|LAB17^METABOLIC PANEL^LOCAL|||20260105091000|||||||Blood|PROV003^TEST^DOCTOR|||||||20260105091739||Lab|F
 OBX|1|NM|51998^Potassium^LOCAL^2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F|||20260105091000
 SPM|1|||Blood^Blood|||||||||||||||20260105091000|20260105091611`;
 
@@ -51,7 +51,7 @@ const MESSAGE_WITH_NTE = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260106||ORU^R01^ORU_R01
 PID|1||TEST-0004^^^HOSPITAL^MR||TESTPATIENT^DELTA||20000404|F
 PV1|1||MED|||||||||||||||VN004
 ORC|RE|ORD002|FIL002
-OBR|1|ORD002|FIL002|56117^eGFR^LOCAL|||20260106091000|||||||||||||||||20260106095000||Lab|F
+OBR|1|ORD002|FIL002|56117^eGFR^LOCAL|||20260106091000|||||||||||||||20260106095000||Lab|F
 OBX|1|SN|56117^eGFR^LOCAL^98979-8^eGFR^LN||>^90|mL/min/1.73 sq.m.|>60.0||||F|||20260106091000
 NTE|1|L|eGFR calculation based on CKD-EPI equation.
 NTE|2|L|
@@ -62,11 +62,11 @@ const MESSAGE_MULTIPLE_OBR = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260107||ORU^R01|183
 PID|1||TEST-0005^^^HOSPITAL^MR||TESTPATIENT^EPSILON||20000505|F
 PV1|1||ER|||||||||||||||VN005
 ORC|RE|ORD003|FIL003A
-OBR|1|ORD003|FIL003A|LAB100^CBC^LOCAL|||20260107080000|||||||||||||||||20260107090000||Lab|F
+OBR|1|ORD003|FIL003A|LAB100^CBC^LOCAL|||20260107080000|||||||||||||||20260107090000||Lab|F
 OBX|1|NM|52100^WBC^LOCAL^6690-2^Leukocytes^LN||8.5|10*9/L|4.5-11.0||||F
 OBX|2|NM|52101^RBC^LOCAL^789-8^Erythrocytes^LN||4.8|10*12/L|4.2-5.4||||F
 ORC|RE|ORD003|FIL003B
-OBR|2|ORD003|FIL003B|LAB101^BMP^LOCAL|||20260107080000|||||||||||||||||20260107091000||Lab|F
+OBR|2|ORD003|FIL003B|LAB101^BMP^LOCAL|||20260107080000|||||||||||||||20260107091000||Lab|F
 OBX|1|NM|51998^Potassium^LOCAL^2823-3^Potassium^LN||4.0|mmol/L|3.5-5.5||||F
 OBX|2|NM|52098^Sodium^LOCAL^2951-2^Sodium^LN||140|mmol/L|133-145||||F`;
 
@@ -389,6 +389,96 @@ describe("convertORU_R01", () => {
   });
 });
 
+describe("OBR-25 and OBX-11 status validation", () => {
+  describe("OBR-25 Result Status validation", () => {
+    test("throws Error when OBR-25 is missing", async () => {
+      const messageWithMissingOBR25 = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+OBR|1||FIL001|LAB123|||20260101
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+      await expect(
+        convertORU_R01(parseMessage(messageWithMissingOBR25)),
+      ).rejects.toThrow(/OBR-25/);
+    });
+
+    test("throws Error when OBR-25 is Y", async () => {
+      const messageWithOBR25Y = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+OBR|1||FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|Y
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+      await expect(
+        convertORU_R01(parseMessage(messageWithOBR25Y)),
+      ).rejects.toThrow(/OBR-25/);
+    });
+
+    test("throws Error when OBR-25 is Z", async () => {
+      const messageWithOBR25Z = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+OBR|1||FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|Z
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+      await expect(
+        convertORU_R01(parseMessage(messageWithOBR25Z)),
+      ).rejects.toThrow(/OBR-25/);
+    });
+
+  });
+
+  describe("OBX-11 Observation Result Status validation", () => {
+    test("throws Error when OBX-11 is missing", async () => {
+      const messageWithMissingOBX11 = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+OBR|1||FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||`;
+
+      await expect(
+        convertORU_R01(parseMessage(messageWithMissingOBX11)),
+      ).rejects.toThrow(/OBX-11/);
+    });
+
+    test("throws Error when OBX-11 is N", async () => {
+      const messageWithOBX11N = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+OBR|1||FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||N`;
+
+      await expect(
+        convertORU_R01(parseMessage(messageWithOBX11N)),
+      ).rejects.toThrow(/OBX-11/);
+    });
+
+  });
+
+  describe("valid statuses", () => {
+    test("processes message with valid OBR-25 F and OBX-11 F", async () => {
+      const validMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+OBR|1||FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
+
+      const result = await convertORU_R01(parseMessage(validMessage));
+      expect(result.messageUpdate.status).toBe("processed");
+    });
+
+    test("processes message with OBR-25 P (preliminary)", async () => {
+      const validMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
+PID|1||TEST001||PATIENT^TEST
+OBR|1||FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|P
+OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||P`;
+
+      const result = await convertORU_R01(parseMessage(validMessage));
+      expect(result.messageUpdate.status).toBe("processed");
+
+      const diagnosticReport = result.bundle.entry?.find(
+        (e) => e.resource?.resourceType === "DiagnosticReport",
+      )?.resource as DiagnosticReport;
+      expect(diagnosticReport.status).toBe("preliminary");
+    });
+  });
+});
+
 describe("error handling", () => {
   test("throws error when MSH segment is missing", () => {
     const invalidMessage = `PID|1||TEST-ERR1||TESTPATIENT^ERROR
@@ -401,7 +491,7 @@ OBR|1|||LAB123|||20260101`;
   test("throws error when MSH-3 (sending application) is missing", async () => {
     const invalidMessage = `MSH|^~\\&||HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR||TESTPATIENT^ERROR
-OBR|1||FIL001|LAB123|||20260101
+OBR|1||FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
 
     await expect(convertORU_R01(parseMessage(invalidMessage))).rejects.toThrow(
@@ -412,7 +502,7 @@ OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
   test("throws error when MSH-4 (sending facility) is missing", async () => {
     const invalidMessage = `MSH|^~\\&|LAB|||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR||TESTPATIENT^ERROR
-OBR|1||FIL001|LAB123|||20260101
+OBR|1||FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|2345-7^Glucose^LN||100|mg/dL||||F`;
 
     await expect(convertORU_R01(parseMessage(invalidMessage))).rejects.toThrow(
@@ -433,7 +523,7 @@ OBX|1|NM|TEST||100|mg/dL||||F`;
   test("throws error when both OBR-2 and OBR-3 are missing", async () => {
     const invalidMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-ERR3||TESTPATIENT^ERROR
-OBR|1|||LAB123|||20260101
+OBR|1|||LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|TEST||100|mg/dL||||F`;
 
     await expect(convertORU_R01(parseMessage(invalidMessage))).rejects.toThrow(
@@ -444,7 +534,7 @@ OBX|1|NM|TEST||100|mg/dL||||F`;
   test("uses OBR-2 as fallback when OBR-3 is missing", async () => {
     const messageWithOBR2Only = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5
 PID|1||TEST-PLACER||TESTPATIENT^PLACER
-OBR|1|PLACER123||85025^CBC^LN|||20260101||||||||||||||||||Lab|F
+OBR|1|PLACER123||85025^CBC^LN|||20260101|||||||||||||||||Lab|F
 OBX|1|NM|718-7^Hemoglobin^LN||14.5|g/dL|12.0-16.0||||F`;
 
     const result = await convertORU_R01(parseMessage(messageWithOBR2Only));
@@ -467,7 +557,7 @@ describe("LOINC validation", () => {
     const messageWithoutLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
-OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|12345^Potassium^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
 
     const result = await convertORU_R01(parseMessage(messageWithoutLoinc));
@@ -480,7 +570,7 @@ OBX|1|NM|12345^Potassium^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
     const messageWithPrimaryLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
-OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.5||||F`;
 
     const result = await convertORU_R01(parseMessage(messageWithPrimaryLoinc));
@@ -491,7 +581,7 @@ OBX|1|NM|2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.5||||F`;
     const messageWithAltLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
-OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.5||||F`;
 
     const result = await convertORU_R01(parseMessage(messageWithAltLoinc));
@@ -502,8 +592,8 @@ OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium SerPl-sCnc^LN||4.2|mmol/L|3.5-5.
     const messageWithoutLoinc = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
-OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
-OBX|3|NM|MYCODE^MyTest^LOCALLAB||100|mg/dL||||F`;
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
+OBX|3|NM|MYCODE^MyTest^LOCALLAB||100|mg/dL|||||F`;
 
     const result = await convertORU_R01(parseMessage(messageWithoutLoinc));
     expect(result.messageUpdate.status).toBe("mapping_error");
@@ -515,9 +605,9 @@ OBX|3|NM|MYCODE^MyTest^LOCALLAB||100|mg/dL||||F`;
     const mixedMessage = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
-OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
-OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium^LN||4.2|mmol/L||||F
-OBX|2|NM|67890^Sodium^LOCAL||140|mmol/L||||F`;
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
+OBX|1|NM|12345^Potassium^LOCAL^2823-3^Potassium^LN||4.2|mmol/L|||||F
+OBX|2|NM|67890^Sodium^LOCAL||140|mmol/L|||||F`;
 
     const result = await convertORU_R01(parseMessage(mixedMessage));
     expect(result.messageUpdate.status).toBe("mapping_error");
@@ -647,7 +737,7 @@ describe("ConceptMap code resolution", () => {
     const messageWithLocalCode = `MSH|^~\\&|LAB|HOSP||DEST|20260101||ORU^R01|MSG1|P|2.5.1
 PID|1||TEST001||PATIENT^TEST
 ORC|RE|ORD001|FIL001
-OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|12345^Potassium^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
 
     const bundle = (await convertORU_R01(parseMessage(messageWithLocalCode)))
@@ -942,28 +1032,28 @@ describe("patient handling", () => {
   // Message without PID segment for error testing
   const MESSAGE_WITHOUT_PID = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1
 ORC|RE|ORD001|FIL001
-OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   // Message with PID-2 for patient ID
   const MESSAGE_WITH_PID2 = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG002|P|2.5.1
 PID|1|PAT-FROM-PID2||||||F
 ORC|RE|ORD001|FIL002
-OBR|1|ORD001|FIL002|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL002|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   // Message with PID-3 only (no PID-2) for patient ID
   const MESSAGE_WITH_PID3_ONLY = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG003|P|2.5.1
 PID|1||PAT-FROM-PID3^^^HOSPITAL^MR||PATIENT^TEST||20000101|M
 ORC|RE|ORD001|FIL003
-OBR|1|ORD001|FIL003|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL003|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   // Message with empty PID-2 and PID-3 for error testing
   const MESSAGE_WITH_EMPTY_PID = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG004|P|2.5.1
 PID|1||||PATIENT^TEST||20000101|M
 ORC|RE|ORD001|FIL004
-OBR|1|ORD001|FIL004|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL004|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   describe("PID segment validation", () => {
@@ -1226,7 +1316,7 @@ describe("encounter handling", () => {
   const MESSAGE_WITHOUT_PV1 = `MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1
 PID|1||TEST-0001^^^HOSPITAL^MR||TESTPATIENT^ALPHA||20000101|F
 ORC|RE|ORD001|FIL001
-OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL001|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   // Message with PV1 but no PV1-19 (visit number)
@@ -1235,7 +1325,7 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 PID|1||TEST-0002^^^HOSPITAL^MR||TESTPATIENT^BETA||20000202|M
 PV1|1|I|WARD1^ROOM1^BED1||||PROV001^TEST^PROVIDER
 ORC|RE|ORD001|FIL002
-OBR|1|ORD001|FIL002|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL002|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   // Message with PV1-19 (full encounter info)
@@ -1244,7 +1334,7 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 PID|1||TEST-0003^^^HOSPITAL^MR||TESTPATIENT^GAMMA||20000303|F
 PV1|1|I|WARD1^ROOM1^BED1||||PROV001^TEST^PROVIDER||||||||||||ENC-12345
 ORC|RE|ORD001|FIL003
-OBR|1|ORD001|FIL003|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL003|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 
   const mockPatientNotFound = () => Promise.resolve(null);
@@ -1519,7 +1609,7 @@ OBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F`;
 PID|1||TEST-0004^^^HOSPITAL^MR||TESTPATIENT^DELTA||20000404|F
 PV1|1|I|WARD1^ROOM1^BED1||||PROV001^TEST^PROVIDER||||||||||||ENC-99999
 ORC|RE|ORD001|FIL004
-OBR|1|ORD001|FIL004|LAB123|||20260101|||||||||||||||||20260101||Lab|F
+OBR|1|ORD001|FIL004|LAB123|||20260101|||||||||||||||20260101||Lab|F
 OBX|1|NM|LOCAL123^LocalTest^LOCAL||4.2|mmol/L|3.5-5.5||||F`;
 
       const result = await convertORU_R01(

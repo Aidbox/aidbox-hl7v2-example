@@ -15,11 +15,11 @@ import { normalizeSystem } from "../code-mapping/coding-systems";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 
 // ============================================================================
-// Status Mapping
+// Status Validation and Mapping
 // ============================================================================
 
 /**
- * Map OBX-11 Observation Result Status to FHIR Observation.status
+ * OBX-11 Observation Result Status to FHIR Observation.status mapping
  *
  * HL7 v2 Table 0085 (Observation Result Status):
  * - F = Final result
@@ -36,38 +36,39 @@ import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
  * - D = Deletes the OBX record
  * - W = Post original as wrong
  * - X = Results cannot be obtained
- * - N = Not asked; used to affirmatively document we did not ask
+ * - N = Not asked; used to affirmatively document we did not ask (invalid for lab results)
  */
-export function mapOBXStatusToFHIR(
-  status: string | undefined,
-): Observation["status"] {
-  if (!status) return "unknown";
+const OBX11_STATUS_MAP: Record<string, Observation["status"]> = {
+  F: "final",
+  B: "final",
+  V: "final",
+  U: "final",
+  P: "preliminary",
+  R: "preliminary",
+  S: "preliminary",
+  I: "registered",
+  O: "registered",
+  C: "corrected",
+  A: "amended",
+  D: "entered-in-error",
+  W: "entered-in-error",
+  X: "cancelled",
+};
 
-  switch (status.toUpperCase()) {
-    case "F":
-    case "B":
-    case "V":
-    case "U":
-      return "final";
-    case "P":
-    case "R":
-    case "S":
-      return "preliminary";
-    case "I":
-    case "O":
-      return "registered";
-    case "C":
-      return "corrected";
-    case "A":
-      return "amended";
-    case "D":
-    case "W":
-      return "entered-in-error";
-    case "X":
-      return "cancelled";
-    default:
-      return "unknown";
+const VALID_OBX11_STATUSES = Object.keys(OBX11_STATUS_MAP).join(", ");
+
+/**
+ * Map OBX-11 Observation Result Status to FHIR Observation.status.
+ * Throws Error if status is invalid (e.g., N).
+ * Note: OBX-11 is required by HL7 spec, but we handle missing values gracefully.
+ */
+export function mapOBXStatusToFHIR(status: string): Observation["status"] {
+  if (!status || !(status.toUpperCase() in OBX11_STATUS_MAP)) {
+    throw new Error(
+      `Invalid OBX-11 Observation Result Status: "${status}". Must be one of: ${VALID_OBX11_STATUSES}`,
+    );
   }
+  return OBX11_STATUS_MAP[status.toUpperCase()]!;
 }
 
 // ============================================================================
@@ -312,7 +313,7 @@ export function convertOBXToObservation(
   const observation: Observation = {
     resourceType: "Observation",
     id,
-    status: mapOBXStatusToFHIR(obx.$11_observationResultStatus as string),
+    status: mapOBXStatusToFHIR(obx.$11_observationResultStatus),
     code,
   };
 

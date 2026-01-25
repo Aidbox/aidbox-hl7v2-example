@@ -1,5 +1,8 @@
 import { describe, test, expect } from "bun:test";
-import { convertOBRToDiagnosticReport, mapOBRStatusToFHIR } from "../../../src/v2-to-fhir/segments/obr-diagnosticreport";
+import {
+  convertOBRToDiagnosticReport,
+  mapOBRStatusToFHIR,
+} from "../../../src/v2-to-fhir/segments/obr-diagnosticreport";
 import type { OBR } from "../../../src/hl7v2/generated/fields";
 
 describe("convertOBRToDiagnosticReport", () => {
@@ -11,6 +14,7 @@ describe("convertOBRToDiagnosticReport", () => {
           $2_namespace: "Beaker",
         },
         $4_service: { $1_code: "LAB123" },
+        $25_resultStatus: "F",
       };
 
       const result = convertOBRToDiagnosticReport(obr);
@@ -25,6 +29,7 @@ describe("convertOBRToDiagnosticReport", () => {
           $2_namespace: "External",
         },
         $4_service: { $1_code: "LAB123" },
+        $25_resultStatus: "F",
       };
 
       const result = convertOBRToDiagnosticReport(obr);
@@ -42,6 +47,7 @@ describe("convertOBRToDiagnosticReport", () => {
           $2_text: "JAK 2 MUTATION ANALYSIS",
           $3_system: "LABBEAP",
         },
+        $25_resultStatus: "F",
       };
 
       const result = convertOBRToDiagnosticReport(obr);
@@ -62,6 +68,7 @@ describe("convertOBRToDiagnosticReport", () => {
           $5_altDisplay: "Hemoglobin A1c/Hemoglobin.total",
           $6_altSystem: "LN",
         },
+        $25_resultStatus: "F",
       };
 
       const result = convertOBRToDiagnosticReport(obr);
@@ -78,6 +85,7 @@ describe("convertOBRToDiagnosticReport", () => {
         $3_fillerOrderNumber: { $1_value: "123" },
         $4_service: { $1_code: "LAB123" },
         $7_observationDateTime: "20260105091000",
+        $25_resultStatus: "F",
       };
 
       const result = convertOBRToDiagnosticReport(obr);
@@ -89,6 +97,7 @@ describe("convertOBRToDiagnosticReport", () => {
       const obr: OBR = {
         $3_fillerOrderNumber: { $1_value: "123" },
         $4_service: { $1_code: "LAB123" },
+        $25_resultStatus: "F",
       };
 
       const result = convertOBRToDiagnosticReport(obr);
@@ -103,6 +112,7 @@ describe("convertOBRToDiagnosticReport", () => {
         $3_fillerOrderNumber: { $1_value: "123" },
         $4_service: { $1_code: "LAB123" },
         $22_resultsRptStatusChngDateTime: "20260105091739",
+        $25_resultStatus: "F",
       };
 
       const result = convertOBRToDiagnosticReport(obr);
@@ -157,8 +167,8 @@ describe("mapOBRStatusToFHIR", () => {
     expect(mapOBRStatusToFHIR("X")).toBe("cancelled");
   });
 
-  test("returns unknown for unrecognized status", () => {
-    expect(mapOBRStatusToFHIR("Z")).toBe("unknown");
+  test("throws for unrecognized status", () => {
+    expect(() => mapOBRStatusToFHIR("Z")).toThrow(Error);
   });
 
   test("converts OBR-25 Result Status to DiagnosticReport status", () => {
@@ -171,5 +181,42 @@ describe("mapOBRStatusToFHIR", () => {
     const result = convertOBRToDiagnosticReport(obr);
 
     expect(result.status).toBe("final");
+  });
+});
+
+describe("mapOBRStatusToFHIR validation", () => {
+  describe("valid statuses", () => {
+    test.each(["O", "I", "S", "P", "A", "R", "N", "C", "M", "F", "X"])(
+      "accepts valid status %s",
+      (status) => {
+        expect(() => mapOBRStatusToFHIR(status)).not.toThrow();
+      },
+    );
+
+    test("accepts lowercase status", () => {
+      expect(() => mapOBRStatusToFHIR("f")).not.toThrow();
+    });
+  });
+
+  describe("invalid statuses", () => {
+    test("throws Error for missing status", () => {
+      expect(() => mapOBRStatusToFHIR(undefined)).toThrow(Error);
+    });
+
+    test("throws Error for status Y", () => {
+      expect(() => mapOBRStatusToFHIR("Y")).toThrow(Error);
+    });
+
+    test("throws Error for status Z", () => {
+      expect(() => mapOBRStatusToFHIR("Z")).toThrow(Error);
+    });
+
+    test("error message includes missing status description", () => {
+      expect(() => mapOBRStatusToFHIR(undefined)).toThrow(/missing/);
+    });
+
+    test("error message includes invalid status value", () => {
+      expect(() => mapOBRStatusToFHIR("Y")).toThrow(/"Y"/);
+    });
   });
 });

@@ -300,8 +300,8 @@ describe("mapOBXStatusToFHIR", () => {
     expect(mapOBXStatusToFHIR("X")).toBe("cancelled");
   });
 
-  test("returns unknown for unrecognized status", () => {
-    expect(mapOBXStatusToFHIR("Z")).toBe("unknown");
+  test("throws for unrecognized status", () => {
+    expect(() => mapOBXStatusToFHIR("Z")).toThrow(Error);
   });
 });
 
@@ -599,5 +599,34 @@ describe("referenceRange (OBX-7)", () => {
     const result = convertOBXToObservation(obx, "123");
 
     expect(result.referenceRange?.[0]?.text).toBe("negative");
+  });
+});
+
+describe("mapOBXStatusToFHIR validation", () => {
+  describe("valid statuses", () => {
+    test.each(["F", "B", "V", "U", "P", "R", "S", "I", "O", "C", "A", "D", "W", "X"])(
+      "accepts valid status %s",
+      (status) => {
+        expect(() => mapOBXStatusToFHIR(status)).not.toThrow();
+      },
+    );
+
+    test("accepts lowercase status", () => {
+      expect(() => mapOBXStatusToFHIR("f")).not.toThrow();
+    });
+  });
+
+  describe("invalid statuses", () => {
+    test("throws Error for status N", () => {
+      expect(() => mapOBXStatusToFHIR("N")).toThrow(Error);
+    });
+
+    test("throws Error for lowercase n", () => {
+      expect(() => mapOBXStatusToFHIR("n")).toThrow(Error);
+    });
+
+    test("error message includes invalid status value", () => {
+      expect(() => mapOBXStatusToFHIR("N")).toThrow(/"N"/);
+    });
   });
 });
