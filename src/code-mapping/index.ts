@@ -24,7 +24,6 @@ export {
 export {
   generateMappingTaskId,
   resolveMappingTask,
-  findAffectedMessages,
   removeResolvedTaskFromMessage,
 } from "./mapping-task-service";
 

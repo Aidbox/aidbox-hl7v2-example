@@ -186,53 +186,6 @@ describe("resolveMappingTask", () => {
   });
 });
 
-describe("findAffectedMessages", () => {
-  test("queries messages by task reference", async () => {
-    const mockAidbox = {
-      aidboxFetch: mock(() =>
-        Promise.resolve({
-          total: 1,
-          entry: [{ resource: sampleMessage }],
-        }),
-      ),
-    };
-
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { findAffectedMessages } =
-      await import("../../src/code-mapping/mapping-task-service");
-
-    const results = await findAffectedMessages(sampleTask.id!);
-
-    expect(mockAidbox.aidboxFetch).toHaveBeenCalledWith(
-      expect.stringContaining("status=mapping_error"),
-    );
-    expect(mockAidbox.aidboxFetch).toHaveBeenCalledWith(
-      expect.stringContaining("unmapped-task=Task"),
-    );
-    expect(results).toHaveLength(1);
-    expect(results[0].id).toBe("msg-001");
-  });
-
-  test("returns empty array when no messages found", async () => {
-    const mockAidbox = {
-      aidboxFetch: mock(() =>
-        Promise.resolve({
-          total: 0,
-          entry: [],
-        }),
-      ),
-    };
-
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { findAffectedMessages } =
-      await import("../../src/code-mapping/mapping-task-service");
-
-    const results = await findAffectedMessages("nonexistent-task");
-
-    expect(results).toHaveLength(0);
-  });
-});
-
 describe("removeResolvedTaskFromMessage", () => {
   test("removes task entry from unmappedCodes and updates status to received when empty", async () => {
     let updatedMessage: IncomingHL7v2Message | null = null;

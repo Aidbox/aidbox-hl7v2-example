@@ -56,16 +56,6 @@ export async function resolveMappingTask(
   await putResource("Task", taskId, updatedTask);
 }
 
-export async function findAffectedMessages(
-  taskId: string,
-): Promise<IncomingHL7v2Message[]> {
-  const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(
-    `/fhir/IncomingHL7v2Message?status=mapping_error&unmapped-task=Task/${taskId}`,
-  );
-
-  return bundle.entry?.map((e) => e.resource) || [];
-}
-
 export async function removeResolvedTaskFromMessage(
   message: IncomingHL7v2Message,
   taskId: string,
