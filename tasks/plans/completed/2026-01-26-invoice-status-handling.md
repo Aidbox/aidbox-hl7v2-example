@@ -73,9 +73,9 @@ Update the invoice BAR builder to set the FHIR `Invoice.status` to `"issued"` wh
 
 ### Task 5: [Final] Verify and clean up
 
-- [ ] Run `bun test` to verify all tests pass
-- [ ] Run `bun run typecheck` to verify no type errors
-- [ ] Move this plan to `tasks/plans/completed/`
+- [x] Run `bun test` to verify all tests pass
+- [x] Run `bun run typecheck` to verify no type errors
+- [x] Move this plan to `tasks/plans/completed/`
 
 ## Technical Details
 
