@@ -59,10 +59,10 @@ Update the invoice BAR builder to set the FHIR `Invoice.status` to `"issued"` wh
 
 ### Task 3: Update documentation in overview.md
 
-- [ ] In `docs/user-guide/overview.md`, find line ~110 "Marks the invoice as `completed`"
-- [ ] Clarify that both Invoice.status changes to "issued" and processing-status changes to "completed"
-- [ ] Add a brief note explaining the distinction between FHIR Invoice.status and processing-status extension
-- [ ] Run `bun test` - must pass before next task
+- [x] In `docs/user-guide/overview.md`, find line ~110 "Marks the invoice as `completed`"
+- [x] Clarify that both Invoice.status changes to "issued" and processing-status changes to "completed"
+- [x] Add a brief note explaining the distinction between FHIR Invoice.status and processing-status extension
+- [x] Run `bun test` - must pass before next task
 
 ### Task 4: Update CLAUDE.md
 
