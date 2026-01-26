@@ -66,10 +66,10 @@ Update the invoice BAR builder to set the FHIR `Invoice.status` to `"issued"` wh
 
 ### Task 4: Update CLAUDE.md
 
-- [ ] In `CLAUDE.md`, find the Invoice BAR Builder Service section (around line 128)
-- [ ] Update "Invoice.status remains 'draft'" to "Invoice.status changes to 'issued'"
-- [ ] Keep the processing-status description accurate
-- [ ] Run `bun test` - must pass before next task
+- [x] In `CLAUDE.md`, find the Invoice BAR Builder Service section (around line 128)
+- [x] Update "Invoice.status remains 'draft'" to "Invoice.status changes to 'issued'"
+- [x] Keep the processing-status description accurate
+- [x] Run `bun test` - must pass before next task
 
 ### Task 5: [Final] Verify and clean up
 
