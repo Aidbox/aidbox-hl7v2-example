@@ -20,7 +20,7 @@
     "migrate": "bun src/migrate.ts",
     "test": "bun test",
     "test:unit": "bun test test/unit",
-    "test:integration": "bun test --preload ./test/integration/preload.ts --max-concurrency=1 test/integration"
+    "test:integration": "bun test --test-root ./test/integration --preload ./test/integration/preload.ts --max-concurrency=1"
   },
   "type": "module",
   "dependencies": {
