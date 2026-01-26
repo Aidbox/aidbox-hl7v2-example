@@ -189,7 +189,6 @@ The final task should always update documentation. Example:
 - [ ] Update CLAUDE.md with new patterns/conventions
 - [ ] Add inline documentation for complex functions
 - [ ] Update API documentation
-- [ ] Move this plan to `tasks/plans/completed/`
 ```
 
 ## Technical Details Section
