@@ -239,6 +239,18 @@ export async function updateInvoiceStatus(
     }
   ];
 
+  // Set Invoice.status to "issued" when processing completes successfully
+  if (status === "completed") {
+    operations.push({
+      "name": "operation",
+      "part": [
+        { "name": "type", "valueCode": "replace" },
+        { "name": "path", "valueString": "Invoice.status" },
+        { "name": "value", "valueCode": "issued" },
+      ]
+    });
+  }
+
   if (options?.reason) {
     operations.push(
       {

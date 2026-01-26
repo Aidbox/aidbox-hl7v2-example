@@ -42,13 +42,13 @@ Update the invoice BAR builder to set the FHIR `Invoice.status` to `"issued"` wh
 
 ### Task 1: Update `updateInvoiceStatus()` to also set Invoice.status
 
-- [ ] In `src/bar/invoice-builder-service.ts`, modify `updateInvoiceStatus()` function
-- [ ] Add a new FHIRPath PATCH operation to set `Invoice.status` to `"issued"` when processing-status is `"completed"`
-- [ ] Keep existing processing-status extension update unchanged
-- [ ] Only set Invoice.status to "issued" when status param is "completed" (not for "error" or "failed")
-- [ ] Write test: verify Invoice.status PATCH operation is included when status is "completed"
-- [ ] Write test: verify Invoice.status PATCH is NOT included when status is "error"
-- [ ] Run `bun test test/bar/invoice-builder-service.test.ts` - must pass before next task
+- [x] In `src/bar/invoice-builder-service.ts`, modify `updateInvoiceStatus()` function
+- [x] Add a new FHIRPath PATCH operation to set `Invoice.status` to `"issued"` when processing-status is `"completed"`
+- [x] Keep existing processing-status extension update unchanged
+- [x] Only set Invoice.status to "issued" when status param is "completed" (not for "error" or "failed")
+- [x] Write test: verify Invoice.status PATCH operation is included when status is "completed"
+- [x] Write test: verify Invoice.status PATCH is NOT included when status is "error"
+- [x] Run `bun test test/bar/invoice-builder-service.test.ts` - must pass before next task
 
 ### Task 2: Update documentation in architecture.md
 
