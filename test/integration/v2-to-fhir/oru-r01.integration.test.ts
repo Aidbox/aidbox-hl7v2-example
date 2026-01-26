@@ -7,14 +7,15 @@
  * Unit tests for pure functions like convertOBXToObservationResolving are in
  * test/unit/v2-to-fhir/messages/oru-r01.test.ts
  */
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, beforeEach } from "bun:test";
 import {
   describeIntegration,
   loadFixture,
   testAidboxFetch,
   createTestConceptMap,
   getMappingTasks,
-  resolveTaskViaApi,
+  resolveTask,
+  cleanupTestResources,
 } from "../helpers";
 import { processNextMessage } from "../../../src/v2-to-fhir/processor-service";
 import type {
@@ -79,7 +80,7 @@ async function submitAndProcess(hl7Message: string): Promise<IncomingHL7v2Messag
     },
   );
 
-  await processNextMessage();
+  await processNextMessage().catch(() => {});
 
   return testAidboxFetch<IncomingHL7v2Message>(
     `/fhir/IncomingHL7v2Message/${createdMessage.id}`,
@@ -87,6 +88,10 @@ async function submitAndProcess(hl7Message: string): Promise<IncomingHL7v2Messag
 }
 
 describeIntegration("ORU_R01 E2E Integration", () => {
+  beforeEach(async () => {
+    await cleanupTestResources();
+  });
+
   describe("happy path - basic message processing", () => {
     test("processes base message and creates FHIR resources", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
@@ -699,13 +704,17 @@ describeIntegration("ORU_R01 E2E Integration", () => {
       expect(message.status).toBe("mapping_error");
 
       const tasks = await getMappingTasks();
-      expect(tasks.length).toBeGreaterThan(0);
+      expect(tasks.length).toBe(1);
 
-      const task = tasks.find((t) =>
-        t.input?.some((i) => i.valueCodeableConcept?.coding?.[0]?.code === "12345"),
-      );
+      const task = tasks[0];
       expect(task).toBeDefined();
       expect(task?.status).toBe("requested");
+      expect(task.input).toContainEqual({
+        type: {
+            text: "Local code",
+          },
+          valueString: "12345",
+        });
     });
 
     test("reprocesses message after mapping task resolution", async () => {
@@ -716,7 +725,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
       const tasks = await getMappingTasks();
       const task = tasks[0];
 
-      await resolveTaskViaApi(task.id!, "2823-3", "Potassium");
+      await resolveTask(task.id!, "2823-3", "Potassium");
 
       await processNextMessage();
 

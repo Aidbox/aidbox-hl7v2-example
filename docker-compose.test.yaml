@@ -1,6 +1,10 @@
 volumes:
   postgres_test_data: {}
 
+networks:
+  test-network:
+    name: aidbox-test-network
+
 services:
   postgres-test:
     image: docker.io/library/postgres:18
@@ -15,6 +19,8 @@ services:
       POSTGRES_PORT: '5432'
       POSTGRES_DB: aidbox_test
       POSTGRES_PASSWORD: test_password
+    networks:
+      - test-network
 
   aidbox-test:
     image: docker.io/healthsamurai/aidboxone:edge
@@ -63,3 +69,5 @@ services:
       timeout: 5s
       retries: 90
       start_period: 30s
+    networks:
+      - test-network

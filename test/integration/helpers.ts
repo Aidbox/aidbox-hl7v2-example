@@ -1,6 +1,7 @@
 import { describe } from "bun:test";
 import type { ConceptMap } from "../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 import type { Task } from "../../src/fhir/hl7-fhir-r4-core/Task";
+import { resolveTaskAndUpdateMessages } from "../../src/ui/mapping-tasks-queue";
 
 export const TEST_AIDBOX_URL = "http://localhost:8888";
 
@@ -93,38 +94,61 @@ export async function createTestConceptMap(
 
 export async function getMappingTasks(): Promise<Task[]> {
   const bundle = await testAidboxFetch<Bundle<Task>>(
-    `/fhir/Task?code=loinc-mapping&status=requested`,
+    `/fhir/Task?status=requested`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
-export async function resolveTaskViaApi(
+export async function resolveTask(
   taskId: string,
   loincCode: string,
   loincDisplay: string,
 ): Promise<void> {
-  const formData = new FormData();
-  formData.append("loincCode", loincCode);
-  formData.append("loincDisplay", loincDisplay);
+  await resolveTaskAndUpdateMessages(taskId, loincCode, loincDisplay);
+}
 
+export async function cleanupTestResources(): Promise<void> {
   const auth = Buffer.from(`${TEST_CLIENT_ID}:${TEST_CLIENT_SECRET}`).toString(
     "base64",
   );
-  const response = await fetch(
-    `${TEST_AIDBOX_URL}/api/mapping/tasks/${taskId}/resolve`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${auth}`,
-      },
-      body: formData,
-      redirect: "manual",
+
+  // Truncate most resources via SQL (fast)
+  await fetch(`${TEST_AIDBOX_URL}/$sql`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${auth}`,
     },
+    body: JSON.stringify([
+      "TRUNCATE task, incominghl7v2message, diagnosticreport, observation, specimen, encounter, patient CASCADE",
+    ]),
+  });
+
+  // Delete test ConceptMaps via FHIR batch (needed because Aidbox caches terminology)
+  const conceptMaps = await testAidboxFetch<Bundle<{ id: string }>>(
+    "/fhir/ConceptMap?_count=100",
   );
 
-  if (response.status !== 302 && !response.ok) {
-    throw new Error(
-      `Task resolve error: ${response.status} ${await response.text()}`,
-    );
+  const testConceptMapIds = (conceptMaps.entry ?? [])
+    .map((e) => e.resource.id);
+
+  if (testConceptMapIds.length > 0) {
+    await fetch(`${TEST_AIDBOX_URL}/fhir`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/fhir+json",
+        Authorization: `Basic ${auth}`,
+      },
+      body: JSON.stringify({
+        resourceType: "Bundle",
+        type: "batch",
+        entry: testConceptMapIds.map((id) => ({
+          request: {
+            method: "DELETE",
+            url: `ConceptMap/${id}`,
+          },
+        })),
+      }),
+    });
   }
 }
