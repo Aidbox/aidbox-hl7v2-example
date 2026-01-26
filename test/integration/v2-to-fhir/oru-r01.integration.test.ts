@@ -14,83 +14,34 @@ import {
   testAidboxFetch,
   createTestConceptMap,
   getMappingTasks,
-  resolveTask,
+  getDiagnosticReports,
+  getObservations,
+  getEncounters,
+  getPatient,
+  submitAndProcess,
 } from "../helpers";
 import { processNextMessage } from "../../../src/v2-to-fhir/processor-service";
-import type {
-  DiagnosticReport,
-  Observation,
-  Encounter,
-  Specimen,
-  Patient,
-} from "../../../src/fhir/hl7-fhir-r4-core";
+import { resolveTaskAndUpdateMessages } from "../../../src/ui/mapping-tasks-queue";
+import type { Specimen } from "../../../src/fhir/hl7-fhir-r4-core";
+import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 
-interface Bundle<T = unknown> {
-  resourceType: "Bundle";
-  total?: number;
-  entry?: Array<{ resource: T }>;
+async function resolveTask(
+  taskId: string,
+  loincCode: string,
+  loincDisplay: string,
+): Promise<void> {
+  await resolveTaskAndUpdateMessages(taskId, loincCode, loincDisplay);
 }
 
-interface IncomingHL7v2Message {
-  id: string;
-  status: string;
-  error?: string;
-  patient?: { reference: string };
-  unmappedCodes?: Array<{ localCode: string; localSystem: string }>;
-}
-
-// Helper functions for fetching resources
-async function getDiagnosticReports(patientRef: string): Promise<DiagnosticReport[]> {
-  const bundle = await testAidboxFetch<Bundle<DiagnosticReport>>(
-    `/fhir/DiagnosticReport?subject=${encodeURIComponent(patientRef)}`,
-  );
-  return bundle.entry?.map((e) => e.resource) ?? [];
-}
-
-async function getObservations(patientRef: string): Promise<Observation[]> {
-  const bundle = await testAidboxFetch<Bundle<Observation>>(
-    `/fhir/Observation?subject=${encodeURIComponent(patientRef)}`,
-  );
-  return bundle.entry?.map((e) => e.resource) ?? [];
-}
-
-async function getEncounters(patientRef: string): Promise<Encounter[]> {
-  const bundle = await testAidboxFetch<Bundle<Encounter>>(
-    `/fhir/Encounter?subject=${encodeURIComponent(patientRef)}`,
-  );
-  return bundle.entry?.map((e) => e.resource) ?? [];
-}
-
-async function getPatient(patientId: string): Promise<Patient> {
-  return testAidboxFetch<Patient>(`/fhir/Patient/${patientId}`);
-}
-
-async function submitAndProcess(hl7Message: string): Promise<IncomingHL7v2Message> {
-  const createdMessage = await testAidboxFetch<IncomingHL7v2Message>(
-    "/fhir/IncomingHL7v2Message",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        resourceType: "IncomingHL7v2Message",
-        message: hl7Message,
-        status: "received",
-        type: "ORU^R01",
-      }),
-    },
-  );
-
-  await processNextMessage().catch(() => {});
-
-  return testAidboxFetch<IncomingHL7v2Message>(
-    `/fhir/IncomingHL7v2Message/${createdMessage.id}`,
-  );
+async function submitAndProcessOruR01(hl7Message: string): Promise<IncomingHL7v2Message> {
+  return submitAndProcess(hl7Message, "ORU^R01");
 }
 
 describeIntegration("ORU_R01 E2E Integration", () => {
   describe("happy path - basic message processing", () => {
     test("processes base message and creates FHIR resources", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
       expect(message.patient?.reference).toContain("Patient/");
@@ -106,7 +57,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("creates DiagnosticReport with correct ID from OBR-3", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const diagnosticReports = await getDiagnosticReports(patientRef);
@@ -117,7 +68,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("creates Observations with correct IDs from OBX", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const observations = await getObservations(patientRef);
@@ -129,7 +80,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("links Observations to DiagnosticReport via result array", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const diagnosticReports = await getDiagnosticReports(patientRef);
@@ -140,7 +91,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("tags all resources with message control ID", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const diagnosticReports = await getDiagnosticReports(patientRef);
@@ -155,7 +106,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
   describe("LOINC code handling", () => {
     test("extracts LOINC from OBX-3 primary coding", async () => {
       const hl7Message = await loadFixture("oru-r01/loinc/primary.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -170,7 +121,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("extracts LOINC from OBX-3 alternate coding", async () => {
       const hl7Message = await loadFixture("oru-r01/loinc/alternate.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -191,7 +142,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("returns mapping_error when OBX has no LOINC code", async () => {
       const hl7Message = await loadFixture("oru-r01/loinc/local-only.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("mapping_error");
       expect(message.unmappedCodes).toBeDefined();
@@ -201,7 +152,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("collects all unmapped codes when multiple OBX lack LOINC", async () => {
       const hl7Message = await loadFixture("oru-r01/loinc/mixed.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("mapping_error");
       // First OBX has LOINC, second doesn't
@@ -213,7 +164,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
   describe("SPM segment handling", () => {
     test("creates Specimen from SPM segment", async () => {
       const hl7Message = await loadFixture("oru-r01/with-specimen.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -231,7 +182,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("links Specimen to Observations", async () => {
       const hl7Message = await loadFixture("oru-r01/with-specimen.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const observations = await getObservations(patientRef);
@@ -243,7 +194,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
   describe("NTE segment handling", () => {
     test("attaches NTE comments to Observation as notes", async () => {
       const hl7Message = await loadFixture("oru-r01/with-notes.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -257,7 +208,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("creates paragraph breaks for empty NTE-3", async () => {
       const hl7Message = await loadFixture("oru-r01/with-notes.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const observations = await getObservations(patientRef);
@@ -270,7 +221,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
   describe("multiple OBR groups", () => {
     test("creates multiple DiagnosticReports for multiple OBR groups", async () => {
       const hl7Message = await loadFixture("oru-r01/multiple-obr.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -283,7 +234,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("links OBX to correct parent OBR", async () => {
       const hl7Message = await loadFixture("oru-r01/multiple-obr.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const diagnosticReports = await getDiagnosticReports(patientRef);
@@ -296,7 +247,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
   describe("OBX value type handling", () => {
     test("converts NM value type to valueQuantity", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const observations = await getObservations(patientRef);
@@ -308,7 +259,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("converts ST value type to valueString", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const observations = await getObservations(patientRef);
@@ -319,7 +270,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("converts SN with comparator to valueQuantity", async () => {
       const hl7Message = await loadFixture("oru-r01/with-notes.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const observations = await getObservations(patientRef);
@@ -332,7 +283,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
   describe("interpretation and reference range", () => {
     test("converts OBX-8 abnormal flag to interpretation", async () => {
       const hl7Message = await loadFixture("oru-r01/with-loinc-abnormal.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const observations = await getObservations(patientRef);
@@ -342,7 +293,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("converts OBX-7 reference range", async () => {
       const hl7Message = await loadFixture("oru-r01/with-loinc-abnormal.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const observations = await getObservations(patientRef);
@@ -355,7 +306,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
   describe("OBR-25 and OBX-11 status validation", () => {
     test("sets error when OBR-25 is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obr25.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/OBR-25/);
@@ -363,7 +314,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("sets error when OBR-25 is Y", async () => {
       const hl7Message = await loadFixture("oru-r01/error/obr25-y.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/OBR-25/);
@@ -371,7 +322,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("sets error when OBR-25 is Z", async () => {
       const hl7Message = await loadFixture("oru-r01/error/obr25-z.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/OBR-25/);
@@ -379,7 +330,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("sets error when OBX-11 is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obx11.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/OBX-11/);
@@ -387,7 +338,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("sets error when OBX-11 is N", async () => {
       const hl7Message = await loadFixture("oru-r01/error/obx11-n.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/OBX-11/);
@@ -395,7 +346,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("processes message with valid OBR-25 P (preliminary)", async () => {
       const hl7Message = await loadFixture("oru-r01/valid-preliminary.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -408,7 +359,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
   describe("error handling", () => {
     test("sets error when MSH-3 (sending application) is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-msh3.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/MSH-3/);
@@ -416,7 +367,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("sets error when MSH-4 (sending facility) is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-msh4.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/MSH-4/);
@@ -424,7 +375,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("sets error when OBR segment is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obr.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/OBR/);
@@ -432,7 +383,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("sets error when both OBR-2 and OBR-3 are missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obr-ids.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/OBR-3|OBR-2/);
@@ -440,7 +391,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("uses OBR-2 as fallback when OBR-3 is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/valid-obr2-fallback.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -451,7 +402,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("sets error when OBX-3 has no system (MissingLocalSystemError)", async () => {
       const hl7Message = await loadFixture("oru-r01/loinc/no-system.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/missing.*system|BFTYPE/i);
@@ -461,7 +412,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
   describe("patient handling", () => {
     test("sets error when PID segment is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/patient/without-pid.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/PID/);
@@ -469,7 +420,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("sets error when both PID-2 and PID-3 are empty", async () => {
       const hl7Message = await loadFixture("oru-r01/patient/empty-pid.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/Patient ID/i);
@@ -477,7 +428,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("extracts patient ID from PID-2", async () => {
       const hl7Message = await loadFixture("oru-r01/patient/pid2-only.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
       expect(message.patient?.reference).toBe("Patient/PAT-FROM-PID2");
@@ -485,7 +436,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("extracts patient ID from PID-3.1 when PID-2 is empty", async () => {
       const hl7Message = await loadFixture("oru-r01/patient/pid3-only.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
       expect(message.patient?.reference).toBe("Patient/PAT-FROM-PID3");
@@ -493,7 +444,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("creates draft Patient with active=false when patient not found", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientId = message.patient!.reference.split("/")[1];
       const patient = await getPatient(patientId);
@@ -503,7 +454,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("draft patient includes demographics from PID segment", async () => {
       const hl7Message = await loadFixture("oru-r01/patient/pid3-only.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientId = message.patient!.reference.split("/")[1];
       const patient = await getPatient(patientId);
@@ -516,7 +467,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("links DiagnosticReport to Patient via subject", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const diagnosticReports = await getDiagnosticReports(patientRef);
@@ -526,7 +477,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("links all Observations to Patient via subject", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const observations = await getObservations(patientRef);
@@ -540,7 +491,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
   describe("encounter handling", () => {
     test("creates draft Encounter when PV1-19 is present", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-visit.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -553,7 +504,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("does not create Encounter when PV1 is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/without-pv1.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -565,7 +516,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("does not create Encounter when PV1-19 is empty", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/no-visit-number.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -577,7 +528,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("links DiagnosticReport to Encounter", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-visit.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const diagnosticReports = await getDiagnosticReports(patientRef);
@@ -587,7 +538,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("links Observations to Encounter", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-visit.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const observations = await getObservations(patientRef);
@@ -599,7 +550,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("draft Encounter includes PV1-2 class", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-visit.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       const patientRef = message.patient!.reference;
       const encounters = await getEncounters(patientRef);
@@ -610,7 +561,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("includes draft Encounter even when mapping_error occurs", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-mapping-error.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("mapping_error");
 
@@ -626,7 +577,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
 
       // Process first time
-      const message1 = await submitAndProcess(hl7Message);
+      const message1 = await submitAndProcessOruR01(hl7Message);
       const patientRef = message1.patient!.reference;
 
       const reportsAfterFirst = await getDiagnosticReports(patientRef);
@@ -634,7 +585,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
       const firstReportId = reportsAfterFirst[0].id;
 
       // Process second time
-      await submitAndProcess(hl7Message);
+      await submitAndProcessOruR01(hl7Message);
 
       const reportsAfterSecond = await getDiagnosticReports(patientRef);
 
@@ -679,7 +630,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
       ]);
 
       const hl7Message = await loadFixture("oru-r01/loinc/conceptmap-resolve.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
 
@@ -694,7 +645,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("creates mapping Task when LOINC resolution fails", async () => {
       const hl7Message = await loadFixture("oru-r01/loinc/local-only.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("mapping_error");
 
@@ -714,7 +665,7 @@ describeIntegration("ORU_R01 E2E Integration", () => {
 
     test("reprocesses message after mapping task resolution", async () => {
       const hl7Message = await loadFixture("oru-r01/loinc/local-only.hl7");
-      const message = await submitAndProcess(hl7Message);
+      const message = await submitAndProcessOruR01(hl7Message);
       expect(message.status).toBe("mapping_error");
 
       const tasks = await getMappingTasks();

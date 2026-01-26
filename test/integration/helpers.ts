@@ -1,7 +1,14 @@
 import { describe } from "bun:test";
 import type { ConceptMap } from "../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 import type { Task } from "../../src/fhir/hl7-fhir-r4-core/Task";
-import { resolveTaskAndUpdateMessages } from "../../src/ui/mapping-tasks-queue";
+import type {
+  DiagnosticReport,
+  Observation,
+  Encounter,
+  Patient,
+} from "../../src/fhir/hl7-fhir-r4-core";
+import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
+import { processNextMessage } from "../../src/v2-to-fhir/processor-service";
 
 export const TEST_AIDBOX_URL = "http://localhost:8888";
 
@@ -99,12 +106,53 @@ export async function getMappingTasks(): Promise<Task[]> {
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
-export async function resolveTask(
-  taskId: string,
-  loincCode: string,
-  loincDisplay: string,
-): Promise<void> {
-  await resolveTaskAndUpdateMessages(taskId, loincCode, loincDisplay);
+export async function getDiagnosticReports(patientRef: string): Promise<DiagnosticReport[]> {
+  const bundle = await testAidboxFetch<Bundle<DiagnosticReport>>(
+    `/fhir/DiagnosticReport?subject=${encodeURIComponent(patientRef)}`,
+  );
+  return bundle.entry?.map((e) => e.resource) ?? [];
+}
+
+export async function getObservations(patientRef: string): Promise<Observation[]> {
+  const bundle = await testAidboxFetch<Bundle<Observation>>(
+    `/fhir/Observation?subject=${encodeURIComponent(patientRef)}`,
+  );
+  return bundle.entry?.map((e) => e.resource) ?? [];
+}
+
+export async function getEncounters(patientRef: string): Promise<Encounter[]> {
+  const bundle = await testAidboxFetch<Bundle<Encounter>>(
+    `/fhir/Encounter?subject=${encodeURIComponent(patientRef)}`,
+  );
+  return bundle.entry?.map((e) => e.resource) ?? [];
+}
+
+export async function getPatient(patientId: string): Promise<Patient> {
+  return testAidboxFetch<Patient>(`/fhir/Patient/${patientId}`);
+}
+
+export async function submitAndProcess(
+  hl7Message: string,
+  messageType: string,
+): Promise<IncomingHL7v2Message> {
+  const createdMessage = await testAidboxFetch<IncomingHL7v2Message>(
+    "/fhir/IncomingHL7v2Message",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        resourceType: "IncomingHL7v2Message",
+        message: hl7Message,
+        status: "received",
+        type: messageType,
+      }),
+    },
+  );
+
+  await processNextMessage().catch(() => {});
+
+  return testAidboxFetch<IncomingHL7v2Message>(
+    `/fhir/IncomingHL7v2Message/${createdMessage.id}`,
+  );
 }
 
 export async function cleanupTestResources(): Promise<void> {
