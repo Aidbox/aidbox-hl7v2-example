@@ -11,8 +11,8 @@ if (!process.env.AIDBOX_LICENSE) {
 // Signal to integration tests that they should run (preload is active)
 process.env.INTEGRATION_TESTS_ENABLED = "true";
 
-// Skip docker compose lifecycle and migrations when using an existing Aidbox instance
-const useExistingAidbox = process.env.TEST_USE_EXISTING_AIDBOX === "true";
+// Reset docker volumes and run migrations (for clean test runs)
+const resetAidbox = process.env.TEST_RESET_AIDBOX === "true";
 
 // Increase default timeout to 2 minutes for Aidbox startup
 setDefaultTimeout(120_000);
@@ -26,24 +26,12 @@ process.env.AIDBOX_URL = TEST_AIDBOX_URL;
 process.env.AIDBOX_CLIENT_SECRET = TEST_CLIENT_SECRET;
 
 beforeAll(async () => {
-  if (useExistingAidbox) {
-    console.log("Using existing test Aidbox instance (TEST_USE_EXISTING_AIDBOX=true)");
-
-    const response = await fetch(`${TEST_AIDBOX_URL}/health`).catch(() => null);
-    if (!response?.ok) {
-      throw new Error(`Existing Aidbox not reachable at ${TEST_AIDBOX_URL}`);
-    }
-
-    console.log("Test Aidbox ready");
-    return;
+  if (resetAidbox) {
+    console.log("Resetting test Aidbox (TEST_RESET_AIDBOX=true)...");
+    await $`docker compose -f docker-compose.test.yaml down -v`.quiet();
   }
 
-  console.log("Starting test Aidbox...");
-
-  // Stop and remove existing
-  await $`docker compose -f docker-compose.test.yaml down -v`.quiet();
-
-  // Start fresh
+  // Start containers (noop if already running)
   await $`docker compose -f docker-compose.test.yaml up -d`.quiet();
 
   // Wait for health
@@ -62,21 +50,19 @@ beforeAll(async () => {
   }
 
   if (!healthy) {
-    throw new Error("Test Aidbox failed to start within 90 seconds");
+    throw new Error("Test Aidbox not reachable within 90 seconds");
   }
 
-  // Run migrations
-  await $`bun src/migrate.ts`.quiet();
+  if (resetAidbox) {
+    await $`bun src/migrate.ts`.quiet();
+  }
 
   console.log("Test Aidbox ready");
 });
 
 afterAll(async () => {
-  if (useExistingAidbox) {
-    console.log("Skipping Aidbox teardown (TEST_USE_EXISTING_AIDBOX=true)");
-    return;
+  if (resetAidbox) {
+    console.log("Stopping test Aidbox...");
+    await $`docker compose -f docker-compose.test.yaml down -v`.quiet();
   }
-
-  console.log("Stopping test Aidbox...");
-  await $`docker compose -f docker-compose.test.yaml down -v`.quiet();
 });
