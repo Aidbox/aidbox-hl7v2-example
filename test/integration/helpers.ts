@@ -6,6 +6,10 @@ import type {
   Observation,
   Encounter,
   Patient,
+  Condition,
+  AllergyIntolerance,
+  Coverage,
+  RelatedPerson,
 } from "../../src/fhir/hl7-fhir-r4-core";
 import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { processNextMessage } from "../../src/v2-to-fhir/processor-service";
@@ -131,6 +135,34 @@ export async function getPatient(patientId: string): Promise<Patient> {
   return testAidboxFetch<Patient>(`/fhir/Patient/${patientId}`);
 }
 
+export async function getConditions(patientRef: string): Promise<Condition[]> {
+  const bundle = await testAidboxFetch<Bundle<Condition>>(
+    `/fhir/Condition?subject=${encodeURIComponent(patientRef)}`,
+  );
+  return bundle.entry?.map((e) => e.resource) ?? [];
+}
+
+export async function getAllergies(patientRef: string): Promise<AllergyIntolerance[]> {
+  const bundle = await testAidboxFetch<Bundle<AllergyIntolerance>>(
+    `/fhir/AllergyIntolerance?patient=${encodeURIComponent(patientRef)}`,
+  );
+  return bundle.entry?.map((e) => e.resource) ?? [];
+}
+
+export async function getCoverages(patientRef: string): Promise<Coverage[]> {
+  const bundle = await testAidboxFetch<Bundle<Coverage>>(
+    `/fhir/Coverage?beneficiary=${encodeURIComponent(patientRef)}`,
+  );
+  return bundle.entry?.map((e) => e.resource) ?? [];
+}
+
+export async function getRelatedPersons(patientRef: string): Promise<RelatedPerson[]> {
+  const bundle = await testAidboxFetch<Bundle<RelatedPerson>>(
+    `/fhir/RelatedPerson?patient=${encodeURIComponent(patientRef)}`,
+  );
+  return bundle.entry?.map((e) => e.resource) ?? [];
+}
+
 export async function submitAndProcess(
   hl7Message: string,
   messageType: string,
@@ -168,7 +200,7 @@ export async function cleanupTestResources(): Promise<void> {
       Authorization: `Basic ${auth}`,
     },
     body: JSON.stringify([
-      "TRUNCATE task, incominghl7v2message, diagnosticreport, observation, specimen, encounter, patient CASCADE",
+      "TRUNCATE task, incominghl7v2message, diagnosticreport, observation, specimen, encounter, patient, condition, allergyintolerance, coverage, relatedperson CASCADE",
     ]),
   });
 
