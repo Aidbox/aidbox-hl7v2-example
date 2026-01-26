@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, setDefaultTimeout } from "bun:test";
+import { beforeAll, beforeEach, afterAll, setDefaultTimeout } from "bun:test";
 import { $ } from "bun";
 
 // Fail fast if AIDBOX_LICENSE is not set
@@ -58,6 +58,11 @@ beforeAll(async () => {
   }
 
   console.log("Test Aidbox ready");
+});
+
+beforeEach(async () => {
+  const { cleanupTestResources } = await import("./helpers");
+  await cleanupTestResources();
 });
 
 afterAll(async () => {

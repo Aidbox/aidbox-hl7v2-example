@@ -7,7 +7,7 @@
  * Unit tests for pure functions like convertOBXToObservationResolving are in
  * test/unit/v2-to-fhir/messages/oru-r01.test.ts
  */
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect } from "bun:test";
 import {
   describeIntegration,
   loadFixture,
@@ -15,7 +15,6 @@ import {
   createTestConceptMap,
   getMappingTasks,
   resolveTask,
-  cleanupTestResources,
 } from "../helpers";
 import { processNextMessage } from "../../../src/v2-to-fhir/processor-service";
 import type {
@@ -88,10 +87,6 @@ async function submitAndProcess(hl7Message: string): Promise<IncomingHL7v2Messag
 }
 
 describeIntegration("ORU_R01 E2E Integration", () => {
-  beforeEach(async () => {
-    await cleanupTestResources();
-  });
-
   describe("happy path - basic message processing", () => {
     test("processes base message and creates FHIR resources", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
