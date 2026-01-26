@@ -219,7 +219,7 @@ bun test              # Run all tests
 bun run typecheck     # TypeScript type checking
 ```
 
-See [Development Guide](development-guide.md) for test organization, writing tests, and debugging.
+See the [Development Guide](development-guide.md) for day-to-day workflows including testing and debugging.
 
 ## See Also
 

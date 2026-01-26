@@ -49,7 +49,7 @@ docker compose up -d
 
 # First run: Open http://localhost:8080 and log in with aidbox.app to activate license
 
-bun migrate
+bun run migrate
 bun run dev
 ```
 

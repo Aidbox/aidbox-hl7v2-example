@@ -109,3 +109,6 @@ docker compose down
 - [Overview](overview.md) - Understand the system architecture and workflows
 - [Configuration](configuration.md) - Customize environment variables
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
+
+**For developers:**
+- [Developer Guide](../developer-guide/README.md) — Architecture, feature docs, and day-to-day workflows

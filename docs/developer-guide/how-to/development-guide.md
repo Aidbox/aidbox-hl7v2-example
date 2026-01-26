@@ -72,11 +72,21 @@ See [Extracting Modules](extracting-modules.md) for details on the generated cod
 ```sh
 bun run logs              # Tail web server logs
 tail -f logs/server.log   # Same thing
+
+# Search for errors
+grep -i "error" logs/server.log
+
+# Follow logs and filter
+tail -f logs/server.log | grep -i "error\|failed"
 ```
 
 ### Inspecting Aidbox Resources
 
-Use the Aidbox Console (http://localhost:8080) or curl:
+**Aidbox Console (UI):**
+
+Open http://localhost:8080. See [Configuration > Aidbox License](../../user-guide/configuration.md#aidbox-license) for login instructions. The console lets you browse resources, run queries, and inspect data visually.
+
+**curl:**
 
 ```sh
 # List resources
@@ -100,6 +110,6 @@ docker compose up -d          # Restart
 curl http://localhost:8080/health
 
 # Re-run migrations
-bun src/migrate.ts
+bun run migrate
 ```
 

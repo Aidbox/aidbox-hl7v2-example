@@ -5,7 +5,7 @@ Documentation for developers who need to understand, extend, or integrate with t
 ## Getting Started
 
 1. **[User Guide: Getting Started](../user-guide/getting-started.md)** — Setup, installation, running services
-2. **[Development Guide](how-to/development-guide.md)** — Testing, debugging, troubleshooting for contributors
+2. **[Development Guide](how-to/development-guide.md)** — Day-to-day workflows: testing, debugging, code generation
 
 ## Understanding the System
 
@@ -26,13 +26,12 @@ Each document explains how the feature works, implementation details, and where 
 | [MLLP Server](mllp-server.md)       | TCP/MLLP protocol, ACK generation, message storage                  |
 | [HL7v2 Module](hl7v2-module.md)     | Type-safe builders, datatypes, wire format                          |
 
-## Extending or Modifying?
+## Extending the System
 
 Step-by-step guides for common tasks.
 
 | Guide                                              | Description                           |
 |----------------------------------------------------|---------------------------------------|
-| [Development Guide](how-to/development-guide.md)   | Testing, debugging, troubleshooting        |
 | [Extending Outgoing Fields](how-to/extending-outgoing-fields.md) | Add FHIR→HL7v2 field mappings     |
 | [Extending Incoming Fields](how-to/extending-incoming-fields.md) | Add HL7v2→FHIR field mappings     |
 | [Extracting Modules](how-to/extracting-modules.md) | Use modules in your own project       |

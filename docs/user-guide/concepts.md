@@ -2,6 +2,10 @@
 
 This page explains key terminology and standards you'll encounter when working with the system.
 
+## Why This Project Exists
+
+Healthcare organizations use multiple systems that speak different languages: legacy systems use HL7v2 (dominant since the 1980s), while modern systems use FHIR. This project bridges both worlds—receiving HL7v2 messages and converting them to FHIR, and generating HL7v2 from FHIR data for systems that haven't migrated yet.
+
 ## HL7v2 and FHIR
 
 **HL7v2** is a messaging standard widely used in healthcare for exchanging clinical data between systems. Messages are pipe-delimited text with segments like `PID` (patient), `OBR` (order), and `OBX` (observation result).
