@@ -167,6 +167,10 @@ const barMessage = generateBarMessage({
   procedures,        // FHIR Procedure[] -> PR1 segments
   messageControlId: "MSG001",
   triggerEvent: "P01",  // P01=Add, P05=Update, P06=End
+  sendingApplication: process.env.FHIR_APP,      // MSH-3
+  sendingFacility: process.env.FHIR_FAC,         // MSH-4
+  receivingApplication: process.env.BILLING_APP, // MSH-5
+  receivingFacility: process.env.BILLING_FAC,    // MSH-6
 });
 
 console.log(formatMessage(barMessage));

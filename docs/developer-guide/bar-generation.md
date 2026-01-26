@@ -69,6 +69,10 @@ const barMessage = generateBarMessage({
   guarantor,         // RelatedPerson or Patient (optional)
   messageControlId: "MSG001",
   triggerEvent: "P01",
+  sendingApplication: "HOSPITAL_FHIR",   // MSH-3: Your system name
+  sendingFacility: "MAIN_CAMPUS",        // MSH-4: Your facility
+  receivingApplication: "BILLING_SYS",   // MSH-5: Destination system
+  receivingFacility: "BILLING_DEPT",     // MSH-6: Destination facility
 });
 
 console.log(formatMessage(barMessage));

@@ -82,10 +82,10 @@ Then restart Aidbox: `docker compose restart aidbox`
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FHIR_APP` | (empty) | Sending application name (MSH-3) |
-| `FHIR_FAC` | (empty) | Sending facility name (MSH-4) |
-| `BILLING_APP` | (empty) | Receiving application name (MSH-5) |
-| `BILLING_FAC` | (empty) | Receiving facility name (MSH-6) |
+| `FHIR_APP` | `FHIR_APP` | Sending application name (MSH-3) |
+| `FHIR_FAC` | `FHIR_FAC` | Sending facility name (MSH-4) |
+| `BILLING_APP` | `BILLING_APP` | Receiving application name (MSH-5) |
+| `BILLING_FAC` | `BILLING_FAC` | Receiving facility name (MSH-6) |
 
 ### Network
 
