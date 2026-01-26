@@ -9,7 +9,7 @@
  */
 import { describe, test, expect } from "bun:test";
 import {
-  integrationTestsEnabled,
+  describeIntegration,
   loadFixture,
   testAidboxFetch,
   createTestConceptMap,
@@ -86,7 +86,7 @@ async function submitAndProcess(hl7Message: string): Promise<IncomingHL7v2Messag
   );
 }
 
-describe.skipIf(!integrationTestsEnabled)("ORU_R01 E2E Integration", () => {
+describeIntegration("ORU_R01 E2E Integration", () => {
   describe("happy path - basic message processing", () => {
     test("processes base message and creates FHIR resources", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
