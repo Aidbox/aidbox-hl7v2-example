@@ -598,8 +598,8 @@ describeIntegration("ORU_R01 E2E Integration", () => {
       const hl7Message1 = await loadFixture("oru-r01/base.hl7");
       const hl7Message2 = hl7Message1.replace("TEST-MSG-001", "TEST-MSG-002");
 
-      const message1 = await submitAndProcess(hl7Message1);
-      const message2 = await submitAndProcess(hl7Message2);
+      const message1 = await submitAndProcessOruR01(hl7Message1);
+      const message2 = await submitAndProcessOruR01(hl7Message2);
 
       // Same patient
       expect(message1.patient?.reference).toBe(message2.patient?.reference);
