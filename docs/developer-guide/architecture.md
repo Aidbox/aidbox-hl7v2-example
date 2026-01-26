@@ -92,7 +92,7 @@ Background service that transforms FHIR resources into HL7v2 BAR messages.
 2. Fetch related resources (Patient, Coverage, Encounter, Condition, Procedure)
 3. Generate HL7v2 BAR message using segment builders
 4. Create `OutgoingBarMessage` with `status=pending`
-5. Update `Invoice` to `status=issued`
+5. Update `Invoice`: set `status=issued` and `processing-status=completed`
 
 ### BAR Message Sender Service (`src/bar/sender-service.ts`)
 
@@ -175,7 +175,7 @@ sequenceDiagram
 
     Builder->>Builder: Generate HL7v2 BAR message
     Builder->>Aidbox: POST /OutgoingBarMessage (status=pending)
-    Builder->>Aidbox: PATCH /Invoice (processing-status=completed)
+    Builder->>Aidbox: PATCH /Invoice (status=issued, processing-status=completed)
 
     Note over Sender: Polling loop
     Sender->>Aidbox: GET /OutgoingBarMessage?status=pending&_count=1

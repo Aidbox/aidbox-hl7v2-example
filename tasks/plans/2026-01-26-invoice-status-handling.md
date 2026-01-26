@@ -52,10 +52,10 @@ Update the invoice BAR builder to set the FHIR `Invoice.status` to `"issued"` wh
 
 ### Task 2: Update documentation in architecture.md
 
-- [ ] In `docs/developer-guide/architecture.md`, find line ~95 "Update `Invoice` to `status=issued`"
-- [ ] Change to accurately describe both updates: Invoice.status → "issued" AND processing-status → "completed"
-- [ ] Update the sequence diagram at line ~178 to show: "PATCH /Invoice (status=issued, processing-status=completed)"
-- [ ] Run `bun test` - must pass before next task
+- [x] In `docs/developer-guide/architecture.md`, find line ~95 "Update `Invoice` to `status=issued`"
+- [x] Change to accurately describe both updates: Invoice.status → "issued" AND processing-status → "completed"
+- [x] Update the sequence diagram at line ~178 to show: "PATCH /Invoice (status=issued, processing-status=completed)"
+- [x] Run `bun test` - must pass before next task
 
 ### Task 3: Update documentation in overview.md
 
