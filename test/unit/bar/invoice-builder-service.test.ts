@@ -1,5 +1,5 @@
 import { test, expect, describe, beforeEach, mock } from "bun:test";
-import type { Invoice } from "../../src/fhir/hl7-fhir-r4-core/Invoice";
+import type { Invoice } from "../../../src/fhir/hl7-fhir-r4-core/Invoice";
 
 // Test fixtures
 const testInvoice: Invoice & { id: string } = {
@@ -40,8 +40,8 @@ describe("pollPendingInvoice", () => {
       Promise.resolve({ total: 0, entry: [] })
     );
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { pollPendingInvoice } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { pollPendingInvoice } = await import("../../../src/bar/invoice-builder-service");
 
     const result = await pollPendingInvoice();
     expect(result).toBeNull();
@@ -55,8 +55,8 @@ describe("pollPendingInvoice", () => {
       })
     );
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { pollPendingInvoice } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { pollPendingInvoice } = await import("../../../src/bar/invoice-builder-service");
 
     const result = await pollPendingInvoice();
     expect(result).toEqual(testInvoice);
@@ -77,8 +77,8 @@ describe("buildBarFromInvoice", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { buildBarFromInvoice } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { buildBarFromInvoice } = await import("../../../src/bar/invoice-builder-service");
 
     const hl7v2 = await buildBarFromInvoice(testInvoice);
 
@@ -101,8 +101,8 @@ describe("buildBarFromInvoice", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { buildBarFromInvoice } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { buildBarFromInvoice } = await import("../../../src/bar/invoice-builder-service");
 
     await expect(buildBarFromInvoice(invoiceNoPatient)).rejects.toThrow();
   });
@@ -116,8 +116,8 @@ describe("processNextInvoice", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { processNextInvoice } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { processNextInvoice } = await import("../../../src/bar/invoice-builder-service");
 
     const result = await processNextInvoice();
     expect(result).toBe(false);
@@ -161,8 +161,8 @@ describe("processNextInvoice", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { processNextInvoice } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { processNextInvoice } = await import("../../../src/bar/invoice-builder-service");
 
     const result = await processNextInvoice();
     expect(result).toBe(true);
@@ -216,8 +216,8 @@ describe("processNextInvoice", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { processNextInvoice } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { processNextInvoice } = await import("../../../src/bar/invoice-builder-service");
 
     const result = await processNextInvoice();
     expect(result).toBe(true);
@@ -232,8 +232,8 @@ describe("createInvoiceBarBuilderService", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { createInvoiceBarBuilderService } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { createInvoiceBarBuilderService } = await import("../../../src/bar/invoice-builder-service");
 
     const service = createInvoiceBarBuilderService({ pollIntervalMs: 100 });
 
@@ -253,8 +253,8 @@ describe("createInvoiceBarBuilderService", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { createInvoiceBarBuilderService } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { createInvoiceBarBuilderService } = await import("../../../src/bar/invoice-builder-service");
 
     const service = createInvoiceBarBuilderService({ pollIntervalMs: 100 });
 
@@ -273,8 +273,8 @@ describe("createInvoiceBarBuilderService", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { createInvoiceBarBuilderService } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { createInvoiceBarBuilderService } = await import("../../../src/bar/invoice-builder-service");
 
     const service = createInvoiceBarBuilderService({
       pollIntervalMs: 50,
@@ -299,8 +299,8 @@ describe("createInvoiceBarBuilderService", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { createInvoiceBarBuilderService } = await import("../../src/bar/invoice-builder-service");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { createInvoiceBarBuilderService } = await import("../../../src/bar/invoice-builder-service");
 
     const service = createInvoiceBarBuilderService({
       pollIntervalMs: 50,

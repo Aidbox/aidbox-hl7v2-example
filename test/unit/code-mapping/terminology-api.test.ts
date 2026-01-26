@@ -58,8 +58,8 @@ describe("searchLoincCodes", () => {
       }),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("potassium");
 
     expect(mockAidbox.aidboxFetch).toHaveBeenCalled();
@@ -78,8 +78,8 @@ describe("searchLoincCodes", () => {
       }),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
     await searchLoincCodes("2823");
 
     expect(calledPath).toContain("filter=2823");
@@ -90,8 +90,8 @@ describe("searchLoincCodes", () => {
       aidboxFetch: mock(() => Promise.resolve(sampleValueSetExpansion)),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("potassium");
 
     expect(results[0].code).toBe("2823-3");
@@ -107,8 +107,8 @@ describe("searchLoincCodes", () => {
       aidboxFetch: mock(() => Promise.resolve(sampleValueSetExpansion)),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("potassium");
     const resultWithoutDesignation = results.find((r) => r.code === "39789-3");
 
@@ -122,8 +122,8 @@ describe("searchLoincCodes", () => {
       aidboxFetch: mock(() => Promise.resolve({ expansion: { contains: [] } })),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("nonexistent");
 
     expect(results).toEqual([]);
@@ -134,8 +134,8 @@ describe("searchLoincCodes", () => {
       aidboxFetch: mock(() => Promise.resolve({ expansion: {} })),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("test");
 
     expect(results).toEqual([]);
@@ -153,8 +153,8 @@ describe("searchLoincCodes", () => {
       }),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("potassium");
 
     expect(callCount).toBe(3);
@@ -166,8 +166,8 @@ describe("searchLoincCodes", () => {
       aidboxFetch: mock(() => Promise.reject(new Error("HTTP 503: Service Unavailable"))),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
 
     await expect(searchLoincCodes("potassium")).rejects.toThrow();
   });
@@ -181,8 +181,8 @@ describe("searchLoincCodes", () => {
       }),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
 
     await expect(searchLoincCodes("potassium")).rejects.toThrow("400");
     expect(callCount).toBe(1);
@@ -197,8 +197,8 @@ describe("searchLoincCodes", () => {
       }),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { searchLoincCodes } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
     await searchLoincCodes("test & query");
 
     expect(calledPath).toContain("filter=test%20%26%20query");
@@ -220,8 +220,8 @@ describe("validateLoincCode", () => {
       }),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { validateLoincCode } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { validateLoincCode } = await import("../../../src/code-mapping/terminology-api");
     const result = await validateLoincCode("2823-3");
 
     expect(result).toBeDefined();
@@ -234,8 +234,8 @@ describe("validateLoincCode", () => {
       aidboxFetch: mock(() => Promise.reject(new Error("HTTP 404: Not Found"))),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { validateLoincCode } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { validateLoincCode } = await import("../../../src/code-mapping/terminology-api");
     const result = await validateLoincCode("INVALID-CODE");
 
     expect(result).toBeNull();
@@ -253,8 +253,8 @@ describe("validateLoincCode", () => {
       }),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { validateLoincCode } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { validateLoincCode } = await import("../../../src/code-mapping/terminology-api");
     const result = await validateLoincCode("2823-3");
 
     expect(callCount).toBe(2);
@@ -266,8 +266,8 @@ describe("validateLoincCode", () => {
       aidboxFetch: mock(() => Promise.reject(new Error("HTTP 500: Internal Server Error"))),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { validateLoincCode } = await import("../../src/code-mapping/terminology-api");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { validateLoincCode } = await import("../../../src/code-mapping/terminology-api");
 
     await expect(validateLoincCode("2823-3")).rejects.toThrow("500");
   });

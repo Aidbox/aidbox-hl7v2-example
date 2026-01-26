@@ -11,7 +11,7 @@ import {
   FS,
   CR,
   type StoreMessageFn,
-} from "../../src/mllp/mllp-server";
+} from "../../../src/mllp/mllp-server";
 
 // Sample HL7v2 messages for testing
 const sampleADT = [

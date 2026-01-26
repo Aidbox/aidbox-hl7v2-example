@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
-import type { ConceptMap } from "../../src/fhir/hl7-fhir-r4-core/ConceptMap";
+import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 
 const sampleConceptMap: ConceptMap = {
   resourceType: "ConceptMap",
@@ -36,9 +36,9 @@ describe("getOrCreateConceptMap", () => {
       putResource: mock(() => Promise.resolve(sampleConceptMap)),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getOrCreateConceptMap } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     const result = await getOrCreateConceptMap({
       sendingApplication: "ACME_LAB",
@@ -61,9 +61,9 @@ describe("getOrCreateConceptMap", () => {
       ),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getOrCreateConceptMap } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     const result = await getOrCreateConceptMap({
       sendingApplication: "NEW_LAB",
@@ -100,8 +100,8 @@ describe("addMapping", () => {
       ),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { addMapping } = await import("../../src/code-mapping/concept-map");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { addMapping } = await import("../../../src/code-mapping/concept-map");
 
     await addMapping(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
@@ -140,8 +140,8 @@ describe("addMapping", () => {
       ),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { addMapping } = await import("../../src/code-mapping/concept-map");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { addMapping } = await import("../../../src/code-mapping/concept-map");
 
     await addMapping(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
@@ -174,8 +174,8 @@ describe("addMapping", () => {
       ),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { addMapping } = await import("../../src/code-mapping/concept-map");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { addMapping } = await import("../../../src/code-mapping/concept-map");
 
     await addMapping(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
@@ -212,9 +212,9 @@ describe("deleteMapping", () => {
       ),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { deleteMapping } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     await deleteMapping(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
@@ -239,9 +239,9 @@ describe("deleteMapping", () => {
       ),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { deleteMapping } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     await deleteMapping(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
@@ -256,7 +256,7 @@ describe("deleteMapping", () => {
 describe("addMappingToConceptMap", () => {
   test("includes source when localSystem is provided", async () => {
     const { addMappingToConceptMap } = await import(
-      "../../src/code-mapping/concept-map"
+      "../../../src/code-mapping/concept-map"
     );
 
     const emptyConceptMap: ConceptMap = {
@@ -282,7 +282,7 @@ describe("addMappingToConceptMap", () => {
 
   test("omits display when localDisplay is empty", async () => {
     const { addMappingToConceptMap } = await import(
-      "../../src/code-mapping/concept-map"
+      "../../../src/code-mapping/concept-map"
     );
 
     const emptyConceptMap: ConceptMap = {
@@ -314,7 +314,7 @@ describe("addMappingToConceptMap", () => {
 
   test("omits target display when loincDisplay is empty", async () => {
     const { addMappingToConceptMap } = await import(
-      "../../src/code-mapping/concept-map"
+      "../../../src/code-mapping/concept-map"
     );
 
     const emptyConceptMap: ConceptMap = {
@@ -345,9 +345,9 @@ describe("searchMappings", () => {
       aidboxFetch: mock(() => Promise.resolve(sampleConceptMap)),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { searchMappings } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     const results = await searchMappings({
       sendingApplication: "ACME_LAB",
@@ -385,9 +385,9 @@ describe("searchMappings", () => {
       aidboxFetch: mock(() => Promise.resolve(conceptMapWithMultipleMappings)),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { searchMappings } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     const results = await searchMappings(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
@@ -425,9 +425,9 @@ describe("searchMappings", () => {
       aidboxFetch: mock(() => Promise.resolve(conceptMapWithMultipleMappings)),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { searchMappings } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     const results = await searchMappings(
       { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
@@ -443,9 +443,9 @@ describe("searchMappings", () => {
       aidboxFetch: mock(() => Promise.reject(new Error("HTTP 404: Not Found"))),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { searchMappings } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     const results = await searchMappings({
       sendingApplication: "NONEXISTENT",

@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
-import { fromOBX } from "../../../src/hl7v2/wrappers";
-import { fromOBX as fromOBXGenerated } from "../../../src/hl7v2/generated/fields";
-import type { HL7v2Segment } from "../../../src/hl7v2/generated/types";
+import { fromOBX } from "../../../../src/hl7v2/wrappers";
+import { fromOBX as fromOBXGenerated } from "../../../../src/hl7v2/generated/fields";
+import type { HL7v2Segment } from "../../../../src/hl7v2/generated/types";
 
 describe("fromOBX wrapper", () => {
   describe("SN (Structured Numeric) value fix", () => {

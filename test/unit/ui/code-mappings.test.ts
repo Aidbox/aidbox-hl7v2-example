@@ -9,9 +9,9 @@
  * - Integration: add → Task completed → message updated
  */
 import { describe, test, expect, mock, afterEach } from "bun:test";
-import type { ConceptMap } from "../../src/fhir/hl7-fhir-r4-core/ConceptMap";
-import type { Task } from "../../src/fhir/hl7-fhir-r4-core/Task";
-import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
+import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
+import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
+import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 
 interface Bundle<T> {
   total?: number;
@@ -157,8 +157,8 @@ describe("listConceptMaps", () => {
       }),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { listConceptMaps } = await import("../../src/ui/pages/code-mappings");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { listConceptMaps } = await import("../../../src/ui/pages/code-mappings");
 
     const result = await listConceptMaps();
 
@@ -172,8 +172,8 @@ describe("listConceptMaps", () => {
       aidboxFetch: mock(() => Promise.resolve({ entry: [] })),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { listConceptMaps } = await import("../../src/ui/pages/code-mappings");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { listConceptMaps } = await import("../../../src/ui/pages/code-mappings");
 
     const result = await listConceptMaps();
 
@@ -199,8 +199,8 @@ describe("listConceptMaps", () => {
       ),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { listConceptMaps } = await import("../../src/ui/pages/code-mappings");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { listConceptMaps } = await import("../../../src/ui/pages/code-mappings");
 
     const result = await listConceptMaps();
 
@@ -219,9 +219,9 @@ describe("getMappingsFromConceptMap", () => {
       aidboxFetch: mock(() => Promise.resolve(sampleConceptMap)),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getMappingsFromConceptMap } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const result = await getMappingsFromConceptMap(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -244,9 +244,9 @@ describe("getMappingsFromConceptMap", () => {
       aidboxFetch: mock(() => Promise.resolve(sampleConceptMap2)),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getMappingsFromConceptMap } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const result = await getMappingsFromConceptMap(
       "hl7v2-other-lab-other-hosp-to-loinc",
@@ -279,9 +279,9 @@ describe("getMappingsFromConceptMap", () => {
       aidboxFetch: mock(() => Promise.resolve(conceptMapWithManyElements)),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getMappingsFromConceptMap } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const page1 = await getMappingsFromConceptMap(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -337,8 +337,8 @@ describe("addConceptMapEntry", () => {
       ),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { addConceptMapEntry } = await import("../../src/ui/pages/code-mappings");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { addConceptMapEntry } = await import("../../../src/ui/pages/code-mappings");
 
     const result = await addConceptMapEntry(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -391,8 +391,8 @@ describe("addConceptMapEntry", () => {
       ),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { addConceptMapEntry } = await import("../../src/ui/pages/code-mappings");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { addConceptMapEntry } = await import("../../../src/ui/pages/code-mappings");
 
     await addConceptMapEntry(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -423,8 +423,8 @@ describe("addConceptMapEntry", () => {
       updateResourceWithETag: mock(() => Promise.resolve({})),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { addConceptMapEntry } = await import("../../src/ui/pages/code-mappings");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { addConceptMapEntry } = await import("../../../src/ui/pages/code-mappings");
 
     const result = await addConceptMapEntry(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -485,8 +485,8 @@ describe("addConceptMapEntry", () => {
       ),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { addConceptMapEntry } = await import("../../src/ui/pages/code-mappings");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { addConceptMapEntry } = await import("../../../src/ui/pages/code-mappings");
 
     await addConceptMapEntry(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -532,9 +532,9 @@ describe("updateConceptMapEntry", () => {
       ),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { updateConceptMapEntry } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const result = await updateConceptMapEntry(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -566,9 +566,9 @@ describe("updateConceptMapEntry", () => {
       updateResourceWithETag: mock(() => Promise.resolve({})),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { updateConceptMapEntry } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const result = await updateConceptMapEntry(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -594,9 +594,9 @@ describe("updateConceptMapEntry", () => {
       updateResourceWithETag: mock(() => Promise.resolve({})),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { updateConceptMapEntry } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     await updateConceptMapEntry(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -641,9 +641,9 @@ describe("deleteConceptMapEntry", () => {
       ),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { deleteConceptMapEntry } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     await deleteConceptMapEntry(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -679,9 +679,9 @@ describe("deleteConceptMapEntry", () => {
       ),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { deleteConceptMapEntry } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     await deleteConceptMapEntry(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
@@ -707,9 +707,9 @@ describe("deleteConceptMapEntry", () => {
       updateResourceWithETag: mock(() => Promise.resolve({})),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { deleteConceptMapEntry } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     // Should not throw
     await deleteConceptMapEntry(
@@ -796,9 +796,9 @@ describe("getMappingsFromConceptMap - search", () => {
       aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getMappingsFromConceptMap } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const result = await getMappingsFromConceptMap(
       "search-test-concept-map",
@@ -816,9 +816,9 @@ describe("getMappingsFromConceptMap - search", () => {
       aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getMappingsFromConceptMap } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const result = await getMappingsFromConceptMap(
       "search-test-concept-map",
@@ -837,9 +837,9 @@ describe("getMappingsFromConceptMap - search", () => {
       aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getMappingsFromConceptMap } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const result = await getMappingsFromConceptMap(
       "search-test-concept-map",
@@ -858,9 +858,9 @@ describe("getMappingsFromConceptMap - search", () => {
       aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getMappingsFromConceptMap } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const result = await getMappingsFromConceptMap(
       "search-test-concept-map",
@@ -881,9 +881,9 @@ describe("getMappingsFromConceptMap - search", () => {
       aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getMappingsFromConceptMap } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const result = await getMappingsFromConceptMap(
       "search-test-concept-map",
@@ -901,9 +901,9 @@ describe("getMappingsFromConceptMap - search", () => {
       aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getMappingsFromConceptMap } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const result = await getMappingsFromConceptMap(
       "search-test-concept-map",
@@ -958,9 +958,9 @@ describe("getMappingsFromConceptMap - search", () => {
       ),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { getMappingsFromConceptMap } =
-      await import("../../src/ui/pages/code-mappings");
+      await import("../../../src/ui/pages/code-mappings");
 
     const page1 = await getMappingsFromConceptMap(
       "search-test-concept-map",
@@ -1048,8 +1048,8 @@ describe("integration: add mapping flow", () => {
       ),
     });
 
-    mock.module("../../src/aidbox", () => mockAidbox);
-    const { addConceptMapEntry } = await import("../../src/ui/pages/code-mappings");
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { addConceptMapEntry } = await import("../../../src/ui/pages/code-mappings");
 
     await addConceptMapEntry(
       "hl7v2-acme-lab-acme-hosp-to-loinc",

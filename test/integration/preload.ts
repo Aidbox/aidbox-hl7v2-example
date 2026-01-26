@@ -1,6 +1,16 @@
 import { beforeAll, afterAll, setDefaultTimeout } from "bun:test";
 import { $ } from "bun";
 
+// Fail fast if AIDBOX_LICENSE is not set
+if (!process.env.AIDBOX_LICENSE) {
+  console.error("ERROR: AIDBOX_LICENSE environment variable is required for integration tests");
+  console.error("Run unit tests with: bun test test/unit");
+  process.exit(1);
+}
+
+// Signal to integration tests that they should run (preload is active)
+process.env.INTEGRATION_TESTS_ENABLED = "true";
+
 // Increase default timeout to 2 minutes for Aidbox startup
 setDefaultTimeout(120_000);
 

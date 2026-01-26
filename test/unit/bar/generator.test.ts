@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { generateBarMessage } from "../../src/bar/generator";
+import { generateBarMessage } from "../../../src/bar/generator";
 import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
 import type {
   Patient,
@@ -11,7 +11,7 @@ import type {
   Procedure,
   Organization,
   BarMessageInput,
-} from "../../src/bar/types";
+} from "../../../src/bar/types";
 import {
   fromDG1,
   fromGT1,
@@ -20,7 +20,7 @@ import {
   fromPID,
   fromPR1,
   fromPV1,
-} from "../../src/hl7v2/generated/fields";
+} from "../../../src/hl7v2/generated/fields";
 
 // Test fixtures
 const testPatient: Patient = {

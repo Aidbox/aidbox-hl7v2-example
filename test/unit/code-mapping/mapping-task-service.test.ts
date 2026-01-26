@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
-import type { Task } from "../../src/fhir/hl7-fhir-r4-core/Task";
-import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
+import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
+import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 
 const sampleTask: Task = {
   resourceType: "Task",
@@ -57,9 +57,9 @@ const sampleMessage: IncomingHL7v2Message = {
 describe("generateMappingTaskId", () => {
   test("generates deterministic ID for same inputs", async () => {
     const { generateMappingTaskId } =
-      await import("../../src/code-mapping/mapping-task-service");
+      await import("../../../src/code-mapping/mapping-task-service");
     const { generateConceptMapId } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     const conceptMapId = generateConceptMapId({
       sendingApplication: "ACME_LAB",
@@ -82,9 +82,9 @@ describe("generateMappingTaskId", () => {
 
   test("generates different IDs for different codes", async () => {
     const { generateMappingTaskId } =
-      await import("../../src/code-mapping/mapping-task-service");
+      await import("../../../src/code-mapping/mapping-task-service");
     const { generateConceptMapId } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     const conceptMapId = generateConceptMapId({
       sendingApplication: "ACME_LAB",
@@ -107,9 +107,9 @@ describe("generateMappingTaskId", () => {
 
   test("generates different IDs for different concept maps", async () => {
     const { generateMappingTaskId } =
-      await import("../../src/code-mapping/mapping-task-service");
+      await import("../../../src/code-mapping/mapping-task-service");
     const { generateConceptMapId } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     const conceptMapId1 = generateConceptMapId({
       sendingApplication: "ACME_LAB",
@@ -136,9 +136,9 @@ describe("generateMappingTaskId", () => {
 
   test("ID format starts with 'map-'", async () => {
     const { generateMappingTaskId } =
-      await import("../../src/code-mapping/mapping-task-service");
+      await import("../../../src/code-mapping/mapping-task-service");
     const { generateConceptMapId } =
-      await import("../../src/code-mapping/concept-map");
+      await import("../../../src/code-mapping/concept-map");
 
     const conceptMapId = generateConceptMapId({
       sendingApplication: "ACME_LAB",
@@ -161,9 +161,9 @@ describe("resolveMappingTask", () => {
       }),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveMappingTask } =
-      await import("../../src/code-mapping/mapping-task-service");
+      await import("../../../src/code-mapping/mapping-task-service");
 
     await resolveMappingTask(
       sampleTask.id!,
@@ -204,9 +204,9 @@ describe("removeResolvedTaskFromMessage", () => {
       ),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { removeResolvedTaskFromMessage } =
-      await import("../../src/code-mapping/mapping-task-service");
+      await import("../../../src/code-mapping/mapping-task-service");
 
     await removeResolvedTaskFromMessage(
       sampleMessage,
@@ -263,9 +263,9 @@ describe("removeResolvedTaskFromMessage", () => {
       ),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { removeResolvedTaskFromMessage } =
-      await import("../../src/code-mapping/mapping-task-service");
+      await import("../../../src/code-mapping/mapping-task-service");
 
     await removeResolvedTaskFromMessage(
       messageWithMultipleUnmapped,
@@ -288,9 +288,9 @@ describe("removeResolvedTaskFromMessage", () => {
       updateResourceWithETag: mock(() => Promise.resolve(sampleMessage)),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { removeResolvedTaskFromMessage } =
-      await import("../../src/code-mapping/mapping-task-service");
+      await import("../../../src/code-mapping/mapping-task-service");
 
     await removeResolvedTaskFromMessage(
       sampleMessage,

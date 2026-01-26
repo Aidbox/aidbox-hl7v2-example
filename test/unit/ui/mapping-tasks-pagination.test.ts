@@ -11,7 +11,7 @@ import {
   clampPage,
   createPagination,
   renderPaginationControls,
-} from "../../src/ui/pagination";
+} from "../../../src/ui/pagination";
 
 describe("Pagination Utilities", () => {
   test("PAGE_SIZE is 50", () => {

@@ -11,9 +11,9 @@ import type {
   Task,
   TaskInput,
   TaskOutput,
-} from "../../src/fhir/hl7-fhir-r4-core/Task";
-import type { ConceptMap } from "../../src/fhir/hl7-fhir-r4-core/ConceptMap";
-import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
+} from "../../../src/fhir/hl7-fhir-r4-core/Task";
+import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
+import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 
 interface Bundle<T> {
   total?: number;
@@ -165,9 +165,9 @@ describe("resolveTaskWithMapping", () => {
       NotFoundError: MockNotFoundError,
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveTaskWithMapping } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(
       samplePendingTask.id!,
@@ -261,9 +261,9 @@ describe("resolveTaskWithMapping", () => {
       NotFoundError: MockNotFoundError,
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveTaskWithMapping } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
 
@@ -317,9 +317,9 @@ describe("resolveTaskWithMapping", () => {
       NotFoundError: MockNotFoundError,
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveTaskWithMapping } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
 
@@ -367,9 +367,9 @@ describe("resolveTaskWithMapping", () => {
       NotFoundError: MockNotFoundError,
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveTaskWithMapping } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
 
@@ -415,9 +415,9 @@ describe("resolveTaskWithMapping", () => {
       },
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveTaskWithMapping } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await expect(
       resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium"),
@@ -461,9 +461,9 @@ describe("resolveTaskWithMapping", () => {
       NotFoundError: MockNotFoundError,
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveTaskWithMapping } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
 
@@ -515,9 +515,9 @@ describe("resolveTaskWithMapping", () => {
       NotFoundError: MockNotFoundError,
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveTaskWithMapping } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
 
@@ -565,9 +565,9 @@ describe("resolveTaskWithMapping", () => {
       ),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveTaskWithMapping } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium");
 
@@ -621,9 +621,9 @@ describe("resolveTaskWithMapping - already completed task", () => {
       ),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveTaskWithMapping } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await expect(
       resolveTaskWithMapping(samplePendingTask.id!, "2823-3", "Potassium"),
@@ -671,9 +671,9 @@ describe("updateAffectedMessages", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { updateAffectedMessages } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await updateAffectedMessages(samplePendingTask.id!);
 
@@ -709,9 +709,9 @@ describe("updateAffectedMessages", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { updateAffectedMessages } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await updateAffectedMessages(
       "map-hl7v2-acme-lab-acme-hosp-to-loinc-1a2b3c-4d5e6f",
@@ -749,9 +749,9 @@ describe("updateAffectedMessages", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { updateAffectedMessages } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await updateAffectedMessages(
       "map-hl7v2-acme-lab-acme-hosp-to-loinc-1a2b3c-4d5e6f",
@@ -782,9 +782,9 @@ describe("updateAffectedMessages", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { updateAffectedMessages } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await updateAffectedMessages(samplePendingTask.id!);
 
@@ -811,9 +811,9 @@ describe("updateAffectedMessages", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { updateAffectedMessages } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     // Should not throw when no affected messages
     await updateAffectedMessages("nonexistent-task");
@@ -854,9 +854,9 @@ describe("updateAffectedMessages", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { updateAffectedMessages } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await updateAffectedMessages(samplePendingTask.id!);
 
@@ -885,27 +885,27 @@ describe("getTaskInputValue - helper function", () => {
   };
 
   test("extracts input value by type text", async () => {
-    mock.module("../../src/aidbox", () => mockAidboxBase);
+    mock.module("../../../src/aidbox", () => mockAidboxBase);
     const { getTaskInputValue } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     const result = getTaskInputValue(samplePendingTask, "Local code");
     expect(result).toBe("K_SERUM");
   });
 
   test("returns undefined for missing input type", async () => {
-    mock.module("../../src/aidbox", () => mockAidboxBase);
+    mock.module("../../../src/aidbox", () => mockAidboxBase);
     const { getTaskInputValue } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     const result = getTaskInputValue(samplePendingTask, "Nonexistent");
     expect(result).toBeUndefined();
   });
 
   test("returns undefined when task has no inputs", async () => {
-    mock.module("../../src/aidbox", () => mockAidboxBase);
+    mock.module("../../../src/aidbox", () => mockAidboxBase);
     const { getTaskInputValue } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     const taskWithoutInputs: Task = {
       ...samplePendingTask,
@@ -976,9 +976,9 @@ describe("full resolution flow integration", () => {
       getResources: mock(() => Promise.resolve([])),
     };
 
-    mock.module("../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => mockAidbox);
     const { resolveTaskAndUpdateMessages } =
-      await import("../../src/ui/mapping-tasks-queue");
+      await import("../../../src/ui/mapping-tasks-queue");
 
     await resolveTaskAndUpdateMessages(
       samplePendingTask.id!,
