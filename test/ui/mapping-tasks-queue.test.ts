@@ -20,11 +20,21 @@ interface Bundle<T> {
   entry?: Array<{ resource: T }>;
 }
 
-// Mock NotFoundError class to include in all mocks
+// Mock error classes to include in all mocks
 class MockNotFoundError extends Error {
   constructor(resourceType: string, id: string) {
     super(`${resourceType}/${id} not found`);
     this.name = "NotFoundError";
+  }
+}
+
+class MockHttpError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly body: string,
+  ) {
+    super(`HTTP ${status}: ${body}`);
+    this.name = "HttpError";
   }
 }
 
@@ -163,6 +173,7 @@ describe("resolveTaskWithMapping", () => {
         Promise.resolve(resource),
       ),
       NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -259,6 +270,7 @@ describe("resolveTaskWithMapping", () => {
         Promise.resolve(resource),
       ),
       NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -315,6 +327,7 @@ describe("resolveTaskWithMapping", () => {
         Promise.resolve(resource),
       ),
       NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -365,6 +378,7 @@ describe("resolveTaskWithMapping", () => {
         Promise.resolve(resource),
       ),
       NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -459,6 +473,7 @@ describe("resolveTaskWithMapping", () => {
         Promise.resolve(resource),
       ),
       NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -513,6 +528,7 @@ describe("resolveTaskWithMapping", () => {
         Promise.resolve(resource),
       ),
       NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -563,6 +579,8 @@ describe("resolveTaskWithMapping", () => {
       updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
         Promise.resolve(resource),
       ),
+      NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -619,6 +637,8 @@ describe("resolveTaskWithMapping - already completed task", () => {
       updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
         Promise.resolve(resource),
       ),
+      NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -669,6 +689,8 @@ describe("updateAffectedMessages", () => {
         Promise.resolve(resource),
       ),
       getResources: mock(() => Promise.resolve([])),
+      NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -707,6 +729,8 @@ describe("updateAffectedMessages", () => {
         Promise.resolve(resource),
       ),
       getResources: mock(() => Promise.resolve([])),
+      NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -747,6 +771,8 @@ describe("updateAffectedMessages", () => {
         Promise.resolve(resource),
       ),
       getResources: mock(() => Promise.resolve([])),
+      NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -780,6 +806,8 @@ describe("updateAffectedMessages", () => {
         Promise.resolve(resource),
       ),
       getResources: mock(() => Promise.resolve([])),
+      NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -809,6 +837,8 @@ describe("updateAffectedMessages", () => {
         Promise.resolve(resource),
       ),
       getResources: mock(() => Promise.resolve([])),
+      NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -852,6 +882,8 @@ describe("updateAffectedMessages", () => {
         Promise.resolve(resource),
       ),
       getResources: mock(() => Promise.resolve([])),
+      NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
@@ -882,6 +914,8 @@ describe("getTaskInputValue - helper function", () => {
     updateResourceWithETag: mock((rt: string, id: string, resource: any) =>
       Promise.resolve(resource),
     ),
+    NotFoundError: MockNotFoundError,
+    HttpError: MockHttpError,
   };
 
   test("extracts input value by type text", async () => {
@@ -974,6 +1008,8 @@ describe("full resolution flow integration", () => {
         Promise.resolve(resource),
       ),
       getResources: mock(() => Promise.resolve([])),
+      NotFoundError: MockNotFoundError,
+      HttpError: MockHttpError,
     };
 
     mock.module("../../src/aidbox", () => mockAidbox);
