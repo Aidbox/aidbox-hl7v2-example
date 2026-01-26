@@ -49,7 +49,7 @@ docker compose up -d
 
 # First run: Open http://localhost:8080 and log in with aidbox.app to activate license
 
-bun migrate
+bun run migrate
 bun run dev
 ```
 
@@ -68,15 +68,16 @@ bun run dev
 - [Adding Field Mappings](docs/user-guide/adding-field-mappings.md) — Add code mappings for lab codes
 - [Troubleshooting](docs/user-guide/troubleshooting.md) — Common issues and solutions
 
-### Technical Documentation
+### Developer Guide
 
-- [Architecture](docs/technical/architecture.md) — System design, data flow, pull-based polling pattern
-- [Integration Guide](docs/technical/integration-guide.md) — Extract and reuse modules in your project
-- [HL7v2 Builders](docs/technical/modules/hl7v2-builders.md) — Type-safe message construction API
-- [FHIR to HL7v2](docs/technical/modules/fhir-to-hl7v2.md) — BAR message generation details
-- [HL7v2 to FHIR](docs/technical/modules/v2-to-fhir-oru.md) — ORU processing pipeline
-- [Code Mapping](docs/technical/modules/code-mapping-infrastructure.md) — ConceptMap and Task data model
-- [Extending Field Mappings](docs/technical/modules/extending-field-mappings.md) — Add new FHIR↔HL7v2 field mappings
+- [Architecture](docs/developer-guide/architecture.md) — System design, data flow, pull-based polling pattern
+- [Extracting Modules](docs/developer-guide/how-to/extracting-modules.md) — Extract and reuse modules in your project
+- [HL7v2 Module](docs/developer-guide/hl7v2-module.md) — Type-safe message construction API
+- [BAR Generation](docs/developer-guide/bar-generation.md) — BAR message generation details
+- [ORU Processing](docs/developer-guide/oru-processing.md) — ORU processing pipeline
+- [Code Mapping](docs/developer-guide/code-mapping.md) — ConceptMap and Task data model
+- [Extending Outgoing Fields](docs/developer-guide/how-to/extending-outgoing-fields.md) — Add FHIR→HL7v2 field mappings
+- [Extending Incoming Fields](docs/developer-guide/how-to/extending-incoming-fields.md) — Add HL7v2→FHIR field mappings
 
 ## Supported Message Types
 

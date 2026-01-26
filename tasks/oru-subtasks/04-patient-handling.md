@@ -1,6 +1,6 @@
 # ORU_R01 Patient Handling
 
-Extends the core ORU_R01 processing (see `docs/technical/modules/v2-to-fhir-oru.md`) with patient lookup and draft patient creation.
+Extends the core ORU_R01 processing (see `docs/developer-guide/modules/v2-to-fhir-oru.md`) with patient lookup and draft patient creation.
 
 ## Requirements
 

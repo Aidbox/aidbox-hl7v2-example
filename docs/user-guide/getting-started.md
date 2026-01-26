@@ -37,7 +37,7 @@ On first run, Aidbox requires license activation:
 This creates the custom FHIR resources (OutgoingBarMessage, IncomingHL7v2Message):
 
 ```sh
-bun migrate
+bun run migrate
 ```
 
 ### 3. Start the Web Server
@@ -109,3 +109,6 @@ docker compose down
 - [Overview](overview.md) - Understand the system architecture and workflows
 - [Configuration](configuration.md) - Customize environment variables
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
+
+**For developers:**
+- [Developer Guide](../developer-guide/README.md) — Architecture, feature docs, and day-to-day workflows

@@ -34,24 +34,9 @@ flowchart TB
 
 ### Aidbox FHIR Server
 
-[Aidbox](https://www.health-samurai.io/aidbox) is a FHIR R4 compliant server that serves as the central data store and API layer.
+[Aidbox](https://www.health-samurai.io/aidbox) is a FHIR R4 compliant server that serves as the central data store and API layer. See `docker-compose.yaml` for configuration details.
 
-**Configuration:**
-- Image: `healthsamurai/aidboxone:edge`
-- Port: 8080
-- Database: PostgreSQL 18
-- FHIR Version: R4 (`hl7.fhir.r4.core#4.0.1`)
-- Init Bundle: `file:///init-bundle.json`
-
-**Standard FHIR Resources:**
-- `Patient` - Patient demographics
-- `Invoice` - Billing invoices (status: draft, processing-status extension: pending → completed)
-- `Coverage` - Insurance coverage information
-- `Encounter` - Patient visits
-- `Condition` - Diagnoses (→ DG1 segments)
-- `Procedure` - Medical procedures (→ PR1 segments)
-- `Organization` - Insurance companies, facilities
-- `RelatedPerson` - Guarantors
+**Standard FHIR Resources:** Patient, Invoice, Coverage, Encounter, Condition, Procedure, Organization, RelatedPerson. See [User Guide > Concepts](../user-guide/concepts.md#fhir-resources) for descriptions.
 
 **Custom Resources (defined via StructureDefinition):**
 - `OutgoingBarMessage` - Queued BAR messages (status: pending → sent)
@@ -62,11 +47,15 @@ flowchart TB
 Aidbox executes the init bundle at startup before the HTTP server starts. Used for database initialization that must be idempotent.
 
 **Current contents:**
+- Custom StructureDefinitions for IncomingHL7v2Message and OutgoingBarMessage
+- Invoice processing status extensions (status, retry count, error reason)
+- SearchParameters for custom resources and invoice extensions
+- LOINC ValueSet used by the terminology workflow
 - PostgreSQL partial index for pending invoices
 
 ```sql
 CREATE INDEX IF NOT EXISTS invoice_pending_ts_idx
-ON invoice (ts DESC)
+ON invoice (ts ASC)
 WHERE resource @> '{"extension": [{"url": "http://example.org/invoice-processing-status", "value": {"code": "pending"}}]}'
 ```
 
@@ -92,20 +81,7 @@ putResource<T>(type, id, res)  // Create/update resource
 
 Bun HTTP server serving server-rendered HTML pages with Tailwind CSS.
 
-**Routes:**
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/` | GET | Redirect to invoices |
-| `/invoices` | GET | List invoices with status filter |
-| `/invoices` | POST | Create new invoice |
-| `/outgoing-messages` | GET | List BAR messages with status filter |
-| `/outgoing-messages` | POST | Create outgoing message |
-| `/incoming-messages` | GET | List received messages with status filter |
-| `/mllp-client` | GET | MLLP test client UI |
-| `/mllp-client` | POST | Send HL7v2 message via MLLP |
-| `/build-bar` | POST | Trigger BAR generation for pending invoices (background) |
-| `/reprocess-errors` | POST | Retry failed invoices (up to 3 attempts, then mark as failed) |
-| `/send-messages` | POST | Trigger sending of pending messages |
+**Routes:** The Web UI provides pages for managing invoices, messages, and code mappings. See [User Guide > Overview](../user-guide/overview.md#web-ui-pages) for the complete list.
 
 ### Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
 
@@ -131,42 +107,15 @@ Background service that delivers queued BAR messages.
 
 TCP server implementing the Minimal Lower Layer Protocol (MLLP) for receiving HL7v2 messages from external systems.
 
-**Configuration:**
-- Port: 2575 (default, configurable via `MLLP_PORT` env var)
-- Protocol: TCP with MLLP framing
+- Default port: 2575 (configurable via `MLLP_PORT`)
+- Stores messages as `IncomingHL7v2Message` resources
+- Sends HL7v2 ACK responses
 
-**MLLP Protocol Framing:**
-```
-┌────────┬─────────────────┬────────┬────────┐
-│  VT    │   HL7v2 Message │   FS   │   CR   │
-│ (0x0B) │                 │ (0x1C) │ (0x0D) │
-└────────┴─────────────────┴────────┴────────┘
-```
-
-**Process:**
-1. Accept TCP connection from external system
-2. Parse MLLP-framed HL7v2 message (handle fragmented TCP delivery)
-3. Extract message type from MSH-9 field
-4. Create `IncomingHL7v2Message` resource in Aidbox
-5. Generate and send HL7v2 ACK response (AA/AE/AR)
-
-**Features:**
-- Handles multiple concurrent connections
-- Buffers fragmented TCP packets
-- Generates proper HL7v2 ACK messages with original message control ID
-- Swaps sending/receiving application in ACK
-
-### MLLP Test Client (Web UI)
-
-The Web UI includes an MLLP Test Client at `/mllp-client` for testing:
-- Configure target MLLP server host and port
-- Select from sample messages (ADT^A01, ADT^A08, BAR^P01, ORM^O01)
-- Send custom HL7v2 messages
-- View ACK responses
+See [MLLP Server](mllp-server.md) for protocol details, framing format, and implementation walkthrough.
 
 ## Pull Architecture
 
-Both background services use a **pull-based polling pattern** rather than push notifications:
+Both background services use a **pull-based polling pattern** rather than push notifications (webhooks, FHIR subscriptions, or message queues).
 
 ```mermaid
 flowchart LR
@@ -258,38 +207,30 @@ stateDiagram-v2
         [*] --> received: Message arrives
         received --> processed: Handler processes
         received --> error: Processing failed
+        received --> mapping_error: Unmapped codes (ORU)
+        error --> received: Mark for retry
+        mapping_error --> received: Codes resolved
     }
 ```
 
 ### Invoice Retry Mechanism
 
-Invoices that fail BAR generation are marked with `processing-status=error`. The Web UI provides a "Reprocess Errors" button that:
-
-1. Fetches all invoices with `processing-status=error`
-2. Checks retry count (stored in `invoice-processing-retry-count` extension)
-3. If retry count < 3: increments retry count and sets status to `pending`
-4. If retry count >= 3: marks as `failed` (terminal state)
-5. Processes all pending invoices
-
-**Extensions used:**
-- `http://example.org/invoice-processing-status` - processing status (pending/completed/error/failed)
-- `http://example.org/invoice-processing-error-reason` - error message from last failure
-- `http://example.org/invoice-processing-retry-count` - number of retry attempts
+Failed invoices can be retried up to 3 times before being marked as permanently failed. See [BAR Generation > Error Handling](bar-generation.md#error-handling) for the retry logic and extension details.
 
 ## HL7v2 Message Generation
 
 The system generates HL7v2 BAR (Billing/Accounts Receivable) messages from FHIR resources:
 
-| FHIR Resource | HL7v2 Segment | Purpose |
-|---------------|---------------|---------|
-| - | MSH | Message header |
-| - | EVN | Event type (P01/P05/P06) |
-| Patient | PID | Patient identification |
-| Encounter | PV1 | Patient visit |
-| Coverage | IN1 | Insurance |
-| Condition | DG1 | Diagnosis |
-| Procedure | PR1 | Procedures |
-| RelatedPerson/Patient | GT1 | Guarantor |
+| FHIR Resource         | HL7v2 Segment | Purpose                  |
+|-----------------------|---------------|--------------------------|
+| -                     | MSH           | Message header           |
+| -                     | EVN           | Event type (P01/P05/P06) |
+| Patient               | PID           | Patient identification   |
+| Encounter             | PV1           | Patient visit            |
+| Coverage              | IN1           | Insurance                |
+| Condition             | DG1           | Diagnosis                |
+| Procedure             | PR1           | Procedures               |
+| RelatedPerson/Patient | GT1           | Guarantor                |
 
 **Trigger Events:**
 - `P01` - Add patient account
@@ -340,5 +281,22 @@ sequenceDiagram
     UI->>User: Display ACK (success/error)
 ```
 
+## Where to Go Next
 
+This document covers system-level architecture. For implementation details on specific features:
 
+| Feature | Document | What You'll Learn |
+|---------|----------|-------------------|
+| **Outgoing BAR messages** | [BAR Generation](bar-generation.md) | FHIR→HL7v2 mapping, segment builders, trigger events |
+| **Incoming lab results** | [ORU Processing](oru-processing.md) | HL7v2→FHIR conversion, draft resources, segment grouping |
+| **LOINC code mapping** | [Code Mapping](code-mapping.md) | Resolution cascade, ConceptMap structure, Task workflow |
+| **HL7v2 transport** | [MLLP Server](mllp-server.md) | TCP handling, framing, ACK generation |
+| **Message building** | [HL7v2 Module](hl7v2-module.md) | Builders, field naming, code generation |
+
+For extending the system:
+
+| Task | Guide |
+|------|-------|
+| Add new FHIR→HL7v2 fields | [How-To: Extending Outgoing Fields](how-to/extending-outgoing-fields.md) |
+| Add new HL7v2→FHIR fields | [How-To: Extending Incoming Fields](how-to/extending-incoming-fields.md) |
+| Extract modules for reuse | [How-To: Extracting Modules](how-to/extracting-modules.md) |

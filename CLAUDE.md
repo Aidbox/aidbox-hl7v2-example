@@ -10,9 +10,9 @@ alwaysApply: false
 
 This project integrates with Aidbox FHIR server for HL7v2 message processing. It provides a web UI to view Invoices, Outgoing BAR messages, and Incoming HL7v2 messages.
 
-See `docs/technical/architecture.md` for system diagrams, pull-based polling architecture, data flow sequences, and resource status transitions - useful when understanding how components interact or debugging message flow issues.
+See `docs/developer-guide/architecture.md` for system diagrams, pull-based polling architecture, data flow sequences, and resource status transitions - useful when understanding how components interact or debugging message flow issues.
 
-**Note:** The `docs/` directory contains documentation for human readers. Some content overlaps with this file intentionally - CLAUDE.md is optimized for AI agents, while user-guide is written for humans who prefer a different structure and presentation.
+**Note:** CLAUDE.md intentionally duplicates key information from `docs/developer-guide/` so AI agents have immediate access to architectural context without reading multiple files. The `docs/` directory is the primary documentation for human readers. When updating system behavior, update both: CLAUDE.md for AI context, and the relevant docs/ files for human readers.
 
 ## Quick Start
 
@@ -142,7 +142,7 @@ const message = new BAR_P01Builder()
 console.log(formatMessage(message));
 ```
 
-See `docs/technical/modules/hl7v2-builders.md` for segment builder fluent API, field naming conventions, and datatype interfaces (XPN, CX, HD, etc.) - useful when building or parsing HL7v2 messages.
+See `docs/developer-guide/hl7v2-module.md` for segment interfaces, field naming conventions, and datatype interfaces (XPN, CX, HD, etc.) - useful when building or parsing HL7v2 messages.
 
 ## BAR Message Generator (`src/bar/`)
 
@@ -167,12 +167,16 @@ const barMessage = generateBarMessage({
   procedures,        // FHIR Procedure[] -> PR1 segments
   messageControlId: "MSG001",
   triggerEvent: "P01",  // P01=Add, P05=Update, P06=End
+  sendingApplication: process.env.FHIR_APP,      // MSH-3
+  sendingFacility: process.env.FHIR_FAC,         // MSH-4
+  receivingApplication: process.env.BILLING_APP, // MSH-5
+  receivingFacility: process.env.BILLING_FAC,    // MSH-6
 });
 
 console.log(formatMessage(barMessage));
 ```
 
-See `docs/technical/modules/fhir-to-hl7v2.md` for FHIR→HL7v2 field mappings per segment (PID, PV1, IN1, DG1, PR1, GT1) and trigger event semantics (P01/P05/P06) - useful when debugging or extending BAR generation.
+See `docs/developer-guide/bar-generation.md` for FHIR→HL7v2 field mappings per segment (PID, PV1, IN1, DG1, PR1, GT1) and trigger event semantics (P01/P05/P06) - useful when debugging or extending BAR generation.
 
 ## Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
 
@@ -265,7 +269,7 @@ See `docs/v2-to-fhir-spec/spec.md` for supported segments/datatypes.
 Converts lab results to DiagnosticReport + Observation + Specimen resources.
 Blocks message conversion with status `mapping_error` if failed to resolve OBX code to LOINC.
 
-See `docs/technical/modules/v2-to-fhir-oru.md` for ORU_R01 processing pipeline details.
+See `docs/developer-guide/oru-processing.md` for ORU_R01 processing pipeline details.
 
 ## Code Mapping (`src/code-mapping/`)
 
@@ -275,7 +279,7 @@ Handles local-to-LOINC code mappings for laboratory codes that arrive without st
 - `mapping-task-service.ts` - Task lifecycle: create for unmapped codes, resolve with LOINC, update affected messages
 - `terminology-api.ts` - LOINC search and validation via external terminology service
 
-See `docs/technical/modules/code-mapping-infrastructure.md` for data model and `docs/technical/modules/code-mapping-ui.md` for UI workflows.
+See `docs/developer-guide/code-mapping.md` for data model and UI workflows.
 
 ## Custom FHIR Resources
 

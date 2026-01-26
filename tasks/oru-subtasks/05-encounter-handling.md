@@ -1,6 +1,6 @@
 # ORU_R01 Encounter Handling
 
-Implementation guide for encounter handling in ORU_R01 processing. For full specification, see `docs/technical/modules/v2-to-fhir-oru.md`.
+Implementation guide for encounter handling in ORU_R01 processing. For full specification, see `docs/developer-guide/modules/v2-to-fhir-oru.md`.
 
 ## Requirements
 
