@@ -153,7 +153,7 @@ describe("Invoice BAR Builder Service E2E Integration", () => {
       const result = await processNextInvoice();
       expect(result).toBe(true);
 
-      const messages = await getOutgoingBarMessages("Patient/patient-process");
+      const messages = await getOutgoingBarMessages();
       expect(messages.length).toBe(1);
       expect(messages[0].status).toBe("pending");
       expect(messages[0].hl7v2).toContain("MSH|");

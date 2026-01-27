@@ -14,6 +14,7 @@ import type {
 import type { OutgoingBarMessage } from "../../src/fhir/aidbox-hl7v2-custom";
 import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { processNextMessage } from "../../src/v2-to-fhir/processor-service";
+import { toKebabCase } from "../../src/utils/string";
 
 export const TEST_AIDBOX_URL = "http://localhost:8888";
 
@@ -62,7 +63,7 @@ export async function createTestConceptMap(
     loincDisplay: string;
   }>,
 ): Promise<void> {
-  const id = `hl7v2-${sendingApp.toLowerCase()}-${sendingFacility.toLowerCase()}-to-loinc`;
+  const id = `hl7v2-${toKebabCase(sendingApp)}-${toKebabCase(sendingFacility)}-to-loinc`;
 
   const groups: Record<string, NonNullable<ConceptMap["group"]>[0]> = {};
   for (const m of mappings) {
@@ -167,9 +168,9 @@ export async function getInvoices(patientRef: string): Promise<Invoice[]> {
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
-export async function getOutgoingBarMessages(patientRef: string): Promise<OutgoingBarMessage[]> {
+export async function getOutgoingBarMessages(): Promise<OutgoingBarMessage[]> {
   const bundle = await testAidboxFetch<Bundle<OutgoingBarMessage>>(
-    `/fhir/OutgoingBarMessage?patient=${encodeURIComponent(patientRef)}`,
+    `/fhir/OutgoingBarMessage`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
