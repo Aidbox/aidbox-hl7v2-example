@@ -49,7 +49,7 @@ docker compose up -d
 
 # First run: Open http://localhost:8080 and log in with aidbox.app to activate license
 
-bun migrate
+bun run migrate
 bun run dev
 ```
 
@@ -59,24 +59,8 @@ bun run dev
 
 ## Documentation
 
-### User Guide
-
-- [Getting Started](docs/user-guide/getting-started.md) — Installation, first run, quick workflow test
-- [Overview](docs/user-guide/overview.md) — System architecture, data flows, and operations
-- [Concepts](docs/user-guide/concepts.md) — HL7v2, FHIR, message types, and terminology
-- [Configuration](docs/user-guide/configuration.md) — Environment variables and customization
-- [Adding Field Mappings](docs/user-guide/adding-field-mappings.md) — Add code mappings for lab codes
-- [Troubleshooting](docs/user-guide/troubleshooting.md) — Common issues and solutions
-
-### Technical Documentation
-
-- [Architecture](docs/technical/architecture.md) — System design, data flow, pull-based polling pattern
-- [Integration Guide](docs/technical/integration-guide.md) — Extract and reuse modules in your project
-- [HL7v2 Builders](docs/technical/modules/hl7v2-builders.md) — Type-safe message construction API
-- [FHIR to HL7v2](docs/technical/modules/fhir-to-hl7v2.md) — BAR message generation details
-- [HL7v2 to FHIR](docs/technical/modules/v2-to-fhir-oru.md) — ORU processing pipeline
-- [Code Mapping](docs/technical/modules/code-mapping-infrastructure.md) — ConceptMap and Task data model
-- [Extending Field Mappings](docs/technical/modules/extending-field-mappings.md) — Add new FHIR↔HL7v2 field mappings
+- **[User Guide](docs/user-guide/README.md)** — Setup, configuration, operations, troubleshooting
+- **[Developer Guide](docs/developer-guide/README.md)** — Architecture, extending the system, implementation details
 
 ## Supported Message Types
 

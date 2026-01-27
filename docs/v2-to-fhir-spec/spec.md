@@ -15,7 +15,7 @@ Based on mappings from: https://github.com/AidboxHL7/v2-to-fhir
 - [ ] MDM_T02
 - [ ] OML_O21
 - [ ] ORM_O01
-- [ ] ORU_R01
+- [x] ORU_R01
 - [ ] SIU_S12
 - [ ] VXU_V04
 
@@ -46,14 +46,14 @@ Based on mappings from: https://github.com/AidboxHL7/v2-to-fhir
 - [x] NK1[RelatedPerson]
 - [ ] NTE[Appointment-Comment]
 - [ ] NTE[DocumentReference]
-- [ ] NTE[Observation]
+- [x] NTE[Observation]
 - [ ] NTE[ServiceRequest]
-- [ ] OBR[DiagnosticReport]
+- [x] OBR[DiagnosticReport]
 - [ ] OBR[ServiceRequest]
 - [ ] OBR[Specimen]
 - [ ] OBX[DocumentReference]
 - [ ] OBX[Observation-Component]
-- [ ] OBX[Observation]
+- [x] OBX[Observation]
 - [ ] ORC[DiagnosticReport]
 - [ ] ORC[Immunization]
 - [ ] ORC[MedicationAdministration]
@@ -91,7 +91,7 @@ Based on mappings from: https://github.com/AidboxHL7/v2-to-fhir
 - [ ] SCH[ServiceRequest]
 - [ ] SFT[Device]
 - [ ] SFT[MessageHeader]
-- [ ] SPM[Specimen]
+- [x] SPM[Specimen]
 - [ ] TQ1[MedicationRequest]
 - [ ] TQ1[ServiceRequest]
 - [ ] TXA[DocumentReference]

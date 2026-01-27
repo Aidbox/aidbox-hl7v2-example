@@ -13,6 +13,26 @@ For most deployments, you only need to configure these settings in a `.env` file
 
 ## Configuration by Use Case
 
+### Changing Default Credentials (Required for Production)
+
+The default Aidbox credentials (`root`/`Vbro4upIT1`) are for development only. **You must change these before deploying to any non-local environment.**
+
+To change credentials:
+
+1. Update `docker-compose.yaml`:
+   ```yaml
+   AIDBOX_CLIENT_ID: your-secure-client-id
+   AIDBOX_CLIENT_SECRET: your-secure-secret  # Use a strong, random value
+   ```
+
+2. Update your `.env` file to match:
+   ```env
+   AIDBOX_CLIENT_ID=your-secure-client-id
+   AIDBOX_CLIENT_SECRET=your-secure-secret
+   ```
+
+3. Restart Aidbox: `docker compose down && docker compose up -d`
+
 ### Connecting to a Remote Aidbox
 
 If Aidbox runs on a different host:
@@ -62,10 +82,10 @@ Then restart Aidbox: `docker compose restart aidbox`
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FHIR_APP` | (empty) | Sending application name (MSH-3) |
-| `FHIR_FAC` | (empty) | Sending facility name (MSH-4) |
-| `BILLING_APP` | (empty) | Receiving application name (MSH-5) |
-| `BILLING_FAC` | (empty) | Receiving facility name (MSH-6) |
+| `FHIR_APP` | `FHIR_APP` | Sending application name (MSH-3) |
+| `FHIR_FAC` | `FHIR_FAC` | Sending facility name (MSH-4) |
+| `BILLING_APP` | `BILLING_APP` | Receiving application name (MSH-5) |
+| `BILLING_FAC` | `BILLING_FAC` | Receiving facility name (MSH-6) |
 
 ### Network
 
@@ -94,7 +114,7 @@ PostgreSQL data persists in a Docker volume. To start fresh:
 ```sh
 docker compose down -v   # -v removes volumes
 docker compose up -d
-bun migrate
+bun run migrate
 ```
 
 ### Aidbox License
@@ -106,4 +126,4 @@ On first run, activate the license:
 
 ## Custom FHIR Resources
 
-The system uses custom FHIR resources defined in `init-bundle.json`. For details on their structure, see [Technical Documentation](../technical/README.md).
+The system uses custom FHIR resources defined in `init-bundle.json`. For details on their structure, see the [Developer Guide](../developer-guide/README.md).
