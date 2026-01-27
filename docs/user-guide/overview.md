@@ -107,7 +107,9 @@ The BAR builder takes a pending invoice and:
    - RelatedPerson → GT1 (guarantor)
 3. Assembles the complete BAR message
 4. Stores it as an `OutgoingBarMessage` with status `pending`
-5. Marks the invoice as `completed`
+5. Updates the invoice: sets `Invoice.status` to `issued` and `processing-status` to `completed`
+
+Note: The system tracks two separate statuses for invoices. `Invoice.status` is the standard FHIR field indicating the invoice lifecycle (`draft` → `issued`). The `processing-status` extension tracks the BAR generation workflow (`pending` → `completed` or `error`).
 
 Generation can happen two ways:
 - **On-demand:** Click "Build BAR" on the [Invoices](/invoices) page

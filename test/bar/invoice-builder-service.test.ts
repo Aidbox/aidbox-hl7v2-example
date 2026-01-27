@@ -224,6 +224,71 @@ describe("processNextInvoice", () => {
   });
 });
 
+describe("updateInvoiceStatus", () => {
+  test("sets Invoice.status to 'issued' when processing-status is 'completed'", async () => {
+    const patchCalls: string[] = [];
+
+    const mockAidbox = {
+      aidboxFetch: mock((path: string, options?: any) => {
+        if (path.includes("/fhir/Invoice/") && options?.method === "PATCH") {
+          patchCalls.push(options.body);
+          return Promise.resolve({});
+        }
+        return Promise.resolve({});
+      }),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { updateInvoiceStatus } = await import("../../src/bar/invoice-builder-service");
+
+    await updateInvoiceStatus("test-invoice-id", "completed");
+
+    expect(patchCalls.length).toBe(1);
+    const patchBody = JSON.parse(patchCalls[0]!);
+
+    // Verify Invoice.status is set to "issued"
+    const invoiceStatusOperation = patchBody.parameter.find((p: any) =>
+      p.part?.some((part: any) => part.name === "path" && part.valueString === "Invoice.status")
+    );
+    expect(invoiceStatusOperation).toBeDefined();
+
+    const statusValuePart = invoiceStatusOperation.part.find((part: any) => part.name === "value");
+    expect(statusValuePart?.valueCode).toBe("issued");
+  });
+
+  test("does NOT set Invoice.status when processing-status is 'error'", async () => {
+    const patchCalls: string[] = [];
+
+    const mockAidbox = {
+      aidboxFetch: mock((path: string, options?: any) => {
+        if (path.includes("/fhir/Invoice/") && options?.method === "PATCH") {
+          patchCalls.push(options.body);
+          return Promise.resolve({});
+        }
+        return Promise.resolve({});
+      }),
+      putResource: mock(() => Promise.resolve({})),
+      getResources: mock(() => Promise.resolve([])),
+    };
+
+    mock.module("../../src/aidbox", () => mockAidbox);
+    const { updateInvoiceStatus } = await import("../../src/bar/invoice-builder-service");
+
+    await updateInvoiceStatus("test-invoice-id", "error", { reason: "Test error" });
+
+    expect(patchCalls.length).toBe(1);
+    const patchBody = JSON.parse(patchCalls[0]!);
+
+    // Verify Invoice.status is NOT set
+    const invoiceStatusOperation = patchBody.parameter.find((p: any) =>
+      p.part?.some((part: any) => part.name === "path" && part.valueString === "Invoice.status")
+    );
+    expect(invoiceStatusOperation).toBeUndefined();
+  });
+});
+
 describe("createInvoiceBarBuilderService", () => {
   test("starts and stops correctly", async () => {
     const mockAidbox = {

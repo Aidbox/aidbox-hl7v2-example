@@ -183,12 +183,12 @@ See `docs/developer-guide/bar-generation.md` for FHIR→HL7v2 field mappings per
 Polls Aidbox for pending Invoices and generates BAR messages.
 
 - Polls every minute for Invoice with `processing-status=pending` (custom extension), sorted by `_lastUpdated` (oldest first)
-- Invoice.status remains "draft" (FHIR standard), processing tracked via extension
-- Processing statuses: `pending` → `completed` (or `error` on failure)
+- On success: Invoice.status changes to "issued", processing-status changes to "completed"
+- On failure: Invoice.status unchanged, processing-status changes to "error"
 - Fetches related resources: Patient, Account, Coverage, Encounter, Condition, Procedure
 - Generates BAR message using `generateBarMessage()`
 - Creates OutgoingBarMessage with `status=pending`
-- Updates Invoice processing-status to "completed" via PATCH
+- Updates Invoice via PATCH (both status and processing-status extension)
 
 ```sh
 # Run as standalone service
