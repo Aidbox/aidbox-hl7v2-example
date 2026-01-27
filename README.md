@@ -59,25 +59,8 @@ bun run dev
 
 ## Documentation
 
-### User Guide
-
-- [Getting Started](docs/user-guide/getting-started.md) — Installation, first run, quick workflow test
-- [Overview](docs/user-guide/overview.md) — System architecture, data flows, and operations
-- [Concepts](docs/user-guide/concepts.md) — HL7v2, FHIR, message types, and terminology
-- [Configuration](docs/user-guide/configuration.md) — Environment variables and customization
-- [Adding Field Mappings](docs/user-guide/adding-field-mappings.md) — Add code mappings for lab codes
-- [Troubleshooting](docs/user-guide/troubleshooting.md) — Common issues and solutions
-
-### Developer Guide
-
-- [Architecture](docs/developer-guide/architecture.md) — System design, data flow, pull-based polling pattern
-- [Extracting Modules](docs/developer-guide/how-to/extracting-modules.md) — Extract and reuse modules in your project
-- [HL7v2 Module](docs/developer-guide/hl7v2-module.md) — Type-safe message construction API
-- [BAR Generation](docs/developer-guide/bar-generation.md) — BAR message generation details
-- [ORU Processing](docs/developer-guide/oru-processing.md) — ORU processing pipeline
-- [Code Mapping](docs/developer-guide/code-mapping.md) — ConceptMap and Task data model
-- [Extending Outgoing Fields](docs/developer-guide/how-to/extending-outgoing-fields.md) — Add FHIR→HL7v2 field mappings
-- [Extending Incoming Fields](docs/developer-guide/how-to/extending-incoming-fields.md) — Add HL7v2→FHIR field mappings
+- **[User Guide](docs/user-guide/README.md)** — Setup, configuration, operations, troubleshooting
+- **[Developer Guide](docs/developer-guide/README.md)** — Architecture, extending the system, implementation details
 
 ## Supported Message Types
 
