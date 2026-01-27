@@ -6,7 +6,6 @@
  */
 import { describe, test, expect } from "bun:test";
 import {
-  describeIntegration,
   testAidboxFetch,
   createTestConceptMap,
 } from "../helpers";
@@ -172,7 +171,7 @@ async function fetchMessage(id: string): Promise<IncomingHL7v2Message> {
   );
 }
 
-describeIntegration("Mapping Tasks Queue E2E Integration", () => {
+describe("Mapping Tasks Queue E2E Integration", () => {
   describe("resolveTaskWithMapping", () => {
     test("completes Task and creates ConceptMap with mapping entry", async () => {
       await createPendingTask("task-resolve-1");

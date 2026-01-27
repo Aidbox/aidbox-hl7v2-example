@@ -6,7 +6,6 @@
  */
 import { describe, test, expect } from "bun:test";
 import {
-  describeIntegration,
   loadFixture,
   getPatient,
   getEncounters,
@@ -26,7 +25,7 @@ async function submitAndProcessAdtA08(hl7Message: string): Promise<IncomingHL7v2
   return submitAndProcess(hl7Message, "ADT^A08");
 }
 
-describeIntegration("ADT_A01 E2E Integration", () => {
+describe("ADT_A01 E2E Integration", () => {
   describe("happy path - basic message processing", () => {
     test("processes base message and creates Patient and Encounter", async () => {
       const hl7Message = await loadFixture("adt-a01/base.hl7");
@@ -258,7 +257,7 @@ describeIntegration("ADT_A01 E2E Integration", () => {
   });
 });
 
-describeIntegration("ADT_A08 E2E Integration", () => {
+describe("ADT_A08 E2E Integration", () => {
   describe("happy path - patient update", () => {
     test("processes base message and creates/updates Patient", async () => {
       const hl7Message = await loadFixture("adt-a08/base.hl7");

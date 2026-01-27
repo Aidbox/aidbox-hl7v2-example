@@ -6,7 +6,6 @@
  */
 import { describe, test, expect, mock } from "bun:test";
 import {
-  describeIntegration,
   testAidboxFetch,
   getOutgoingBarMessages,
 } from "../helpers";
@@ -101,7 +100,7 @@ function getProcessingStatus(invoice: Invoice): string | undefined {
   )?.valueCode;
 }
 
-describeIntegration("Invoice BAR Builder Service E2E Integration", () => {
+describe("Invoice BAR Builder Service E2E Integration", () => {
   describe("pollPendingInvoice", () => {
     test("returns null when no pending invoices", async () => {
       const result = await pollPendingInvoice();

@@ -1,4 +1,3 @@
-import { describe } from "bun:test";
 import type { ConceptMap } from "../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 import type { Task } from "../../src/fhir/hl7-fhir-r4-core/Task";
 import type {
@@ -18,10 +17,6 @@ import { processNextMessage } from "../../src/v2-to-fhir/processor-service";
 
 export const TEST_AIDBOX_URL = "http://localhost:8888";
 
-// Check if integration tests should run (set by preload.ts)
-const integrationTestsEnabled = process.env.INTEGRATION_TESTS_ENABLED === "true";
-
-export const describeIntegration = integrationTestsEnabled ? describe : describe.skip;
 export const TEST_CLIENT_ID = "root";
 export const TEST_CLIENT_SECRET = "test_secret";
 

@@ -8,9 +8,6 @@ if (!process.env.AIDBOX_LICENSE) {
   process.exit(1);
 }
 
-// Signal to integration tests that they should run (preload is active)
-process.env.INTEGRATION_TESTS_ENABLED = "true";
-
 // Reset docker volumes and run migrations (for clean test runs)
 const resetAidbox = process.env.TEST_RESET_AIDBOX === "true";
 

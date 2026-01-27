@@ -95,7 +95,6 @@ For converters, test both the happy path and edge cases (missing fields, malform
 Integration test files use the naming convention `*.integration.test.ts`.
 
 Key helpers from `test/integration/helpers.ts`:
-- **`describeIntegration()`** — wraps `describe()`, auto-skips when Aidbox is unavailable
 - **`testAidboxFetch()`** — authenticated HTTP client for the test Aidbox (port 8888)
 - **`loadFixture(path)`** — loads HL7v2 messages from `test/fixtures/hl7v2/`
 - **`cleanupTestResources()`** — runs in `beforeEach` (configured in `preload.ts`) to give each test a clean state
