@@ -54,7 +54,7 @@ describe("convertXONToOrganization", () => {
       $3_value: "12345",
       $10_organizationId: "ORG123",
     });
-    expect(result?.identifier?.[0].value).toBe("ORG123");
+    expect(result?.identifier?.[0]!.value).toBe("ORG123");
   });
 
   test("converts XON with identifier system from HD", () => {
@@ -197,8 +197,8 @@ describe("convertXONArrayToOrganizations", () => {
     ]);
 
     expect(result).toHaveLength(2);
-    expect(result?.[0].name).toBe("Hospital A");
-    expect(result?.[1].name).toBe("Hospital B");
+    expect(result?.[0]!.name).toBe("Hospital A");
+    expect(result?.[1]!.name).toBe("Hospital B");
   });
 
   test("filters out invalid organizations", () => {

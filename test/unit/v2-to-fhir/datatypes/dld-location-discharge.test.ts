@@ -46,8 +46,8 @@ describe("convertDLDToLocationDischarge", () => {
   });
 
   test("converts various discharge location codes", () => {
-    expect(convertDLDToLocationDischarge({ $1_location: "HOS" })?.type?.coding?.[0].code).toBe("HOS");
-    expect(convertDLDToLocationDischarge({ $1_location: "OTH" })?.type?.coding?.[0].code).toBe("OTH");
-    expect(convertDLDToLocationDischarge({ $1_location: "HH" })?.type?.coding?.[0].code).toBe("HH");
+    expect(convertDLDToLocationDischarge({ $1_location: "HOS" })?.type?.coding?.[0]!.code).toBe("HOS");
+    expect(convertDLDToLocationDischarge({ $1_location: "OTH" })?.type?.coding?.[0]!.code).toBe("OTH");
+    expect(convertDLDToLocationDischarge({ $1_location: "HH" })?.type?.coding?.[0]!.code).toBe("HH");
   });
 });

@@ -45,10 +45,10 @@ describe("ORU_R01 E2E Integration", () => {
       expect(message.status).toBe("processed");
       expect(message.patient?.reference).toContain("Patient/");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
       expect(diagnosticReports.length).toBe(1);
-      expect(diagnosticReports[0].status).toBe("final");
+      expect(diagnosticReports[0]!.status).toBe("final");
 
       const observations = await getObservations(patientRef);
       expect(observations.length).toBe(2);
@@ -58,18 +58,18 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
-      expect(diagnosticReports[0].id).toBe("26h-006mp0004");
-      expect(diagnosticReports[0].code?.coding?.[0]?.code).toBe("LAB5524");
+      expect(diagnosticReports[0]!.id).toBe("26h-006mp0004");
+      expect(diagnosticReports[0]!.code?.coding?.[0]?.code).toBe("LAB5524");
     });
 
     test("creates Observations with correct IDs from OBX", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
       const ids = observations.map((o) => o.id).sort();
@@ -81,21 +81,21 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
-      expect(diagnosticReports[0].result).toHaveLength(2);
-      expect(diagnosticReports[0].result?.[0]?.reference).toContain("Observation/");
+      expect(diagnosticReports[0]!.result).toHaveLength(2);
+      expect(diagnosticReports[0]!.result?.[0]?.reference).toContain("Observation/");
     });
 
     test("tags all resources with message control ID", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
-      const tag = diagnosticReports[0].meta?.tag?.find(
+      const tag = diagnosticReports[0]!.meta?.tag?.find(
         (t) => t.system === "urn:aidbox:hl7v2:message-id",
       );
       expect(tag?.code).toBe("TEST-MSG-001");
@@ -109,10 +109,10 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
-      const loincCoding = observations[0].code.coding?.find(
+      const loincCoding = observations[0]!.code.coding?.find(
         (c) => c.system === "http://loinc.org",
       );
       expect(loincCoding?.code).toBe("2823-3");
@@ -124,16 +124,16 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
-      const loincCoding = observations[0].code.coding?.find(
+      const loincCoding = observations[0]!.code.coding?.find(
         (c) => c.system === "http://loinc.org",
       );
       expect(loincCoding?.code).toBe("2823-3");
 
       // Should also include local coding
-      const localCoding = observations[0].code.coding?.find(
+      const localCoding = observations[0]!.code.coding?.find(
         (c) => c.system !== "http://loinc.org",
       );
       expect(localCoding?.code).toBe("12345");
@@ -146,7 +146,7 @@ describe("ORU_R01 E2E Integration", () => {
       expect(message.status).toBe("mapping_error");
       expect(message.unmappedCodes).toBeDefined();
       expect(message.unmappedCodes!.length).toBeGreaterThan(0);
-      expect(message.unmappedCodes![0].localCode).toBe("12345");
+      expect(message.unmappedCodes![0]!.localCode).toBe("12345");
     });
 
     test("collects all unmapped codes when multiple OBX lack LOINC", async () => {
@@ -156,7 +156,7 @@ describe("ORU_R01 E2E Integration", () => {
       expect(message.status).toBe("mapping_error");
       // First OBX has LOINC, second doesn't
       expect(message.unmappedCodes).toHaveLength(1);
-      expect(message.unmappedCodes![0].localCode).toBe("67890");
+      expect(message.unmappedCodes![0]!.localCode).toBe("67890");
     });
   });
 
@@ -167,14 +167,14 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
-      expect(diagnosticReports[0].specimen).toBeDefined();
-      expect(diagnosticReports[0].specimen!.length).toBe(1);
+      expect(diagnosticReports[0]!.specimen).toBeDefined();
+      expect(diagnosticReports[0]!.specimen!.length).toBe(1);
 
-      const specimenRef = diagnosticReports[0].specimen![0].reference!;
-      const specimenId = specimenRef.split("/")[1];
+      const specimenRef = diagnosticReports[0]!.specimen![0]!.reference!;
+      const specimenId = specimenRef.split("/")[1]!;
       const specimen = await testAidboxFetch<Specimen>(`/fhir/Specimen/${specimenId}`);
       expect(specimen.type?.coding?.[0]?.code).toBe("Blood");
     });
@@ -183,10 +183,10 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/with-specimen.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
-      expect(observations[0].specimen?.reference).toContain("Specimen/");
+      expect(observations[0]!.specimen?.reference).toContain("Specimen/");
     });
   });
 
@@ -197,23 +197,23 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
-      expect(observations[0].note).toBeDefined();
-      expect(observations[0].note!.length).toBe(1);
-      expect(observations[0].note![0].text).toContain("eGFR calculation");
+      expect(observations[0]!.note).toBeDefined();
+      expect(observations[0]!.note!.length).toBe(1);
+      expect(observations[0]!.note![0]!.text).toContain("eGFR calculation");
     });
 
     test("creates paragraph breaks for empty NTE-3", async () => {
       const hl7Message = await loadFixture("oru-r01/with-notes.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
       // Should have paragraph break between first and third NTE
-      expect(observations[0].note![0].text).toContain("\n\n");
+      expect(observations[0]!.note![0]!.text).toContain("\n\n");
     });
   });
 
@@ -224,7 +224,7 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
       expect(diagnosticReports.length).toBe(2);
@@ -235,7 +235,7 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/multiple-obr.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
       // Each DiagnosticReport should have 2 observations
@@ -248,7 +248,7 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
       const quantityObs = observations.find((o) => o.valueQuantity?.value === 1.0);
@@ -260,7 +260,7 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
       const stringObs = observations.find((o) => o.valueString === "Detected");
@@ -271,11 +271,11 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/with-notes.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
-      expect(observations[0].valueQuantity?.value).toBe(90);
-      expect(observations[0].valueQuantity?.comparator).toBe(">");
+      expect(observations[0]!.valueQuantity?.value).toBe(90);
+      expect(observations[0]!.valueQuantity?.comparator).toBe(">");
     });
   });
 
@@ -284,21 +284,21 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/with-loinc-abnormal.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
-      expect(observations[0].interpretation?.[0]?.coding?.[0]?.code).toBe("H");
+      expect(observations[0]!.interpretation?.[0]?.coding?.[0]?.code).toBe("H");
     });
 
     test("converts OBX-7 reference range", async () => {
       const hl7Message = await loadFixture("oru-r01/with-loinc-abnormal.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
-      expect(observations[0].referenceRange?.[0]?.low?.value).toBe(4.0);
-      expect(observations[0].referenceRange?.[0]?.high?.value).toBe(6.0);
+      expect(observations[0]!.referenceRange?.[0]?.low?.value).toBe(4.0);
+      expect(observations[0]!.referenceRange?.[0]?.high?.value).toBe(6.0);
     });
   });
 
@@ -349,9 +349,9 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
-      expect(diagnosticReports[0].status).toBe("preliminary");
+      expect(diagnosticReports[0]!.status).toBe("preliminary");
     });
   });
 
@@ -394,9 +394,9 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
-      expect(diagnosticReports[0].id).toBe("placer123");
+      expect(diagnosticReports[0]!.id).toBe("placer123");
     });
 
     test("sets error when OBX-3 has no system (MissingLocalSystemError)", async () => {
@@ -445,7 +445,7 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientId = message.patient!.reference.split("/")[1];
+      const patientId = message.patient!.reference!.split("/")[1]!;
       const patient = await getPatient(patientId);
 
       expect(patient.active).toBe(false);
@@ -455,7 +455,7 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/patient/pid3-only.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientId = message.patient!.reference.split("/")[1];
+      const patientId = message.patient!.reference!.split("/")[1]!;
       const patient = await getPatient(patientId);
 
       expect(patient.name?.[0]?.family).toBe("PATIENT");
@@ -468,17 +468,17 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
-      expect(diagnosticReports[0].subject?.reference).toBe(patientRef);
+      expect(diagnosticReports[0]!.subject?.reference).toBe(patientRef);
     });
 
     test("links all Observations to Patient via subject", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
       observations.forEach((obs) => {
@@ -494,11 +494,11 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const encounters = await getEncounters(patientRef);
 
       expect(encounters.length).toBe(1);
-      expect(encounters[0].status).toBe("unknown");
+      expect(encounters[0]!.status).toBe("unknown");
     });
 
     test("does not create Encounter when PV1 is missing", async () => {
@@ -507,10 +507,10 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
-      expect(diagnosticReports[0].encounter).toBeUndefined();
+      expect(diagnosticReports[0]!.encounter).toBeUndefined();
     });
 
     test("does not create Encounter when PV1-19 is empty", async () => {
@@ -519,27 +519,27 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
-      expect(diagnosticReports[0].encounter).toBeUndefined();
+      expect(diagnosticReports[0]!.encounter).toBeUndefined();
     });
 
     test("links DiagnosticReport to Encounter", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-visit.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
-      expect(diagnosticReports[0].encounter?.reference).toContain("Encounter/");
+      expect(diagnosticReports[0]!.encounter?.reference).toContain("Encounter/");
     });
 
     test("links Observations to Encounter", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-visit.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
       observations.forEach((obs) => {
@@ -551,11 +551,11 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-visit.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const encounters = await getEncounters(patientRef);
 
       // PV1-2 = I (inpatient) maps to IMP
-      expect(encounters[0].class?.code).toBe("IMP");
+      expect(encounters[0]!.class?.code).toBe("IMP");
     });
 
     test("includes draft Encounter even when mapping_error occurs", async () => {
@@ -564,7 +564,7 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("mapping_error");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const encounters = await getEncounters(patientRef);
 
       expect(encounters.length).toBe(1);
@@ -577,11 +577,11 @@ describe("ORU_R01 E2E Integration", () => {
 
       // Process first time
       const message1 = await submitAndProcessOruR01(hl7Message);
-      const patientRef = message1.patient!.reference;
+      const patientRef = message1.patient!.reference!;
 
       const reportsAfterFirst = await getDiagnosticReports(patientRef);
       expect(reportsAfterFirst.length).toBe(1);
-      const firstReportId = reportsAfterFirst[0].id;
+      const firstReportId = reportsAfterFirst[0]!.id;
 
       // Process second time
       await submitAndProcessOruR01(hl7Message);
@@ -590,7 +590,7 @@ describe("ORU_R01 E2E Integration", () => {
 
       // Should still be only 1 DiagnosticReport (idempotent)
       expect(reportsAfterSecond.length).toBe(1);
-      expect(reportsAfterSecond[0].id).toBe(firstReportId);
+      expect(reportsAfterSecond[0]!.id).toBe(firstReportId);
     });
 
     test("same message with different MSH-10 updates resources", async () => {
@@ -603,14 +603,14 @@ describe("ORU_R01 E2E Integration", () => {
       // Same patient
       expect(message1.patient?.reference).toBe(message2.patient?.reference);
 
-      const patientRef = message1.patient!.reference;
+      const patientRef = message1.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
 
       // Still only 1 DiagnosticReport
       expect(diagnosticReports.length).toBe(1);
 
       // But tag updated to latest message ID
-      const tag = diagnosticReports[0].meta?.tag?.find(
+      const tag = diagnosticReports[0]!.meta?.tag?.find(
         (t) => t.system === "urn:aidbox:hl7v2:message-id",
       );
       expect(tag?.code).toBe("TEST-MSG-002");
@@ -633,10 +633,10 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const observations = await getObservations(patientRef);
 
-      const loincCoding = observations[0].code.coding?.find(
+      const loincCoding = observations[0]!.code.coding?.find(
         (c) => c.system === "http://loinc.org",
       );
       expect(loincCoding?.code).toBe("2823-3");
@@ -651,7 +651,7 @@ describe("ORU_R01 E2E Integration", () => {
       const tasks = await getMappingTasks();
       expect(tasks.length).toBe(1);
 
-      const task = tasks[0];
+      const task = tasks[0]!;
       expect(task).toBeDefined();
       expect(task?.status).toBe("requested");
       expect(task.input).toContainEqual({
@@ -668,7 +668,7 @@ describe("ORU_R01 E2E Integration", () => {
       expect(message.status).toBe("mapping_error");
 
       const tasks = await getMappingTasks();
-      const task = tasks[0];
+      const task = tasks[0]!;
 
       await resolveTask(task.id!, "2823-3", "Potassium");
 

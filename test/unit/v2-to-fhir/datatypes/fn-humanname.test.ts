@@ -34,7 +34,7 @@ describe("convertFNToHumanName", () => {
           },
         ],
       },
-    });
+    } as any);
   });
 
   test("converts family name with own surname extension", () => {
@@ -52,7 +52,7 @@ describe("convertFNToHumanName", () => {
           },
         ],
       },
-    });
+    } as any);
   });
 
   test("converts family name with partner prefix extension", () => {
@@ -70,7 +70,7 @@ describe("convertFNToHumanName", () => {
           },
         ],
       },
-    });
+    } as any);
   });
 
   test("converts family name with partner name extension", () => {
@@ -88,7 +88,7 @@ describe("convertFNToHumanName", () => {
           },
         ],
       },
-    });
+    } as any);
   });
 
   test("converts full family name with all extensions", () => {
@@ -121,13 +121,13 @@ describe("convertFNToHumanName", () => {
           },
         ],
       },
-    });
+    } as any);
   });
 
   test("does not add _family when no extensions present", () => {
     const result = convertFNToHumanName({
       $1_family: "Smith",
     });
-    expect(result?._family).toBeUndefined();
+    expect((result as any)?._family).toBeUndefined();
   });
 });

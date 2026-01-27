@@ -269,10 +269,10 @@ describe("convertXTNArrayToContactPoints", () => {
     ]);
 
     expect(result).toHaveLength(2);
-    expect(result?.[0].system).toBe("phone");
-    expect(result?.[0].value).toBe("555-1234");
-    expect(result?.[1].system).toBe("email");
-    expect(result?.[1].value).toBe("john@example.com");
+    expect(result?.[0]!.system).toBe("phone");
+    expect(result?.[0]!.value).toBe("555-1234");
+    expect(result?.[1]!.system).toBe("email");
+    expect(result?.[1]!.value).toBe("john@example.com");
   });
 
   test("filters out invalid contact points", () => {

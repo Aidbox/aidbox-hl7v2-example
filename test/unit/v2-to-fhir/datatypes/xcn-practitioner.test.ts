@@ -286,10 +286,10 @@ describe("convertXCNArrayToPractitioners", () => {
     ]);
 
     expect(result).toHaveLength(2);
-    expect(result?.[0].identifier?.[0].value).toBe("12345");
-    expect(result?.[0].name?.[0].family).toBe("Smith");
-    expect(result?.[1].identifier?.[0].value).toBe("67890");
-    expect(result?.[1].name?.[0].family).toBe("Jones");
+    expect(result?.[0]!.identifier?.[0]!.value).toBe("12345");
+    expect(result?.[0]!.name?.[0]!.family).toBe("Smith");
+    expect(result?.[1]!.identifier?.[0]!.value).toBe("67890");
+    expect(result?.[1]!.name?.[0]!.family).toBe("Jones");
   });
 
   test("filters out invalid practitioners", () => {

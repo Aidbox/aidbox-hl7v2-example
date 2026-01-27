@@ -121,8 +121,8 @@ describe("convertXCNArrayToPractitionerRoles", () => {
     ]);
 
     expect(result).toHaveLength(2);
-    expect(result?.[0].identifier?.[0].value).toBe("PR12345");
-    expect(result?.[1].identifier?.[0].value).toBe("PR67890");
+    expect(result?.[0]!.identifier?.[0]!.value).toBe("PR12345");
+    expect(result?.[1]!.identifier?.[0]!.value).toBe("PR67890");
   });
 
   test("filters out invalid practitioner roles", () => {

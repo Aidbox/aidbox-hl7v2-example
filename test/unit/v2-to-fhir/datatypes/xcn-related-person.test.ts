@@ -19,7 +19,7 @@ describe("convertXCNToRelatedPerson", () => {
     });
     expect(result?.resourceType).toBe("RelatedPerson");
     expect(result?.identifier?.[0]).toEqual({ value: "REL123" });
-    expect(result?.patient).toEqual({ reference: "" });
+    expect(result?.patient).toEqual({ reference: "" } as any);
   });
 
   test("converts XCN with family name only", () => {
@@ -165,13 +165,13 @@ describe("convertXCNToRelatedPerson", () => {
     });
 
     expect(result?.resourceType).toBe("RelatedPerson");
-    expect(result?.patient).toEqual({ reference: "" });
+    expect(result?.patient).toEqual({ reference: "" } as any);
     expect(result?.identifier).toHaveLength(1);
-    expect(result?.identifier?.[0].value).toBe("REL123");
+    expect(result?.identifier?.[0]!.value).toBe("REL123");
     expect(result?.name).toHaveLength(1);
-    expect(result?.name?.[0].family).toBe("Smith");
-    expect(result?.name?.[0].given).toEqual(["Jane", "Mary"]);
-    expect(result?.name?.[0].suffix).toEqual(["Jr", "RN"]);
+    expect(result?.name?.[0]!.family).toBe("Smith");
+    expect(result?.name?.[0]!.given).toEqual(["Jane", "Mary"]);
+    expect(result?.name?.[0]!.suffix).toEqual(["Jr", "RN"]);
   });
 });
 
@@ -191,8 +191,8 @@ describe("convertXCNArrayToRelatedPersons", () => {
     ]);
 
     expect(result).toHaveLength(2);
-    expect(result?.[0].identifier?.[0].value).toBe("REL1");
-    expect(result?.[1].identifier?.[0].value).toBe("REL2");
+    expect(result?.[0]!.identifier?.[0]!.value).toBe("REL1");
+    expect(result?.[1]!.identifier?.[0]!.value).toBe("REL2");
   });
 
   test("filters out invalid related persons", () => {

@@ -185,7 +185,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       const task = await fetchTask("task-resolve-1");
       expect(task.status).toBe("completed");
       expect(task.output).toBeDefined();
-      expect(task.output![0].valueCodeableConcept!.coding![0].code).toBe("2823-3");
+      expect(task.output![0]!.valueCodeableConcept!.coding![0]!.code).toBe("2823-3");
 
       const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-to-loinc");
       expect(conceptMap).toBeDefined();
@@ -198,7 +198,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       expect(group!.element!.some((e) => e.code === "K_SERUM")).toBe(true);
 
       const element = group!.element!.find((e) => e.code === "K_SERUM");
-      expect(element!.target![0].code).toBe("2823-3");
+      expect(element!.target![0]!.code).toBe("2823-3");
     });
 
     test("adds new mapping entry to existing ConceptMap group", async () => {
@@ -249,7 +249,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       expect(acmeGroup).toBeDefined();
       expect(otherGroup).toBeDefined();
-      expect(acmeGroup!.element![0].code).toBe("K_SERUM");
+      expect(acmeGroup!.element![0]!.code).toBe("K_SERUM");
     });
 
     test("creates new ConceptMap when none exists", async () => {
@@ -265,7 +265,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       expect(conceptMap.resourceType).toBe("ConceptMap");
       expect(conceptMap.status).toBe("active");
       expect(conceptMap.group!.length).toBe(1);
-      expect(conceptMap.group![0].element![0].code).toBe("K_SERUM");
+      expect(conceptMap.group![0]!.element![0]!.code).toBe("K_SERUM");
     });
 
     test("throws error when task is already completed", async () => {
@@ -306,7 +306,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       const message = await fetchMessage("msg-partial");
       expect(message.unmappedCodes).toHaveLength(1);
-      expect(message.unmappedCodes![0].localCode).toBe("NA_SERUM");
+      expect(message.unmappedCodes![0]!.localCode).toBe("NA_SERUM");
       expect(message.status).toBe("mapping_error");
     });
 
@@ -329,7 +329,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       const task = await fetchTask("task-full-flow");
       expect(task.status).toBe("completed");
-      expect(task.output![0].valueCodeableConcept!.coding![0].code).toBe("2823-3");
+      expect(task.output![0]!.valueCodeableConcept!.coding![0]!.code).toBe("2823-3");
 
       const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-to-loinc");
       expect(conceptMap).toBeDefined();

@@ -50,7 +50,7 @@ export async function testAidboxFetch<T>(
       `Aidbox error: ${response.status} ${await response.text()}`,
     );
   }
-  return response.json();
+  return response.json() as T;
 }
 
 export async function createTestConceptMap(
@@ -74,7 +74,7 @@ export async function createTestConceptMap(
         element: [],
       };
     }
-    groups[m.localSystem].element!.push({
+    groups[m.localSystem]!.element!.push({
       code: m.localCode,
       target: [
         {

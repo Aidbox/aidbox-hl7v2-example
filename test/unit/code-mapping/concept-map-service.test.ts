@@ -277,7 +277,7 @@ describe("addMappingToConceptMap", () => {
     );
 
     expect(result.group).toHaveLength(1);
-    expect(result.group![0].source).toBe("ACME-LAB-CODES");
+    expect(result.group![0]!.source).toBe("ACME-LAB-CODES");
   });
 
   test("omits display when localDisplay is empty", async () => {
@@ -304,10 +304,10 @@ describe("addMappingToConceptMap", () => {
     );
 
     // The element should NOT have a display property (Aidbox rejects empty strings)
-    expect(result.group![0].element![0].code).toBe("GS26-2&rpt");
-    expect(result.group![0].element![0].display).toBeUndefined();
-    expect(result.group![0].element![0].target![0].code).toBe("11529-5");
-    expect(result.group![0].element![0].target![0].display).toBe(
+    expect(result.group![0]!.element![0]!.code).toBe("GS26-2&rpt");
+    expect(result.group![0]!.element![0]!.display).toBeUndefined();
+    expect(result.group![0]!.element![0]!.target![0]!.code).toBe("11529-5");
+    expect(result.group![0]!.element![0]!.target![0]!.display).toBe(
       "Surgical pathology study",
     );
   });
@@ -334,8 +334,8 @@ describe("addMappingToConceptMap", () => {
       "", // empty loincDisplay
     );
 
-    expect(result.group![0].element![0].target![0].code).toBe("12345-6");
-    expect(result.group![0].element![0].target![0].display).toBeUndefined();
+    expect(result.group![0]!.element![0]!.target![0]!.code).toBe("12345-6");
+    expect(result.group![0]!.element![0]!.target![0]!.display).toBeUndefined();
   });
 });
 
@@ -355,7 +355,7 @@ describe("searchMappings", () => {
     });
 
     expect(results).toHaveLength(1);
-    expect(results[0].code).toBe("K_SERUM");
+    expect(results[0]!.code).toBe("K_SERUM");
   });
 
   test("filters by local code", async () => {
@@ -395,7 +395,7 @@ describe("searchMappings", () => {
     );
 
     expect(results).toHaveLength(1);
-    expect(results[0].code).toBe("K_SERUM");
+    expect(results[0]!.code).toBe("K_SERUM");
   });
 
   test("filters by LOINC code", async () => {
@@ -435,7 +435,7 @@ describe("searchMappings", () => {
     );
 
     expect(results).toHaveLength(1);
-    expect(results[0].code).toBe("NA_SERUM");
+    expect(results[0]!.code).toBe("NA_SERUM");
   });
 
   test("returns empty array when ConceptMap not found", async () => {

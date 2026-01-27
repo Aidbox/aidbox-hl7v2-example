@@ -12,7 +12,7 @@ const testOutgoingMessage = {
 
 describe("pollPendingMessage", () => {
   const mockAidbox = {
-    aidboxFetch: mock(() => Promise.resolve({ entry: [] })),
+    aidboxFetch: mock(() => Promise.resolve({ total: 0, entry: [] as any[] })),
     putResource: mock(() => Promise.resolve({})),
   };
 

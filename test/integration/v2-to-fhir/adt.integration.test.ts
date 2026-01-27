@@ -39,10 +39,10 @@ describe("ADT_A01 E2E Integration", () => {
       expect(patient.name?.[0]?.family).toBe("TESTPATIENT");
       expect(patient.gender).toBe("male");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const encounters = await getEncounters(patientRef);
       expect(encounters.length).toBe(1);
-      expect(encounters[0].class?.code).toBe("IMP");
+      expect(encounters[0]!.class?.code).toBe("IMP");
     });
 
     test("processes minimal message with just Patient and Encounter", async () => {
@@ -87,7 +87,7 @@ describe("ADT_A01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const conditions = await getConditions(patientRef);
 
       expect(conditions.length).toBe(2);
@@ -97,7 +97,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/with-conditions.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const conditions = await getConditions(patientRef);
 
       const codes = conditions.map((c) => c.code?.coding?.[0]?.code).sort();
@@ -109,7 +109,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/with-conditions.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const conditions = await getConditions(patientRef);
 
       conditions.forEach((cond) => {
@@ -121,7 +121,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/with-conditions.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const conditions = await getConditions(patientRef);
 
       conditions.forEach((cond) => {
@@ -137,7 +137,7 @@ describe("ADT_A01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const allergies = await getAllergies(patientRef);
 
       expect(allergies.length).toBe(2);
@@ -147,7 +147,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/with-allergies.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const allergies = await getAllergies(patientRef);
 
       const codes = allergies.map((a) => a.code?.coding?.[0]?.code).sort();
@@ -159,7 +159,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/with-allergies.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const allergies = await getAllergies(patientRef);
 
       allergies.forEach((allergy) => {
@@ -171,7 +171,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/with-allergies.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const allergies = await getAllergies(patientRef);
 
       const manifestations = allergies.map(
@@ -189,7 +189,7 @@ describe("ADT_A01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const coverages = await getCoverages(patientRef);
 
       expect(coverages.length).toBe(2);
@@ -199,7 +199,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/with-coverage.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const coverages = await getCoverages(patientRef);
 
       coverages.forEach((coverage) => {
@@ -215,7 +215,7 @@ describe("ADT_A01 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const relatedPersons = await getRelatedPersons(patientRef);
 
       expect(relatedPersons.length).toBe(2);
@@ -225,7 +225,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/with-next-of-kin.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const relatedPersons = await getRelatedPersons(patientRef);
 
       const families = relatedPersons.map((rp) => rp.name?.[0]?.family).sort();
@@ -237,7 +237,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/with-next-of-kin.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      const patientRef = message.patient!.reference;
+      const patientRef = message.patient!.reference!;
       const relatedPersons = await getRelatedPersons(patientRef);
 
       relatedPersons.forEach((rp) => {

@@ -13,7 +13,7 @@ describe("convertOBXToObservation", () => {
     $3_observationIdentifier: {
       $1_code: "2823-3",
       $2_text: "Potassium",
-      $3_codingSystem: "LN",
+      $3_system: "LN",
     },
     $11_observationResultStatus: "F",
   };

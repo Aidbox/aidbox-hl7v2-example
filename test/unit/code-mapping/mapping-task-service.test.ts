@@ -273,7 +273,7 @@ describe("removeResolvedTaskFromMessage", () => {
     );
 
     expect(updatedMessage!.unmappedCodes).toHaveLength(1);
-    expect(updatedMessage!.unmappedCodes![0].localCode).toBe("NA_SERUM");
+    expect(updatedMessage!.unmappedCodes![0]!.localCode).toBe("NA_SERUM");
     expect(updatedMessage!.status).toBe("mapping_error");
   });
 

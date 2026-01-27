@@ -163,8 +163,8 @@ describe("listConceptMaps", () => {
     const result = await listConceptMaps();
 
     expect(result).toHaveLength(2);
-    expect(result[0].id).toBe("hl7v2-acme-lab-acme-hosp-to-loinc");
-    expect(result[0].displayName).toBe("ACME_LAB|ACME_HOSP");
+    expect(result[0]!.id).toBe("hl7v2-acme-lab-acme-hosp-to-loinc");
+    expect(result[0]!.displayName).toBe("ACME_LAB|ACME_HOSP");
   });
 
   test("returns empty array when no ConceptMaps exist", async () => {
@@ -205,7 +205,7 @@ describe("listConceptMaps", () => {
     const result = await listConceptMaps();
 
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe("hl7v2-acme-lab-acme-hosp-to-loinc");
+    expect(result[0]!.id).toBe("hl7v2-acme-lab-acme-hosp-to-loinc");
   });
 });
 
@@ -229,11 +229,11 @@ describe("getMappingsFromConceptMap", () => {
     );
 
     expect(result.entries).toHaveLength(1);
-    expect(result.entries[0].localCode).toBe("K_SERUM");
-    expect(result.entries[0].localDisplay).toBe("Potassium [Serum/Plasma]");
-    expect(result.entries[0].localSystem).toBe("ACME-LAB-CODES");
-    expect(result.entries[0].loincCode).toBe("2823-3");
-    expect(result.entries[0].loincDisplay).toBe(
+    expect(result.entries[0]!.localCode).toBe("K_SERUM");
+    expect(result.entries[0]!.localDisplay).toBe("Potassium [Serum/Plasma]");
+    expect(result.entries[0]!.localSystem).toBe("ACME-LAB-CODES");
+    expect(result.entries[0]!.loincCode).toBe("2823-3");
+    expect(result.entries[0]!.loincDisplay).toBe(
       "Potassium [Moles/volume] in Serum or Plasma",
     );
     expect(result.total).toBe(1);
@@ -289,14 +289,14 @@ describe("getMappingsFromConceptMap", () => {
     );
     expect(page1.entries).toHaveLength(50);
     expect(page1.total).toBe(75);
-    expect(page1.entries[0].localCode).toBe("CODE_0");
+    expect(page1.entries[0]!.localCode).toBe("CODE_0");
 
     const page2 = await getMappingsFromConceptMap(
       "hl7v2-acme-lab-acme-hosp-to-loinc",
       2,
     );
     expect(page2.entries).toHaveLength(25);
-    expect(page2.entries[0].localCode).toBe("CODE_50");
+    expect(page2.entries[0]!.localCode).toBe("CODE_50");
   });
 });
 
@@ -501,7 +501,7 @@ describe("addConceptMapEntry", () => {
     expect(completedTask!.status).toBe("completed");
     expect(completedTask!.output).toBeDefined();
     expect(
-      completedTask!.output![0].valueCodeableConcept?.coding?.[0].code,
+      completedTask!.output![0]!.valueCodeableConcept?.coding?.[0]!.code,
     ).toBe("2951-2");
   });
 });
@@ -808,7 +808,7 @@ describe("getMappingsFromConceptMap - search", () => {
 
     expect(result.entries).toHaveLength(1);
     expect(result.total).toBe(1);
-    expect(result.entries[0].localCode).toBe("GLU_BLOOD");
+    expect(result.entries[0]!.localCode).toBe("GLU_BLOOD");
   });
 
   test("filters by local display (partial match)", async () => {
@@ -828,8 +828,8 @@ describe("getMappingsFromConceptMap - search", () => {
 
     expect(result.entries).toHaveLength(1);
     expect(result.total).toBe(1);
-    expect(result.entries[0].localCode).toBe("K_SERUM");
-    expect(result.entries[0].localDisplay).toBe("Potassium [Serum/Plasma]");
+    expect(result.entries[0]!.localCode).toBe("K_SERUM");
+    expect(result.entries[0]!.localDisplay).toBe("Potassium [Serum/Plasma]");
   });
 
   test("filters by LOINC code (partial match)", async () => {
@@ -849,8 +849,8 @@ describe("getMappingsFromConceptMap - search", () => {
 
     expect(result.entries).toHaveLength(1);
     expect(result.total).toBe(1);
-    expect(result.entries[0].localCode).toBe("GLU_BLOOD");
-    expect(result.entries[0].loincCode).toBe("2345-7");
+    expect(result.entries[0]!.localCode).toBe("GLU_BLOOD");
+    expect(result.entries[0]!.loincCode).toBe("2345-7");
   });
 
   test("filters by LOINC display (partial match)", async () => {
@@ -870,8 +870,8 @@ describe("getMappingsFromConceptMap - search", () => {
 
     expect(result.entries).toHaveLength(1);
     expect(result.total).toBe(1);
-    expect(result.entries[0].localCode).toBe("CREAT");
-    expect(result.entries[0].loincDisplay).toBe(
+    expect(result.entries[0]!.localCode).toBe("CREAT");
+    expect(result.entries[0]!.loincDisplay).toBe(
       "Creatinine [Mass/volume] in Serum or Plasma",
     );
   });
@@ -893,7 +893,7 @@ describe("getMappingsFromConceptMap - search", () => {
 
     expect(result.entries).toHaveLength(1);
     expect(result.total).toBe(1);
-    expect(result.entries[0].localCode).toBe("GLU_BLOOD");
+    expect(result.entries[0]!.localCode).toBe("GLU_BLOOD");
   });
 
   test("returns empty results when no match found", async () => {
@@ -969,7 +969,7 @@ describe("getMappingsFromConceptMap - search", () => {
     );
     expect(page1.entries).toHaveLength(50);
     expect(page1.total).toBe(75);
-    expect(page1.entries[0].localCode).toBe("POTASSIUM_0");
+    expect(page1.entries[0]!.localCode).toBe("POTASSIUM_0");
 
     const page2 = await getMappingsFromConceptMap(
       "search-test-concept-map",
@@ -978,7 +978,7 @@ describe("getMappingsFromConceptMap - search", () => {
     );
     expect(page2.entries).toHaveLength(25);
     expect(page2.total).toBe(75);
-    expect(page2.entries[0].localCode).toBe("POTASSIUM_50");
+    expect(page2.entries[0]!.localCode).toBe("POTASSIUM_50");
   });
 });
 

@@ -13,7 +13,7 @@ describe("convertNDLToPractitionerRole", () => {
   test("returns practitioner reference indicator when name present", () => {
     const result = convertNDLToPractitionerRole({
       $1_name: {
-        $1_idNumber: "12345",
+        $1_id: "12345",
         $2_family: "Smith",
       },
     });
@@ -104,7 +104,7 @@ describe("convertNDLToPractitionerRole", () => {
   test("returns complete PractitionerRole data", () => {
     const result = convertNDLToPractitionerRole({
       $1_name: {
-        $1_idNumber: "DR001",
+        $1_id: "DR001",
         $2_family: "Jones",
         $3_given: "Mary",
       },

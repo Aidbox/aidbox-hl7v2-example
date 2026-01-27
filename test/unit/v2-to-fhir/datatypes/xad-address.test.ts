@@ -269,10 +269,10 @@ describe("convertXADArrayToAddresses", () => {
     ]);
 
     expect(result).toHaveLength(2);
-    expect(result?.[0].city).toBe("Boston");
-    expect(result?.[0].use).toBe("home");
-    expect(result?.[1].city).toBe("Cambridge");
-    expect(result?.[1].use).toBe("work");
+    expect(result?.[0]!.city).toBe("Boston");
+    expect(result?.[0]!.use).toBe("home");
+    expect(result?.[1]!.city).toBe("Cambridge");
+    expect(result?.[1]!.use).toBe("work");
   });
 
   test("filters out invalid addresses", () => {

@@ -94,12 +94,12 @@ describe("searchLoincCodes", () => {
     const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
     const results = await searchLoincCodes("potassium");
 
-    expect(results[0].code).toBe("2823-3");
-    expect(results[0].display).toBe("Potassium [Moles/volume] in Serum or Plasma");
-    expect(results[0].component).toBe("Potassium");
-    expect(results[0].property).toBe("SCnc");
-    expect(results[0].timing).toBe("Pt");
-    expect(results[0].scale).toBe("Qn");
+    expect(results[0]!.code).toBe("2823-3");
+    expect(results[0]!.display).toBe("Potassium [Moles/volume] in Serum or Plasma");
+    expect(results[0]!.component).toBe("Potassium");
+    expect(results[0]!.property).toBe("SCnc");
+    expect(results[0]!.timing).toBe("Pt");
+    expect(results[0]!.scale).toBe("Qn");
   });
 
   test("handles results without designation (optional fields)", async () => {

@@ -155,9 +155,9 @@ describe("Invoice BAR Builder Service E2E Integration", () => {
 
       const messages = await getOutgoingBarMessages();
       expect(messages.length).toBe(1);
-      expect(messages[0].status).toBe("pending");
-      expect(messages[0].hl7v2).toContain("MSH|");
-      expect(messages[0].invoice.reference).toBe("Invoice/invoice-process");
+      expect(messages[0]!.status).toBe("pending");
+      expect(messages[0]!.hl7v2).toContain("MSH|");
+      expect(messages[0]!.invoice.reference).toBe("Invoice/invoice-process");
 
       const invoice = await fetchInvoice("invoice-process");
       expect(getProcessingStatus(invoice)).toBe("completed");
