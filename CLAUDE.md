@@ -28,10 +28,24 @@ bun run logs                      # Tail server logs
 bun run mllp                      # Start MLLP server (port 2575)
 bun scripts/load-test-data.ts     # Load 5 test patients with related resources
 bun run typecheck                 # TypeScript type checking
-bun test                          # Run tests
+bun test                          # Run unit tests (default root: test/unit)
+bun test:unit                     # Run unit tests explicitly
+bun test:integration              # Run integration tests (requires Aidbox)
 bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
 bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
 ```
+
+## Testing
+
+**Unit tests** (`bun test` / `bun test:unit`) run by default with no external dependencies. The default test root is `./test/unit` (configured in `bunfig.toml`).
+
+**Integration tests** (`bun test:integration`) require a running Aidbox instance and `AIDBOX_LICENSE` env var in `.env`. They use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
+
+```sh
+bun test:integration
+```
+
+→ Details: `docs/developer-guide/how-to/development-guide.md`
 
 ## Architecture Overview
 

@@ -5,7 +5,7 @@ Documentation for developers who need to understand, extend, or integrate with t
 ## Getting Started
 
 1. **[User Guide: Getting Started](../user-guide/getting-started.md)** — Setup, installation, running services
-2. **[Development Guide](how-to/development-guide.md)** — Day-to-day workflows: testing, debugging, code generation
+2. **[Development Guide](how-to/development-guide.md)** — Day-to-day workflows: testing (unit & integration), debugging, code generation
 
 ## Understanding the System
 
