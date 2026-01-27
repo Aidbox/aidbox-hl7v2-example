@@ -6,14 +6,52 @@ For initial setup (Docker, Aidbox, running services), see the [User Guide: Getti
 
 ## Testing
 
-### Running Tests
+### Unit Tests
+
+Unit tests have no external dependencies and run fast. The default test root is `./test/unit` (configured in `bunfig.toml`).
 
 ```sh
-bun test                             # Run all tests
-bun test test/bar/                   # Run tests in directory
-bun test test/bar/generator.test.ts  # Run specific file
-bun test --watch                     # Watch mode
+bun test                                    # Run all unit tests
+bun test:unit                               # Same as above (explicit)
+bun test test/unit/bar/                     # Run tests in directory
+bun test test/unit/bar/generator.test.ts    # Run specific file
+bun test --watch                            # Watch mode
 ```
+
+### Integration Tests
+
+Integration tests run against a real Aidbox instance and verify end-to-end workflows (HL7v2 message processing, BAR generation, code mapping).
+
+#### Prerequisites
+
+1. **Docker and Docker Compose** installed
+2. **Aidbox license** — obtain a development license from [aidbox.app](https://aidbox.app) and add it to your `.env` file:
+   ```
+   AIDBOX_LICENSE=<your-jwt-token>
+   ```
+3. The test infrastructure uses `docker-compose.test.yaml`, which runs a **separate** Aidbox instance on port 8888 with its own PostgreSQL database (`aidbox_test`). This does not interfere with the development Aidbox on port 8080.
+
+#### Running Integration Tests
+
+```sh
+# First run — starts fresh containers, runs migrations, tears down after:
+bun test:integration:clean
+
+# Subsequent runs — reuses running containers (faster):
+bun test:integration
+
+# Run a specific test by name pattern:
+bun test:integration --test-name-pattern "processes invoice and creates"
+```
+
+#### `TEST_RESET_AIDBOX` Option
+
+`bun test:integration:clean` sets `TEST_RESET_AIDBOX=true` automatically. You can also set it manually if needed.
+
+| Value | Behavior |
+|-------|----------|
+| `true` | Stops existing test containers, starts fresh ones with `docker compose -f docker-compose.test.yaml up -d`, runs database migrations, waits for Aidbox health check (up to 90s), tears down containers after tests complete |
+| unset / `false` | Assumes test containers are already running, skips setup and teardown — use this for faster iteration during development |
 
 ### Type Checking
 
@@ -23,19 +61,22 @@ bun run typecheck    # TypeScript type checking (no emit)
 
 ### Test Organization
 
-Tests mirror the `src/` structure:
-
 ```
 test/
-├── bar/                    # BAR message generation
-├── code-mapping/           # ConceptMap and Task services
-├── hl7v2/                  # HL7v2 parsing/formatting
-├── mllp/                   # MLLP server
-├── ui/                     # UI components
-└── v2-to-fhir/
-    ├── datatypes/          # HL7v2→FHIR datatype converters
-    ├── messages/           # Message-level converters
-    └── segments/           # Segment converters
+├── fixtures/hl7v2/         # HL7v2 message fixtures (ADT, ORU)
+├── unit/                   # Unit tests (no external dependencies)
+│   ├── bar/
+│   ├── code-mapping/
+│   ├── hl7v2/
+│   ├── mllp/
+│   ├── ui/
+│   └── v2-to-fhir/
+└── integration/            # Integration tests (require Aidbox)
+    ├── preload.ts          # Global setup/teardown (container lifecycle)
+    ├── helpers.ts          # Shared utilities (testAidboxFetch, cleanup, fixtures)
+    ├── bar/
+    ├── ui/
+    └── v2-to-fhir/
 ```
 
 ### Writing Tests
@@ -53,6 +94,17 @@ describe("feature", () => {
 ```
 
 For converters, test both the happy path and edge cases (missing fields, malformed data).
+
+#### Writing Integration Tests
+
+Integration test files use the naming convention `*.integration.test.ts`.
+
+Key helpers from `test/integration/helpers.ts`:
+- **`testAidboxFetch()`** — authenticated HTTP client for the test Aidbox (port 8888)
+- **`loadFixture(path)`** — loads HL7v2 messages from `test/fixtures/hl7v2/`
+- **`cleanupTestResources()`** — runs in `beforeEach` (configured in `preload.ts`) to give each test a clean state
+
+Tests run serially (`--max-concurrency=1`) to prevent interference between tests that share the Aidbox instance.
 
 ## Code Generation
 

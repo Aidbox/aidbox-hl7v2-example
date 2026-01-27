@@ -1,5 +1,5 @@
 {
-  "exclude": ["node_modules", "src/hl7v2/generated", "src/fhir/hl7-fhir-r4-core", "test"],
+  "exclude": ["node_modules", "src/hl7v2/generated", "src/fhir/hl7-fhir-r4-core"],
   "compilerOptions": {
     // Environment setup & latest features
     "lib": ["ESNext"],
