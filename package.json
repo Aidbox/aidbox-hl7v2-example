@@ -18,10 +18,10 @@
     "regenerate-hl7v2": "scripts/regenerate-hl7v2.sh",
     "regenerate-fhir": "bun scripts/regenerate-fhir.ts",
     "migrate": "bun src/migrate.ts",
-    "test": "bun test",
-    "test:unit": "bun test test/unit",
+    "test:all": "bun test && bun test:integration",
+    "test:unit": "bun test",
     "test:integration": "bun test --test-root ./test/integration --preload ./test/integration/preload.ts --max-concurrency=1",
-    "test:integration:clean": "TEST_RESET_AIDBOX=true bun test:integration"
+    "reset-integration-aidbox": "bun scripts/reset-integration-aidbox.ts"
   },
   "type": "module",
   "dependencies": {

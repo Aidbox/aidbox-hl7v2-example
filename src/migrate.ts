@@ -1,6 +1,6 @@
 import { aidboxFetch } from "./aidbox";
 
-async function migrate() {
+export async function migrate() {
   console.log("Loading init-bundle.json...");
 
   const bundlePath = new URL("../init-bundle.json", import.meta.url).pathname;
@@ -16,4 +16,6 @@ async function migrate() {
   console.log("Migration complete.");
 }
 
-migrate().catch(console.error);
+if (import.meta.main) {
+  migrate().catch(console.error);
+}

@@ -215,7 +215,8 @@ src/code-mapping/
 ## Testing
 
 ```sh
-bun test              # Run all tests
+bun test              # Run unit tests
+bun test:all          # Run all tests (unit + integration)
 bun run typecheck     # TypeScript type checking
 ```
 

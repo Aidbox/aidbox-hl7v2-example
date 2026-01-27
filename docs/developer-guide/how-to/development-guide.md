@@ -11,8 +11,8 @@ For initial setup (Docker, Aidbox, running services), see the [User Guide: Getti
 Unit tests have no external dependencies and run fast. The default test root is `./test/unit` (configured in `bunfig.toml`).
 
 ```sh
-bun test                                    # Run all unit tests
-bun test:unit                               # Same as above (explicit)
+bun test                                    # Run unit tests
+bun test:unit                               # Same as above (alias)
 bun test test/unit/bar/                     # Run tests in directory
 bun test test/unit/bar/generator.test.ts    # Run specific file
 bun test --watch                            # Watch mode
@@ -34,24 +34,28 @@ Integration tests run against a real Aidbox instance and verify end-to-end workf
 #### Running Integration Tests
 
 ```sh
-# First run — starts fresh containers, runs migrations, tears down after:
-bun test:integration:clean
-
-# Subsequent runs — reuses running containers (faster):
+# Run integration tests (starts Aidbox if not running, runs migrations on first start):
 bun test:integration
+
+# Run all tests (unit + integration):
+bun test:all
 
 # Run a specific test by name pattern:
 bun test:integration --test-name-pattern "processes invoice and creates"
+
+# Destroy and recreate test Aidbox from scratch (when DB is in a bad state):
+bun reset-integration-aidbox
 ```
 
-#### `TEST_RESET_AIDBOX` Option
+#### How Startup Works
 
-`bun test:integration:clean` sets `TEST_RESET_AIDBOX=true` automatically. You can also set it manually if needed.
+The integration test preload (`test/integration/preload.ts`) automatically handles setup:
 
-| Value | Behavior |
-|-------|----------|
-| `true` | Stops existing test containers, starts fresh ones with `docker compose -f docker-compose.test.yaml up -d`, runs database migrations, waits for Aidbox health check (up to 90s), tears down containers after tests complete |
-| unset / `false` | Assumes test containers are already running, skips setup and teardown — use this for faster iteration during development |
+1. Checks if test Aidbox is already running (health check on port 8888)
+2. If not running: starts containers via `docker compose -f docker-compose.test.yaml up -d`, waits for health (up to 90s), and runs database migrations
+3. If already running: skips startup entirely for faster iteration
+
+Tests never tear down the Aidbox instance — it stays running between test runs. Use `bun reset-integration-aidbox` to destroy and recreate it from scratch when needed.
 
 ### Type Checking
 
@@ -72,7 +76,7 @@ test/
 │   ├── ui/
 │   └── v2-to-fhir/
 └── integration/            # Integration tests (require Aidbox)
-    ├── preload.ts          # Global setup/teardown (container lifecycle)
+    ├── preload.ts          # Global setup (container lifecycle, migrations)
     ├── helpers.ts          # Shared utilities (testAidboxFetch, cleanup, fixtures)
     ├── bar/
     ├── ui/
