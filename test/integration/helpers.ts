@@ -10,7 +10,9 @@ import type {
   AllergyIntolerance,
   Coverage,
   RelatedPerson,
+  Invoice,
 } from "../../src/fhir/hl7-fhir-r4-core";
+import type { OutgoingBarMessage } from "../../src/fhir/aidbox-hl7v2-custom";
 import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { processNextMessage } from "../../src/v2-to-fhir/processor-service";
 
@@ -163,6 +165,20 @@ export async function getRelatedPersons(patientRef: string): Promise<RelatedPers
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
+export async function getInvoices(patientRef: string): Promise<Invoice[]> {
+  const bundle = await testAidboxFetch<Bundle<Invoice>>(
+    `/fhir/Invoice?subject=${encodeURIComponent(patientRef)}`,
+  );
+  return bundle.entry?.map((e) => e.resource) ?? [];
+}
+
+export async function getOutgoingBarMessages(patientRef: string): Promise<OutgoingBarMessage[]> {
+  const bundle = await testAidboxFetch<Bundle<OutgoingBarMessage>>(
+    `/fhir/OutgoingBarMessage?patient=${encodeURIComponent(patientRef)}`,
+  );
+  return bundle.entry?.map((e) => e.resource) ?? [];
+}
+
 export async function submitAndProcess(
   hl7Message: string,
   messageType: string,
@@ -200,7 +216,7 @@ export async function cleanupTestResources(): Promise<void> {
       Authorization: `Basic ${auth}`,
     },
     body: JSON.stringify([
-      "TRUNCATE task, incominghl7v2message, diagnosticreport, observation, specimen, encounter, patient, condition, allergyintolerance, coverage, relatedperson CASCADE",
+      "TRUNCATE task, incominghl7v2message, diagnosticreport, observation, specimen, encounter, patient, condition, allergyintolerance, coverage, relatedperson, invoice, outgoingbarmessage, account, organization, practitioner, chargeitem CASCADE",
     ]),
   });
 
