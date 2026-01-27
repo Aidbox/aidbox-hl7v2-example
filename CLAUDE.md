@@ -31,6 +31,7 @@ bun run typecheck                 # TypeScript type checking
 bun test                          # Run unit tests (default root: test/unit)
 bun test:unit                     # Run unit tests explicitly
 bun test:integration              # Run integration tests (requires Aidbox)
+bun test:integration:clean        # Run integration tests with fresh containers
 bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
 bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
 ```
@@ -39,11 +40,10 @@ bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
 
 **Unit tests** (`bun test` / `bun test:unit`) run by default with no external dependencies. The default test root is `./test/unit` (configured in `bunfig.toml`).
 
-**Integration tests** (`bun test:integration`) require a running Aidbox instance and `AIDBOX_LICENSE` env var in `.env`. They use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
+**Integration tests** require a running Aidbox instance and `AIDBOX_LICENSE` env var in `.env`. They use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
 
-```sh
-bun test:integration
-```
+- `bun test:integration` — reuses running containers (fast iteration)
+- `bun test:integration:clean` — fresh containers, migrations, teardown after
 
 → Details: `docs/developer-guide/how-to/development-guide.md`
 

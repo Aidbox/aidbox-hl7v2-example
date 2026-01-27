@@ -35,13 +35,18 @@ Integration tests run against a real Aidbox instance and verify end-to-end workf
 
 ```sh
 # First run — starts fresh containers, runs migrations, tears down after:
-TEST_RESET_AIDBOX=true bun test:integration
+bun test:integration:clean
 
 # Subsequent runs — reuses running containers (faster):
 bun test:integration
+
+# Run a specific test by name pattern:
+bun test:integration --test-name-pattern "processes invoice and creates"
 ```
 
 #### `TEST_RESET_AIDBOX` Option
+
+`bun test:integration:clean` sets `TEST_RESET_AIDBOX=true` automatically. You can also set it manually if needed.
 
 | Value | Behavior |
 |-------|----------|
