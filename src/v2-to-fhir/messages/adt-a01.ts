@@ -43,8 +43,8 @@ import type {
   Meta,
   Resource,
 } from "../../fhir/hl7-fhir-r4-core";
-import { convertPIDToPatient } from "../segments/pid-patient";
-import { convertPV1ToEncounter, convertPV1WithMappingSupport } from "../segments/pv1-encounter";
+import { convertPIDWithMappingSupportAsync } from "../segments/pid-patient";
+import { convertPV1WithMappingSupportAsync } from "../segments/pv1-encounter";
 import { convertNK1ToRelatedPerson } from "../segments/nk1-relatedperson";
 import { convertDG1ToCondition } from "../segments/dg1-condition";
 import { convertAL1ToAllergyIntolerance } from "../segments/al1-allergyintolerance";
@@ -294,7 +294,7 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  * AL1 - Allergy Information (0..*)
  * IN1 - Insurance (0..*)
  */
-export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
+export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionResult> {
   // =========================================================================
   // Extract MSH
   // =========================================================================
@@ -325,7 +325,7 @@ export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
   };
 
   // =========================================================================
-  // Extract PID -> Patient
+  // Extract PID -> Patient (with mapping error support for address types)
   // =========================================================================
 
   const pidSegment = findSegment(parsed, "PID");
@@ -333,7 +333,11 @@ export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
     throw new Error("PID segment not found in ADT_A01 message");
   }
   const pid = fromPID(pidSegment);
-  const patient = convertPIDToPatient(pid);
+  const pidResult = await convertPIDWithMappingSupportAsync(pid, senderContext);
+  const patient = pidResult.patient;
+
+  // Collect any address type mapping errors from PID conversion
+  const mappingErrors: MappingError[] = [...pidResult.errors];
 
   // Set patient ID from PID-2 or generate one
   if (pid.$2_patientId?.$1_value) {
@@ -365,13 +369,11 @@ export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
   // =========================================================================
   // Extract PV1 -> Encounter (with mapping error support)
   // =========================================================================
-
-  const mappingErrors: MappingError[] = [];
   let encounter: Encounter | undefined;
   const pv1Segment = findSegment(parsed, "PV1");
   if (pv1Segment) {
     const pv1 = fromPV1(pv1Segment);
-    const pv1Result = convertPV1WithMappingSupport(pv1);
+    const pv1Result = await convertPV1WithMappingSupportAsync(pv1, senderContext);
 
     if (pv1Result.error) {
       // Patient class mapping error - collect it

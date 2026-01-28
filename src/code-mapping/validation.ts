@@ -49,6 +49,18 @@ const VALID_ADDRESS_TYPE = new Set([
 ]);
 
 /**
+ * Valid FHIR Address.use values
+ * @see http://hl7.org/fhir/R4/valueset-address-use.html
+ */
+const VALID_ADDRESS_USE = new Set([
+  "home",
+  "work",
+  "temp",
+  "old",
+  "billing",
+]);
+
+/**
  * Valid FHIR Encounter.class codes (v3-ActCode subset for encounters)
  * @see http://terminology.hl7.org/CodeSystem/v3-ActCode
  */
@@ -116,10 +128,11 @@ export function validateResolvedCode(
       return { valid: true };
 
     case "address-type":
-      if (!VALID_ADDRESS_TYPE.has(code)) {
+      // Address-type mapping can resolve to either Address.type or Address.use
+      if (!VALID_ADDRESS_TYPE.has(code) && !VALID_ADDRESS_USE.has(code)) {
         return {
           valid: false,
-          error: `Invalid Address type: "${code}". Valid values: ${[...VALID_ADDRESS_TYPE].join(", ")}`,
+          error: `Invalid Address type/use: "${code}". Valid Address.type values: ${[...VALID_ADDRESS_TYPE].join(", ")}. Valid Address.use values: ${[...VALID_ADDRESS_USE].join(", ")}`,
         };
       }
       return { valid: true };
@@ -162,7 +175,8 @@ export function getValidValues(
       return [...VALID_OBSERVATION_STATUS];
 
     case "address-type":
-      return [...VALID_ADDRESS_TYPE];
+      // Address-type mapping can resolve to either Address.type or Address.use
+      return [...VALID_ADDRESS_TYPE, ...VALID_ADDRESS_USE];
 
     case "patient-class":
       return [...VALID_ENCOUNTER_CLASS];
@@ -177,9 +191,16 @@ export function getValidValues(
  */
 const VALID_VALUES_DISPLAY: Record<string, Record<string, string>> = {
   "address-type": {
-    postal: "Postal",
-    physical: "Physical",
-    both: "Postal & Physical",
+    // Address.type values
+    postal: "Postal (type)",
+    physical: "Physical (type)",
+    both: "Postal & Physical (type)",
+    // Address.use values
+    home: "Home (use)",
+    work: "Work (use)",
+    temp: "Temporary (use)",
+    old: "Old/Incorrect (use)",
+    billing: "Billing (use)",
   },
   "patient-class": {
     AMB: "Ambulatory",
@@ -233,4 +254,33 @@ export function getValidValuesWithDisplay(
     code,
     display: displayMap[code] || code,
   }));
+}
+
+/**
+ * Get the correct target system for a resolved code.
+ *
+ * For most mapping types, the target system is fixed (from MAPPING_TYPES registry).
+ * For address-type mapping, the system depends on whether the resolved code is
+ * an Address.type value or an Address.use value:
+ * - Address.type values (postal, physical, both) -> http://hl7.org/fhir/address-type
+ * - Address.use values (home, work, temp, old, billing) -> http://hl7.org/fhir/address-use
+ *
+ * @param mappingType - The mapping type being resolved
+ * @param code - The resolved code
+ * @param defaultSystem - The default system from MAPPING_TYPES registry
+ * @returns The correct target system for the resolved code
+ */
+export function getTargetSystemForCode(
+  mappingType: MappingTypeName,
+  code: string,
+  defaultSystem: string,
+): string {
+  if (mappingType === "address-type") {
+    if (VALID_ADDRESS_USE.has(code)) {
+      return "http://hl7.org/fhir/address-use";
+    }
+    // For Address.type values, use the default system (address-type)
+    return "http://hl7.org/fhir/address-type";
+  }
+  return defaultSystem;
 }

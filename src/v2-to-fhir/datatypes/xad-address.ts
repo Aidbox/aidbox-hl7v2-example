@@ -8,6 +8,11 @@ import type { Address, Extension, Period } from "../../fhir/hl7-fhir-r4-core";
 import { convertSADToAddress } from "./sad-address";
 import { convertDRToPeriod } from "./dr-datetime";
 import type { MappingError } from "../../code-mapping/mapping-errors";
+import {
+  generateConceptMapId,
+  translateCode,
+  type SenderContext,
+} from "../../code-mapping/concept-map/lookup";
 
 // ============================================================================
 // Address Type Code Mappings (HL7 Table 0190)
@@ -162,6 +167,104 @@ export function mapAddressTypeToFHIRWithResult(
   }
 
   // Unknown address type - return mapping error
+  return {
+    error: {
+      localCode: normalizedCode,
+      localDisplay: `XAD.7 Address Type: ${addressType}`,
+      localSystem: ADDRESS_TYPE_V2_SYSTEM,
+      mappingType: "address-type",
+    },
+  };
+}
+
+// ============================================================================
+// Valid FHIR Address Types
+// ============================================================================
+
+/**
+ * Valid FHIR Address.type values.
+ * Must match VALID_ADDRESS_TYPE in code-mapping/validation.ts
+ */
+const VALID_ADDRESS_TYPES = new Set<Address["type"]>([
+  "postal",
+  "physical",
+  "both",
+]);
+
+/**
+ * Valid FHIR Address.use values.
+ * Used for validation when resolving from ConceptMap.
+ */
+const VALID_ADDRESS_USES = new Set<Address["use"]>([
+  "home",
+  "work",
+  "temp",
+  "old",
+  "billing",
+]);
+
+// ============================================================================
+// Address Type Resolution with ConceptMap Support
+// ============================================================================
+
+/**
+ * Resolve XAD.7 Address Type to FHIR Address.type and Address.use.
+ *
+ * Resolution algorithm:
+ * 1. Check hardcoded ADDRESS_TYPE_MAP and ADDRESS_USE_MAP for standard codes
+ * 2. Check if code is "HV" (special case - extension only, no type/use)
+ * 3. If not found, lookup in sender-specific ConceptMap via $translate
+ * 4. If no mapping found, return error for Task creation
+ *
+ * @param addressType - The XAD.7 Address Type value
+ * @param sender - The sender context for ConceptMap lookup
+ */
+export async function resolveAddressType(
+  addressType: string | undefined,
+  sender: SenderContext,
+): Promise<AddressTypeResult> {
+  // No address type provided - this is valid (address without type)
+  if (!addressType) {
+    return {};
+  }
+
+  const normalizedCode = addressType.toUpperCase();
+
+  // Check if it maps to type
+  const type = ADDRESS_TYPE_MAP[normalizedCode];
+  if (type) {
+    return { type };
+  }
+
+  // Check if it maps to use
+  const use = ADDRESS_USE_MAP[normalizedCode];
+  if (use) {
+    return { use };
+  }
+
+  // HV is a special case - it only creates an extension, not type/use
+  // This is valid and not a mapping error
+  if (normalizedCode === "HV") {
+    return {};
+  }
+
+  // Try ConceptMap lookup for non-standard address type codes
+  const conceptMapId = generateConceptMapId(sender, "address-type");
+  const translateResult = await translateCode(conceptMapId, normalizedCode, ADDRESS_TYPE_V2_SYSTEM);
+
+  if (translateResult.status === "found" && translateResult.coding.code) {
+    const resolvedCode = translateResult.coding.code;
+    // Check if resolved to Address.type
+    if (VALID_ADDRESS_TYPES.has(resolvedCode as Address["type"])) {
+      return { type: resolvedCode as Address["type"] };
+    }
+    // Check if resolved to Address.use
+    if (VALID_ADDRESS_USES.has(resolvedCode as Address["use"])) {
+      return { use: resolvedCode as Address["use"] };
+    }
+  }
+
+  // No mapping found - return error for Task creation
   return {
     error: {
       localCode: normalizedCode,
@@ -382,6 +485,130 @@ export function convertXADArrayWithMappingSupport(
 
   for (const xad of xads) {
     const result = convertXADWithMappingSupport(xad);
+
+    if (result.address) {
+      addresses.push(result.address);
+    }
+
+    // Collect unique errors (deduplicate by localCode)
+    if (result.error && !seenErrorCodes.has(result.error.localCode)) {
+      seenErrorCodes.add(result.error.localCode);
+      errors.push(result.error);
+    }
+  }
+
+  return {
+    addresses: addresses.length > 0 ? addresses : undefined,
+    errors,
+  };
+}
+
+// ============================================================================
+// Async XAD Conversion with ConceptMap Support
+// ============================================================================
+
+/**
+ * Convert XAD to Address with async ConceptMap lookup support.
+ *
+ * This version checks ConceptMap for sender-specific address type mappings.
+ * Use this when processing messages where Task resolution may have added custom mappings.
+ *
+ * Resolution algorithm for XAD.7 Address Type:
+ * 1. Check hardcoded ADDRESS_TYPE_MAP and ADDRESS_USE_MAP for standard codes
+ * 2. Check if code is "HV" (special case - extension only)
+ * 3. If not found, lookup in sender-specific ConceptMap via $translate
+ * 4. If no mapping found, return error for Task creation
+ *
+ * @param xad - The XAD segment to convert
+ * @param sender - The sender context for ConceptMap lookup
+ */
+export async function convertXADWithMappingSupportAsync(
+  xad: XAD | undefined,
+  sender: SenderContext,
+): Promise<XADConversionResult> {
+  if (!xad) {
+    return { address: undefined };
+  }
+
+  // Build address lines
+  const line: string[] = [];
+
+  // XAD.1: SAD -> lines 0-2
+  const sadAddress = convertSADToAddress(xad.$1_line1);
+  if (sadAddress?.line) {
+    line.push(...sadAddress.line);
+  }
+
+  // XAD.2: Other Designation -> line[3]
+  if (xad.$2_line2) {
+    line.push(xad.$2_line2);
+  }
+
+  // Check if we have any data
+  const hasData =
+    line.length > 0 ||
+    xad.$3_city ||
+    xad.$4_state ||
+    xad.$5_postalCode ||
+    xad.$6_country ||
+    xad.$9_district;
+
+  if (!hasData) {
+    return { address: undefined };
+  }
+
+  // XAD.7: Address Type -> type or use (with async ConceptMap lookup)
+  const typeResult = await resolveAddressType(xad.$7_type, sender);
+
+  // Build period
+  const period = buildPeriod(xad);
+
+  // Build extensions
+  const extension = buildExtensions(xad);
+
+  const address: Address = {
+    ...(line.length > 0 && { line }),
+    ...(xad.$3_city && { city: xad.$3_city }),
+    ...(xad.$4_state && { state: xad.$4_state }),
+    ...(xad.$5_postalCode && { postalCode: xad.$5_postalCode }),
+    ...(xad.$6_country && { country: xad.$6_country }),
+    ...(xad.$9_district && { district: xad.$9_district }),
+    ...(typeResult.type && { type: typeResult.type }),
+    ...(typeResult.use && { use: typeResult.use }),
+    ...(period && { period }),
+    ...(extension && { extension }),
+  };
+
+  return {
+    address,
+    error: typeResult.error,
+  };
+}
+
+/**
+ * Convert array of XAD to array of Address with async ConceptMap lookup support.
+ *
+ * Collects all mapping errors from all addresses. Errors are deduplicated by
+ * localCode since the same invalid address type appearing multiple times
+ * should only create one Task.
+ *
+ * @param xads - Array of XAD segments to convert
+ * @param sender - The sender context for ConceptMap lookup
+ */
+export async function convertXADArrayWithMappingSupportAsync(
+  xads: XAD[] | undefined,
+  sender: SenderContext,
+): Promise<XADArrayConversionResult> {
+  if (!xads || xads.length === 0) {
+    return { addresses: undefined, errors: [] };
+  }
+
+  const addresses: Address[] = [];
+  const errors: MappingError[] = [];
+  const seenErrorCodes = new Set<string>();
+
+  for (const xad of xads) {
+    const result = await convertXADWithMappingSupportAsync(xad, sender);
 
     if (result.address) {
       addresses.push(result.address);

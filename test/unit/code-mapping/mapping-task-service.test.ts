@@ -369,7 +369,7 @@ describe("createMappingTask", () => {
     const inputMap = new Map(inputs.map((i) => [i.type?.text, i.valueString]));
 
     expect(inputMap.get("Source field")).toBe("PID.11 (XAD.7)");
-    expect(inputMap.get("Target field")).toBe("Address.type");
+    expect(inputMap.get("Target field")).toBe("Address.type/use");
   });
 
   test("creates obr-status mapping task with correct code and fields", () => {

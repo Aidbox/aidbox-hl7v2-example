@@ -50,7 +50,7 @@ export const MAPPING_TYPES = {
     targetSystem: "http://hl7.org/fhir/address-type",
     conceptMapSuffix: "-to-address-type",
     sourceField: "PID.11 (XAD.7)",
-    targetField: "Address.type",
+    targetField: "Address.type/use",
   },
   "patient-class": {
     taskCode: "patient-class-mapping",
