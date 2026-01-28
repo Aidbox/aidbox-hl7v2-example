@@ -18,6 +18,7 @@ import {
 import { simpleHash } from "../utils/string";
 import {
   MAPPING_TYPES,
+  LEGACY_TASK_CODE_ALIASES,
   type MappingTypeName,
 } from "./mapping-types";
 import { generateConceptMapId, type SenderContext } from "./concept-map/lookup";
@@ -140,16 +141,13 @@ function extractMappingTypeFromTask(task: Task): MappingTypeName {
   if (!taskCode) {
     throw new Error(`Task ${task.id} has no code`);
   }
-  const entry = Object.entries(MAPPING_TYPES).find(
-    ([, config]) => config.taskCode === taskCode,
-  );
-  // Check legacy aliases
-  const LEGACY_TASK_CODE_ALIASES: Record<string, MappingTypeName> = {
-    "local-to-loinc-mapping": "loinc",
-  };
+  // Check legacy aliases first
   if (LEGACY_TASK_CODE_ALIASES[taskCode]) {
     return LEGACY_TASK_CODE_ALIASES[taskCode];
   }
+  const entry = Object.entries(MAPPING_TYPES).find(
+    ([, config]) => config.taskCode === taskCode,
+  );
   if (!entry) {
     throw new Error(
       `Unknown mapping task code: ${taskCode}. Add it to MAPPING_TYPES registry.`,

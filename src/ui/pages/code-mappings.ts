@@ -22,6 +22,7 @@ import {
   type MappingTypeName,
   isMappingTypeName,
 } from "../../code-mapping/mapping-types";
+import { getValidValuesWithDisplay } from "../../code-mapping/validation";
 import {
   parsePageParam,
   createPagination,
@@ -664,58 +665,9 @@ export function renderCodeMappingsPage(
 
 /**
  * Get valid target values for a mapping type (for non-LOINC types).
- * Exported for testing.
+ * Re-exported from validation module for backward compatibility with tests.
  */
-export function getValidValuesForType(mappingType: MappingTypeName): Array<{ code: string; display: string }> {
-  switch (mappingType) {
-    case "address-type":
-      return [
-        { code: "postal", display: "Postal" },
-        { code: "physical", display: "Physical" },
-        { code: "both", display: "Postal & Physical" },
-      ];
-    case "patient-class":
-      return [
-        { code: "AMB", display: "Ambulatory" },
-        { code: "EMER", display: "Emergency" },
-        { code: "FLD", display: "Field" },
-        { code: "HH", display: "Home Health" },
-        { code: "IMP", display: "Inpatient" },
-        { code: "ACUTE", display: "Inpatient Acute" },
-        { code: "NONAC", display: "Inpatient Non-Acute" },
-        { code: "OBSENC", display: "Observation Encounter" },
-        { code: "PRENC", display: "Pre-Admission" },
-        { code: "SS", display: "Short Stay" },
-        { code: "VR", display: "Virtual" },
-      ];
-    case "obr-status":
-      return [
-        { code: "registered", display: "Registered" },
-        { code: "partial", display: "Partial" },
-        { code: "preliminary", display: "Preliminary" },
-        { code: "final", display: "Final" },
-        { code: "amended", display: "Amended" },
-        { code: "corrected", display: "Corrected" },
-        { code: "appended", display: "Appended" },
-        { code: "cancelled", display: "Cancelled" },
-        { code: "entered-in-error", display: "Entered in Error" },
-        { code: "unknown", display: "Unknown" },
-      ];
-    case "obx-status":
-      return [
-        { code: "registered", display: "Registered" },
-        { code: "preliminary", display: "Preliminary" },
-        { code: "final", display: "Final" },
-        { code: "amended", display: "Amended" },
-        { code: "corrected", display: "Corrected" },
-        { code: "cancelled", display: "Cancelled" },
-        { code: "entered-in-error", display: "Entered in Error" },
-        { code: "unknown", display: "Unknown" },
-      ];
-    default:
-      return [];
-  }
-}
+export { getValidValuesWithDisplay as getValidValuesForType } from "../../code-mapping/validation";
 
 /**
  * Render the target code input field based on mapping type.
@@ -736,7 +688,7 @@ function renderTargetCodeInput(
   }
 
   // For non-LOINC types, render a dropdown
-  const options = getValidValuesForType(mappingType);
+  const options = getValidValuesWithDisplay(mappingType);
   return `
     <select name="targetCode" required
       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

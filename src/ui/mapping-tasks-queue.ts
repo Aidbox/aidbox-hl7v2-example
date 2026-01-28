@@ -71,7 +71,10 @@ export async function resolveTaskWithMapping(
   const typeConfig = getMappingType(task.code!.coding![0]!.code!);
   const localCode = getTaskInputValue(task, "Local code") || "";
   const localDisplay = getTaskInputValue(task, "Local display") || "";
-  const localSystem = getTaskInputValue(task, "Local system")!;
+  const localSystem = getTaskInputValue(task, "Local system");
+  if (!localSystem) {
+    throw new Error(`Task ${taskId} is missing required "Local system" input`);
+  }
 
   const conceptMapId = generateConceptMapId(sender, mappingType);
 

@@ -165,7 +165,9 @@ describe("getValidValues", () => {
     expect(values).toContain("final");
     expect(values).toContain("preliminary");
     expect(values).toContain("partial");
-    expect(values!.length).toBe(8);
+    expect(values).toContain("amended");
+    expect(values).toContain("appended");
+    expect(values!.length).toBe(10);
   });
 
   test("returns valid Observation statuses for obx-status", () => {
