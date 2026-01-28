@@ -88,15 +88,15 @@ Update ConceptMap service to support target systems other than LOINC.
 
 Extract and generalize task creation from `oru-r01.ts` to support all mapping types.
 
-- [ ] Move `createMappingTask()` from `oru-r01.ts` to `mapping-task-service.ts`
-- [ ] Add `mappingType` parameter to `createMappingTask()`
-- [ ] Use mapping type registry to set Task.code.coding values
-- [ ] Add "Source field" and "Target field" inputs from mapping type registry
-- [ ] Update `generateMappingTaskId()` to include mapping type in ID for uniqueness
-- [ ] Export `createMappingTask()` and `createTaskBundleEntry()` from service
-- [ ] Update `oru-r01.ts` to import and use the exported functions
-- [ ] Update existing unit tests, add tests for new mapping types
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Move `createMappingTask()` from `oru-r01.ts` to `mapping-task-service.ts`
+- [x] Add `mappingType` parameter to `createMappingTask()`
+- [x] Use mapping type registry to set Task.code.coding values
+- [x] Add "Source field" and "Target field" inputs from mapping type registry
+- [x] Update `generateMappingTaskId()` to include mapping type in ID for uniqueness
+- [x] Export `createMappingTask()` and `createTaskBundleEntry()` from service
+- [x] Update `oru-r01.ts` to import and use the exported functions
+- [x] Update existing unit tests, add tests for new mapping types
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
