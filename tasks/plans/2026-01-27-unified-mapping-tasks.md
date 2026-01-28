@@ -54,19 +54,19 @@ Create a centralized registry for mapping types that defines:
 
 This ensures extensibility and fail-fast behavior when a new field type is added without proper configuration.
 
-- [ ] Create `src/code-mapping/mapping-types.ts` with MappingType enum/const
-- [ ] Define mapping type registry with these fields for each type:
+- [x] Create `src/code-mapping/mapping-types.ts` with MappingType enum/const
+- [x] Define mapping type registry with these fields for each type:
   - `taskCode`: string for Task.code.coding[0].code (e.g., "loinc-mapping", "address-type-mapping")
   - `taskDisplay`: string for Task.code.coding[0].display
   - `targetSystem`: FHIR code system URI (e.g., "http://loinc.org", "http://hl7.org/fhir/address-type")
   - `conceptMapSuffix`: string for ConceptMap ID (e.g., "-to-loinc", "-to-address-type")
   - `sourceField`: HL7v2 field name (e.g., "OBX-3", "PID.11", "PV1.2", "OBR-25", "OBX-11")
   - `targetField`: FHIR field name (e.g., "Observation.code", "Address.type", "Encounter.class", "DiagnosticReport.status", "Observation.status")
-- [ ] Add initial types: `loinc`, `address-type`, `patient-class`, `obr-status`, `obx-status`
-- [ ] Add helper function `getMappingType(taskCode: string)` that throws if type not found
-- [ ] Add helper function `getMappingTypeOrFail(type: string)` for fail-fast on unknown types
-- [ ] Write unit tests for registry lookup and fail-fast behavior
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Add initial types: `loinc`, `address-type`, `patient-class`, `obr-status`, `obx-status`
+- [x] Add helper function `getMappingType(taskCode: string)` that throws if type not found
+- [x] Add helper function `getMappingTypeOrFail(type: string)` for fail-fast on unknown types
+- [x] Write unit tests for registry lookup and fail-fast behavior
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
