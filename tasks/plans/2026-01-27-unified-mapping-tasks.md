@@ -259,11 +259,11 @@ Note: Most integration tests are now written in Tasks 5-12. This task focuses on
 1. Running the full test suite to verify no regressions
 2. Testing any edge cases not covered by individual task tests
 
-- [ ] Run full integration test suite: `bun test:integration`
-- [ ] Verify backward compatibility: existing LOINC mapping flow still works unchanged
-- [ ] Test edge case: resolving one Task when message has multiple unmapped codes of different types
-- [ ] Test edge case: ConceptMap already has mapping for a code (no new Task created on reprocess)
-- [ ] Run `bun test:all` - all must pass
+- [x] Run full integration test suite: `bun test:integration`
+- [x] Verify backward compatibility: existing LOINC mapping flow still works unchanged
+- [x] Test edge case: resolving one Task when message has multiple unmapped codes of different types
+- [x] Test edge case: ConceptMap already has mapping for a code (no new Task created on reprocess)
+- [x] Run `bun test:all` - all must pass
 
 ---
 

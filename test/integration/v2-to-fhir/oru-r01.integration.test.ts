@@ -808,4 +808,88 @@ describe("ORU_R01 E2E Integration", () => {
       expect(updatedMessage.status).toBe("processed");
     });
   });
+
+  describe("edge cases for multiple mapping errors", () => {
+    test("resolving one Task of different types leaves message blocked until all resolved", async () => {
+      // Send message with unknown LOINC code AND invalid OBX-11 status
+      const hl7Message = await loadFixture("oru-r01/status/obx11-n-and-local-loinc.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes!.length).toBe(2);
+
+      // Verify we have two tasks of different types
+      const tasks = await getMappingTasks();
+      expect(tasks.length).toBe(2);
+      const loincTask = tasks.find((t) => t.code?.coding?.[0]?.code === "loinc-mapping");
+      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status-mapping");
+      expect(loincTask).toBeDefined();
+      expect(obxStatusTask).toBeDefined();
+
+      // Resolve only the LOINC task
+      await createTestConceptMap("LAB", "HOSP", [
+        {
+          localCode: "12345",
+          localSystem: "LOCAL",
+          loincCode: "2823-3",
+          loincDisplay: "Potassium",
+        },
+      ]);
+      await resolveTask(loincTask!.id!, "2823-3", "Potassium");
+
+      // Reprocess
+      await processNextMessage();
+
+      // Message should still be mapping_error because OBX status task is not resolved
+      const stillBlockedMessage = await testAidboxFetch<IncomingHL7v2Message>(
+        `/fhir/IncomingHL7v2Message/${message.id}`,
+      );
+      expect(stillBlockedMessage.status).toBe("mapping_error");
+      expect(stillBlockedMessage.unmappedCodes!.length).toBe(1);
+      expect(stillBlockedMessage.unmappedCodes![0]!.localCode).toBe("N");
+
+      // Now resolve the OBX status task
+      await createTestConceptMapForType("LAB", "HOSP", "obx-status", [
+        {
+          localCode: "N",
+          localSystem: "http://terminology.hl7.org/CodeSystem/v2-0085",
+          targetCode: "preliminary",
+          targetDisplay: "Preliminary",
+        },
+      ]);
+      await resolveTask(obxStatusTask!.id!, "preliminary", "Preliminary");
+
+      // Reprocess again
+      await processNextMessage();
+
+      // Now message should be processed
+      const finalMessage = await testAidboxFetch<IncomingHL7v2Message>(
+        `/fhir/IncomingHL7v2Message/${message.id}`,
+      );
+      expect(finalMessage.status).toBe("processed");
+    }, 15000); // Extended timeout for multi-step test
+
+    test("no new Task created when ConceptMap already has mapping for a code", async () => {
+      // First create ConceptMap with the mapping
+      await createTestConceptMap("LAB", "HOSP", [
+        {
+          localCode: "12345",
+          localSystem: "LOCAL",
+          loincCode: "2823-3",
+          loincDisplay: "Potassium",
+        },
+      ]);
+
+      // Send message with local-only code that already has mapping in ConceptMap
+      const hl7Message = await loadFixture("oru-r01/loinc/conceptmap-resolve.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+
+      // Should process successfully without creating any tasks
+      expect(message.status).toBe("processed");
+
+      // Verify no mapping tasks were created
+      const tasks = await getMappingTasks();
+      expect(tasks.length).toBe(0);
+    });
+  });
 });
