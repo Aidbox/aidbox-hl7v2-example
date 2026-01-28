@@ -241,13 +241,16 @@ export type OBRConversionResult =
 
 /**
  * Valid FHIR DiagnosticReport status codes for validation
+ * Must match VALID_DIAGNOSTIC_REPORT_STATUS in code-mapping/validation.ts
  */
 const VALID_FHIR_DR_STATUSES: DiagnosticReport["status"][] = [
   "registered",
-  "preliminary",
   "partial",
-  "corrected",
+  "preliminary",
   "final",
+  "amended",
+  "corrected",
+  "appended",
   "cancelled",
   "entered-in-error",
   "unknown",

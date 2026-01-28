@@ -22,6 +22,7 @@ import {
   type MappingTypeName,
 } from "./mapping-types";
 import { generateConceptMapId, type SenderContext } from "./concept-map/lookup";
+import { getTargetSystemForCode } from "./validation";
 
 /**
  * Input for creating a mapping task.
@@ -166,12 +167,20 @@ export async function resolveMappingTask(
   const mappingType = extractMappingTypeFromTask(task);
   const typeConfig = MAPPING_TYPES[mappingType];
 
+  // Get the correct target system for this resolved code
+  // (for address-type, this depends on whether it's a type or use value)
+  const targetSystem = getTargetSystemForCode(
+    mappingType,
+    resolvedCode,
+    typeConfig.targetSystem,
+  );
+
   const output: TaskOutput = {
     type: { text: "Resolved mapping" },
     valueCodeableConcept: {
       coding: [
         {
-          system: typeConfig.targetSystem,
+          system: targetSystem,
           code: resolvedCode,
           display: resolvedDisplay,
         },

@@ -25,6 +25,7 @@ import {
   getMappingTypeName,
   type MappingTypeName,
 } from "../code-mapping/mapping-types";
+import { getTargetSystemForCode } from "../code-mapping/validation";
 
 export function getTaskInputValue(
   task: Task,
@@ -99,6 +100,14 @@ export async function resolveTaskWithMapping(
     }
   }
 
+  // Get the correct target system for this resolved code
+  // (for address-type, this depends on whether it's a type or use value)
+  const targetSystem = getTargetSystemForCode(
+    mappingType,
+    resolvedCode,
+    typeConfig.targetSystem,
+  );
+
   const updatedConceptMap = addMappingToConceptMap(
     conceptMap,
     localSystem,
@@ -106,7 +115,7 @@ export async function resolveTaskWithMapping(
     localDisplay,
     resolvedCode,
     resolvedDisplay,
-    typeConfig.targetSystem,
+    targetSystem,
   );
 
   const output: TaskOutput = {
@@ -114,7 +123,7 @@ export async function resolveTaskWithMapping(
     valueCodeableConcept: {
       coding: [
         {
-          system: typeConfig.targetSystem,
+          system: targetSystem,
           code: resolvedCode,
           display: resolvedDisplay,
         },

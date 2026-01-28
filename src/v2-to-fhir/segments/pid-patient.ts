@@ -19,7 +19,9 @@ import { convertXPNToHumanName, convertXPNToString } from "../datatypes/xpn-huma
 import {
   convertXADToAddress,
   convertXADArrayWithMappingSupport,
+  convertXADArrayWithMappingSupportAsync,
 } from "../datatypes/xad-address";
+import type { SenderContext } from "../../code-mapping/concept-map/lookup";
 import { convertXTNToContactPoint } from "../datatypes/xtn-contactpoint";
 import type { MappingError } from "../../code-mapping/mapping-errors";
 import { convertCWEToCodeableConcept } from "../datatypes/cwe-codeableconcept";
@@ -764,6 +766,364 @@ export function convertPIDWithMappingSupport(pid: PID): PIDConversionResult {
 
   // =========================================================================
   // Extensions (same as original)
+  // =========================================================================
+
+  const extensions: Extension[] = [];
+
+  if (pid.$6_mothersMaidenName && pid.$6_mothersMaidenName.length > 0) {
+    const maidenName = convertXPNToString(pid.$6_mothersMaidenName[0]);
+    if (maidenName) {
+      extensions.push({
+        url: EXT_MOTHERS_MAIDEN_NAME,
+        valueString: maidenName,
+      });
+    }
+  }
+
+  if (pid.$7_birthDate && pid.$7_birthDate.length > 8) {
+    const birthTime = convertDTMToDateTime(pid.$7_birthDate);
+    if (birthTime) {
+      extensions.push({
+        url: EXT_BIRTH_TIME,
+        valueDateTime: birthTime,
+      });
+    }
+  }
+
+  if (pid.$17_religion) {
+    const religionCode = convertCEOrCWEToCodeableConcept(pid.$17_religion);
+    if (religionCode) {
+      extensions.push({
+        url: EXT_RELIGION,
+        valueCodeableConcept: religionCode,
+      });
+    }
+  }
+
+  if (pid.$23_birthPlace) {
+    extensions.push({
+      url: EXT_BIRTH_PLACE,
+      valueAddress: {
+        text: pid.$23_birthPlace,
+      },
+    });
+  }
+
+  if (pid.$26_citizenship && pid.$26_citizenship.length > 0) {
+    for (const citizenship of pid.$26_citizenship) {
+      const citizenshipCode = convertCEOrCWEToCodeableConcept(citizenship);
+      if (citizenshipCode) {
+        extensions.push({
+          url: EXT_CITIZENSHIP,
+          extension: [
+            {
+              url: "code",
+              valueCodeableConcept: citizenshipCode,
+            },
+          ],
+        });
+      }
+    }
+  }
+
+  if (pid.$28_nationality) {
+    const nationalityCode = convertCEOrCWEToCodeableConcept(pid.$28_nationality);
+    if (nationalityCode) {
+      extensions.push({
+        url: EXT_NATIONALITY,
+        extension: [
+          {
+            url: "code",
+            valueCodeableConcept: nationalityCode,
+          },
+        ],
+      });
+    }
+  }
+
+  if (pid.$35_speciesCode || pid.$36_breedCode) {
+    const animalExtensions: Extension[] = [];
+
+    if (pid.$35_speciesCode) {
+      const speciesCode = convertCEOrCWEToCodeableConcept(pid.$35_speciesCode);
+      if (speciesCode) {
+        animalExtensions.push({
+          url: "species",
+          valueCodeableConcept: speciesCode,
+        });
+      }
+    }
+
+    if (pid.$36_breedCode) {
+      const breedCode = convertCEOrCWEToCodeableConcept(pid.$36_breedCode);
+      if (breedCode) {
+        animalExtensions.push({
+          url: "breed",
+          valueCodeableConcept: breedCode,
+        });
+      }
+    }
+
+    if (animalExtensions.length > 0) {
+      extensions.push({
+        url: EXT_ANIMAL,
+        extension: animalExtensions,
+      });
+    }
+  }
+
+  if (pid.$39_tribalCitizenship && pid.$39_tribalCitizenship.length > 0) {
+    for (const tribal of pid.$39_tribalCitizenship) {
+      const tribalCode = convertCWEToCodeableConcept(tribal);
+      if (tribalCode) {
+        extensions.push({
+          url: EXT_CITIZENSHIP,
+          extension: [
+            {
+              url: "code",
+              valueCodeableConcept: tribalCode,
+            },
+          ],
+        });
+      }
+    }
+  }
+
+  if (extensions.length > 0) {
+    patient.extension = extensions;
+  }
+
+  return { patient, errors: allErrors };
+}
+
+/**
+ * Convert PID segment to FHIR Patient with async ConceptMap lookup support.
+ *
+ * This version checks ConceptMap for sender-specific address type mappings.
+ * Use this when processing messages where Task resolution may have added custom mappings.
+ *
+ * Resolution algorithm for PID.11 (XAD.7) Address Type:
+ * 1. Check hardcoded ADDRESS_TYPE_MAP and ADDRESS_USE_MAP for standard codes
+ * 2. Check if code is "HV" (special case - extension only)
+ * 3. If not found, lookup in sender-specific ConceptMap via $translate
+ * 4. If no mapping found, collect error for Task creation
+ *
+ * @param pid - The PID segment to convert
+ * @param sender - The sender context for ConceptMap lookup
+ */
+export async function convertPIDWithMappingSupportAsync(
+  pid: PID,
+  sender: SenderContext,
+): Promise<PIDConversionResult> {
+  const patient: Patient = {
+    resourceType: "Patient",
+  };
+
+  const allErrors: MappingError[] = [];
+
+  // =========================================================================
+  // Identifiers (same as sync version)
+  // =========================================================================
+
+  const identifiers: Identifier[] = [];
+
+  if (pid.$2_patientId) {
+    const id = convertCXToIdentifier(pid.$2_patientId);
+    if (id) identifiers.push(id);
+  }
+
+  if (pid.$3_identifier) {
+    for (const cx of pid.$3_identifier) {
+      const id = convertCXToIdentifier(cx);
+      if (id) identifiers.push(id);
+    }
+  }
+
+  if (pid.$4_alternatePatientIdPid) {
+    for (const cx of pid.$4_alternatePatientIdPid) {
+      const id = convertCXToIdentifier(cx);
+      if (id) identifiers.push(id);
+    }
+  }
+
+  if (pid.$19_ssnNumberPatient) {
+    identifiers.push({
+      value: pid.$19_ssnNumberPatient,
+      system: SSN_SYSTEM,
+      type: {
+        coding: [
+          {
+            system: SSN_TYPE_SYSTEM,
+            code: "SS",
+          },
+        ],
+      },
+    });
+  }
+
+  if (pid.$20_driversLicenseNumberPatient) {
+    const dlId = convertDLNToIdentifier(pid.$20_driversLicenseNumberPatient);
+    if (dlId) identifiers.push(dlId);
+  }
+
+  if (identifiers.length > 0) {
+    patient.identifier = identifiers;
+  }
+
+  // =========================================================================
+  // Names (same as sync version)
+  // =========================================================================
+
+  const names: HumanName[] = [];
+
+  if (pid.$5_name) {
+    for (const xpn of pid.$5_name) {
+      const name = convertXPNToHumanName(xpn);
+      if (name) names.push(name);
+    }
+  }
+
+  if (pid.$9_alias) {
+    for (const xpn of pid.$9_alias) {
+      const name = convertXPNToHumanName(xpn);
+      if (name) {
+        name.use = "old";
+        names.push(name);
+      }
+    }
+  }
+
+  if (names.length > 0) {
+    patient.name = names;
+  }
+
+  // =========================================================================
+  // Birth Date and Time (same as sync version)
+  // =========================================================================
+
+  if (pid.$7_birthDate) {
+    patient.birthDate = convertDTMToDate(pid.$7_birthDate);
+  }
+
+  // =========================================================================
+  // Gender (same as sync version)
+  // =========================================================================
+
+  if (pid.$8_gender) {
+    const genderCode = typeof pid.$8_gender === "string"
+      ? pid.$8_gender
+      : pid.$8_gender;
+    patient.gender = GENDER_MAP[genderCode.toUpperCase()] || undefined;
+  }
+
+  // =========================================================================
+  // Address (WITH ASYNC CONCEPTMAP LOOKUP)
+  // =========================================================================
+
+  const addressResult = await convertXADArrayWithMappingSupportAsync(pid.$11_address, sender);
+  let addresses = addressResult.addresses || [];
+  allErrors.push(...addressResult.errors);
+
+  // PID-12: County Code -> address.district
+  if (pid.$12_countyCode) {
+    if (addresses.length === 1 && addresses[0] && !addresses[0].district) {
+      addresses[0].district = pid.$12_countyCode;
+    } else if (addresses.length === 0) {
+      addresses = [{ district: pid.$12_countyCode }];
+    }
+  }
+
+  if (addresses.length > 0) {
+    patient.address = addresses;
+  }
+
+  // =========================================================================
+  // Telecom (same as sync version)
+  // =========================================================================
+
+  const telecoms: ContactPoint[] = [];
+
+  if (pid.$13_homePhone) {
+    for (const xtn of pid.$13_homePhone) {
+      const telecom = convertXTNToContactPoint(xtn);
+      if (telecom) {
+        if (!telecom.use) telecom.use = "home";
+        telecoms.push(telecom);
+      }
+    }
+  }
+
+  if (pid.$14_businessPhone) {
+    for (const xtn of pid.$14_businessPhone) {
+      const telecom = convertXTNToContactPoint(xtn);
+      if (telecom) {
+        if (!telecom.use) telecom.use = "work";
+        telecoms.push(telecom);
+      }
+    }
+  }
+
+  if (telecoms.length > 0) {
+    patient.telecom = telecoms;
+  }
+
+  // =========================================================================
+  // Communication (Language) (same as sync version)
+  // =========================================================================
+
+  if (pid.$15_language) {
+    const languageCode = convertCEOrCWEToCodeableConcept(pid.$15_language);
+    if (languageCode) {
+      const communication: PatientCommunication = {
+        language: languageCode,
+        preferred: true,
+      };
+      patient.communication = [communication];
+    }
+  }
+
+  // =========================================================================
+  // Marital Status (same as sync version)
+  // =========================================================================
+
+  if (pid.$16_maritalStatus) {
+    const maritalStatus = convertCEOrCWEToCodeableConcept(pid.$16_maritalStatus);
+    if (maritalStatus) {
+      patient.maritalStatus = maritalStatus;
+    }
+  }
+
+  // =========================================================================
+  // Multiple Birth (same as sync version)
+  // =========================================================================
+
+  if (pid.$25_birthOrder) {
+    const birthOrder = parseInt(pid.$25_birthOrder, 10);
+    if (!isNaN(birthOrder)) {
+      patient.multipleBirthInteger = birthOrder;
+    }
+  } else if (pid.$24_multipleBirthIndicator) {
+    const isMultiple = convertIDToBoolean(pid.$24_multipleBirthIndicator);
+    if (isMultiple !== undefined) {
+      patient.multipleBirthBoolean = isMultiple;
+    }
+  }
+
+  // =========================================================================
+  // Deceased (same as sync version)
+  // =========================================================================
+
+  if (pid.$29_deceasedDateTime) {
+    patient.deceasedDateTime = convertDTMToDateTime(pid.$29_deceasedDateTime);
+  } else if (pid.$30_deceased) {
+    const isDeceased = convertIDToBoolean(pid.$30_deceased);
+    if (isDeceased !== undefined) {
+      patient.deceasedBoolean = isDeceased;
+    }
+  }
+
+  // =========================================================================
+  // Extensions (same as sync version)
   // =========================================================================
 
   const extensions: Extension[] = [];
