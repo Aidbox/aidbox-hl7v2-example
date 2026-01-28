@@ -20,6 +20,11 @@ import {
   createEmptyConceptMap,
   addMappingToConceptMap,
 } from "../code-mapping/concept-map";
+import {
+  getMappingType,
+  getMappingTypeName,
+  type MappingTypeName,
+} from "../code-mapping/mapping-types";
 
 export function getTaskInputValue(
   task: Task,
@@ -35,10 +40,22 @@ function extractSenderFromTask(task: Task): SenderContext {
   return { sendingApplication, sendingFacility };
 }
 
+/**
+ * Extract the mapping type from a Task's code.
+ * Returns the MappingTypeName (e.g., "loinc", "address-type", "obr-status").
+ */
+function extractMappingTypeFromTask(task: Task): MappingTypeName {
+  const taskCode = task.code?.coding?.[0]?.code;
+  if (!taskCode) {
+    throw new Error(`Task ${task.id} has no code`);
+  }
+  return getMappingTypeName(taskCode);
+}
+
 export async function resolveTaskWithMapping(
   taskId: string,
-  loincCode: string,
-  loincDisplay: string,
+  resolvedCode: string,
+  resolvedDisplay: string,
 ): Promise<void> {
   const { resource: task, etag: taskEtag } = await getResourceWithETag<Task>(
     "Task",
@@ -50,11 +67,13 @@ export async function resolveTaskWithMapping(
   }
 
   const sender = extractSenderFromTask(task);
+  const mappingType = extractMappingTypeFromTask(task);
+  const typeConfig = getMappingType(task.code!.coding![0]!.code!);
   const localCode = getTaskInputValue(task, "Local code") || "";
   const localDisplay = getTaskInputValue(task, "Local display") || "";
   const localSystem = getTaskInputValue(task, "Local system")!;
 
-  const conceptMapId = generateConceptMapId(sender);
+  const conceptMapId = generateConceptMapId(sender, mappingType);
 
   let conceptMap: ConceptMap;
   let conceptMapEtag: string;
@@ -69,7 +88,7 @@ export async function resolveTaskWithMapping(
     conceptMapEtag = result.etag;
   } catch (error) {
     if (error instanceof NotFoundError) {
-      conceptMap = createEmptyConceptMap(sender);
+      conceptMap = createEmptyConceptMap(sender, mappingType);
       conceptMapEtag = "";
       isNewConceptMap = true;
     } else {
@@ -82,21 +101,22 @@ export async function resolveTaskWithMapping(
     localSystem,
     localCode,
     localDisplay,
-    loincCode,
-    loincDisplay,
+    resolvedCode,
+    resolvedDisplay,
+    typeConfig.targetSystem,
   );
 
   const output: TaskOutput = {
-    type: { text: "Resolved LOINC" },
+    type: { text: "Resolved mapping" },
     valueCodeableConcept: {
       coding: [
         {
-          system: "http://loinc.org",
-          code: loincCode,
-          display: loincDisplay,
+          system: typeConfig.targetSystem,
+          code: resolvedCode,
+          display: resolvedDisplay,
         },
       ],
-      text: loincDisplay,
+      text: resolvedDisplay,
     },
   };
 
@@ -188,9 +208,9 @@ export async function updateAffectedMessages(taskId: string): Promise<void> {
 
 export async function resolveTaskAndUpdateMessages(
   taskId: string,
-  loincCode: string,
-  loincDisplay: string,
+  resolvedCode: string,
+  resolvedDisplay: string,
 ): Promise<void> {
-  await resolveTaskWithMapping(taskId, loincCode, loincDisplay);
+  await resolveTaskWithMapping(taskId, resolvedCode, resolvedDisplay);
   await updateAffectedMessages(taskId);
 }

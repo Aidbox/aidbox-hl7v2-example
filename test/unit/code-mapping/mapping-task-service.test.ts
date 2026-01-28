@@ -181,7 +181,7 @@ describe("resolveMappingTask", () => {
     expect(savedTask!.output).toBeDefined();
 
     const output = savedTask!.output?.[0];
-    expect(output?.type?.text).toBe("Resolved LOINC");
+    expect(output?.type?.text).toBe("Resolved mapping");
     expect(output?.valueCodeableConcept?.coding?.[0]?.code).toBe("2823-3");
     expect(output?.valueCodeableConcept?.coding?.[0]?.system).toBe(
       "http://loinc.org",
