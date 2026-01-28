@@ -39,8 +39,6 @@ import type {
   Meta,
   Resource,
   Reference,
-  Task,
-  TaskInput,
 } from "../../fhir/hl7-fhir-r4-core";
 import { getResourceWithETag, NotFoundError } from "../../aidbox";
 import { convertPIDToPatient } from "../segments/pid-patient";
@@ -56,7 +54,11 @@ import {
   generateConceptMapId,
   type SenderContext,
 } from "../../code-mapping/concept-map";
-import { simpleHash } from "../../utils/string";
+import {
+  createMappingTask,
+  createTaskBundleEntry,
+  generateMappingTaskId,
+} from "../../code-mapping/mapping-task-service";
 
 /**
  * Function type for looking up a Patient by ID.
@@ -258,78 +260,6 @@ function createBundleEntry(
   };
 }
 
-/**
- * Create a bundle entry for a Task.
- * Uses PUT for upsert - creates new or resets existing (even if completed) to requested.
- */
-function createTaskBundleEntry(task: Task): BundleEntry {
-  return {
-    resource: task,
-    request: {
-      method: "PUT",
-      url: `Task/${task.id}`,
-    },
-  };
-}
-
-/**
- * Generate a deterministic Task ID based on sender and code.
- */
-function generateMappingTaskId(
-  conceptMapId: string,
-  localSystem: string,
-  localCode: string,
-): string {
-  const systemHash = simpleHash(localSystem);
-  const codeHash = simpleHash(localCode);
-  return `map-${conceptMapId}-${systemHash}-${codeHash}`;
-}
-
-function createMappingTask(
-  sender: SenderContext,
-  error: LoincResolutionError,
-): Task {
-  const conceptMapId = generateConceptMapId(sender);
-  const taskId = generateMappingTaskId(
-    conceptMapId,
-    error.localSystem || "",
-    error.localCode || "",
-  );
-
-  const inputs = [
-    ["Sending application", sender.sendingApplication],
-    ["Sending facility", sender.sendingFacility],
-    ["Local code", error.localCode],
-    ["Local display", error.localDisplay],
-    ["Local system", error.localSystem],
-  ]
-    .filter(([, value]) => value)
-    .map(([label, value]) => ({ type: { text: label }, valueString: value }));
-
-  const now = new Date().toISOString();
-
-  return {
-    resourceType: "Task",
-    id: taskId,
-    status: "requested",
-    intent: "order",
-    code: {
-      coding: [
-        {
-          system: "http://example.org/task-codes",
-          code: "local-to-loinc-mapping",
-          display: "Local code to LOINC mapping",
-        },
-      ],
-      text: "Map local lab code to LOINC",
-    },
-    authoredOn: now,
-    lastModified: now,
-    requester: { display: "ORU Processor" },
-    owner: { display: "Mapping Team" },
-    input: inputs,
-  };
-}
 
 /**
  * Group segments by OBR parent
@@ -1056,7 +986,15 @@ function buildMappingErrorResult(
     if (seenTaskIds.has(taskId)) continue;
     seenTaskIds.add(taskId);
 
-    const task = createMappingTask(senderContext, error);
+    const task = createMappingTask(
+      senderContext,
+      {
+        localCode: error.localCode,
+        localDisplay: error.localDisplay,
+        localSystem: error.localSystem,
+      },
+      "loinc",
+    );
     entries.push(createTaskBundleEntry(task));
 
     unmappedCodes.push({
