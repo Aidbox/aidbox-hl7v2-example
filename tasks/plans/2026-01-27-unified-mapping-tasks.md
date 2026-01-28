@@ -74,13 +74,13 @@ This ensures extensibility and fail-fast behavior when a new field type is added
 
 Update ConceptMap service to support target systems other than LOINC.
 
-- [ ] Update `generateConceptMapId()` in `lookup.ts` to accept optional `mappingType` parameter
-- [ ] When mappingType provided, append type's `conceptMapSuffix` instead of "-to-loinc"
-- [ ] Update `createEmptyConceptMap()` to accept target system from mapping type registry
-- [ ] Update `addMappingToConceptMap()` to use configurable target system
-- [ ] Ensure backward compatibility: existing LOINC calls work unchanged
-- [ ] Update/add unit tests for ConceptMap with different target systems
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Update `generateConceptMapId()` in `lookup.ts` to accept optional `mappingType` parameter
+- [x] When mappingType provided, append type's `conceptMapSuffix` instead of "-to-loinc"
+- [x] Update `createEmptyConceptMap()` to accept target system from mapping type registry
+- [x] Update `addMappingToConceptMap()` to use configurable target system
+- [x] Ensure backward compatibility: existing LOINC calls work unchanged
+- [x] Update/add unit tests for ConceptMap with different target systems
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

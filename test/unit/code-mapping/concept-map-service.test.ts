@@ -455,3 +455,152 @@ describe("searchMappings", () => {
     expect(results).toHaveLength(0);
   });
 });
+
+describe("createEmptyConceptMap with different mapping types", () => {
+  test("creates LOINC ConceptMap by default", async () => {
+    const { createEmptyConceptMap } = await import(
+      "../../../src/code-mapping/concept-map"
+    );
+
+    const result = createEmptyConceptMap({
+      sendingApplication: "LAB",
+      sendingFacility: "HOSP",
+    });
+
+    expect(result.id).toBe("hl7v2-lab-hosp-to-loinc");
+    expect(result.targetUri).toBe("http://loinc.org");
+    expect(result.name).toContain("Observation.code");
+  });
+
+  test("creates address-type ConceptMap when specified", async () => {
+    const { createEmptyConceptMap } = await import(
+      "../../../src/code-mapping/concept-map"
+    );
+
+    const result = createEmptyConceptMap(
+      { sendingApplication: "ADT", sendingFacility: "MAIN" },
+      "address-type",
+    );
+
+    expect(result.id).toBe("hl7v2-adt-main-to-address-type");
+    expect(result.targetUri).toBe("http://hl7.org/fhir/address-type");
+    expect(result.name).toContain("Address.type");
+  });
+
+  test("creates obr-status ConceptMap when specified", async () => {
+    const { createEmptyConceptMap } = await import(
+      "../../../src/code-mapping/concept-map"
+    );
+
+    const result = createEmptyConceptMap(
+      { sendingApplication: "LAB", sendingFacility: "HOSP" },
+      "obr-status",
+    );
+
+    expect(result.id).toBe("hl7v2-lab-hosp-to-diagnostic-report-status");
+    expect(result.targetUri).toBe("http://hl7.org/fhir/diagnostic-report-status");
+    expect(result.name).toContain("DiagnosticReport.status");
+  });
+
+  test("creates patient-class ConceptMap when specified", async () => {
+    const { createEmptyConceptMap } = await import(
+      "../../../src/code-mapping/concept-map"
+    );
+
+    const result = createEmptyConceptMap(
+      { sendingApplication: "ADT", sendingFacility: "MAIN" },
+      "patient-class",
+    );
+
+    expect(result.id).toBe("hl7v2-adt-main-to-encounter-class");
+    expect(result.targetUri).toBe(
+      "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+    );
+    expect(result.name).toContain("Encounter.class");
+  });
+});
+
+describe("addMappingToConceptMap with different target systems", () => {
+  test("uses LOINC target system by default", async () => {
+    const { addMappingToConceptMap } = await import(
+      "../../../src/code-mapping/concept-map"
+    );
+
+    const emptyConceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "test-concept-map",
+      status: "active",
+      targetUri: "http://loinc.org",
+      group: [],
+    };
+
+    const result = addMappingToConceptMap(
+      emptyConceptMap,
+      "LOCAL-SYSTEM",
+      "LOCAL-CODE",
+      "Local Display",
+      "2823-3",
+      "Potassium",
+    );
+
+    expect(result.group![0]!.target).toBe("http://loinc.org");
+  });
+
+  test("uses address-type target system when specified", async () => {
+    const { addMappingToConceptMap } = await import(
+      "../../../src/code-mapping/concept-map"
+    );
+
+    const conceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "test-address-type",
+      status: "active",
+      targetUri: "http://hl7.org/fhir/address-type",
+      group: [],
+    };
+
+    const result = addMappingToConceptMap(
+      conceptMap,
+      "http://terminology.hl7.org/CodeSystem/v2-0190",
+      "P",
+      "Permanent",
+      "physical",
+      "Physical",
+      "http://hl7.org/fhir/address-type",
+    );
+
+    expect(result.group![0]!.target).toBe("http://hl7.org/fhir/address-type");
+    expect(result.group![0]!.element![0]!.code).toBe("P");
+    expect(result.group![0]!.element![0]!.target![0]!.code).toBe("physical");
+  });
+
+  test("uses diagnostic-report-status target system when specified", async () => {
+    const { addMappingToConceptMap } = await import(
+      "../../../src/code-mapping/concept-map"
+    );
+
+    const conceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "test-obr-status",
+      status: "active",
+      targetUri: "http://hl7.org/fhir/diagnostic-report-status",
+      group: [],
+    };
+
+    const result = addMappingToConceptMap(
+      conceptMap,
+      "http://terminology.hl7.org/CodeSystem/v2-0123",
+      "Y",
+      "No results available",
+      "cancelled",
+      "Cancelled",
+      "http://hl7.org/fhir/diagnostic-report-status",
+    );
+
+    expect(result.group![0]!.target).toBe(
+      "http://hl7.org/fhir/diagnostic-report-status",
+    );
+    expect(result.group![0]!.element![0]!.code).toBe("Y");
+    expect(result.group![0]!.element![0]!.target![0]!.code).toBe("cancelled");
+  });
+});

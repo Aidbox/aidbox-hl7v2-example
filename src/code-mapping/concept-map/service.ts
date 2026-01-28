@@ -1,7 +1,8 @@
 /**
  * ConceptMap Service
  *
- * Manages sender-specific ConceptMaps for local code to LOINC mappings.
+ * Manages sender-specific ConceptMaps for code mappings.
+ * Supports multiple target systems (LOINC, address types, status codes, etc.).
  */
 
 import type {
@@ -15,6 +16,7 @@ import {
   formatSenderAsTitle,
   type SenderContext,
 } from "./lookup";
+import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
 
 export async function fetchConceptMap(
   conceptMapId: string,
@@ -29,16 +31,21 @@ export async function fetchConceptMap(
   }
 }
 
-export function createEmptyConceptMap(sender: SenderContext): ConceptMap {
-  const id = generateConceptMapId(sender);
+export function createEmptyConceptMap(
+  sender: SenderContext,
+  mappingType: MappingTypeName = "loinc",
+): ConceptMap {
+  const type = MAPPING_TYPES[mappingType];
+  const id = generateConceptMapId(sender, mappingType);
+  const baseId = id.replace(type.conceptMapSuffix, "");
   return {
     resourceType: "ConceptMap",
     id,
-    name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to LOINC`,
+    name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to ${type.targetField}`,
     status: "active",
     title: formatSenderAsTitle(sender),
-    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-to-loinc", "")}`,
-    targetUri: "http://loinc.org",
+    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${baseId}`,
+    targetUri: type.targetSystem,
     group: [],
   };
 }
@@ -46,14 +53,17 @@ export function createEmptyConceptMap(sender: SenderContext): ConceptMap {
 /**
  * Add or update a mapping in a ConceptMap (pure function, non-mutating).
  * If an element with the same localCode exists in the group, it will be replaced.
+ *
+ * @param targetSystem - The target system URI. Defaults to LOINC for backward compatibility.
  */
 export function addMappingToConceptMap(
   conceptMap: ConceptMap,
   localSystem: string,
   localCode: string,
   localDisplay: string,
-  loincCode: string,
-  loincDisplay: string,
+  targetCode: string,
+  targetDisplay: string,
+  targetSystem: string = "http://loinc.org",
 ): ConceptMap {
   const updated: ConceptMap = {
     ...conceptMap,
@@ -65,7 +75,7 @@ export function addMappingToConceptMap(
   if (groupIndex === -1) {
     updated.group!.push({
       source: localSystem,
-      target: "http://loinc.org",
+      target: targetSystem,
       element: [],
     });
     groupIndex = updated.group!.length - 1;
@@ -80,8 +90,8 @@ export function addMappingToConceptMap(
     ...(localDisplay && { display: localDisplay }),
     target: [
       {
-        code: loincCode,
-        ...(loincDisplay && { display: loincDisplay }),
+        code: targetCode,
+        ...(targetDisplay && { display: targetDisplay }),
         equivalence: "equivalent",
       },
     ],
