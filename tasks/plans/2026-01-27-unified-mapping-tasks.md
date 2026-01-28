@@ -204,17 +204,17 @@ Add Task creation for invalid XAD.7 (Address.type) values.
 
 Add type filtering to the mapping tasks page.
 
-- [ ] Update `getMappingTasks()` to accept optional `taskCode` filter parameter
-- [ ] Add filter tabs to UI: "All", "LOINC", "Address Type", "Patient Class", "Status"
-- [ ] Update URL handling: `/mapping/tasks?type=loinc`, `/mapping/tasks?type=address-type`, etc.
-- [ ] Display mapping type badge on each task in the list
-- [ ] Show source/target field info in task details panel
-- [ ] Update LOINC autocomplete to generic code autocomplete based on task type:
+- [x] Update `getMappingTasks()` to accept optional `taskCode` filter parameter
+- [x] Add filter tabs to UI: "All", "LOINC", "Address Type", "Patient Class", "Status"
+- [x] Update URL handling: `/mapping/tasks?type=loinc`, `/mapping/tasks?type=address-type`, etc.
+- [x] Display mapping type badge on each task in the list
+- [x] Show source/target field info in task details panel
+- [x] Update LOINC autocomplete to generic code autocomplete based on task type:
   - LOINC tasks: keep existing LOINC search
   - Other tasks: show allowed values from FHIR ValueSet (could be dropdown)
-- [ ] Write **unit tests** for UI rendering functions with fixture Task data (pure rendering, no Aidbox)
-- [ ] Write **integration test** for `getMappingTasks()` with type filtering (calls Aidbox)
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Write **unit tests** for UI rendering functions with fixture Task data (pure rendering, no Aidbox)
+- [x] Write **integration test** for `getMappingTasks()` with type filtering (calls Aidbox)
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
