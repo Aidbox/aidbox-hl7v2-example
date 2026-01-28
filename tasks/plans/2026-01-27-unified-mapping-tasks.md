@@ -222,17 +222,17 @@ Add type filtering to the mapping tasks page.
 
 Update the task resolution API to handle different mapping types.
 
-- [ ] Update `/api/mapping/tasks/:id/resolve` to detect task type from Task resource
-- [ ] For LOINC tasks: keep existing LOINC validation
-- [ ] For status tasks: validate against FHIR ValueSet (DiagnosticReport.status, Observation.status)
-- [ ] For address-type tasks: validate against FHIR address-type ValueSet
-- [ ] For patient-class tasks: validate against FHIR encounter-class ValueSet
-- [ ] Return appropriate error if resolved value is not valid for the target system
-- [ ] Write **integration tests** for API endpoint with different mapping types:
+- [x] Update `/api/mapping/tasks/:id/resolve` to detect task type from Task resource
+- [x] For LOINC tasks: keep existing LOINC validation
+- [x] For status tasks: validate against FHIR ValueSet (DiagnosticReport.status, Observation.status)
+- [x] For address-type tasks: validate against FHIR address-type ValueSet
+- [x] For patient-class tasks: validate against FHIR encounter-class ValueSet
+- [x] Return appropriate error if resolved value is not valid for the target system
+- [x] Write **integration tests** for API endpoint with different mapping types:
   - Test LOINC task resolution (existing behavior)
   - Test OBR/OBX status task resolution with valid/invalid status codes
   - Test validation error response for invalid resolved values
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

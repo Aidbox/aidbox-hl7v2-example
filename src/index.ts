@@ -100,21 +100,55 @@ Bun.serve({
         }
 
         const formData = await req.formData();
-        const loincCode = formData.get("loincCode")?.toString();
-        const loincDisplay = formData.get("loincDisplay")?.toString() || "";
+        // Support both legacy "loincCode" and new "resolvedCode" parameter names
+        const resolvedCode = formData.get("resolvedCode")?.toString() || formData.get("loincCode")?.toString();
+        const resolvedDisplay = formData.get("resolvedDisplay")?.toString() || formData.get("loincDisplay")?.toString() || "";
 
-        if (!loincCode) {
+        if (!resolvedCode) {
           return new Response(null, {
             status: 302,
             headers: {
-              Location: `/mapping/tasks?error=${encodeURIComponent("LOINC code is required")}`,
+              Location: `/mapping/tasks?error=${encodeURIComponent("Resolved code is required")}`,
             },
           });
         }
 
         try {
+          // Fetch the Task to determine its type
+          const task = await aidboxFetch<{ code?: { coding?: Array<{ code?: string }> } }>(
+            `/fhir/Task/${taskId}`,
+          );
+
+          const taskCode = task.code?.coding?.[0]?.code;
+          if (!taskCode) {
+            return new Response(null, {
+              status: 302,
+              headers: {
+                Location: `/mapping/tasks?error=${encodeURIComponent("Task has no code - cannot determine mapping type")}`,
+              },
+            });
+          }
+
+          // Get the mapping type from the task code
+          const { getMappingTypeName } = await import("./code-mapping/mapping-types");
+          const mappingType = getMappingTypeName(taskCode);
+
+          // Validate the resolved code against the target value set
+          const { validateResolvedCode } = await import("./code-mapping/validation");
+          const validationResult = validateResolvedCode(mappingType, resolvedCode);
+
+          if (!validationResult.valid) {
+            return new Response(null, {
+              status: 302,
+              headers: {
+                Location: `/mapping/tasks?error=${encodeURIComponent(validationResult.error || "Invalid code")}`,
+              },
+            });
+          }
+
+          // Resolve the task and update affected messages
           const { resolveTaskAndUpdateMessages } = await import("./ui/mapping-tasks-queue");
-          await resolveTaskAndUpdateMessages(taskId, loincCode, loincDisplay);
+          await resolveTaskAndUpdateMessages(taskId, resolvedCode, resolvedDisplay);
 
           return new Response(null, {
             status: 302,
