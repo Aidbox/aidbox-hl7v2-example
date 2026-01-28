@@ -271,15 +271,15 @@ Note: Most integration tests are now written in Tasks 5-12. This task focuses on
 
 Update documentation to reflect the unified mapping system.
 
-- [ ] Update `docs/developer-guide/code-mapping.md`:
+- [x] Update `docs/developer-guide/code-mapping.md`:
   - Document all supported mapping types
   - Document how to add a new mapping type (registry, ConceptMap, Task, UI)
   - Document target code systems for each type
   - Document the extensibility pattern and fail-fast behavior
-- [ ] Update `CLAUDE.md`:
+- [x] Update `CLAUDE.md`:
   - Update code-mapping section with new types
   - Document mapping type registry location
-- [ ] Add inline documentation to `mapping-types.ts` explaining the registry pattern
+- [x] Add inline documentation to `mapping-types.ts` explaining the registry pattern
 
 ---
 
