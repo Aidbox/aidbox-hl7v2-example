@@ -131,24 +131,54 @@ export function createTaskBundleEntry(task: Task): BundleEntry {
   };
 }
 
+/**
+ * Extract the mapping type from a Task's code.
+ * Returns the MappingTypeName (e.g., "loinc", "address-type", "obr-status").
+ */
+function extractMappingTypeFromTask(task: Task): MappingTypeName {
+  const taskCode = task.code?.coding?.[0]?.code;
+  if (!taskCode) {
+    throw new Error(`Task ${task.id} has no code`);
+  }
+  const entry = Object.entries(MAPPING_TYPES).find(
+    ([, config]) => config.taskCode === taskCode,
+  );
+  // Check legacy aliases
+  const LEGACY_TASK_CODE_ALIASES: Record<string, MappingTypeName> = {
+    "local-to-loinc-mapping": "loinc",
+  };
+  if (LEGACY_TASK_CODE_ALIASES[taskCode]) {
+    return LEGACY_TASK_CODE_ALIASES[taskCode];
+  }
+  if (!entry) {
+    throw new Error(
+      `Unknown mapping task code: ${taskCode}. Add it to MAPPING_TYPES registry.`,
+    );
+  }
+  return entry[0] as MappingTypeName;
+}
+
 export async function resolveMappingTask(
   taskId: string,
-  loincCode: string,
-  loincDisplay: string,
+  resolvedCode: string,
+  resolvedDisplay: string,
 ): Promise<void> {
   const task = await aidboxFetch<Task>(`/fhir/Task/${taskId}`);
 
+  const mappingType = extractMappingTypeFromTask(task);
+  const typeConfig = MAPPING_TYPES[mappingType];
+
   const output: TaskOutput = {
-    type: { text: "Resolved LOINC" },
+    type: { text: "Resolved mapping" },
     valueCodeableConcept: {
       coding: [
         {
-          system: "http://loinc.org",
-          code: loincCode,
-          display: loincDisplay,
+          system: typeConfig.targetSystem,
+          code: resolvedCode,
+          display: resolvedDisplay,
         },
       ],
-      text: loincDisplay,
+      text: resolvedDisplay,
     },
   };
 

@@ -121,14 +121,14 @@ Create error types and result builders that work for any mapping type.
 
 Generalize task resolution to handle non-LOINC mappings.
 
-- [ ] Update `resolveTaskWithMapping()` in `mapping-tasks-queue.ts`:
+- [x] Update `resolveTaskWithMapping()` in `mapping-tasks-queue.ts`:
   - Extract mapping type from Task.code
   - Get target system from mapping type registry
   - Use correct target system in ConceptMap and Task output
-- [ ] Update `resolveMappingTask()` in `mapping-task-service.ts` similarly
-- [ ] Rename output type from "Resolved LOINC" to "Resolved mapping" (or make it dynamic based on type)
-- [ ] Write **integration tests** for resolution with different mapping types (these functions call Aidbox - no mocks)
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Update `resolveMappingTask()` in `mapping-task-service.ts` similarly
+- [x] Rename output type from "Resolved LOINC" to "Resolved mapping" (or make it dynamic based on type)
+- [x] Write **integration tests** for resolution with different mapping types (these functions call Aidbox - no mocks)
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

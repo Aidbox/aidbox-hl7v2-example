@@ -16,6 +16,7 @@ import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/In
 import { processNextMessage } from "../../src/v2-to-fhir/processor-service";
 import { toKebabCase } from "../../src/utils/string";
 import { aidboxFetch } from "../../src/aidbox";
+import { MAPPING_TYPES, type MappingTypeName } from "../../src/code-mapping/mapping-types";
 export { aidboxFetch };
 
 export async function loadFixture(fixturePath: string): Promise<string> {
@@ -66,6 +67,59 @@ export async function createTestConceptMap(
     status: "active",
     sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-to-loinc", "")}`,
     targetUri: "http://loinc.org",
+    group: Object.values(groups),
+  };
+
+  await aidboxFetch(`/fhir/ConceptMap/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(conceptMap),
+  });
+}
+
+/**
+ * Create a test ConceptMap for any mapping type.
+ */
+export async function createTestConceptMapForType(
+  sendingApp: string,
+  sendingFacility: string,
+  mappingType: MappingTypeName,
+  mappings: Array<{
+    localCode: string;
+    localSystem: string;
+    targetCode: string;
+    targetDisplay: string;
+  }>,
+): Promise<void> {
+  const typeConfig = MAPPING_TYPES[mappingType];
+  const id = `hl7v2-${toKebabCase(sendingApp)}-${toKebabCase(sendingFacility)}${typeConfig.conceptMapSuffix}`;
+
+  const groups: Record<string, NonNullable<ConceptMap["group"]>[0]> = {};
+  for (const m of mappings) {
+    if (!groups[m.localSystem]) {
+      groups[m.localSystem] = {
+        source: m.localSystem,
+        target: typeConfig.targetSystem,
+        element: [],
+      };
+    }
+    groups[m.localSystem]!.element!.push({
+      code: m.localCode,
+      target: [
+        {
+          code: m.targetCode,
+          display: m.targetDisplay,
+          equivalence: "equivalent",
+        },
+      ],
+    });
+  }
+
+  const conceptMap: ConceptMap = {
+    resourceType: "ConceptMap",
+    id,
+    status: "active",
+    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace(typeConfig.conceptMapSuffix, "")}`,
+    targetUri: typeConfig.targetSystem,
     group: Object.values(groups),
   };
 
