@@ -1,5 +1,8 @@
 import { describe, test, expect } from "bun:test";
-import { convertPIDToPatient } from "../../../../src/v2-to-fhir/segments/pid-patient";
+import {
+  convertPIDToPatient,
+  convertPIDWithMappingSupport,
+} from "../../../../src/v2-to-fhir/segments/pid-patient";
 import type { PID } from "../../../../src/hl7v2/generated/fields";
 
 describe("convertPIDToPatient", () => {
@@ -531,6 +534,184 @@ describe("convertPIDToPatient", () => {
       expect(patient.telecom).toHaveLength(1);
       expect(patient.communication).toHaveLength(1);
       expect(patient.maritalStatus?.coding?.[0]?.code).toBe("M");
+    });
+  });
+});
+
+describe("convertPIDWithMappingSupport", () => {
+  describe("valid address types", () => {
+    test("returns Patient with no errors for valid address types", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $11_address: [
+          {
+            $3_city: "Boston",
+            $7_type: "H",
+          },
+        ],
+      };
+
+      const result = convertPIDWithMappingSupport(pid);
+
+      expect(result.patient.address).toHaveLength(1);
+      expect(result.patient.address![0]?.use).toBe("home");
+      expect(result.errors).toHaveLength(0);
+    });
+
+    test("converts all standard PID fields", () => {
+      const pid: PID = {
+        $3_identifier: [
+          { $1_value: "MRN001", $5_type: "MR" },
+        ],
+        $5_name: [
+          { $1_family: { $1_family: "Smith" }, $2_given: "John" },
+        ],
+        $7_birthDate: "19850315",
+        $8_gender: "M",
+        $11_address: [
+          {
+            $3_city: "Boston",
+            $4_state: "MA",
+            $7_type: "H",
+          },
+        ],
+      };
+
+      const result = convertPIDWithMappingSupport(pid);
+
+      expect(result.patient.identifier).toHaveLength(1);
+      expect(result.patient.name).toHaveLength(1);
+      expect(result.patient.birthDate).toBe("1985-03-15");
+      expect(result.patient.gender).toBe("male");
+      expect(result.patient.address![0]?.city).toBe("Boston");
+      expect(result.errors).toHaveLength(0);
+    });
+  });
+
+  describe("invalid address types", () => {
+    test("returns Patient with error for invalid address type P", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $11_address: [
+          {
+            $3_city: "Boston",
+            $7_type: "P",
+          },
+        ],
+      };
+
+      const result = convertPIDWithMappingSupport(pid);
+
+      expect(result.patient.address).toHaveLength(1);
+      expect(result.patient.address![0]?.city).toBe("Boston");
+      expect(result.patient.address![0]?.use).toBeUndefined();
+      expect(result.patient.address![0]?.type).toBeUndefined();
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]?.mappingType).toBe("address-type");
+      expect(result.errors[0]?.localCode).toBe("P");
+    });
+
+    test("collects errors from multiple invalid address types", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $11_address: [
+          { $3_city: "Boston", $7_type: "P" },
+          { $3_city: "Cambridge", $7_type: "Q" },
+        ],
+      };
+
+      const result = convertPIDWithMappingSupport(pid);
+
+      expect(result.patient.address).toHaveLength(2);
+      expect(result.errors).toHaveLength(2);
+      expect(result.errors.map((e) => e.localCode)).toEqual(["P", "Q"]);
+    });
+
+    test("deduplicates errors for same invalid address type", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $11_address: [
+          { $3_city: "Boston", $7_type: "P" },
+          { $3_city: "Cambridge", $7_type: "P" },
+        ],
+      };
+
+      const result = convertPIDWithMappingSupport(pid);
+
+      expect(result.patient.address).toHaveLength(2);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]?.localCode).toBe("P");
+    });
+
+    test("mixes valid and invalid address types", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $11_address: [
+          { $3_city: "Boston", $7_type: "H" },
+          { $3_city: "Cambridge", $7_type: "P" },
+          { $3_city: "Somerville", $7_type: "B" },
+        ],
+      };
+
+      const result = convertPIDWithMappingSupport(pid);
+
+      expect(result.patient.address).toHaveLength(3);
+      expect(result.patient.address![0]?.use).toBe("home");
+      expect(result.patient.address![1]?.use).toBeUndefined();
+      expect(result.patient.address![2]?.use).toBe("work");
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]?.localCode).toBe("P");
+    });
+  });
+
+  describe("edge cases", () => {
+    test("handles PID without addresses", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [{ $1_family: { $1_family: "Smith" } }],
+      };
+
+      const result = convertPIDWithMappingSupport(pid);
+
+      expect(result.patient.address).toBeUndefined();
+      expect(result.errors).toHaveLength(0);
+    });
+
+    test("applies PID-12 County Code to first address district", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $11_address: [
+          { $3_city: "Boston" },
+        ],
+        $12_countyCode: "Suffolk",
+      };
+
+      const result = convertPIDWithMappingSupport(pid);
+
+      expect(result.patient.address![0]?.district).toBe("Suffolk");
+      expect(result.errors).toHaveLength(0);
+    });
+
+    test("error includes proper HL7v2 table system", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $11_address: [
+          { $3_city: "Boston", $7_type: "UNKNOWN" },
+        ],
+      };
+
+      const result = convertPIDWithMappingSupport(pid);
+
+      expect(result.errors[0]?.localSystem).toBe(
+        "http://terminology.hl7.org/CodeSystem/v2-0190",
+      );
     });
   });
 });

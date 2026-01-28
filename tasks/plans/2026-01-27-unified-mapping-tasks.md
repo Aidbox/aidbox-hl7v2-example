@@ -188,15 +188,15 @@ Add Task creation for invalid PV1.2 (Encounter.class) values.
 
 Add Task creation for invalid XAD.7 (Address.type) values.
 
-- [ ] Create helper in `xad-address.ts` for address type mapping with error support
-- [ ] Return `{ type?: Address["type"], use?: Address["use"] }` on success
-- [ ] Return `{ error: MappingError }` on failure for unknown values like "P"
-- [ ] Update `convertXADToAddress()` to collect address type mapping errors
-- [ ] Propagate address errors through PID converter
-- [ ] Write **unit tests** for address type mapping pure function (valid/invalid type values)
-- [ ] Write **integration test** for full message flow with invalid XAD.7:
+- [x] Create helper in `xad-address.ts` for address type mapping with error support
+- [x] Return `{ type?: Address["type"], use?: Address["use"] }` on success
+- [x] Return `{ error: MappingError }` on failure for unknown values like "P"
+- [x] Update `convertXADToAddress()` to collect address type mapping errors
+- [x] Propagate address errors through PID converter
+- [x] Write **unit tests** for address type mapping pure function (valid/invalid type values)
+- [x] Write **integration test** for full message flow with invalid XAD.7:
   - Send message with PID.11 address type = "P" → verify Task created with type `address-type-mapping`
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
