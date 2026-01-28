@@ -240,14 +240,14 @@ Update the task resolution API to handle different mapping types.
 
 Update the ConceptMap table UI to support multiple mapping types.
 
-- [ ] Update `/mapping/table` to show mappings from all ConceptMaps (not just LOINC)
-- [ ] Add filter by mapping type (similar to tasks page)
-- [ ] Update "Add mapping" form to select mapping type first
-- [ ] Show target system column in the table
-- [ ] Update entry edit/delete to work with type-specific ConceptMaps
-- [ ] Write **unit tests** for UI rendering functions with fixture ConceptMap data (pure rendering)
-- [ ] Write **integration tests** for ConceptMap fetching with type filtering and CRUD operations
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Update `/mapping/table` to show mappings from all ConceptMaps (not just LOINC)
+- [x] Add filter by mapping type (similar to tasks page)
+- [x] Update "Add mapping" form to select mapping type first
+- [x] Show target system column in the table
+- [x] Update entry edit/delete to work with type-specific ConceptMaps
+- [x] Write **unit tests** for UI rendering functions with fixture ConceptMap data (pure rendering)
+- [x] Write **integration tests** for ConceptMap fetching with type filtering and CRUD operations
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
