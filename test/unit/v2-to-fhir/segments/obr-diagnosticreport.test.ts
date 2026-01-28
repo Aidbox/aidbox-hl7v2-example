@@ -2,6 +2,8 @@ import { describe, test, expect } from "bun:test";
 import {
   convertOBRToDiagnosticReport,
   mapOBRStatusToFHIR,
+  mapOBRStatusToFHIRWithResult,
+  convertOBRWithMappingSupport,
 } from "../../../../src/v2-to-fhir/segments/obr-diagnosticreport";
 import type { OBR } from "../../../../src/hl7v2/generated/fields";
 
@@ -217,6 +219,151 @@ describe("mapOBRStatusToFHIR validation", () => {
 
     test("error message includes invalid status value", () => {
       expect(() => mapOBRStatusToFHIR("Y")).toThrow(/"Y"/);
+    });
+  });
+});
+
+describe("mapOBRStatusToFHIRWithResult", () => {
+  describe("valid statuses", () => {
+    test.each([
+      ["O", "registered"],
+      ["I", "registered"],
+      ["S", "registered"],
+      ["P", "preliminary"],
+      ["A", "partial"],
+      ["R", "partial"],
+      ["N", "partial"],
+      ["C", "corrected"],
+      ["M", "corrected"],
+      ["F", "final"],
+      ["X", "cancelled"],
+    ] as const)("maps %s to %s", (input, expected) => {
+      const result = mapOBRStatusToFHIRWithResult(input);
+      expect(result.status).toBe(expected);
+      expect(result.error).toBeUndefined();
+    });
+
+    test("accepts lowercase status", () => {
+      const result = mapOBRStatusToFHIRWithResult("f");
+      expect(result.status).toBe("final");
+      expect(result.error).toBeUndefined();
+    });
+  });
+
+  describe("invalid statuses", () => {
+    test("returns error for missing status", () => {
+      const result = mapOBRStatusToFHIRWithResult(undefined);
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.mappingType).toBe("obr-status");
+      expect(result.error?.localCode).toBe("undefined");
+      expect(result.error?.localDisplay).toContain("missing");
+    });
+
+    test("returns error for status Y", () => {
+      const result = mapOBRStatusToFHIRWithResult("Y");
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.mappingType).toBe("obr-status");
+      expect(result.error?.localCode).toBe("Y");
+      expect(result.error?.localSystem).toBe(
+        "http://terminology.hl7.org/CodeSystem/v2-0123",
+      );
+    });
+
+    test("returns error for status Z", () => {
+      const result = mapOBRStatusToFHIRWithResult("Z");
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.localCode).toBe("Z");
+    });
+  });
+});
+
+describe("convertOBRWithMappingSupport", () => {
+  describe("valid status", () => {
+    test("returns DiagnosticReport for valid OBR-25 status", () => {
+      const obr: OBR = {
+        $3_fillerOrderNumber: { $1_value: "ORDER123" },
+        $4_service: { $1_code: "LAB123", $2_text: "Lab Test" },
+        $25_resultStatus: "F",
+      };
+
+      const result = convertOBRWithMappingSupport(obr);
+
+      expect(result.diagnosticReport).toBeDefined();
+      expect(result.error).toBeUndefined();
+      expect(result.diagnosticReport?.status).toBe("final");
+      expect(result.diagnosticReport?.id).toBe("order123");
+    });
+
+    test("includes all standard DiagnosticReport fields", () => {
+      const obr: OBR = {
+        $3_fillerOrderNumber: { $1_value: "ORDER123" },
+        $4_service: {
+          $1_code: "LAB123",
+          $2_text: "Lab Test",
+          $3_system: "LOCAL",
+        },
+        $7_observationDateTime: "20260105091000",
+        $22_resultsRptStatusChngDateTime: "20260105091739",
+        $25_resultStatus: "P",
+      };
+
+      const result = convertOBRWithMappingSupport(obr);
+
+      expect(result.diagnosticReport).toBeDefined();
+      expect(result.diagnosticReport?.status).toBe("preliminary");
+      expect(result.diagnosticReport?.code?.coding?.[0]?.code).toBe("LAB123");
+      expect(result.diagnosticReport?.effectiveDateTime).toBe(
+        "2026-01-05T09:10:00Z",
+      );
+      expect(result.diagnosticReport?.issued).toBe("2026-01-05T09:17:39Z");
+    });
+  });
+
+  describe("invalid status", () => {
+    test("returns mapping error for invalid OBR-25 status Y", () => {
+      const obr: OBR = {
+        $3_fillerOrderNumber: { $1_value: "ORDER123" },
+        $4_service: { $1_code: "LAB123" },
+        $25_resultStatus: "Y",
+      };
+
+      const result = convertOBRWithMappingSupport(obr);
+
+      expect(result.diagnosticReport).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.mappingType).toBe("obr-status");
+      expect(result.error?.localCode).toBe("Y");
+    });
+
+    test("returns mapping error for missing OBR-25 status", () => {
+      const obr: OBR = {
+        $3_fillerOrderNumber: { $1_value: "ORDER123" },
+        $4_service: { $1_code: "LAB123" },
+      };
+
+      const result = convertOBRWithMappingSupport(obr);
+
+      expect(result.diagnosticReport).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.mappingType).toBe("obr-status");
+      expect(result.error?.localCode).toBe("undefined");
+    });
+
+    test("includes proper HL7v2 table system in error", () => {
+      const obr: OBR = {
+        $3_fillerOrderNumber: { $1_value: "ORDER123" },
+        $4_service: { $1_code: "LAB123" },
+        $25_resultStatus: "Z",
+      };
+
+      const result = convertOBRWithMappingSupport(obr);
+
+      expect(result.error?.localSystem).toBe(
+        "http://terminology.hl7.org/CodeSystem/v2-0123",
+      );
     });
   });
 });

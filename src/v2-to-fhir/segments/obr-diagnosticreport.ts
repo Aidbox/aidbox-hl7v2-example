@@ -11,6 +11,12 @@ import type {
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { normalizeSystem } from "../code-mapping/coding-systems";
+import type { MappingError } from "../../code-mapping/mapping-errors";
+import {
+  generateConceptMapId,
+  translateCode,
+  type SenderContext,
+} from "../../code-mapping/concept-map/lookup";
 
 // ============================================================================
 // Status Validation and Mapping
@@ -49,8 +55,39 @@ const OBR25_STATUS_MAP: Record<string, DiagnosticReport["status"]> = {
 const VALID_OBR25_STATUSES = Object.keys(OBR25_STATUS_MAP).join(", ");
 
 /**
+ * Result type for OBR-25 status mapping.
+ * Returns either a valid FHIR status or a mapping error.
+ */
+export type OBRStatusResult =
+  | { status: DiagnosticReport["status"]; error?: never }
+  | { status?: never; error: MappingError };
+
+/**
+ * Map OBR-25 Result Status to FHIR DiagnosticReport.status.
+ * Returns a result object instead of throwing, allowing collection of mapping errors.
+ */
+export function mapOBRStatusToFHIRWithResult(
+  status: string | undefined
+): OBRStatusResult {
+  if (status === undefined || !(status.toUpperCase() in OBR25_STATUS_MAP)) {
+    return {
+      error: {
+        localCode: status || "undefined",
+        localDisplay: `OBR-25 status: ${status ?? "missing"}`,
+        localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
+        mappingType: "obr-status",
+      },
+    };
+  }
+  return { status: OBR25_STATUS_MAP[status.toUpperCase()]! };
+}
+
+/**
  * Map OBR-25 Result Status to FHIR DiagnosticReport.status.
  * Throws Error if status is missing or invalid (e.g., Y, Z).
+ *
+ * @deprecated Use mapOBRStatusToFHIRWithResult for new code.
+ * This function is kept for backward compatibility.
  */
 export function mapOBRStatusToFHIR(
   status: string | undefined
@@ -192,4 +229,192 @@ export function convertOBRToDiagnosticReport(obr: OBR): DiagnosticReport {
   }
 
   return diagnosticReport;
+}
+
+/**
+ * Result type for OBR conversion with mapping support.
+ * Returns either a DiagnosticReport or a mapping error for the status field.
+ */
+export type OBRConversionResult =
+  | { diagnosticReport: DiagnosticReport; error?: never }
+  | { diagnosticReport?: never; error: MappingError };
+
+/**
+ * Valid FHIR DiagnosticReport status codes for validation
+ */
+const VALID_FHIR_DR_STATUSES: DiagnosticReport["status"][] = [
+  "registered",
+  "preliminary",
+  "partial",
+  "corrected",
+  "final",
+  "cancelled",
+  "entered-in-error",
+  "unknown",
+];
+
+/**
+ * Resolve OBR-25 status to FHIR DiagnosticReport.status.
+ *
+ * Resolution algorithm:
+ * 1. Check hardcoded OBR25_STATUS_MAP for standard HL7v2 status codes
+ * 2. If not found, lookup in sender-specific ConceptMap via $translate
+ * 3. If no mapping found, return error for Task creation
+ */
+async function resolveOBRStatus(
+  status: string | undefined,
+  sender: SenderContext,
+): Promise<OBRStatusResult> {
+  // First try hardcoded mappings for standard codes
+  if (status !== undefined && status.toUpperCase() in OBR25_STATUS_MAP) {
+    return { status: OBR25_STATUS_MAP[status.toUpperCase()]! };
+  }
+
+  // If status is undefined, return error immediately (no ConceptMap lookup for missing status)
+  if (status === undefined) {
+    return {
+      error: {
+        localCode: "undefined",
+        localDisplay: "OBR-25 status: missing",
+        localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
+        mappingType: "obr-status",
+      },
+    };
+  }
+
+  // Try ConceptMap lookup for non-standard status codes
+  const conceptMapId = generateConceptMapId(sender, "obr-status");
+  const localSystem = "http://terminology.hl7.org/CodeSystem/v2-0123";
+
+  const translateResult = await translateCode(conceptMapId, status, localSystem);
+
+  if (translateResult.status === "found" && translateResult.coding.code) {
+    const resolvedStatus = translateResult.coding
+      .code as DiagnosticReport["status"];
+    // Validate the resolved status is a valid FHIR status
+    if (VALID_FHIR_DR_STATUSES.includes(resolvedStatus)) {
+      return { status: resolvedStatus };
+    }
+  }
+
+  // No mapping found - return error for Task creation
+  return {
+    error: {
+      localCode: status,
+      localDisplay: `OBR-25 status: ${status}`,
+      localSystem,
+      mappingType: "obr-status",
+    },
+  };
+}
+
+/**
+ * Convert OBR segment to FHIR DiagnosticReport with mapping error support (sync version).
+ *
+ * This version does NOT check ConceptMap - use convertOBRWithMappingSupportAsync
+ * when processing messages where ConceptMap lookup is needed.
+ *
+ * Instead of throwing on invalid OBR-25 status, returns a mapping error
+ * that can be collected alongside other mapping errors (e.g., LOINC).
+ *
+ * Field mappings:
+ * - OBR-3 (Filler Order Number) or OBR-2 (Placer Order Number) → id (deterministic)
+ * - OBR-4 (Universal Service ID) → code
+ * - OBR-7 (Observation Date/Time) → effectiveDateTime
+ * - OBR-22 (Results Report/Status Change) → issued
+ * - OBR-25 (Result Status) → status (returns error if invalid)
+ */
+export function convertOBRWithMappingSupport(obr: OBR): OBRConversionResult {
+  const id =
+    generateIdFromEI(obr.$3_fillerOrderNumber) ??
+    generateIdFromEI(obr.$2_placerOrderNumber);
+
+  const statusResult = mapOBRStatusToFHIRWithResult(obr.$25_resultStatus);
+
+  if (statusResult.error) {
+    return { error: statusResult.error };
+  }
+
+  const diagnosticReport: DiagnosticReport = {
+    resourceType: "DiagnosticReport",
+    id,
+    status: statusResult.status,
+    code: convertServiceToCodeableConcept(obr.$4_service) || {
+      text: "Unknown",
+    },
+  };
+
+  // OBR-7: Observation Date/Time → effectiveDateTime
+  if (obr.$7_observationDateTime) {
+    diagnosticReport.effectiveDateTime = convertDTMToDateTime(
+      obr.$7_observationDateTime,
+    );
+  }
+
+  // OBR-22: Results Report/Status Change → issued
+  if (obr.$22_resultsRptStatusChngDateTime) {
+    diagnosticReport.issued = convertDTMToInstant(
+      obr.$22_resultsRptStatusChngDateTime,
+    );
+  }
+
+  return { diagnosticReport };
+}
+
+/**
+ * Convert OBR segment to FHIR DiagnosticReport with mapping error support (async version).
+ *
+ * This version checks ConceptMap for sender-specific OBR-25 status mappings.
+ * Use this when processing messages where Task resolution may have added custom mappings.
+ *
+ * Resolution algorithm for OBR-25 status:
+ * 1. Check hardcoded OBR25_STATUS_MAP for standard HL7v2 status codes
+ * 2. If not found, lookup in sender-specific ConceptMap via $translate
+ * 3. If no mapping found, return error for Task creation
+ *
+ * Field mappings:
+ * - OBR-3 (Filler Order Number) or OBR-2 (Placer Order Number) → id (deterministic)
+ * - OBR-4 (Universal Service ID) → code
+ * - OBR-7 (Observation Date/Time) → effectiveDateTime
+ * - OBR-22 (Results Report/Status Change) → issued
+ * - OBR-25 (Result Status) → status (returns error if invalid)
+ */
+export async function convertOBRWithMappingSupportAsync(
+  obr: OBR,
+  sender: SenderContext,
+): Promise<OBRConversionResult> {
+  const id =
+    generateIdFromEI(obr.$3_fillerOrderNumber) ??
+    generateIdFromEI(obr.$2_placerOrderNumber);
+
+  const statusResult = await resolveOBRStatus(obr.$25_resultStatus, sender);
+
+  if (statusResult.error) {
+    return { error: statusResult.error };
+  }
+
+  const diagnosticReport: DiagnosticReport = {
+    resourceType: "DiagnosticReport",
+    id,
+    status: statusResult.status,
+    code: convertServiceToCodeableConcept(obr.$4_service) || {
+      text: "Unknown",
+    },
+  };
+
+  // OBR-7: Observation Date/Time → effectiveDateTime
+  if (obr.$7_observationDateTime) {
+    diagnosticReport.effectiveDateTime = convertDTMToDateTime(
+      obr.$7_observationDateTime,
+    );
+  }
+
+  // OBR-22: Results Report/Status Change → issued
+  if (obr.$22_resultsRptStatusChngDateTime) {
+    diagnosticReport.issued = convertDTMToInstant(
+      obr.$22_resultsRptStatusChngDateTime,
+    );
+  }
+
+  return { diagnosticReport };
 }

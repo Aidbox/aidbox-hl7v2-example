@@ -136,17 +136,17 @@ Generalize task resolution to handle non-LOINC mappings.
 
 Add Task creation for invalid OBR-25 (DiagnosticReport.status) values.
 
-- [ ] Update `mapOBRStatusToFHIR()` to return a result object instead of throwing:
+- [x] Update `mapOBRStatusToFHIR()` to return a result object instead of throwing:
   - `{ status: DiagnosticReport["status"] }` on success
   - `{ error: MappingError }` on failure
-- [ ] Create `convertOBRWithMappingSupport()` wrapper that collects mapping errors
-- [ ] Update OBR converter call sites in oru-r01.ts to use new wrapper
-- [ ] Collect OBR status errors alongside LOINC errors in mapping error array
-- [ ] Write **unit tests** for `mapOBRStatusToFHIR()` pure function (valid/invalid status values)
-- [ ] Write **integration test** for full ORU flow with invalid OBR-25 status:
+- [x] Create `convertOBRWithMappingSupport()` wrapper that collects mapping errors
+- [x] Update OBR converter call sites in oru-r01.ts to use new wrapper
+- [x] Collect OBR status errors alongside LOINC errors in mapping error array
+- [x] Write **unit tests** for `mapOBRStatusToFHIR()` pure function (valid/invalid status values)
+- [x] Write **integration test** for full ORU flow with invalid OBR-25 status:
   - Send message with OBR-25 = "Y" → verify Task created with type `obr-status-mapping`
   - Resolve task → verify message reprocesses successfully
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

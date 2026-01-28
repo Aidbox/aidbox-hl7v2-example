@@ -12,6 +12,7 @@ import {
   loadFixture,
   aidboxFetch,
   createTestConceptMap,
+  createTestConceptMapForType,
   getMappingTasks,
   getDiagnosticReports,
   getObservations,
@@ -302,31 +303,93 @@ describe("ORU_R01 E2E Integration", () => {
     });
   });
 
-  describe("OBR-25 and OBX-11 status validation", () => {
-    test("sets error when OBR-25 is missing", async () => {
+  describe("OBR-25 status mapping", () => {
+    test("returns mapping_error when OBR-25 is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obr25.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
-      expect(message.error).toMatch(/OBR-25/);
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes).toBeDefined();
+      expect(message.unmappedCodes!.length).toBeGreaterThan(0);
+      expect(message.unmappedCodes![0]!.localCode).toBe("undefined");
     });
 
-    test("sets error when OBR-25 is Y", async () => {
-      const hl7Message = await loadFixture("oru-r01/error/obr25-y.hl7");
+    test("returns mapping_error when OBR-25 is Y and creates obr-status-mapping Task", async () => {
+      const hl7Message = await loadFixture("oru-r01/status/obr25-invalid.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
-      expect(message.error).toMatch(/OBR-25/);
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes).toBeDefined();
+      expect(message.unmappedCodes![0]!.localCode).toBe("Y");
+
+      const tasks = await getMappingTasks();
+      expect(tasks.length).toBe(1);
+
+      const task = tasks[0]!;
+      expect(task.status).toBe("requested");
+      expect(task.code?.coding?.[0]?.code).toBe("obr-status-mapping");
+      expect(task.input).toContainEqual({
+        type: { text: "Local code" },
+        valueString: "Y",
+      });
+      expect(task.input).toContainEqual({
+        type: { text: "Source field" },
+        valueString: "OBR-25",
+      });
+      expect(task.input).toContainEqual({
+        type: { text: "Target field" },
+        valueString: "DiagnosticReport.status",
+      });
     });
 
-    test("sets error when OBR-25 is Z", async () => {
-      const hl7Message = await loadFixture("oru-r01/error/obr25-z.hl7");
+    test("reprocesses message after OBR-25 status mapping task resolution", async () => {
+      const hl7Message = await loadFixture("oru-r01/status/obr25-invalid.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+      expect(message.status).toBe("mapping_error");
+
+      // Create ConceptMap with the mapping
+      await createTestConceptMapForType("LAB", "HOSP", "obr-status", [
+        {
+          localCode: "Y",
+          localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
+          targetCode: "final",
+          targetDisplay: "Final",
+        },
+      ]);
+
+      // Resolve the task
+      const tasks = await getMappingTasks();
+      const task = tasks[0]!;
+      await resolveTask(task.id!, "final", "Final");
+
+      // Reprocess
+      await processNextMessage();
+
+      const updatedMessage = await testAidboxFetch<IncomingHL7v2Message>(
+        `/fhir/IncomingHL7v2Message/${message.id}`,
+      );
+      expect(updatedMessage.status).toBe("processed");
+
+      // Verify DiagnosticReport was created with the resolved status
+      const patientRef = updatedMessage.patient!.reference!;
+      const diagnosticReports = await getDiagnosticReports(patientRef);
+      expect(diagnosticReports.length).toBe(1);
+      expect(diagnosticReports[0]!.status).toBe("final");
+    });
+
+    test("processes message with valid OBR-25 P (preliminary)", async () => {
+      const hl7Message = await loadFixture("oru-r01/valid-preliminary.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
-      expect(message.error).toMatch(/OBR-25/);
-    });
+      expect(message.status).toBe("processed");
 
+      const patientRef = message.patient!.reference!;
+      const diagnosticReports = await getDiagnosticReports(patientRef);
+      expect(diagnosticReports[0]!.status).toBe("preliminary");
+    });
+  });
+
+  describe("OBX-11 status validation", () => {
     test("sets error when OBX-11 is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obx11.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
@@ -341,17 +404,6 @@ describe("ORU_R01 E2E Integration", () => {
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/OBX-11/);
-    });
-
-    test("processes message with valid OBR-25 P (preliminary)", async () => {
-      const hl7Message = await loadFixture("oru-r01/valid-preliminary.hl7");
-      const message = await submitAndProcessOruR01(hl7Message);
-
-      expect(message.status).toBe("processed");
-
-      const patientRef = message.patient!.reference!;
-      const diagnosticReports = await getDiagnosticReports(patientRef);
-      expect(diagnosticReports[0]!.status).toBe("preliminary");
     });
   });
 
