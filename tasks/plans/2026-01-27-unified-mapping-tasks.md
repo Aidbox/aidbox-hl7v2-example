@@ -171,16 +171,16 @@ Add Task creation for invalid OBX-11 (Observation.status) values.
 
 Add Task creation for invalid PV1.2 (Encounter.class) values.
 
-- [ ] Create helper function in `pv1-encounter.ts` for patient class mapping with error support
-- [ ] Return `{ class: Coding, status: Encounter["status"] }` on success
-- [ ] Return `{ error: MappingError }` on failure for unknown values like "1"
-- [ ] Update PV1 converter to collect patient class mapping errors
-- [ ] Decide how to propagate errors from PV1 (different from ORU - needs converter refactor)
-- [ ] Add mapping error collection to ADT message converters (if applicable)
-- [ ] Write **unit tests** for patient class mapping pure function (valid/invalid class values)
-- [ ] Write **integration test** for full message flow with invalid PV1.2:
+- [x] Create helper function in `pv1-encounter.ts` for patient class mapping with error support
+- [x] Return `{ class: Coding, status: Encounter["status"] }` on success
+- [x] Return `{ error: MappingError }` on failure for unknown values like "1"
+- [x] Update PV1 converter to collect patient class mapping errors
+- [x] Decide how to propagate errors from PV1 (different from ORU - needs converter refactor)
+- [x] Add mapping error collection to ADT message converters (if applicable)
+- [x] Write **unit tests** for patient class mapping pure function (valid/invalid class values)
+- [x] Write **integration test** for full message flow with invalid PV1.2:
   - Send message with PV1.2 = "1" → verify Task created with type `patient-class-mapping`
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

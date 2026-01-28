@@ -13,9 +13,12 @@ import {
   getAllergies,
   getCoverages,
   getRelatedPersons,
+  getMappingTasks,
   submitAndProcess,
+  testAidboxFetch,
 } from "../helpers";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
+import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 
 async function submitAndProcessAdtA01(hl7Message: string): Promise<IncomingHL7v2Message> {
   return submitAndProcess(hl7Message, "ADT^A01");
@@ -253,6 +256,58 @@ describe("ADT_A01 E2E Integration", () => {
 
       expect(message.status).toBe("error");
       expect(message.error).toMatch(/PID/i);
+    });
+  });
+
+  describe("PV1 Patient Class mapping errors", () => {
+    test("sets mapping_error status when PV1-2 Patient Class is invalid", async () => {
+      const hl7Message = await loadFixture("adt-a01/error/invalid-patient-class.hl7");
+      const message = await submitAndProcessAdtA01(hl7Message);
+
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes).toBeDefined();
+      expect(message.unmappedCodes).toHaveLength(1);
+      expect(message.unmappedCodes![0]!.localCode).toBe("99");
+      expect(message.unmappedCodes![0]!.localSystem).toBe(
+        "http://terminology.hl7.org/CodeSystem/v2-0004",
+      );
+    });
+
+    test("creates mapping Task for invalid PV1-2 Patient Class", async () => {
+      const hl7Message = await loadFixture("adt-a01/error/invalid-patient-class.hl7");
+      const message = await submitAndProcessAdtA01(hl7Message);
+
+      expect(message.unmappedCodes![0]!.mappingTask?.reference).toMatch(/^Task\//);
+
+      const taskId = message.unmappedCodes![0]!.mappingTask!.reference!.replace("Task/", "");
+      const task = await testAidboxFetch<Task>(`/fhir/Task/${taskId}`);
+
+      expect(task.status).toBe("requested");
+      expect(task.code?.coding?.[0]?.code).toBe("patient-class-mapping");
+
+      const localCodeInput = task.input?.find((i) => i.type?.text === "Local code");
+      expect(localCodeInput?.valueString).toBe("99");
+    });
+
+    test("creates Patient resource even when PV1 has mapping error", async () => {
+      const hl7Message = await loadFixture("adt-a01/error/invalid-patient-class.hl7");
+      const message = await submitAndProcessAdtA01(hl7Message);
+
+      expect(message.patient?.reference).toBe("Patient/P-INVALID-CLASS");
+
+      const patient = await getPatient("P-INVALID-CLASS");
+      expect(patient.resourceType).toBe("Patient");
+      expect(patient.name?.[0]?.family).toBe("INVALIDCLASSPATIENT");
+    });
+
+    test("does not create Encounter when PV1 has mapping error", async () => {
+      const hl7Message = await loadFixture("adt-a01/error/invalid-patient-class.hl7");
+      const message = await submitAndProcessAdtA01(hl7Message);
+
+      const patientRef = message.patient!.reference!;
+      const encounters = await getEncounters(patientRef);
+
+      expect(encounters.length).toBe(0);
     });
   });
 });
