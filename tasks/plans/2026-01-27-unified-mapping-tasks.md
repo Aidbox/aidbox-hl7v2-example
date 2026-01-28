@@ -154,16 +154,16 @@ Add Task creation for invalid OBR-25 (DiagnosticReport.status) values.
 
 Add Task creation for invalid OBX-11 (Observation.status) values.
 
-- [ ] Update `mapOBXStatusToFHIR()` to return a result object instead of throwing:
+- [x] Update `mapOBXStatusToFHIR()` to return a result object instead of throwing:
   - `{ status: Observation["status"] }` on success
   - `{ error: MappingError }` on failure
-- [ ] Update `convertOBXToObservation()` to handle mapping errors alongside LOINC errors
-- [ ] Ensure both LOINC and status errors are collected and returned
-- [ ] Write **unit tests** for `mapOBXStatusToFHIR()` pure function (valid/invalid status values)
-- [ ] Write **integration test** for full ORU flow with invalid OBX-11 status:
+- [x] Update `convertOBXToObservation()` to handle mapping errors alongside LOINC errors
+- [x] Ensure both LOINC and status errors are collected and returned
+- [x] Write **unit tests** for `mapOBXStatusToFHIR()` pure function (valid/invalid status values)
+- [x] Write **integration test** for full ORU flow with invalid OBX-11 status:
   - Send message with OBX-11 = "N" → verify Task created with type `obx-status-mapping`
   - Test combined errors: message with unknown LOINC AND invalid OBX-11 → verify two Tasks created
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

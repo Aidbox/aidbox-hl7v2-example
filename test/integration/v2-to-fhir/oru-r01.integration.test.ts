@@ -389,21 +389,97 @@ describe("ORU_R01 E2E Integration", () => {
     });
   });
 
-  describe("OBX-11 status validation", () => {
-    test("sets error when OBX-11 is missing", async () => {
+  describe("OBX-11 status mapping", () => {
+    test("returns mapping_error when OBX-11 is missing and creates obx-status-mapping Task", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obx11.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
-      expect(message.error).toMatch(/OBX-11/);
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes).toBeDefined();
+      expect(message.unmappedCodes!.length).toBeGreaterThan(0);
+      expect(message.unmappedCodes![0]!.localCode).toBe("undefined");
+
+      const tasks = await getMappingTasks();
+      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status-mapping");
+      expect(obxStatusTask).toBeDefined();
+      expect(obxStatusTask?.status).toBe("requested");
+      expect(obxStatusTask?.input).toContainEqual({
+        type: { text: "Source field" },
+        valueString: "OBX-11",
+      });
+      expect(obxStatusTask?.input).toContainEqual({
+        type: { text: "Target field" },
+        valueString: "Observation.status",
+      });
     });
 
-    test("sets error when OBX-11 is N", async () => {
+    test("returns mapping_error when OBX-11 is N and creates obx-status-mapping Task", async () => {
       const hl7Message = await loadFixture("oru-r01/error/obx11-n.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
-      expect(message.error).toMatch(/OBX-11/);
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes).toBeDefined();
+      expect(message.unmappedCodes![0]!.localCode).toBe("N");
+
+      const tasks = await getMappingTasks();
+      const task = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status-mapping");
+      expect(task).toBeDefined();
+      expect(task?.input).toContainEqual({
+        type: { text: "Local code" },
+        valueString: "N",
+      });
+    });
+
+    test("creates Tasks for combined LOINC and OBX-11 errors", async () => {
+      const hl7Message = await loadFixture("oru-r01/status/obx11-n-and-local-loinc.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes!.length).toBe(2);
+
+      const tasks = await getMappingTasks();
+      expect(tasks.length).toBe(2);
+
+      const loincTask = tasks.find((t) => t.code?.coding?.[0]?.code === "loinc-mapping");
+      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status-mapping");
+
+      expect(loincTask).toBeDefined();
+      expect(obxStatusTask).toBeDefined();
+    });
+
+    test("reprocesses message after OBX-11 status mapping task resolution", async () => {
+      const hl7Message = await loadFixture("oru-r01/error/obx11-n.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+      expect(message.status).toBe("mapping_error");
+
+      // Create ConceptMap with the mapping
+      await createTestConceptMapForType("LAB", "HOSP", "obx-status", [
+        {
+          localCode: "N",
+          localSystem: "http://terminology.hl7.org/CodeSystem/v2-0085",
+          targetCode: "preliminary",
+          targetDisplay: "Preliminary",
+        },
+      ]);
+
+      // Resolve the task
+      const tasks = await getMappingTasks();
+      const task = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status-mapping")!;
+      await resolveTask(task.id!, "preliminary", "Preliminary");
+
+      // Reprocess
+      await processNextMessage();
+
+      const updatedMessage = await testAidboxFetch<IncomingHL7v2Message>(
+        `/fhir/IncomingHL7v2Message/${message.id}`,
+      );
+      expect(updatedMessage.status).toBe("processed");
+
+      // Verify Observation was created with the resolved status
+      const patientRef = updatedMessage.patient!.reference!;
+      const observations = await getObservations(patientRef);
+      expect(observations.length).toBe(1);
+      expect(observations[0]!.status).toBe("preliminary");
     });
   });
 

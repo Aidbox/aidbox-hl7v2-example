@@ -44,7 +44,7 @@ import { getResourceWithETag, NotFoundError } from "../../aidbox";
 import { convertPIDToPatient } from "../segments/pid-patient";
 import { convertPV1ToEncounter } from "../segments/pv1-encounter";
 import { convertOBRWithMappingSupportAsync } from "../segments/obr-diagnosticreport";
-import { convertOBXToObservation } from "../segments/obx-observation";
+import { convertOBXWithMappingSupportAsync } from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
 import {
   buildCodeableConcept,
@@ -139,19 +139,66 @@ function createDraftPatient(pid: PID, patientId: string, baseMeta: Meta): Patien
   return patient;
 }
 
+/**
+ * Result type for OBX conversion with both status and LOINC resolution.
+ * Can return an Observation or mapping errors (both status and/or LOINC).
+ */
+export type OBXResolutionResult =
+  | { observation: Observation; errors?: never }
+  | { observation?: never; errors: MappingError[] };
+
+/**
+ * Convert OBX to Observation with both status mapping and LOINC resolution.
+ *
+ * This function:
+ * 1. Attempts to resolve OBX-11 status using ConceptMap lookup
+ * 2. Attempts to resolve LOINC code from OBX-3
+ * 3. Collects all errors from both operations
+ * 4. Returns observation only if BOTH succeed, otherwise returns all errors
+ *
+ * @returns Either an Observation (on success) or an array of mapping errors
+ */
 export async function convertOBXToObservationResolving(
   obx: OBX,
   orderNumber: string,
   senderContext: SenderContext,
-): Promise<Observation> {
-  const resolution = await resolveToLoinc(
-    obx.$3_observationIdentifier,
-    senderContext,
-  );
-  const resolvedCode = buildCodeableConcept(resolution);
-  const observation = convertOBXToObservation(obx, orderNumber);
+): Promise<OBXResolutionResult> {
+  const errors: MappingError[] = [];
+
+  // Try OBX-11 status resolution
+  const obxResult = await convertOBXWithMappingSupportAsync(obx, orderNumber, senderContext);
+  if (obxResult.error) {
+    errors.push(obxResult.error);
+  }
+
+  // Try LOINC code resolution
+  let loincResolution: Awaited<ReturnType<typeof resolveToLoinc>> | undefined;
+  try {
+    loincResolution = await resolveToLoinc(obx.$3_observationIdentifier, senderContext);
+  } catch (error) {
+    if (error instanceof LoincResolutionError) {
+      errors.push({
+        localCode: error.localCode || "",
+        localDisplay: error.localDisplay,
+        localSystem: error.localSystem,
+        mappingType: "loinc",
+      });
+    } else {
+      throw error;
+    }
+  }
+
+  // If any errors occurred, return them all
+  if (errors.length > 0) {
+    return { errors };
+  }
+
+  // Both succeeded - build the final observation
+  const observation = obxResult.observation!;
+  const resolvedCode = buildCodeableConcept(loincResolution!);
   observation.code = resolvedCode;
-  return observation;
+
+  return { observation };
 }
 
 interface OBRGroup {
@@ -676,26 +723,19 @@ async function processObservations(
   for (const obsGroup of observationGroups) {
     const obx = fromOBX(obsGroup.obx);
 
-    let observation: Observation;
-    try {
-      observation = await convertOBXToObservationResolving(
-        obx,
-        orderNumber,
-        senderContext,
-      );
-    } catch (error) {
-      if (error instanceof LoincResolutionError) {
-        mappingErrors.push({
-          localCode: error.localCode || "",
-          localDisplay: error.localDisplay,
-          localSystem: error.localSystem,
-          mappingType: "loinc",
-        });
-        continue;
-      }
-      throw error;
+    const result = await convertOBXToObservationResolving(
+      obx,
+      orderNumber,
+      senderContext,
+    );
+
+    // Check for mapping errors (can be multiple: status + LOINC)
+    if (result.errors) {
+      mappingErrors.push(...result.errors);
+      continue;
     }
 
+    const observation = result.observation;
     observation.meta = { ...observation.meta, ...baseMeta };
 
     if (obsGroup.ntes.length > 0) {
