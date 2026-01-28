@@ -112,15 +112,22 @@ V2-to-FHIR Processor polls received IncomingHL7v2Message and:
 
 → Details: `docs/developer-guide/oru-processing.md`
 
-### Code Mapping (LOINC Resolution)
+### Code Mapping (Multiple Types)
 
-When OBX-3 can't resolve to LOINC:
+When HL7v2 codes can't be mapped to valid FHIR values:
 1. Message gets `status=mapping_error`, code stored in `unmappedCodes[]`
-2. Task created (deterministic ID from sender + code)
+2. Task created (deterministic ID from sender + code + mapping type)
 3. User resolves via `/mapping/tasks` or `/mapping/table`
 4. On resolution: Task completed, message requeued for processing
 
-**ConceptMap per sender**: Same local code from different senders can map to different LOINC codes.
+**Supported mapping types** (defined in `src/code-mapping/mapping-types.ts`):
+- `loinc` - OBX-3 local codes to LOINC
+- `address-type` - PID.11 address types
+- `patient-class` - PV1.2 patient class codes
+- `obr-status` - OBR-25 result status codes
+- `obx-status` - OBX-11 observation status codes
+
+**ConceptMap per sender per type**: Same local code from different senders can map to different values. ConceptMap IDs: `hl7v2-{app}-{facility}{type-suffix}`.
 
 → Details: `docs/developer-guide/code-mapping.md`
 
@@ -171,7 +178,9 @@ src/
 │   ├── processor-service.ts  # Polling service
 │   ├── messages/         # ADT_A01, ORU_R01 converters
 │   └── segments/         # PID, OBX, etc. converters
-├── code-mapping/         # LOINC code resolution
+├── code-mapping/         # Code mapping for multiple field types
+│   ├── mapping-types.ts  # Mapping type registry (CRITICAL: add new types here)
+│   ├── mapping-errors.ts # MappingError types and builders
 │   ├── concept-map/      # ConceptMap CRUD, lookup
 │   └── mapping-task-service.ts  # Task creation/resolution
 ├── mllp/                 # MLLP TCP server

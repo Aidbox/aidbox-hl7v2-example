@@ -1,14 +1,38 @@
 /**
  * Mapping Types Registry
  *
- * Centralized registry for all mapping types that defines:
- * - Task code values for filtering
- * - Target FHIR code systems
- * - ConceptMap ID suffixes
- * - Display names for UI
+ * Centralized registry for all HL7v2-to-FHIR mapping types. This is the single source
+ * of truth for mapping type configuration throughout the system.
  *
- * This enables extensibility for new mapping types and fail-fast behavior
- * when a mapping type is not properly configured.
+ * ## Purpose
+ *
+ * This registry defines how different HL7v2 fields are mapped to FHIR values when
+ * automatic mapping fails. Each mapping type specifies:
+ *
+ * - `taskCode`: Unique identifier used in Task.code.coding[0].code for filtering
+ * - `taskDisplay`: Human-readable description shown in UI
+ * - `targetSystem`: FHIR code system URI for the resolved value
+ * - `conceptMapSuffix`: Appended to ConceptMap ID (e.g., "-to-loinc")
+ * - `sourceField`: HL7v2 field reference (e.g., "OBX-3", "PV1.2")
+ * - `targetField`: FHIR field reference (e.g., "Observation.code")
+ *
+ * ## How to Add a New Mapping Type
+ *
+ * 1. Add an entry to MAPPING_TYPES below with all required fields
+ * 2. Update the segment converter to detect unmapped codes and return MappingError
+ * 3. Add validation logic in the resolution API endpoint
+ * 4. The UI filter tabs and type badges update automatically
+ *
+ * ## Fail-Fast Behavior
+ *
+ * Functions like `getMappingType()` and `getMappingTypeOrFail()` throw errors
+ * immediately if a task code or type name is not found in the registry. This
+ * prevents silent failures and ensures new mapping types are properly configured.
+ *
+ * ## Backward Compatibility
+ *
+ * Legacy task codes (e.g., "local-to-loinc-mapping") are aliased to current types
+ * via LEGACY_TASK_CODE_ALIASES. Add aliases here when renaming task codes.
  */
 
 export const MAPPING_TYPES = {
@@ -54,9 +78,16 @@ export const MAPPING_TYPES = {
   },
 } as const;
 
+/** Valid mapping type names (keys of MAPPING_TYPES) */
 export type MappingTypeName = keyof typeof MAPPING_TYPES;
+
+/** Configuration object for a single mapping type */
 export type MappingTypeConfig = (typeof MAPPING_TYPES)[MappingTypeName];
 
+/**
+ * Aliases for legacy task codes that were renamed.
+ * Maps old task code -> current mapping type name.
+ */
 const LEGACY_TASK_CODE_ALIASES: Record<string, MappingTypeName> = {
   "local-to-loinc-mapping": "loinc",
 };
