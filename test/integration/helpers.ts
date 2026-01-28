@@ -217,11 +217,12 @@ export async function cleanupTestResources(): Promise<void> {
   });
 
   // Delete test ConceptMaps via FHIR batch (needed because Aidbox caches terminology)
-  const conceptMaps = await testAidboxFetch<Bundle<{ id: string }>>(
+  const conceptMaps = await testAidboxFetch<Bundle<ConceptMap>>(
     "/fhir/ConceptMap?_count=100",
   );
 
   const testConceptMapIds = (conceptMaps.entry ?? [])
+    .filter((e) => e.resource.status === "active")
     .map((e) => e.resource.id);
 
   if (testConceptMapIds.length > 0) {
