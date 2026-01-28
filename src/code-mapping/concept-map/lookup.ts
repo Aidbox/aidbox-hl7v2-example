@@ -10,6 +10,7 @@ import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
 import { normalizeSystem } from "../../v2-to-fhir/code-mapping/coding-systems";
 import { toKebabCase } from "../../utils/string";
 import { aidboxFetch, HttpError } from "../../aidbox";
+import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
 
 interface TranslateResponseParameter {
   name: string;
@@ -62,12 +63,19 @@ export class MissingLocalSystemError extends Error {
 
 /**
  * Generate ConceptMap ID from sender context
- * Format: hl7v2-{sendingApplication}-{sendingFacility}-to-loinc
+ * Format: hl7v2-{sendingApplication}-{sendingFacility}{conceptMapSuffix}
+ *
+ * @param sender - The sender context with sendingApplication and sendingFacility
+ * @param mappingType - Optional mapping type name. Defaults to "loinc" for backward compatibility.
  */
-export function generateConceptMapId(sender: SenderContext): string {
+export function generateConceptMapId(
+  sender: SenderContext,
+  mappingType: MappingTypeName = "loinc",
+): string {
+  const type = MAPPING_TYPES[mappingType];
   const app = toKebabCase(sender.sendingApplication);
   const facility = toKebabCase(sender.sendingFacility);
-  return `hl7v2-${app}-${facility}-to-loinc`;
+  return `hl7v2-${app}-${facility}${type.conceptMapSuffix}`;
 }
 
 /**

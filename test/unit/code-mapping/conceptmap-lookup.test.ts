@@ -90,6 +90,54 @@ describe("generateConceptMapId", () => {
 
     expect(result).toBe("hl7v2-lab-system-hospital-one-to-loinc");
   });
+
+  test("generates address-type ConceptMap ID when mappingType is address-type", async () => {
+    const { generateConceptMapId } =
+      await import("../../../src/code-mapping/concept-map");
+
+    const result = generateConceptMapId(
+      { sendingApplication: "EPIC", sendingFacility: "UIHEALTH" },
+      "address-type",
+    );
+
+    expect(result).toBe("hl7v2-epic-uihealth-to-address-type");
+  });
+
+  test("generates obr-status ConceptMap ID when mappingType is obr-status", async () => {
+    const { generateConceptMapId } =
+      await import("../../../src/code-mapping/concept-map");
+
+    const result = generateConceptMapId(
+      { sendingApplication: "LAB", sendingFacility: "HOSP" },
+      "obr-status",
+    );
+
+    expect(result).toBe("hl7v2-lab-hosp-to-diagnostic-report-status");
+  });
+
+  test("generates obx-status ConceptMap ID when mappingType is obx-status", async () => {
+    const { generateConceptMapId } =
+      await import("../../../src/code-mapping/concept-map");
+
+    const result = generateConceptMapId(
+      { sendingApplication: "LAB", sendingFacility: "HOSP" },
+      "obx-status",
+    );
+
+    expect(result).toBe("hl7v2-lab-hosp-to-observation-status");
+  });
+
+  test("generates patient-class ConceptMap ID when mappingType is patient-class", async () => {
+    const { generateConceptMapId } =
+      await import("../../../src/code-mapping/concept-map");
+
+    const result = generateConceptMapId(
+      { sendingApplication: "ADT", sendingFacility: "MAIN" },
+      "patient-class",
+    );
+
+    expect(result).toBe("hl7v2-adt-main-to-encounter-class");
+  });
 });
 
 // ============================================================================
