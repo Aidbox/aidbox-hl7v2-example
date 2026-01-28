@@ -112,6 +112,16 @@ class MockNotFoundError extends Error {
   }
 }
 
+class MockHttpError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly body: string,
+  ) {
+    super(`HTTP ${status}: ${body}`);
+    this.name = "HttpError";
+  }
+}
+
 function createMockAidbox(overrides: Record<string, unknown> = {}) {
   return {
     aidboxFetch: mock(() => Promise.resolve({})),
@@ -133,6 +143,7 @@ function createMockAidbox(overrides: Record<string, unknown> = {}) {
       }
     },
     NotFoundError: MockNotFoundError,
+    HttpError: MockHttpError,
     ...overrides,
   };
 }
@@ -232,8 +243,8 @@ describe("getMappingsFromConceptMap", () => {
     expect(result.entries[0]!.localCode).toBe("K_SERUM");
     expect(result.entries[0]!.localDisplay).toBe("Potassium [Serum/Plasma]");
     expect(result.entries[0]!.localSystem).toBe("ACME-LAB-CODES");
-    expect(result.entries[0]!.loincCode).toBe("2823-3");
-    expect(result.entries[0]!.loincDisplay).toBe(
+    expect(result.entries[0]!.targetCode).toBe("2823-3");
+    expect(result.entries[0]!.targetDisplay).toBe(
       "Potassium [Moles/volume] in Serum or Plasma",
     );
     expect(result.total).toBe(1);
@@ -850,10 +861,10 @@ describe("getMappingsFromConceptMap - search", () => {
     expect(result.entries).toHaveLength(1);
     expect(result.total).toBe(1);
     expect(result.entries[0]!.localCode).toBe("GLU_BLOOD");
-    expect(result.entries[0]!.loincCode).toBe("2345-7");
+    expect(result.entries[0]!.targetCode).toBe("2345-7");
   });
 
-  test("filters by LOINC display (partial match)", async () => {
+  test("filters by target display (partial match)", async () => {
     const mockAidbox = createMockAidbox({
       aidboxFetch: mock(() => Promise.resolve(searchTestConceptMap)),
     });
@@ -871,7 +882,7 @@ describe("getMappingsFromConceptMap - search", () => {
     expect(result.entries).toHaveLength(1);
     expect(result.total).toBe(1);
     expect(result.entries[0]!.localCode).toBe("CREAT");
-    expect(result.entries[0]!.loincDisplay).toBe(
+    expect(result.entries[0]!.targetDisplay).toBe(
       "Creatinine [Mass/volume] in Serum or Plasma",
     );
   });
@@ -1068,5 +1079,469 @@ describe("integration: add mapping flow", () => {
     expect(updatedMessage).not.toBeNull();
     expect(updatedMessage!.unmappedCodes).toBeUndefined();
     expect(updatedMessage!.status).toBe("received");
+  });
+});
+
+// ============================================================================
+// Type filtering and UI rendering tests
+// ============================================================================
+
+// Sample ConceptMaps for different mapping types
+const addressTypeConceptMap: ConceptMap = {
+  resourceType: "ConceptMap",
+  id: "hl7v2-acme-lab-acme-hosp-to-address-type",
+  name: "HL7v2 ACME_LAB/ACME_HOSP to Address Type",
+  status: "active",
+  title: "ACME_LAB|ACME_HOSP",
+  sourceUri: "http://example.org/fhir/CodeSystem/hl7v2-acme-lab-acme-hosp",
+  targetUri: "http://hl7.org/fhir/address-type",
+  group: [
+    {
+      source: "http://terminology.hl7.org/CodeSystem/v2-0190",
+      target: "http://hl7.org/fhir/address-type",
+      element: [
+        {
+          code: "H",
+          display: "Home",
+          target: [{ code: "physical", display: "Physical", equivalence: "equivalent" }],
+        },
+      ],
+    },
+  ],
+};
+
+const patientClassConceptMap: ConceptMap = {
+  resourceType: "ConceptMap",
+  id: "hl7v2-other-lab-to-encounter-class",
+  name: "HL7v2 OTHER_LAB to Encounter Class",
+  status: "active",
+  title: "OTHER_LAB|OTHER_HOSP",
+  sourceUri: "http://example.org/fhir/CodeSystem/hl7v2-other-lab",
+  targetUri: "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+  group: [],
+};
+
+describe("listConceptMaps - type filtering", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("returns all known mapping type ConceptMaps when filter is 'all'", async () => {
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock((path: string) => {
+        if (path.includes("/fhir/ConceptMap")) {
+          return Promise.resolve({
+            entry: [
+              { resource: sampleConceptMap },
+              { resource: addressTypeConceptMap },
+              { resource: patientClassConceptMap },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      }),
+    });
+
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { listConceptMaps } = await import("../../../src/ui/pages/code-mappings");
+
+    const result = await listConceptMaps("all");
+
+    expect(result).toHaveLength(3);
+    expect(result.map(cm => cm.mappingType)).toContain("loinc");
+    expect(result.map(cm => cm.mappingType)).toContain("address-type");
+    expect(result.map(cm => cm.mappingType)).toContain("patient-class");
+  });
+
+  test("filters to only LOINC ConceptMaps when filter is 'loinc'", async () => {
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock((path: string) => {
+        if (path.includes("/fhir/ConceptMap")) {
+          return Promise.resolve({
+            entry: [
+              { resource: sampleConceptMap },
+              { resource: addressTypeConceptMap },
+              { resource: patientClassConceptMap },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      }),
+    });
+
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { listConceptMaps } = await import("../../../src/ui/pages/code-mappings");
+
+    const result = await listConceptMaps("loinc");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.mappingType).toBe("loinc");
+    expect(result[0]!.targetSystem).toBe("http://loinc.org");
+  });
+
+  test("filters to only address-type ConceptMaps when filter is 'address-type'", async () => {
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock((path: string) => {
+        if (path.includes("/fhir/ConceptMap")) {
+          return Promise.resolve({
+            entry: [
+              { resource: sampleConceptMap },
+              { resource: addressTypeConceptMap },
+              { resource: patientClassConceptMap },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      }),
+    });
+
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { listConceptMaps } = await import("../../../src/ui/pages/code-mappings");
+
+    const result = await listConceptMaps("address-type");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.mappingType).toBe("address-type");
+    expect(result[0]!.targetSystem).toBe("http://hl7.org/fhir/address-type");
+  });
+
+  test("excludes ConceptMaps with unknown target systems", async () => {
+    const unknownConceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "unknown-target",
+      status: "active",
+      targetUri: "http://unknown.system.org/codes",
+      group: [],
+    };
+
+    const mockAidbox = createMockAidbox({
+      aidboxFetch: mock((path: string) => {
+        if (path.includes("/fhir/ConceptMap")) {
+          return Promise.resolve({
+            entry: [
+              { resource: sampleConceptMap },
+              { resource: unknownConceptMap },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      }),
+    });
+
+    mock.module("../../../src/aidbox", () => mockAidbox);
+    const { listConceptMaps } = await import("../../../src/ui/pages/code-mappings");
+
+    const result = await listConceptMaps("all");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.mappingType).toBe("loinc");
+  });
+});
+
+describe("parseTypeFilter", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("returns 'all' for null input", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { parseTypeFilter } = await import("../../../src/ui/pages/code-mappings");
+
+    expect(parseTypeFilter(null)).toBe("all");
+  });
+
+  test("returns 'all' for unknown type", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { parseTypeFilter } = await import("../../../src/ui/pages/code-mappings");
+
+    expect(parseTypeFilter("unknown-type")).toBe("all");
+  });
+
+  test("returns the type for valid mapping types", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { parseTypeFilter } = await import("../../../src/ui/pages/code-mappings");
+
+    expect(parseTypeFilter("loinc")).toBe("loinc");
+    expect(parseTypeFilter("address-type")).toBe("address-type");
+    expect(parseTypeFilter("patient-class")).toBe("patient-class");
+    expect(parseTypeFilter("obr-status")).toBe("obr-status");
+    expect(parseTypeFilter("obx-status")).toBe("obx-status");
+  });
+});
+
+describe("getMappingTypeFilterDisplay", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("returns 'All Types' for 'all' filter", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { getMappingTypeFilterDisplay } = await import("../../../src/ui/pages/code-mappings");
+
+    expect(getMappingTypeFilterDisplay("all")).toBe("All Types");
+  });
+
+  test("returns display name without 'mapping' suffix for known types", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { getMappingTypeFilterDisplay } = await import("../../../src/ui/pages/code-mappings");
+
+    expect(getMappingTypeFilterDisplay("loinc")).toBe("Local code to LOINC");
+    expect(getMappingTypeFilterDisplay("address-type")).toBe("Address type");
+  });
+});
+
+describe("getMappingTypeShortLabel", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("returns short labels for all mapping types", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { getMappingTypeShortLabel } = await import("../../../src/ui/pages/code-mappings");
+
+    expect(getMappingTypeShortLabel("loinc")).toBe("LOINC");
+    expect(getMappingTypeShortLabel("address-type")).toBe("Address");
+    expect(getMappingTypeShortLabel("patient-class")).toBe("Patient Class");
+    expect(getMappingTypeShortLabel("obr-status")).toBe("OBR Status");
+    expect(getMappingTypeShortLabel("obx-status")).toBe("OBX Status");
+  });
+});
+
+describe("getMappingTypeBadgeClasses", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("returns different color classes for each mapping type", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { getMappingTypeBadgeClasses } = await import("../../../src/ui/pages/code-mappings");
+
+    expect(getMappingTypeBadgeClasses("loinc")).toContain("purple");
+    expect(getMappingTypeBadgeClasses("address-type")).toContain("blue");
+    expect(getMappingTypeBadgeClasses("patient-class")).toContain("green");
+    expect(getMappingTypeBadgeClasses("obr-status")).toContain("orange");
+    expect(getMappingTypeBadgeClasses("obx-status")).toContain("amber");
+  });
+});
+
+describe("detectMappingTypeFromConceptMap", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("detects LOINC mapping type", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { detectMappingTypeFromConceptMap } = await import("../../../src/ui/pages/code-mappings");
+
+    expect(detectMappingTypeFromConceptMap(sampleConceptMap)).toBe("loinc");
+  });
+
+  test("detects address-type mapping type", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { detectMappingTypeFromConceptMap } = await import("../../../src/ui/pages/code-mappings");
+
+    expect(detectMappingTypeFromConceptMap(addressTypeConceptMap)).toBe("address-type");
+  });
+
+  test("returns null for unknown target system", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { detectMappingTypeFromConceptMap } = await import("../../../src/ui/pages/code-mappings");
+
+    const unknownConceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "unknown",
+      status: "active",
+      targetUri: "http://unknown.system.org/codes",
+    };
+
+    expect(detectMappingTypeFromConceptMap(unknownConceptMap)).toBeNull();
+  });
+});
+
+describe("getValidValuesForType", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("returns address type values", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { getValidValuesForType } = await import("../../../src/ui/pages/code-mappings");
+
+    const values = getValidValuesForType("address-type");
+    expect(values.length).toBeGreaterThan(0);
+    expect(values.some(v => v.code === "postal")).toBe(true);
+    expect(values.some(v => v.code === "physical")).toBe(true);
+  });
+
+  test("returns patient class values", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { getValidValuesForType } = await import("../../../src/ui/pages/code-mappings");
+
+    const values = getValidValuesForType("patient-class");
+    expect(values.length).toBeGreaterThan(0);
+    expect(values.some(v => v.code === "AMB")).toBe(true);
+    expect(values.some(v => v.code === "IMP")).toBe(true);
+  });
+
+  test("returns OBR status values", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { getValidValuesForType } = await import("../../../src/ui/pages/code-mappings");
+
+    const values = getValidValuesForType("obr-status");
+    expect(values.length).toBeGreaterThan(0);
+    expect(values.some(v => v.code === "final")).toBe(true);
+    expect(values.some(v => v.code === "preliminary")).toBe(true);
+  });
+
+  test("returns empty array for LOINC (uses autocomplete instead)", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { getValidValuesForType } = await import("../../../src/ui/pages/code-mappings");
+
+    const values = getValidValuesForType("loinc");
+    expect(values).toHaveLength(0);
+  });
+});
+
+describe("renderMappingEntryPanel", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("renders entry with target code and system", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { renderMappingEntryPanel } = await import("../../../src/ui/pages/code-mappings");
+
+    const entry = {
+      localCode: "K_SERUM",
+      localDisplay: "Potassium",
+      localSystem: "ACME-LAB-CODES",
+      targetCode: "2823-3",
+      targetDisplay: "Potassium [Moles/volume]",
+      targetSystem: "http://loinc.org",
+    };
+
+    const html = renderMappingEntryPanel(entry, "cm-id", "loinc", "all");
+
+    expect(html).toContain("K_SERUM");
+    expect(html).toContain("2823-3");
+    expect(html).toContain("http://loinc.org");
+    expect(html).toContain("Potassium [Moles/volume]");
+  });
+
+  test("renders LOINC autocomplete input for loinc type", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { renderMappingEntryPanel } = await import("../../../src/ui/pages/code-mappings");
+
+    const entry = {
+      localCode: "K_SERUM",
+      localDisplay: "Potassium",
+      localSystem: "ACME-LAB-CODES",
+      targetCode: "2823-3",
+      targetDisplay: "Potassium",
+      targetSystem: "http://loinc.org",
+    };
+
+    const html = renderMappingEntryPanel(entry, "cm-id", "loinc", "all");
+
+    expect(html).toContain("data-loinc-autocomplete");
+  });
+
+  test("renders dropdown for non-LOINC types", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { renderMappingEntryPanel } = await import("../../../src/ui/pages/code-mappings");
+
+    const entry = {
+      localCode: "H",
+      localDisplay: "Home",
+      localSystem: "http://terminology.hl7.org/CodeSystem/v2-0190",
+      targetCode: "physical",
+      targetDisplay: "Physical",
+      targetSystem: "http://hl7.org/fhir/address-type",
+    };
+
+    const html = renderMappingEntryPanel(entry, "cm-id", "address-type", "all");
+
+    expect(html).toContain("<select");
+    expect(html).toContain("postal");
+    expect(html).toContain("physical");
+  });
+});
+
+describe("renderCodeMappingsPage", () => {
+  afterEach(() => {
+    mock.restore();
+  });
+
+  test("renders type filter tabs", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { renderCodeMappingsPage } = await import("../../../src/ui/pages/code-mappings");
+
+    const navData = { pendingMappingTasksCount: 0 };
+    const html = renderCodeMappingsPage(
+      navData,
+      [],
+      null,
+      [],
+      { currentPage: 1, totalPages: 1, total: 0 },
+      false,
+      null,
+      undefined,
+      "all",
+      null,
+    );
+
+    expect(html).toContain("All Types");
+    expect(html).toContain("Local code to LOINC");
+    expect(html).toContain("Address type");
+    expect(html).toContain("Patient class");
+  });
+
+  test("highlights active type filter", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { renderCodeMappingsPage } = await import("../../../src/ui/pages/code-mappings");
+
+    const navData = { pendingMappingTasksCount: 0 };
+    const html = renderCodeMappingsPage(
+      navData,
+      [],
+      null,
+      [],
+      { currentPage: 1, totalPages: 1, total: 0 },
+      false,
+      null,
+      undefined,
+      "loinc",
+      null,
+    );
+
+    // The active filter should have the blue background class
+    expect(html).toMatch(/href="\/mapping\/table\?type=loinc"[^>]*class="[^"]*bg-blue-600[^"]*"/);
+  });
+
+  test("includes mapping type badge in sender dropdown", async () => {
+    mock.module("../../../src/aidbox", () => createMockAidbox());
+    const { renderCodeMappingsPage } = await import("../../../src/ui/pages/code-mappings");
+
+    const navData = { pendingMappingTasksCount: 0 };
+    const conceptMaps = [
+      { id: "cm-1", displayName: "ACME_LAB|ACME_HOSP", mappingType: "loinc" as const, targetSystem: "http://loinc.org" },
+      { id: "cm-2", displayName: "OTHER_LAB|OTHER_HOSP", mappingType: "address-type" as const, targetSystem: "http://hl7.org/fhir/address-type" },
+    ];
+
+    const html = renderCodeMappingsPage(
+      navData,
+      conceptMaps,
+      null,
+      [],
+      { currentPage: 1, totalPages: 1, total: 0 },
+      false,
+      null,
+      undefined,
+      "all",
+      null,
+    );
+
+    expect(html).toContain("[LOINC] ACME_LAB|ACME_HOSP");
+    expect(html).toContain("[Address] OTHER_LAB|OTHER_HOSP");
   });
 });
