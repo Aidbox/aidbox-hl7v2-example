@@ -104,16 +104,16 @@ Extract and generalize task creation from `oru-r01.ts` to support all mapping ty
 
 Create error types and result builders that work for any mapping type.
 
-- [ ] Create `src/code-mapping/mapping-errors.ts` with:
+- [x] Create `src/code-mapping/mapping-errors.ts` with:
   - `MappingError` interface (localCode, localDisplay, localSystem, mappingType)
   - `MappingErrorResult` type for converter returns
-- [ ] Create `buildMappingErrorResult()` function (extract from oru-r01.ts, generalize)
-- [ ] Function should accept: sender context, mapping errors array, patient ref, optional entries
-- [ ] Function returns: ConversionResult with Tasks and unmappedCodes
-- [ ] Update `oru-r01.ts` to use the new shared `buildMappingErrorResult()`
-- [ ] Verify existing LOINC mapping error flow still works
-- [ ] Write unit tests for buildMappingErrorResult with different mapping types
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Create `buildMappingErrorResult()` function (extract from oru-r01.ts, generalize)
+- [x] Function should accept: sender context, mapping errors array, patient ref, optional entries
+- [x] Function returns: ConversionResult with Tasks and unmappedCodes
+- [x] Update `oru-r01.ts` to use the new shared `buildMappingErrorResult()`
+- [x] Verify existing LOINC mapping error flow still works
+- [x] Write unit tests for buildMappingErrorResult with different mapping types
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

@@ -43,7 +43,6 @@ import type {
 import { getResourceWithETag, NotFoundError } from "../../aidbox";
 import { convertPIDToPatient } from "../segments/pid-patient";
 import { convertPV1ToEncounter } from "../segments/pv1-encounter";
-import type { UnmappedCode } from "../../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { convertOBRToDiagnosticReport } from "../segments/obr-diagnosticreport";
 import { convertOBXToObservation } from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
@@ -51,14 +50,12 @@ import {
   buildCodeableConcept,
   LoincResolutionError,
   resolveToLoinc,
-  generateConceptMapId,
   type SenderContext,
 } from "../../code-mapping/concept-map";
 import {
-  createMappingTask,
-  createTaskBundleEntry,
-  generateMappingTaskId,
-} from "../../code-mapping/mapping-task-service";
+  buildMappingErrorResult,
+  type MappingError,
+} from "../../code-mapping/mapping-errors";
 
 /**
  * Function type for looking up a Patient by ID.
@@ -664,7 +661,7 @@ function getOrderNumber(obr: OBR): string {
 
 interface ProcessObservationsResult {
   observations: Observation[];
-  mappingErrors: LoincResolutionError[];
+  mappingErrors: MappingError[];
 }
 
 async function processObservations(
@@ -674,7 +671,7 @@ async function processObservations(
   baseMeta: Meta,
 ): Promise<ProcessObservationsResult> {
   const observations: Observation[] = [];
-  const mappingErrors: LoincResolutionError[] = [];
+  const mappingErrors: MappingError[] = [];
 
   for (const obsGroup of observationGroups) {
     const obx = fromOBX(obsGroup.obx);
@@ -688,7 +685,12 @@ async function processObservations(
       );
     } catch (error) {
       if (error instanceof LoincResolutionError) {
-        mappingErrors.push(error);
+        mappingErrors.push({
+          localCode: error.localCode || "",
+          localDisplay: error.localDisplay,
+          localSystem: error.localSystem,
+          mappingType: "loinc",
+        });
         continue;
       }
       throw error;
@@ -809,7 +811,7 @@ function buildBundleEntries(
 
 interface ProcessOBRGroupResult {
   entries: BundleEntry[];
-  mappingErrors: LoincResolutionError[];
+  mappingErrors: MappingError[];
 }
 
 async function processOBRGroup(
@@ -912,7 +914,7 @@ export async function convertORU_R01(
   const obrGroups = groupSegmentsByOBR(parsed);
 
   const entries: BundleEntry[] = [];
-  const allMappingErrors: LoincResolutionError[] = [];
+  const allMappingErrors: MappingError[] = [];
 
   for (const group of obrGroups) {
     const { entries: groupEntries, mappingErrors } = await processOBRGroup(
@@ -950,72 +952,6 @@ export async function convertORU_R01(
     bundle,
     messageUpdate: {
       status: "processed",
-      patient: patientRef,
-    },
-  };
-}
-
-function buildMappingErrorResult(
-  senderContext: SenderContext,
-  mappingErrors: LoincResolutionError[],
-  patientRef: Reference<"Patient">,
-  patientEntry: BundleEntry | null,
-  encounterEntry: BundleEntry | null,
-): ConversionResult {
-  const conceptMapId = generateConceptMapId(senderContext);
-  const seenTaskIds = new Set<string>();
-  const entries: BundleEntry[] = [];
-
-  if (patientEntry) {
-    entries.push(patientEntry);
-  }
-  if (encounterEntry) {
-    entries.push(encounterEntry);
-  }
-  const unmappedCodes: UnmappedCode[] = [];
-
-  for (const error of mappingErrors) {
-    if (!error.localCode) continue;
-
-    const taskId = generateMappingTaskId(
-      conceptMapId,
-      error.localSystem || "",
-      error.localCode,
-    );
-
-    if (seenTaskIds.has(taskId)) continue;
-    seenTaskIds.add(taskId);
-
-    const task = createMappingTask(
-      senderContext,
-      {
-        localCode: error.localCode,
-        localDisplay: error.localDisplay,
-        localSystem: error.localSystem,
-      },
-      "loinc",
-    );
-    entries.push(createTaskBundleEntry(task));
-
-    unmappedCodes.push({
-      localCode: error.localCode,
-      localDisplay: error.localDisplay,
-      localSystem: error.localSystem,
-      mappingTask: { reference: `Task/${taskId}` },
-    });
-  }
-
-  const bundle: Bundle = {
-    resourceType: "Bundle",
-    type: "transaction",
-    entry: entries.length > 0 ? entries : undefined,
-  };
-
-  return {
-    bundle,
-    messageUpdate: {
-      status: "mapping_error",
-      unmappedCodes: unmappedCodes.length > 0 ? unmappedCodes : undefined,
       patient: patientRef,
     },
   };
