@@ -87,8 +87,9 @@ export type MappingTypeConfig = (typeof MAPPING_TYPES)[MappingTypeName];
 /**
  * Aliases for legacy task codes that were renamed.
  * Maps old task code -> current mapping type name.
+ * Exported for use in other modules that need to handle legacy codes.
  */
-const LEGACY_TASK_CODE_ALIASES: Record<string, MappingTypeName> = {
+export const LEGACY_TASK_CODE_ALIASES: Record<string, MappingTypeName> = {
   "local-to-loinc-mapping": "loinc",
 };
 

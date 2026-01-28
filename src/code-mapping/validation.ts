@@ -12,10 +12,12 @@ import type { MappingTypeName } from "./mapping-types";
  */
 const VALID_DIAGNOSTIC_REPORT_STATUS = new Set([
   "registered",
-  "preliminary",
   "partial",
-  "corrected",
+  "preliminary",
   "final",
+  "amended",
+  "corrected",
+  "appended",
   "cancelled",
   "entered-in-error",
   "unknown",
@@ -168,4 +170,67 @@ export function getValidValues(
     default:
       return undefined;
   }
+}
+
+/**
+ * Display names for valid values, used in UI dropdowns.
+ */
+const VALID_VALUES_DISPLAY: Record<string, Record<string, string>> = {
+  "address-type": {
+    postal: "Postal",
+    physical: "Physical",
+    both: "Postal & Physical",
+  },
+  "patient-class": {
+    AMB: "Ambulatory",
+    EMER: "Emergency",
+    FLD: "Field",
+    HH: "Home Health",
+    IMP: "Inpatient",
+    ACUTE: "Inpatient Acute",
+    NONAC: "Inpatient Non-Acute",
+    OBSENC: "Observation Encounter",
+    PRENC: "Pre-Admission",
+    SS: "Short Stay",
+    VR: "Virtual",
+  },
+  "obr-status": {
+    registered: "Registered",
+    partial: "Partial",
+    preliminary: "Preliminary",
+    final: "Final",
+    amended: "Amended",
+    corrected: "Corrected",
+    appended: "Appended",
+    cancelled: "Cancelled",
+    "entered-in-error": "Entered in Error",
+    unknown: "Unknown",
+  },
+  "obx-status": {
+    registered: "Registered",
+    preliminary: "Preliminary",
+    final: "Final",
+    amended: "Amended",
+    corrected: "Corrected",
+    cancelled: "Cancelled",
+    "entered-in-error": "Entered in Error",
+    unknown: "Unknown",
+  },
+};
+
+/**
+ * Get valid values with display names for UI dropdowns.
+ * Returns empty array for types that don't have a fixed set (e.g., LOINC).
+ */
+export function getValidValuesWithDisplay(
+  mappingType: MappingTypeName,
+): Array<{ code: string; display: string }> {
+  const values = getValidValues(mappingType);
+  if (!values) return [];
+
+  const displayMap = VALID_VALUES_DISPLAY[mappingType] || {};
+  return values.map((code) => ({
+    code,
+    display: displayMap[code] || code,
+  }));
 }

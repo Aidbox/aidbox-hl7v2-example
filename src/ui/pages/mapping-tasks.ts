@@ -11,6 +11,7 @@ import { parsePageParam, createPagination, PAGE_SIZE, renderPaginationControls, 
 import { renderNav, renderLayout, type NavData } from "../shared-layout";
 import { htmlResponse, getNavData } from "../shared";
 import { MAPPING_TYPES, type MappingTypeName, getMappingTypeName } from "../../code-mapping/mapping-types";
+import { getValidValuesWithDisplay } from "../../code-mapping/validation";
 
 /**
  * UI filter types - "status" is a special category that groups OBR and OBX status mappings
@@ -296,7 +297,7 @@ function renderResolutionForm(task: Task, mappingType: MappingTypeName): string 
 
   // For non-LOINC types, render a dropdown with allowed values
   const typeConfig = MAPPING_TYPES[mappingType];
-  const options = getValidValuesForType(mappingType);
+  const options = getValidValuesWithDisplay(mappingType);
   const targetLabel = typeConfig.targetField.split(".").pop() || "value";
 
   return `
@@ -318,60 +319,6 @@ function renderResolutionForm(task: Task, mappingType: MappingTypeName): string 
     </div>`;
 }
 
-/**
- * Get valid values for a mapping type.
- * These are the allowed target values in the FHIR ValueSets.
- */
-function getValidValuesForType(mappingType: MappingTypeName): Array<{ code: string; display: string }> {
-  switch (mappingType) {
-    case "address-type":
-      return [
-        { code: "postal", display: "Postal" },
-        { code: "physical", display: "Physical" },
-        { code: "both", display: "Postal & Physical" },
-      ];
-    case "patient-class":
-      return [
-        { code: "AMB", display: "Ambulatory" },
-        { code: "EMER", display: "Emergency" },
-        { code: "FLD", display: "Field" },
-        { code: "HH", display: "Home Health" },
-        { code: "IMP", display: "Inpatient" },
-        { code: "ACUTE", display: "Inpatient Acute" },
-        { code: "NONAC", display: "Inpatient Non-Acute" },
-        { code: "OBSENC", display: "Observation Encounter" },
-        { code: "PRENC", display: "Pre-Admission" },
-        { code: "SS", display: "Short Stay" },
-        { code: "VR", display: "Virtual" },
-      ];
-    case "obr-status":
-      return [
-        { code: "registered", display: "Registered" },
-        { code: "partial", display: "Partial" },
-        { code: "preliminary", display: "Preliminary" },
-        { code: "final", display: "Final" },
-        { code: "amended", display: "Amended" },
-        { code: "corrected", display: "Corrected" },
-        { code: "appended", display: "Appended" },
-        { code: "cancelled", display: "Cancelled" },
-        { code: "entered-in-error", display: "Entered in Error" },
-        { code: "unknown", display: "Unknown" },
-      ];
-    case "obx-status":
-      return [
-        { code: "registered", display: "Registered" },
-        { code: "preliminary", display: "Preliminary" },
-        { code: "final", display: "Final" },
-        { code: "amended", display: "Amended" },
-        { code: "corrected", display: "Corrected" },
-        { code: "cancelled", display: "Cancelled" },
-        { code: "entered-in-error", display: "Entered in Error" },
-        { code: "unknown", display: "Unknown" },
-      ];
-    default:
-      return [];
-  }
-}
 
 /**
  * Render a single mapping task panel.
