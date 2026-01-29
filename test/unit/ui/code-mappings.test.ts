@@ -1087,23 +1087,23 @@ describe("integration: add mapping flow", () => {
 // ============================================================================
 
 // Sample ConceptMaps for different mapping types
-const addressTypeConceptMap: ConceptMap = {
+const obrStatusConceptMap: ConceptMap = {
   resourceType: "ConceptMap",
-  id: "hl7v2-acme-lab-acme-hosp-to-address-type",
-  name: "HL7v2 ACME_LAB/ACME_HOSP to Address Type",
+  id: "hl7v2-acme-lab-acme-hosp-obr-status",
+  name: "HL7v2 ACME_LAB/ACME_HOSP to OBR Status",
   status: "active",
   title: "ACME_LAB|ACME_HOSP",
   sourceUri: "http://example.org/fhir/CodeSystem/hl7v2-acme-lab-acme-hosp",
-  targetUri: "http://hl7.org/fhir/address-type",
+  targetUri: "http://hl7.org/fhir/diagnostic-report-status",
   group: [
     {
-      source: "http://terminology.hl7.org/CodeSystem/v2-0190",
-      target: "http://hl7.org/fhir/address-type",
+      source: "http://terminology.hl7.org/CodeSystem/v2-0123",
+      target: "http://hl7.org/fhir/diagnostic-report-status",
       element: [
         {
-          code: "H",
-          display: "Home",
-          target: [{ code: "physical", display: "Physical", equivalence: "equivalent" }],
+          code: "X",
+          display: "Unknown",
+          target: [{ code: "final", display: "Final", equivalence: "equivalent" }],
         },
       ],
     },
@@ -1133,7 +1133,7 @@ describe("listConceptMaps - type filtering", () => {
           return Promise.resolve({
             entry: [
               { resource: sampleConceptMap },
-              { resource: addressTypeConceptMap },
+              { resource: obrStatusConceptMap },
               { resource: patientClassConceptMap },
             ],
           });
@@ -1149,7 +1149,7 @@ describe("listConceptMaps - type filtering", () => {
 
     expect(result).toHaveLength(3);
     expect(result.map(cm => cm.mappingType)).toContain("loinc");
-    expect(result.map(cm => cm.mappingType)).toContain("address-type");
+    expect(result.map(cm => cm.mappingType)).toContain("obr-status");
     expect(result.map(cm => cm.mappingType)).toContain("patient-class");
   });
 
@@ -1160,7 +1160,7 @@ describe("listConceptMaps - type filtering", () => {
           return Promise.resolve({
             entry: [
               { resource: sampleConceptMap },
-              { resource: addressTypeConceptMap },
+              { resource: obrStatusConceptMap },
               { resource: patientClassConceptMap },
             ],
           });
@@ -1179,14 +1179,14 @@ describe("listConceptMaps - type filtering", () => {
     expect(result[0]!.targetSystem).toBe("http://loinc.org");
   });
 
-  test("filters to only address-type ConceptMaps when filter is 'address-type'", async () => {
+  test("filters to only obr-status ConceptMaps when filter is 'obr-status'", async () => {
     const mockAidbox = createMockAidbox({
       aidboxFetch: mock((path: string) => {
         if (path.includes("/fhir/ConceptMap")) {
           return Promise.resolve({
             entry: [
               { resource: sampleConceptMap },
-              { resource: addressTypeConceptMap },
+              { resource: obrStatusConceptMap },
               { resource: patientClassConceptMap },
             ],
           });
@@ -1198,11 +1198,11 @@ describe("listConceptMaps - type filtering", () => {
     mock.module("../../../src/aidbox", () => mockAidbox);
     const { listConceptMaps } = await import("../../../src/ui/pages/code-mappings");
 
-    const result = await listConceptMaps("address-type");
+    const result = await listConceptMaps("obr-status");
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.mappingType).toBe("address-type");
-    expect(result[0]!.targetSystem).toBe("http://hl7.org/fhir/address-type");
+    expect(result[0]!.mappingType).toBe("obr-status");
+    expect(result[0]!.targetSystem).toBe("http://hl7.org/fhir/diagnostic-report-status");
   });
 
   test("excludes ConceptMaps with unknown target systems", async () => {
@@ -1262,7 +1262,6 @@ describe("parseTypeFilter", () => {
     const { parseTypeFilter } = await import("../../../src/ui/pages/code-mappings");
 
     expect(parseTypeFilter("loinc")).toBe("loinc");
-    expect(parseTypeFilter("address-type")).toBe("address-type");
     expect(parseTypeFilter("patient-class")).toBe("patient-class");
     expect(parseTypeFilter("obr-status")).toBe("obr-status");
     expect(parseTypeFilter("obx-status")).toBe("obx-status");
@@ -1286,7 +1285,7 @@ describe("getMappingTypeFilterDisplay", () => {
     const { getMappingTypeFilterDisplay } = await import("../../../src/ui/pages/code-mappings");
 
     expect(getMappingTypeFilterDisplay("loinc")).toBe("Local code to LOINC");
-    expect(getMappingTypeFilterDisplay("address-type")).toBe("Address type");
+    expect(getMappingTypeFilterDisplay("obr-status")).toBe("OBR result status");
   });
 });
 
@@ -1295,22 +1294,9 @@ describe("getMappingTypeShortLabel", () => {
     const { getMappingTypeShortLabel } = await import("../../../src/ui/mapping-type-ui");
 
     expect(getMappingTypeShortLabel("loinc")).toBe("LOINC");
-    expect(getMappingTypeShortLabel("address-type")).toBe("Address");
     expect(getMappingTypeShortLabel("patient-class")).toBe("Patient Class");
     expect(getMappingTypeShortLabel("obr-status")).toBe("OBR Status");
     expect(getMappingTypeShortLabel("obx-status")).toBe("OBX Status");
-  });
-});
-
-describe("getMappingTypeBadgeClasses", () => {
-  test("returns different color classes for each mapping type", async () => {
-    const { getMappingTypeBadgeClasses } = await import("../../../src/ui/mapping-type-ui");
-
-    expect(getMappingTypeBadgeClasses("loinc")).toContain("purple");
-    expect(getMappingTypeBadgeClasses("address-type")).toContain("blue");
-    expect(getMappingTypeBadgeClasses("patient-class")).toContain("green");
-    expect(getMappingTypeBadgeClasses("obr-status")).toContain("orange");
-    expect(getMappingTypeBadgeClasses("obx-status")).toContain("amber");
   });
 });
 
@@ -1326,11 +1312,11 @@ describe("detectMappingTypeFromConceptMap", () => {
     expect(detectMappingTypeFromConceptMap(sampleConceptMap)).toBe("loinc");
   });
 
-  test("detects address-type mapping type", async () => {
+  test("detects obr-status mapping type", async () => {
     mock.module("../../../src/aidbox", () => createMockAidbox());
     const { detectMappingTypeFromConceptMap } = await import("../../../src/ui/pages/code-mappings");
 
-    expect(detectMappingTypeFromConceptMap(addressTypeConceptMap)).toBe("address-type");
+    expect(detectMappingTypeFromConceptMap(obrStatusConceptMap)).toBe("obr-status");
   });
 
   test("returns null for unknown target system", async () => {
@@ -1351,16 +1337,6 @@ describe("detectMappingTypeFromConceptMap", () => {
 describe("getValidValuesForType", () => {
   afterEach(() => {
     mock.restore();
-  });
-
-  test("returns address type values", async () => {
-    mock.module("../../../src/aidbox", () => createMockAidbox());
-    const { getValidValuesForType } = await import("../../../src/ui/pages/code-mappings");
-
-    const values = getValidValuesForType("address-type");
-    expect(values.length).toBeGreaterThan(0);
-    expect(values.some(v => v.code === "postal")).toBe(true);
-    expect(values.some(v => v.code === "physical")).toBe(true);
   });
 
   test("returns patient class values", async () => {
@@ -1441,19 +1417,19 @@ describe("renderMappingEntryPanel", () => {
     const { renderMappingEntryPanel } = await import("../../../src/ui/pages/code-mappings");
 
     const entry = {
-      localCode: "H",
-      localDisplay: "Home",
-      localSystem: "http://terminology.hl7.org/CodeSystem/v2-0190",
-      targetCode: "physical",
-      targetDisplay: "Physical",
-      targetSystem: "http://hl7.org/fhir/address-type",
+      localCode: "X",
+      localDisplay: "Unknown",
+      localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
+      targetCode: "final",
+      targetDisplay: "Final",
+      targetSystem: "http://hl7.org/fhir/diagnostic-report-status",
     };
 
-    const html = renderMappingEntryPanel(entry, "cm-id", "address-type", "all");
+    const html = renderMappingEntryPanel(entry, "cm-id", "obr-status", "all");
 
     expect(html).toContain("<select");
-    expect(html).toContain("postal");
-    expect(html).toContain("physical");
+    expect(html).toContain("final");
+    expect(html).toContain("preliminary");
   });
 });
 
@@ -1482,7 +1458,6 @@ describe("renderCodeMappingsPage", () => {
 
     expect(html).toContain("All Types");
     expect(html).toContain("Local code to LOINC");
-    expect(html).toContain("Address type");
     expect(html).toContain("Patient class");
   });
 
@@ -1515,7 +1490,7 @@ describe("renderCodeMappingsPage", () => {
     const navData = { pendingMappingTasksCount: 0 };
     const conceptMaps = [
       { id: "cm-1", displayName: "ACME_LAB|ACME_HOSP", mappingType: "loinc" as const, targetSystem: "http://loinc.org" },
-      { id: "cm-2", displayName: "OTHER_LAB|OTHER_HOSP", mappingType: "address-type" as const, targetSystem: "http://hl7.org/fhir/address-type" },
+      { id: "cm-2", displayName: "OTHER_LAB|OTHER_HOSP", mappingType: "obr-status" as const, targetSystem: "http://hl7.org/fhir/diagnostic-report-status" },
     ];
 
     const html = renderCodeMappingsPage(
@@ -1532,6 +1507,6 @@ describe("renderCodeMappingsPage", () => {
     );
 
     expect(html).toContain("[LOINC] ACME_LAB|ACME_HOSP");
-    expect(html).toContain("[Address] OTHER_LAB|OTHER_HOSP");
+    expect(html).toContain("[OBR Status] OTHER_LAB|OTHER_HOSP");
   });
 });

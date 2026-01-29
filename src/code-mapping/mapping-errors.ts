@@ -34,38 +34,36 @@ export interface MappingError {
  * Creates Tasks for each unique mapping error and returns a result with
  * status "mapping_error" and the list of unmapped codes.
  *
+ * Note: Only Tasks are included in the bundle. Draft Patient/Encounter resources
+ * are NOT created when a message has mapping errors - they will be created when
+ * the message is successfully reprocessed after all mappings are resolved.
+ *
  * @param senderContext - The sender context (sendingApplication, sendingFacility)
  * @param mappingErrors - Array of mapping errors from the conversion
- * @param patientRef - Reference to the patient resource
- * @param patientEntry - Optional patient bundle entry to include
- * @param encounterEntry - Optional encounter bundle entry to include
+ * @param patientRef - Reference to the patient resource (for messageUpdate.patient)
  */
 export function buildMappingErrorResult(
   senderContext: SenderContext,
   mappingErrors: MappingError[],
   patientRef: Reference<"Patient">,
-  patientEntry: BundleEntry | null,
-  encounterEntry: BundleEntry | null,
 ): ConversionResult {
   const seenTaskIds = new Set<string>();
   const entries: BundleEntry[] = [];
-
-  if (patientEntry) {
-    entries.push(patientEntry);
-  }
-  if (encounterEntry) {
-    entries.push(encounterEntry);
-  }
-
   const unmappedCodes: UnmappedCode[] = [];
 
   for (const error of mappingErrors) {
     if (!error.localCode) continue;
+    if (!error.localSystem) {
+      throw new Error(
+        `Cannot create mapping task: localSystem is required. ` +
+          `localCode: ${error.localCode}, mappingType: ${error.mappingType}`,
+      );
+    }
 
     const conceptMapId = generateConceptMapId(senderContext, error.mappingType);
     const taskId = generateMappingTaskId(
       conceptMapId,
-      error.localSystem || "",
+      error.localSystem,
       error.localCode,
     );
 

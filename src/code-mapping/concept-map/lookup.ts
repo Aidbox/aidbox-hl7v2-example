@@ -62,20 +62,27 @@ export class MissingLocalSystemError extends Error {
 }
 
 /**
+ * Generate the base ConceptMap ID from sender context (without mapping type).
+ * Format: hl7v2-{sendingApplication}-{sendingFacility}
+ */
+export function generateBaseConceptMapId(sender: SenderContext): string {
+  const app = toKebabCase(sender.sendingApplication);
+  const facility = toKebabCase(sender.sendingFacility);
+  return `hl7v2-${app}-${facility}`;
+}
+
+/**
  * Generate ConceptMap ID from sender context
- * Format: hl7v2-{sendingApplication}-{sendingFacility}{conceptMapSuffix}
+ * Format: hl7v2-{sendingApplication}-{sendingFacility}-{mappingType}
  *
  * @param sender - The sender context with sendingApplication and sendingFacility
- * @param mappingType - Optional mapping type name. Defaults to "loinc" for backward compatibility.
+ * @param mappingType - The mapping type name (e.g., "loinc", "obr-status")
  */
 export function generateConceptMapId(
   sender: SenderContext,
-  mappingType: MappingTypeName = "loinc",
+  mappingType: MappingTypeName,
 ): string {
-  const type = MAPPING_TYPES[mappingType];
-  const app = toKebabCase(sender.sendingApplication);
-  const facility = toKebabCase(sender.sendingFacility);
-  return `hl7v2-${app}-${facility}${type.conceptMapSuffix}`;
+  return `${generateBaseConceptMapId(sender)}-${mappingType}`;
 }
 
 /**
@@ -248,7 +255,7 @@ async function resolveFromConceptMap(
     );
   }
 
-  const conceptMapId = generateConceptMapId(sender);
+  const conceptMapId = generateConceptMapId(sender, "loinc");
   const localSystemNormalized = normalizeSystem(localSystem);
 
   const result = await translateCode(

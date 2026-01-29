@@ -33,7 +33,7 @@ function createLoincTask(overrides: Partial<Task> = {}): Task {
     intent: "order",
     code: {
       coding: [{
-        system: "http://example.org/task-codes",
+        system: "urn:aidbox-hl7v2-converter:task-code",
         code: "loinc-mapping",
         display: "Local code to LOINC mapping",
       }],
@@ -61,7 +61,7 @@ function createObrStatusTask(overrides: Partial<Task> = {}): Task {
     intent: "order",
     code: {
       coding: [{
-        system: "http://example.org/task-codes",
+        system: "urn:aidbox-hl7v2-converter:task-code",
         code: "obr-status-mapping",
         display: "OBR result status mapping",
       }],
@@ -81,29 +81,29 @@ function createObrStatusTask(overrides: Partial<Task> = {}): Task {
   };
 }
 
-function createAddressTypeTask(overrides: Partial<Task> = {}): Task {
+function createPatientClassTask(overrides: Partial<Task> = {}): Task {
   return {
     resourceType: "Task",
-    id: "task-address-type-1",
+    id: "task-patient-class-1",
     status: "requested",
     intent: "order",
     code: {
       coding: [{
-        system: "http://example.org/task-codes",
-        code: "address-type-mapping",
-        display: "Address type mapping",
+        system: "urn:aidbox-hl7v2-converter:task-code",
+        code: "patient-class-mapping",
+        display: "Patient class mapping",
       }],
-      text: "Map PID.11 (XAD.7) to Address.type",
+      text: "Map PV1-2 to Encounter.class",
     },
     authoredOn: "2025-02-12T14:20:00Z",
     input: [
       { type: { text: "Sending application" }, valueString: "ACME_LAB" },
       { type: { text: "Sending facility" }, valueString: "ACME_HOSP" },
-      { type: { text: "Local code" }, valueString: "P" },
-      { type: { text: "Local display" }, valueString: "Permanent" },
-      { type: { text: "Local system" }, valueString: "http://terminology.hl7.org/CodeSystem/v2-0190" },
-      { type: { text: "Source field" }, valueString: "PID.11 (XAD.7)" },
-      { type: { text: "Target field" }, valueString: "Address.type" },
+      { type: { text: "Local code" }, valueString: "1" },
+      { type: { text: "Local display" }, valueString: "Unknown class" },
+      { type: { text: "Local system" }, valueString: "http://terminology.hl7.org/CodeSystem/v2-0004" },
+      { type: { text: "Source field" }, valueString: "PV1-2" },
+      { type: { text: "Target field" }, valueString: "Encounter.class" },
     ],
     ...overrides,
   };
@@ -135,7 +135,7 @@ function createLegacyLoincTask(): Task {
     intent: "order",
     code: {
       coding: [{
-        system: "http://example.org/task-codes",
+        system: "urn:aidbox-hl7v2-converter:task-code",
         code: "local-to-loinc-mapping",
         display: "Local code to LOINC mapping",
       }],
@@ -185,7 +185,6 @@ describe("getMappingTypeFilterDisplay", () => {
 
   test("returns task display without ' mapping' suffix for mapping types", () => {
     expect(getMappingTypeFilterDisplay("loinc")).toBe("Local code to LOINC");
-    expect(getMappingTypeFilterDisplay("address-type")).toBe("Address type");
     expect(getMappingTypeFilterDisplay("patient-class")).toBe("Patient class");
     expect(getMappingTypeFilterDisplay("obr-status")).toBe("OBR result status");
     expect(getMappingTypeFilterDisplay("obx-status")).toBe("OBX observation status");
@@ -195,7 +194,6 @@ describe("getMappingTypeFilterDisplay", () => {
 describe("getMappingTypeShortLabel", () => {
   test("returns short labels for each mapping type", () => {
     expect(getMappingTypeShortLabel("loinc")).toBe("LOINC");
-    expect(getMappingTypeShortLabel("address-type")).toBe("Address");
     expect(getMappingTypeShortLabel("patient-class")).toBe("Patient Class");
     expect(getMappingTypeShortLabel("obr-status")).toBe("OBR Status");
     expect(getMappingTypeShortLabel("obx-status")).toBe("OBX Status");
@@ -217,7 +215,6 @@ describe("parseTypeFilter", () => {
 
   test("returns mapping type name for valid type parameters", () => {
     expect(parseTypeFilter("loinc")).toBe("loinc");
-    expect(parseTypeFilter("address-type")).toBe("address-type");
     expect(parseTypeFilter("patient-class")).toBe("patient-class");
     expect(parseTypeFilter("obr-status")).toBe("obr-status");
     expect(parseTypeFilter("obx-status")).toBe("obx-status");
@@ -261,12 +258,8 @@ describe("getTaskMappingType", () => {
     expect(getTaskMappingType(createObrStatusTask())).toBe("obr-status");
   });
 
-  test("returns mapping type for address type task", () => {
-    expect(getTaskMappingType(createAddressTypeTask())).toBe("address-type");
-  });
-
-  test("returns mapping type for legacy LOINC task", () => {
-    expect(getTaskMappingType(createLegacyLoincTask())).toBe("loinc");
+  test("returns mapping type for patient class task", () => {
+    expect(getTaskMappingType(createPatientClassTask())).toBe("patient-class");
   });
 
   test("returns undefined for task without code", () => {
@@ -285,7 +278,7 @@ describe("getTaskMappingType", () => {
       intent: "order",
       code: {
         coding: [{
-          system: "http://example.org/task-codes",
+          system: "urn:aidbox-hl7v2-converter:task-code",
           code: "unknown-code",
         }],
       },
@@ -339,7 +332,7 @@ describe("renderMappingTaskPanel", () => {
 
     // Check type badge
     expect(html).toContain("LOINC");
-    expect(html).toContain("bg-purple-100 text-purple-800");
+    expect(html).toContain("bg-gray-100 text-gray-800");
 
     // Check pending status badge
     expect(html).toContain("Pending");
@@ -370,7 +363,7 @@ describe("renderMappingTaskPanel", () => {
 
     // Check type badge
     expect(html).toContain("OBR Status");
-    expect(html).toContain("bg-orange-100 text-orange-800");
+    expect(html).toContain("bg-gray-100 text-gray-800");
 
     // Check source/target field info
     expect(html).toContain("OBR-25");
@@ -387,18 +380,18 @@ describe("renderMappingTaskPanel", () => {
     expect(html).toContain("registered");
   });
 
-  test("renders pending address type task with dropdown select", () => {
-    const task = createAddressTypeTask();
+  test("renders pending patient class task with dropdown select", () => {
+    const task = createPatientClassTask();
     const html = renderMappingTaskPanel(task, true);
 
     // Check type badge
-    expect(html).toContain("Address");
-    expect(html).toContain("bg-blue-100 text-blue-800");
+    expect(html).toContain("Patient Class");
+    expect(html).toContain("bg-gray-100 text-gray-800");
 
     // Check dropdown options
-    expect(html).toContain("postal");
-    expect(html).toContain("physical");
-    expect(html).toContain("both");
+    expect(html).toContain("AMB");
+    expect(html).toContain("IMP");
+    expect(html).toContain("EMER");
   });
 
   test("renders completed task with resolved mapping", () => {
@@ -466,7 +459,6 @@ describe("renderMappingTasksPage", () => {
     // Check type filter tabs
     expect(html).toContain(">All</a>");
     expect(html).toContain(">Local code to LOINC</a>");
-    expect(html).toContain(">Address type</a>");
     expect(html).toContain(">Patient class</a>");
     expect(html).toContain(">Status</a>");
   });
@@ -577,12 +569,12 @@ describe("renderMappingTasksPage", () => {
       mockNavData,
       [],
       "requested",
-      "address-type",
+      "patient-class",
       { currentPage: 1, total: 100, totalPages: 2 },
       null,
     );
 
     // Pagination should include type filter
-    expect(html).toContain("type=address-type");
+    expect(html).toContain("type=patient-class");
   });
 });

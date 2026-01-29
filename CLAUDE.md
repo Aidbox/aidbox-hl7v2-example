@@ -120,14 +120,9 @@ When HL7v2 codes can't be mapped to valid FHIR values:
 3. User resolves via `/mapping/tasks` or `/mapping/table`
 4. On resolution: Task completed, message requeued for processing
 
-**Supported mapping types** (defined in `src/code-mapping/mapping-types.ts`):
-- `loinc` - OBX-3 local codes to LOINC
-- `address-type` - PID.11 address types
-- `patient-class` - PV1.2 patient class codes
-- `obr-status` - OBR-25 result status codes
-- `obx-status` - OBX-11 observation status codes
+Mapping types are defined in `src/code-mapping/mapping-types.ts`.
 
-**ConceptMap per sender per type**: Same local code from different senders can map to different values. ConceptMap IDs: `hl7v2-{app}-{facility}{type-suffix}`.
+**ConceptMap per sender per type**: Same local code from different senders can map to different values.
 
 → Details: `docs/developer-guide/code-mapping.md`
 

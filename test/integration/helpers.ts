@@ -64,7 +64,7 @@ export async function createTestConceptMap(
     loincDisplay: string;
   }>,
 ): Promise<void> {
-  const id = `hl7v2-${toKebabCase(sendingApp)}-${toKebabCase(sendingFacility)}-to-loinc`;
+  const id = `hl7v2-${toKebabCase(sendingApp)}-${toKebabCase(sendingFacility)}-loinc`;
 
   const groups: Record<string, NonNullable<ConceptMap["group"]>[0]> = {};
   for (const m of mappings) {
@@ -91,7 +91,7 @@ export async function createTestConceptMap(
     resourceType: "ConceptMap",
     id,
     status: "active",
-    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-to-loinc", "")}`,
+    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-loinc", "")}`,
     targetUri: "http://loinc.org",
     group: Object.values(groups),
   };
@@ -117,7 +117,8 @@ export async function createTestConceptMapForType(
   }>,
 ): Promise<void> {
   const typeConfig = MAPPING_TYPES[mappingType];
-  const id = `hl7v2-${toKebabCase(sendingApp)}-${toKebabCase(sendingFacility)}${typeConfig.conceptMapSuffix}`;
+  const baseId = `hl7v2-${toKebabCase(sendingApp)}-${toKebabCase(sendingFacility)}`;
+  const id = `${baseId}-${mappingType}`;
 
   const groups: Record<string, NonNullable<ConceptMap["group"]>[0]> = {};
   for (const m of mappings) {
@@ -144,7 +145,7 @@ export async function createTestConceptMapForType(
     resourceType: "ConceptMap",
     id,
     status: "active",
-    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace(typeConfig.conceptMapSuffix, "")}`,
+    sourceUri: `http://example.org/fhir/CodeSystem/${baseId}`,
     targetUri: typeConfig.targetSystem,
     group: Object.values(groups),
   };

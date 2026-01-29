@@ -982,7 +982,7 @@ export async function convertORU_R01(
   }
 
   if (allMappingErrors.length > 0) {
-    return buildMappingErrorResult(senderContext, allMappingErrors, patientRef, patientEntry, encounterEntry);
+    return buildMappingErrorResult(senderContext, allMappingErrors, patientRef);
   }
 
   // Include draft patient in bundle if created

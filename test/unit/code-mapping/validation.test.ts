@@ -5,7 +5,6 @@ import { describe, test, expect } from "bun:test";
 import {
   validateResolvedCode,
   getValidValues,
-  getTargetSystemForCode,
 } from "../../../src/code-mapping/validation";
 
 describe("validateResolvedCode", () => {
@@ -101,28 +100,6 @@ describe("validateResolvedCode", () => {
     });
   });
 
-  describe("Address type validation", () => {
-    // Address-type mapping can resolve to either Address.type or Address.use
-    const validTypes = ["postal", "physical", "both"];
-    const validUses = ["home", "work", "temp", "old", "billing"];
-
-    test.each(validTypes)("accepts valid Address.type: %s", (type) => {
-      const result = validateResolvedCode("address-type", type);
-      expect(result.valid).toBe(true);
-    });
-
-    test.each(validUses)("accepts valid Address.use: %s", (use) => {
-      const result = validateResolvedCode("address-type", use);
-      expect(result.valid).toBe(true);
-    });
-
-    test("rejects invalid value", () => {
-      const result = validateResolvedCode("address-type", "invalid");
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain("Invalid Address type/use");
-    });
-  });
-
   describe("Patient class (Encounter.class) validation", () => {
     const validClasses = [
       "AMB",
@@ -182,23 +159,6 @@ describe("getValidValues", () => {
     expect(values!.length).toBe(8);
   });
 
-  test("returns valid Address types and uses", () => {
-    const values = getValidValues("address-type");
-    expect(values).toBeDefined();
-    // Address.type values
-    expect(values).toContain("postal");
-    expect(values).toContain("physical");
-    expect(values).toContain("both");
-    // Address.use values
-    expect(values).toContain("home");
-    expect(values).toContain("work");
-    expect(values).toContain("temp");
-    expect(values).toContain("old");
-    expect(values).toContain("billing");
-    // 3 type + 5 use = 8 total
-    expect(values!.length).toBe(8);
-  });
-
   test("returns valid Encounter classes", () => {
     const values = getValidValues("patient-class");
     expect(values).toBeDefined();
@@ -209,68 +169,3 @@ describe("getValidValues", () => {
   });
 });
 
-describe("getTargetSystemForCode", () => {
-  describe("address-type mapping", () => {
-    const defaultSystem = "http://hl7.org/fhir/address-type";
-
-    test("returns address-type system for Address.type values", () => {
-      expect(getTargetSystemForCode("address-type", "postal", defaultSystem)).toBe(
-        "http://hl7.org/fhir/address-type",
-      );
-      expect(getTargetSystemForCode("address-type", "physical", defaultSystem)).toBe(
-        "http://hl7.org/fhir/address-type",
-      );
-      expect(getTargetSystemForCode("address-type", "both", defaultSystem)).toBe(
-        "http://hl7.org/fhir/address-type",
-      );
-    });
-
-    test("returns address-use system for Address.use values", () => {
-      expect(getTargetSystemForCode("address-type", "home", defaultSystem)).toBe(
-        "http://hl7.org/fhir/address-use",
-      );
-      expect(getTargetSystemForCode("address-type", "work", defaultSystem)).toBe(
-        "http://hl7.org/fhir/address-use",
-      );
-      expect(getTargetSystemForCode("address-type", "temp", defaultSystem)).toBe(
-        "http://hl7.org/fhir/address-use",
-      );
-      expect(getTargetSystemForCode("address-type", "old", defaultSystem)).toBe(
-        "http://hl7.org/fhir/address-use",
-      );
-      expect(getTargetSystemForCode("address-type", "billing", defaultSystem)).toBe(
-        "http://hl7.org/fhir/address-use",
-      );
-    });
-
-    test("returns default system for unknown codes", () => {
-      // Unknown codes would fail validation, but if they somehow got through,
-      // they should use the default address-type system
-      expect(getTargetSystemForCode("address-type", "unknown", defaultSystem)).toBe(
-        "http://hl7.org/fhir/address-type",
-      );
-    });
-  });
-
-  describe("other mapping types", () => {
-    test("returns default system for loinc", () => {
-      const defaultSystem = "http://loinc.org";
-      expect(getTargetSystemForCode("loinc", "2823-3", defaultSystem)).toBe(defaultSystem);
-    });
-
-    test("returns default system for obr-status", () => {
-      const defaultSystem = "http://hl7.org/fhir/diagnostic-report-status";
-      expect(getTargetSystemForCode("obr-status", "final", defaultSystem)).toBe(defaultSystem);
-    });
-
-    test("returns default system for obx-status", () => {
-      const defaultSystem = "http://hl7.org/fhir/observation-status";
-      expect(getTargetSystemForCode("obx-status", "final", defaultSystem)).toBe(defaultSystem);
-    });
-
-    test("returns default system for patient-class", () => {
-      const defaultSystem = "http://terminology.hl7.org/CodeSystem/v3-ActCode";
-      expect(getTargetSystemForCode("patient-class", "AMB", defaultSystem)).toBe(defaultSystem);
-    });
-  });
-});

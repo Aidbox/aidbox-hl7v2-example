@@ -48,7 +48,7 @@ async function createPendingTask(
       code: {
         coding: [
           {
-            system: "http://example.org/task-codes",
+            system: "urn:aidbox-hl7v2-converter:task-code",
             code: "local-to-loinc-mapping",
             display: "Local code to LOINC mapping",
           },
@@ -103,12 +103,12 @@ async function createPendingTaskForType(
       code: {
         coding: [
           {
-            system: "http://example.org/task-codes",
+            system: "urn:aidbox-hl7v2-converter:task-code",
             code: typeConfig.taskCode,
             display: typeConfig.taskDisplay,
           },
         ],
-        text: `Map ${typeConfig.sourceField} to ${typeConfig.targetField}`,
+        text: `Map ${typeConfig.sourceFieldLabel} to ${typeConfig.targetFieldLabel}`,
       },
       authoredOn: "2025-02-12T14:20:00Z",
       lastModified: "2025-02-12T14:20:00Z",
@@ -120,8 +120,8 @@ async function createPendingTaskForType(
         { type: { text: "Local code" }, valueString: localCode },
         { type: { text: "Local display" }, valueString: localDisplay },
         { type: { text: "Local system" }, valueString: localSystem },
-        { type: { text: "Source field" }, valueString: typeConfig.sourceField },
-        { type: { text: "Target field" }, valueString: typeConfig.targetField },
+        { type: { text: "Source field" }, valueString: typeConfig.sourceFieldLabel },
+        { type: { text: "Target field" }, valueString: typeConfig.targetFieldLabel },
       ],
     }),
   });
@@ -138,7 +138,7 @@ async function createCompletedTask(id: string): Promise<Task> {
       code: {
         coding: [
           {
-            system: "http://example.org/task-codes",
+            system: "urn:aidbox-hl7v2-converter:task-code",
             code: "local-to-loinc-mapping",
           },
         ],
@@ -244,7 +244,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       expect(task.output).toBeDefined();
       expect(task.output![0]!.valueCodeableConcept!.coding![0]!.code).toBe("2823-3");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-to-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-loinc");
       expect(conceptMap).toBeDefined();
       expect(conceptMap.status).toBe("active");
 
@@ -272,7 +272,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       await resolveTaskWithMapping("task-resolve-2", "2823-3", "Potassium");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-to-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-loinc");
       const group = conceptMap.group?.find(
         (g) => g.source === "ACME-LAB-CODES",
       );
@@ -296,7 +296,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       await resolveTaskWithMapping("task-resolve-3", "2823-3", "Potassium");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-to-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-loinc");
       const acmeGroup = conceptMap.group?.find(
         (g) => g.source === "ACME-LAB-CODES",
       );
@@ -388,7 +388,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       expect(task.status).toBe("completed");
       expect(task.output![0]!.valueCodeableConcept!.coding![0]!.code).toBe("2823-3");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-to-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-loinc");
       expect(conceptMap).toBeDefined();
 
       const message = await fetchMessage("msg-full-flow");
@@ -420,7 +420,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       expect(task.output![0]!.valueCodeableConcept!.coding![0]!.code).toBe("preliminary");
 
       const conceptMap = await fetchConceptMap(
-        "hl7v2-acme-lab-acme-hosp-to-diagnostic-report-status",
+        "hl7v2-acme-lab-acme-hosp-obr-status",
       );
       expect(conceptMap).toBeDefined();
       expect(conceptMap.targetUri).toBe("http://hl7.org/fhir/diagnostic-report-status");
@@ -446,36 +446,10 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       );
 
       const conceptMap = await fetchConceptMap(
-        "hl7v2-acme-lab-acme-hosp-to-observation-status",
+        "hl7v2-acme-lab-acme-hosp-obx-status",
       );
       expect(conceptMap).toBeDefined();
       expect(conceptMap.targetUri).toBe("http://hl7.org/fhir/observation-status");
-    });
-
-    test("resolves address-type mapping task with correct target system", async () => {
-      await createPendingTaskForType("task-addr-type-1", "address-type", {
-        localCode: "P",
-        localDisplay: "Permanent",
-        localSystem: "http://terminology.hl7.org/CodeSystem/v2-0190",
-      });
-
-      await resolveTaskWithMapping(
-        "task-addr-type-1",
-        "physical",
-        "Physical",
-      );
-
-      const task = await fetchTask("task-addr-type-1");
-      expect(task.status).toBe("completed");
-      expect(task.output![0]!.valueCodeableConcept!.coding![0]!.system).toBe(
-        "http://hl7.org/fhir/address-type",
-      );
-
-      const conceptMap = await fetchConceptMap(
-        "hl7v2-acme-lab-acme-hosp-to-address-type",
-      );
-      expect(conceptMap).toBeDefined();
-      expect(conceptMap.targetUri).toBe("http://hl7.org/fhir/address-type");
     });
 
     test("resolves patient-class mapping task with correct target system", async () => {
@@ -498,7 +472,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       );
 
       const conceptMap = await fetchConceptMap(
-        "hl7v2-acme-lab-acme-hosp-to-encounter-class",
+        "hl7v2-acme-lab-acme-hosp-patient-class",
       );
       expect(conceptMap).toBeDefined();
       expect(conceptMap.targetUri).toBe("http://terminology.hl7.org/CodeSystem/v3-ActCode");
@@ -527,7 +501,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       );
 
       const conceptMap = await fetchConceptMap(
-        "hl7v2-acme-lab-acme-hosp-to-diagnostic-report-status",
+        "hl7v2-acme-lab-acme-hosp-obr-status",
       );
       const group = conceptMap.group?.find(
         (g) => g.source === "http://terminology.hl7.org/CodeSystem/v2-0123",

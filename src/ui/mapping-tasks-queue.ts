@@ -25,7 +25,6 @@ import {
   getMappingTypeName,
   type MappingTypeName,
 } from "../code-mapping/mapping-types";
-import { getTargetSystemForCode } from "../code-mapping/validation";
 
 export function getTaskInputValue(
   task: Task,
@@ -100,13 +99,7 @@ export async function resolveTaskWithMapping(
     }
   }
 
-  // Get the correct target system for this resolved code
-  // (for address-type, this depends on whether it's a type or use value)
-  const targetSystem = getTargetSystemForCode(
-    mappingType,
-    resolvedCode,
-    typeConfig.targetSystem,
-  );
+  const targetSystem = typeConfig.targetSystem;
 
   const updatedConceptMap = addMappingToConceptMap(
     conceptMap,
@@ -179,42 +172,18 @@ export async function resolveTaskWithMapping(
 }
 
 export async function updateAffectedMessages(taskId: string): Promise<void> {
+  const { removeTaskFromMessage } = await import(
+    "../code-mapping/mapping-task-service"
+  );
+
   const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(
     `/fhir/IncomingHL7v2Message?status=mapping_error&unmapped-task=Task/${taskId}`,
   );
 
   const messages = bundle.entry?.map((e) => e.resource) || [];
 
-  if (messages.length === 0) {
-    return;
-  }
-
-  const taskReference = `Task/${taskId}`;
-
   for (const message of messages) {
-    const { resource: currentMessage, etag } =
-      await getResourceWithETag<IncomingHL7v2Message>(
-        "IncomingHL7v2Message",
-        message.id!,
-      );
-
-    const updatedUnmappedCodes = (currentMessage.unmappedCodes || []).filter(
-      (code) => code.mappingTask.reference !== taskReference,
-    );
-
-    const updatedMessage: IncomingHL7v2Message = {
-      ...currentMessage,
-      unmappedCodes:
-        updatedUnmappedCodes.length > 0 ? updatedUnmappedCodes : undefined,
-      status: updatedUnmappedCodes.length === 0 ? "received" : "mapping_error",
-    };
-
-    await updateResourceWithETag(
-      "IncomingHL7v2Message",
-      message.id!,
-      updatedMessage,
-      etag,
-    );
+    await removeTaskFromMessage(message.id!, taskId);
   }
 }
 

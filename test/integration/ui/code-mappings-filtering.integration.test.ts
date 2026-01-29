@@ -29,7 +29,7 @@ async function createConceptMap(
   const conceptMap: ConceptMap = {
     resourceType: "ConceptMap",
     id,
-    name: `HL7v2 ${title} to ${config.targetField}`,
+    name: `HL7v2 ${title} to ${config.targetFieldLabel}`,
     status: "active",
     title,
     sourceUri: `http://example.org/fhir/CodeSystem/${id}`,
@@ -73,7 +73,7 @@ async function createConceptMapWithEntry(
   const conceptMap: ConceptMap = {
     resourceType: "ConceptMap",
     id,
-    name: `HL7v2 ${title} to ${config.targetField}`,
+    name: `HL7v2 ${title} to ${config.targetFieldLabel}`,
     status: "active",
     title,
     sourceUri: `http://example.org/fhir/CodeSystem/${id}`,
@@ -117,39 +117,27 @@ describe("listConceptMaps with type filtering", () => {
   test("returns all ConceptMaps when filter is 'all'", async () => {
     // Create ConceptMaps of different types
     await createConceptMap("cm-loinc-test", "loinc", "TEST_APP|TEST_FACILITY");
-    await createConceptMap("cm-address-test", "address-type", "TEST_APP|TEST_FACILITY");
+    await createConceptMap("cm-obr-status-test", "obr-status", "TEST_APP|TEST_FACILITY");
     await createConceptMap("cm-patient-class-test", "patient-class", "OTHER_APP|OTHER_FACILITY");
 
     const result = await listConceptMaps("all");
 
     expect(result.length).toBe(3);
     expect(result.some(cm => cm.mappingType === "loinc")).toBe(true);
-    expect(result.some(cm => cm.mappingType === "address-type")).toBe(true);
+    expect(result.some(cm => cm.mappingType === "obr-status")).toBe(true);
     expect(result.some(cm => cm.mappingType === "patient-class")).toBe(true);
   });
 
   test("filters by loinc type", async () => {
     await createConceptMap("cm-loinc-1", "loinc", "LAB1|FACILITY1");
     await createConceptMap("cm-loinc-2", "loinc", "LAB2|FACILITY2");
-    await createConceptMap("cm-address-1", "address-type", "APP1|FAC1");
+    await createConceptMap("cm-obr-1", "obr-status", "APP1|FAC1");
 
     const result = await listConceptMaps("loinc");
 
     expect(result.length).toBe(2);
     expect(result.every(cm => cm.mappingType === "loinc")).toBe(true);
     expect(result.every(cm => cm.targetSystem === "http://loinc.org")).toBe(true);
-  });
-
-  test("filters by address-type", async () => {
-    await createConceptMap("cm-loinc-1", "loinc", "LAB1|FACILITY1");
-    await createConceptMap("cm-address-1", "address-type", "APP1|FAC1");
-    await createConceptMap("cm-address-2", "address-type", "APP2|FAC2");
-
-    const result = await listConceptMaps("address-type");
-
-    expect(result.length).toBe(2);
-    expect(result.every(cm => cm.mappingType === "address-type")).toBe(true);
-    expect(result.every(cm => cm.targetSystem === "http://hl7.org/fhir/address-type")).toBe(true);
   });
 
   test("filters by patient-class", async () => {
@@ -221,7 +209,7 @@ describe("listConceptMaps with type filtering", () => {
   test("returns empty result when no ConceptMaps match filter", async () => {
     await createConceptMap("cm-loinc-1", "loinc", "LAB1|FACILITY1");
 
-    const result = await listConceptMaps("address-type");
+    const result = await listConceptMaps("obr-status");
 
     expect(result.length).toBe(0);
   });
@@ -260,14 +248,14 @@ describe("getMappingsFromConceptMap with type detection", () => {
     expect(result.entries[0]!.targetSystem).toBe("http://loinc.org");
   });
 
-  test("returns mapping type for address-type ConceptMap", async () => {
-    await createConceptMapWithEntry("cm-address-1", "address-type", "APP1|FAC1", "H", "physical");
+  test("returns mapping type for obr-status ConceptMap", async () => {
+    await createConceptMapWithEntry("cm-obr-1", "obr-status", "APP1|FAC1", "X", "final");
 
-    const result = await getMappingsFromConceptMap("cm-address-1", 1);
+    const result = await getMappingsFromConceptMap("cm-obr-1", 1);
 
-    expect(result.mappingType).toBe("address-type");
+    expect(result.mappingType).toBe("obr-status");
     expect(result.entries.length).toBe(1);
-    expect(result.entries[0]!.targetSystem).toBe("http://hl7.org/fhir/address-type");
+    expect(result.entries[0]!.targetSystem).toBe("http://hl7.org/fhir/diagnostic-report-status");
   });
 
   test("returns entry with correct target fields", async () => {
@@ -288,131 +276,57 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
   });
 
   test("adds entry to non-LOINC ConceptMap", async () => {
-    await createConceptMap("cm-address-crud", "address-type", "APP|FAC");
+    await createConceptMap("cm-obr-crud", "obr-status", "APP|FAC");
 
     const result = await addConceptMapEntry(
-      "cm-address-crud",
-      "B",
-      "Business",
-      "http://terminology.hl7.org/CodeSystem/v2-0190",
-      "physical",
-      "Physical",
+      "cm-obr-crud",
+      "X",
+      "Unknown",
+      "http://terminology.hl7.org/CodeSystem/v2-0123",
+      "final",
+      "Final",
     );
 
     expect(result.success).toBe(true);
 
     // Verify the entry was added (note: createConceptMap includes a dummy TEST_CODE entry)
-    const mappings = await getMappingsFromConceptMap("cm-address-crud", 1);
+    const mappings = await getMappingsFromConceptMap("cm-obr-crud", 1);
     expect(mappings.entries.length).toBe(2);
-    const addedEntry = mappings.entries.find(e => e.localCode === "B");
+    const addedEntry = mappings.entries.find(e => e.localCode === "X");
     expect(addedEntry).toBeDefined();
-    expect(addedEntry!.targetCode).toBe("physical");
+    expect(addedEntry!.targetCode).toBe("final");
   });
 
   test("updates entry in non-LOINC ConceptMap", async () => {
-    await createConceptMapWithEntry("cm-address-update", "address-type", "APP|FAC", "H", "physical");
+    await createConceptMapWithEntry("cm-obr-update", "obr-status", "APP|FAC", "X", "final");
 
     const result = await updateConceptMapEntry(
-      "cm-address-update",
-      "H",
+      "cm-obr-update",
+      "X",
       "TEST-SYSTEM",
-      "postal",
-      "Postal",
+      "cancelled",
+      "Cancelled",
     );
 
     expect(result.success).toBe(true);
 
     // Verify the entry was updated
-    const mappings = await getMappingsFromConceptMap("cm-address-update", 1);
+    const mappings = await getMappingsFromConceptMap("cm-obr-update", 1);
     expect(mappings.entries.length).toBe(1);
-    expect(mappings.entries[0]!.targetCode).toBe("postal");
-    expect(mappings.entries[0]!.targetDisplay).toBe("Postal");
-  });
-
-  test("updates entry moving from address-type to address-use system", async () => {
-    // Create ConceptMap with an entry in address-type group (physical is an address-type value)
-    await createConceptMapWithEntry("cm-address-type-to-use", "address-type", "APP|FAC", "P", "physical");
-
-    // Update to "home" which is an address-use value (different target system)
-    const result = await updateConceptMapEntry(
-      "cm-address-type-to-use",
-      "P",
-      "TEST-SYSTEM",
-      "home",
-      "Home",
-    );
-
-    expect(result.success).toBe(true);
-
-    // Verify the entry was updated and moved to correct group
-    const mappings = await getMappingsFromConceptMap("cm-address-type-to-use", 1);
-    expect(mappings.entries.length).toBe(1);
-    expect(mappings.entries[0]!.targetCode).toBe("home");
-    expect(mappings.entries[0]!.targetDisplay).toBe("Home");
-    // The entry should now be in the address-use system group
-    expect(mappings.entries[0]!.targetSystem).toBe("http://hl7.org/fhir/address-use");
-  });
-
-  test("updates entry moving from address-use to address-type system", async () => {
-    // Create ConceptMap with an entry in address-use group (home is an address-use value)
-    const config = MAPPING_TYPES["address-type"];
-    const conceptMap: ConceptMap = {
-      resourceType: "ConceptMap",
-      id: "cm-address-use-to-type",
-      name: "HL7v2 APP|FAC to address-type",
-      status: "active",
-      title: "APP|FAC",
-      sourceUri: "http://example.org/fhir/CodeSystem/cm-address-use-to-type",
-      targetUri: config.targetSystem,
-      group: [
-        {
-          source: "TEST-SYSTEM",
-          target: "http://hl7.org/fhir/address-use", // Start with address-use group
-          element: [
-            {
-              code: "H",
-              display: "Home",
-              target: [{ code: "home", display: "Home", equivalence: "equivalent" }],
-            },
-          ],
-        },
-      ],
-    };
-    await testAidboxFetch<ConceptMap>("/fhir/ConceptMap/cm-address-use-to-type", {
-      method: "PUT",
-      body: JSON.stringify(conceptMap),
-    });
-
-    // Update to "postal" which is an address-type value (different target system)
-    const result = await updateConceptMapEntry(
-      "cm-address-use-to-type",
-      "H",
-      "TEST-SYSTEM",
-      "postal",
-      "Postal",
-    );
-
-    expect(result.success).toBe(true);
-
-    // Verify the entry was updated and moved to correct group
-    const mappings = await getMappingsFromConceptMap("cm-address-use-to-type", 1);
-    expect(mappings.entries.length).toBe(1);
-    expect(mappings.entries[0]!.targetCode).toBe("postal");
-    expect(mappings.entries[0]!.targetDisplay).toBe("Postal");
-    // The entry should now be in the address-type system group
-    expect(mappings.entries[0]!.targetSystem).toBe("http://hl7.org/fhir/address-type");
+    expect(mappings.entries[0]!.targetCode).toBe("cancelled");
+    expect(mappings.entries[0]!.targetDisplay).toBe("Cancelled");
   });
 
   test("deletes entry from non-LOINC ConceptMap", async () => {
     // Create ConceptMap with two entries so we can delete one and still have a valid ConceptMap
-    const config = MAPPING_TYPES["address-type"];
+    const config = MAPPING_TYPES["obr-status"];
     const conceptMap: ConceptMap = {
       resourceType: "ConceptMap",
-      id: "cm-address-delete",
-      name: "HL7v2 APP|FAC to address-type",
+      id: "cm-obr-delete",
+      name: "HL7v2 APP|FAC to obr-status",
       status: "active",
       title: "APP|FAC",
-      sourceUri: "http://example.org/fhir/CodeSystem/cm-address-delete",
+      sourceUri: "http://example.org/fhir/CodeSystem/cm-obr-delete",
       targetUri: config.targetSystem,
       group: [
         {
@@ -420,38 +334,38 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
           target: config.targetSystem,
           element: [
             {
-              code: "H",
-              display: "Home",
-              target: [{ code: "physical", display: "Physical", equivalence: "equivalent" }],
+              code: "X",
+              display: "Unknown",
+              target: [{ code: "final", display: "Final", equivalence: "equivalent" }],
             },
             {
-              code: "W",
-              display: "Work",
-              target: [{ code: "postal", display: "Postal", equivalence: "equivalent" }],
+              code: "Y",
+              display: "No result",
+              target: [{ code: "cancelled", display: "Cancelled", equivalence: "equivalent" }],
             },
           ],
         },
       ],
     };
-    await testAidboxFetch<ConceptMap>("/fhir/ConceptMap/cm-address-delete", {
+    await testAidboxFetch<ConceptMap>("/fhir/ConceptMap/cm-obr-delete", {
       method: "PUT",
       body: JSON.stringify(conceptMap),
     });
 
     // Verify entries exist
-    let mappings = await getMappingsFromConceptMap("cm-address-delete", 1);
+    let mappings = await getMappingsFromConceptMap("cm-obr-delete", 1);
     expect(mappings.entries.length).toBe(2);
 
     await deleteConceptMapEntry(
-      "cm-address-delete",
-      "H",
+      "cm-obr-delete",
+      "X",
       "TEST-SYSTEM",
     );
 
     // Verify the entry was deleted (one remains)
-    mappings = await getMappingsFromConceptMap("cm-address-delete", 1);
+    mappings = await getMappingsFromConceptMap("cm-obr-delete", 1);
     expect(mappings.entries.length).toBe(1);
-    expect(mappings.entries[0]!.localCode).toBe("W");
+    expect(mappings.entries[0]!.localCode).toBe("Y");
   });
 
   test("LOINC CRUD still works as before", async () => {

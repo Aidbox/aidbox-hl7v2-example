@@ -10,14 +10,14 @@ import { MAPPING_TYPES } from "../../../src/code-mapping/mapping-types";
 
 const sampleTask: Task = {
   resourceType: "Task",
-  id: "map-hl7v2-acme-lab-acme-hosp-to-loinc-acme-lab-codes-k-serum",
+  id: "map-hl7v2-acme-lab-acme-hosp-loinc-acme-lab-codes-k-serum",
   status: "requested",
   intent: "order",
   code: {
     coding: [
       {
-        system: "http://example.org/task-codes",
-        code: "local-to-loinc-mapping",
+        system: "urn:aidbox-hl7v2-converter:task-code",
+        code: "loinc-mapping",
         display: "Local code to LOINC mapping",
       },
     ],
@@ -54,7 +54,7 @@ const sampleMessage: IncomingHL7v2Message = {
       localSystem: "ACME-LAB-CODES",
       mappingTask: {
         reference:
-          "Task/map-hl7v2-acme-lab-acme-hosp-to-loinc-acme-lab-codes-k-serum",
+          "Task/map-hl7v2-acme-lab-acme-hosp-loinc-acme-lab-codes-k-serum",
       },
     },
   ],
@@ -67,10 +67,10 @@ describe("generateMappingTaskId", () => {
     const { generateConceptMapId } =
       await import("../../../src/code-mapping/concept-map");
 
-    const conceptMapId = generateConceptMapId({
-      sendingApplication: "ACME_LAB",
-      sendingFacility: "ACME_HOSP",
-    });
+    const conceptMapId = generateConceptMapId(
+      { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
+      "loinc",
+    );
 
     const id1 = generateMappingTaskId(
       conceptMapId,
@@ -92,10 +92,10 @@ describe("generateMappingTaskId", () => {
     const { generateConceptMapId } =
       await import("../../../src/code-mapping/concept-map");
 
-    const conceptMapId = generateConceptMapId({
-      sendingApplication: "ACME_LAB",
-      sendingFacility: "ACME_HOSP",
-    });
+    const conceptMapId = generateConceptMapId(
+      { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
+      "loinc",
+    );
 
     const id1 = generateMappingTaskId(
       conceptMapId,
@@ -117,14 +117,14 @@ describe("generateMappingTaskId", () => {
     const { generateConceptMapId } =
       await import("../../../src/code-mapping/concept-map");
 
-    const conceptMapId1 = generateConceptMapId({
-      sendingApplication: "ACME_LAB",
-      sendingFacility: "ACME_HOSP",
-    });
-    const conceptMapId2 = generateConceptMapId({
-      sendingApplication: "OTHER_LAB",
-      sendingFacility: "OTHER_HOSP",
-    });
+    const conceptMapId1 = generateConceptMapId(
+      { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
+      "loinc",
+    );
+    const conceptMapId2 = generateConceptMapId(
+      { sendingApplication: "OTHER_LAB", sendingFacility: "OTHER_HOSP" },
+      "loinc",
+    );
 
     const id1 = generateMappingTaskId(
       conceptMapId1,
@@ -146,10 +146,10 @@ describe("generateMappingTaskId", () => {
     const { generateConceptMapId } =
       await import("../../../src/code-mapping/concept-map");
 
-    const conceptMapId = generateConceptMapId({
-      sendingApplication: "ACME_LAB",
-      sendingFacility: "ACME_HOSP",
-    });
+    const conceptMapId = generateConceptMapId(
+      { sendingApplication: "ACME_LAB", sendingFacility: "ACME_HOSP" },
+      "loinc",
+    );
     const id = generateMappingTaskId(conceptMapId, "ACME-LAB-CODES", "K_SERUM");
 
     expect(id.startsWith("map-")).toBe(true);
@@ -216,7 +216,7 @@ describe("removeResolvedTaskFromMessage", () => {
 
     await removeResolvedTaskFromMessage(
       sampleMessage,
-      "map-hl7v2-acme-lab-acme-hosp-to-loinc-acme-lab-codes-k-serum",
+      "map-hl7v2-acme-lab-acme-hosp-loinc-acme-lab-codes-k-serum",
     );
 
     expect(mockAidbox.updateResourceWithETag).toHaveBeenCalledWith(
@@ -239,7 +239,7 @@ describe("removeResolvedTaskFromMessage", () => {
           localSystem: "ACME-LAB-CODES",
           mappingTask: {
             reference:
-              "Task/map-hl7v2-acme-lab-acme-hosp-to-loinc-acme-lab-codes-k-serum",
+              "Task/map-hl7v2-acme-lab-acme-hosp-loinc-acme-lab-codes-k-serum",
           },
         },
         {
@@ -247,7 +247,7 @@ describe("removeResolvedTaskFromMessage", () => {
           localSystem: "ACME-LAB-CODES",
           mappingTask: {
             reference:
-              "Task/map-hl7v2-acme-lab-acme-hosp-to-loinc-acme-lab-codes-na-serum",
+              "Task/map-hl7v2-acme-lab-acme-hosp-loinc-acme-lab-codes-na-serum",
           },
         },
       ],
@@ -275,7 +275,7 @@ describe("removeResolvedTaskFromMessage", () => {
 
     await removeResolvedTaskFromMessage(
       messageWithMultipleUnmapped,
-      "map-hl7v2-acme-lab-acme-hosp-to-loinc-acme-lab-codes-k-serum",
+      "map-hl7v2-acme-lab-acme-hosp-loinc-acme-lab-codes-k-serum",
     );
 
     expect(updatedMessage!.unmappedCodes).toHaveLength(1);
@@ -300,7 +300,7 @@ describe("removeResolvedTaskFromMessage", () => {
 
     await removeResolvedTaskFromMessage(
       sampleMessage,
-      "map-hl7v2-acme-lab-acme-hosp-to-loinc-acme-lab-codes-k-serum",
+      "map-hl7v2-acme-lab-acme-hosp-loinc-acme-lab-codes-k-serum",
     );
 
     expect(mockAidbox.updateResourceWithETag).toHaveBeenCalledWith(
@@ -336,7 +336,7 @@ describe("createMappingTask", () => {
     // Check task code matches registry
     expect(task.code?.coding?.[0]?.code).toBe("loinc-mapping");
     expect(task.code?.coding?.[0]?.display).toBe("Local code to LOINC mapping");
-    expect(task.code?.coding?.[0]?.system).toBe("http://example.org/task-codes");
+    expect(task.code?.coding?.[0]?.system).toBe("urn:aidbox-hl7v2-converter:task-code");
 
     // Check inputs
     const inputs = task.input || [];
@@ -349,27 +349,6 @@ describe("createMappingTask", () => {
     expect(inputMap.get("Local system")).toBe("ACME-LAB-CODES");
     expect(inputMap.get("Source field")).toBe("OBX-3");
     expect(inputMap.get("Target field")).toBe("Observation.code");
-  });
-
-  test("creates address-type mapping task with correct code and fields", () => {
-    const task = createMappingTask(
-      sender,
-      {
-        localCode: "P",
-        localDisplay: "Permanent",
-        localSystem: "http://terminology.hl7.org/CodeSystem/v2-0190",
-      },
-      "address-type",
-    );
-
-    expect(task.code?.coding?.[0]?.code).toBe("address-type-mapping");
-    expect(task.code?.coding?.[0]?.display).toBe("Address type mapping");
-
-    const inputs = task.input || [];
-    const inputMap = new Map(inputs.map((i) => [i.type?.text, i.valueString]));
-
-    expect(inputMap.get("Source field")).toBe("PID.11 (XAD.7)");
-    expect(inputMap.get("Target field")).toBe("Address.type/use");
   });
 
   test("creates obr-status mapping task with correct code and fields", () => {
@@ -435,15 +414,6 @@ describe("createMappingTask", () => {
     expect(inputMap.get("Target field")).toBe("Encounter.class");
   });
 
-  test("defaults to loinc mapping type when not specified", () => {
-    const task = createMappingTask(sender, {
-      localCode: "K_SERUM",
-      localDisplay: "Potassium",
-    });
-
-    expect(task.code?.coding?.[0]?.code).toBe("loinc-mapping");
-  });
-
   test("generates deterministic task ID including mapping type", () => {
     const task1 = createMappingTask(
       sender,
@@ -458,7 +428,7 @@ describe("createMappingTask", () => {
     const task3 = createMappingTask(
       sender,
       { localCode: "TEST", localSystem: "LOCAL" },
-      "address-type",
+      "obr-status",
     );
 
     // Same inputs, same mapping type -> same ID
@@ -471,7 +441,7 @@ describe("createMappingTask", () => {
   test("omits optional fields when not provided", () => {
     const task = createMappingTask(
       sender,
-      { localCode: "TEST" }, // No localDisplay or localSystem
+      { localCode: "TEST", localSystem: "LOCAL" }, // No localDisplay
       "loinc",
     );
 
@@ -479,12 +449,16 @@ describe("createMappingTask", () => {
     const inputMap = new Map(inputs.map((i) => [i.type?.text, i.valueString]));
 
     expect(inputMap.has("Local display")).toBe(false);
-    expect(inputMap.has("Local system")).toBe(false);
     expect(inputMap.get("Local code")).toBe("TEST");
+    expect(inputMap.get("Local system")).toBe("LOCAL");
   });
 
   test("includes authoredOn and lastModified timestamps", () => {
-    const task = createMappingTask(sender, { localCode: "TEST" }, "loinc");
+    const task = createMappingTask(
+      sender,
+      { localCode: "TEST", localSystem: "LOCAL" },
+      "loinc",
+    );
 
     expect(task.authoredOn).toBeDefined();
     expect(task.lastModified).toBeDefined();
@@ -492,7 +466,11 @@ describe("createMappingTask", () => {
   });
 
   test("sets requester and owner", () => {
-    const task = createMappingTask(sender, { localCode: "TEST" }, "loinc");
+    const task = createMappingTask(
+      sender,
+      { localCode: "TEST", localSystem: "LOCAL" },
+      "loinc",
+    );
 
     expect(task.requester?.display).toBe("ORU Processor");
     expect(task.owner?.display).toBe("Mapping Team");

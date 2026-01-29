@@ -43,7 +43,7 @@ import type {
   Meta,
   Resource,
 } from "../../fhir/hl7-fhir-r4-core";
-import { convertPIDWithMappingSupportAsync } from "../segments/pid-patient";
+import { convertPIDToPatient } from "../segments/pid-patient";
 import { convertPV1WithMappingSupportAsync } from "../segments/pv1-encounter";
 import { convertNK1ToRelatedPerson } from "../segments/nk1-relatedperson";
 import { convertDG1ToCondition } from "../segments/dg1-condition";
@@ -333,11 +333,10 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
     throw new Error("PID segment not found in ADT_A01 message");
   }
   const pid = fromPID(pidSegment);
-  const pidResult = await convertPIDWithMappingSupportAsync(pid, senderContext);
-  const patient = pidResult.patient;
+  const patient = convertPIDToPatient(pid);
 
-  // Collect any address type mapping errors from PID conversion
-  const mappingErrors: MappingError[] = [...pidResult.errors];
+  // Collect mapping errors (e.g., from PV1 patient class mapping)
+  const mappingErrors: MappingError[] = [];
 
   // Set patient ID from PID-2 or generate one
   if (pid.$2_patientId?.$1_value) {
@@ -393,16 +392,11 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
     }
   }
 
-  // If there are mapping errors, return early with Tasks
   if (mappingErrors.length > 0) {
-    // Create patient entry for the error result
-    const patientEntry: BundleEntry = createBundleEntry(patient);
     return buildMappingErrorResult(
       senderContext,
       mappingErrors,
       { reference: patientRef } as import("../../fhir/hl7-fhir-r4-core").Reference<"Patient">,
-      patientEntry,
-      null, // No encounter entry when PV1 has mapping error
     );
   }
 
