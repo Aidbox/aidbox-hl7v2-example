@@ -3,7 +3,7 @@ import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 
 const sampleConceptMap: ConceptMap = {
   resourceType: "ConceptMap",
-  id: "hl7v2-acme-lab-acme-hosp-to-loinc",
+  id: "hl7v2-acme-lab-acme-hosp-loinc",
   name: "HL7v2 ACME_LAB/ACME_HOSP to LOINC",
   status: "active",
   sourceUri: "http://example.org/fhir/CodeSystem/hl7v2-acme-lab-acme-hosp",
@@ -45,9 +45,9 @@ describe("getOrCreateConceptMap", () => {
       sendingFacility: "ACME_HOSP",
     });
 
-    expect(result.id).toBe("hl7v2-acme-lab-acme-hosp-to-loinc");
+    expect(result.id).toBe("hl7v2-acme-lab-acme-hosp-loinc");
     expect(mockAidbox.aidboxFetch).toHaveBeenCalledWith(
-      "/fhir/ConceptMap/hl7v2-acme-lab-acme-hosp-to-loinc",
+      "/fhir/ConceptMap/hl7v2-acme-lab-acme-hosp-loinc",
     );
     expect(mockAidbox.putResource).not.toHaveBeenCalled();
   });
@@ -71,12 +71,12 @@ describe("getOrCreateConceptMap", () => {
     });
 
     expect(result.resourceType).toBe("ConceptMap");
-    expect(result.id).toBe("hl7v2-new-lab-new-hosp-to-loinc");
+    expect(result.id).toBe("hl7v2-new-lab-new-hosp-loinc");
     expect(result.status).toBe("active");
     expect(result.targetUri).toBe("http://loinc.org");
     expect(mockAidbox.putResource).toHaveBeenCalledWith(
       "ConceptMap",
-      "hl7v2-new-lab-new-hosp-to-loinc",
+      "hl7v2-new-lab-new-hosp-loinc",
       expect.objectContaining({
         resourceType: "ConceptMap",
         status: "active",
@@ -457,34 +457,19 @@ describe("searchMappings", () => {
 });
 
 describe("createEmptyConceptMap with different mapping types", () => {
-  test("creates LOINC ConceptMap by default", async () => {
-    const { createEmptyConceptMap } = await import(
-      "../../../src/code-mapping/concept-map"
-    );
-
-    const result = createEmptyConceptMap({
-      sendingApplication: "LAB",
-      sendingFacility: "HOSP",
-    });
-
-    expect(result.id).toBe("hl7v2-lab-hosp-to-loinc");
-    expect(result.targetUri).toBe("http://loinc.org");
-    expect(result.name).toContain("Observation.code");
-  });
-
-  test("creates address-type ConceptMap when specified", async () => {
+  test("creates LOINC ConceptMap", async () => {
     const { createEmptyConceptMap } = await import(
       "../../../src/code-mapping/concept-map"
     );
 
     const result = createEmptyConceptMap(
-      { sendingApplication: "ADT", sendingFacility: "MAIN" },
-      "address-type",
+      { sendingApplication: "LAB", sendingFacility: "HOSP" },
+      "loinc",
     );
 
-    expect(result.id).toBe("hl7v2-adt-main-to-address-type");
-    expect(result.targetUri).toBe("http://hl7.org/fhir/address-type");
-    expect(result.name).toContain("Address.type");
+    expect(result.id).toBe("hl7v2-lab-hosp-loinc");
+    expect(result.targetUri).toBe("http://loinc.org");
+    expect(result.name).toContain("Observation.code");
   });
 
   test("creates obr-status ConceptMap when specified", async () => {
@@ -497,7 +482,7 @@ describe("createEmptyConceptMap with different mapping types", () => {
       "obr-status",
     );
 
-    expect(result.id).toBe("hl7v2-lab-hosp-to-diagnostic-report-status");
+    expect(result.id).toBe("hl7v2-lab-hosp-obr-status");
     expect(result.targetUri).toBe("http://hl7.org/fhir/diagnostic-report-status");
     expect(result.name).toContain("DiagnosticReport.status");
   });
@@ -512,7 +497,7 @@ describe("createEmptyConceptMap with different mapping types", () => {
       "patient-class",
     );
 
-    expect(result.id).toBe("hl7v2-adt-main-to-encounter-class");
+    expect(result.id).toBe("hl7v2-adt-main-patient-class");
     expect(result.targetUri).toBe(
       "http://terminology.hl7.org/CodeSystem/v3-ActCode",
     );
@@ -546,34 +531,6 @@ describe("addMappingToConceptMap with different target systems", () => {
     expect(result.group![0]!.target).toBe("http://loinc.org");
   });
 
-  test("uses address-type target system when specified", async () => {
-    const { addMappingToConceptMap } = await import(
-      "../../../src/code-mapping/concept-map"
-    );
-
-    const conceptMap: ConceptMap = {
-      resourceType: "ConceptMap",
-      id: "test-address-type",
-      status: "active",
-      targetUri: "http://hl7.org/fhir/address-type",
-      group: [],
-    };
-
-    const result = addMappingToConceptMap(
-      conceptMap,
-      "http://terminology.hl7.org/CodeSystem/v2-0190",
-      "P",
-      "Permanent",
-      "physical",
-      "Physical",
-      "http://hl7.org/fhir/address-type",
-    );
-
-    expect(result.group![0]!.target).toBe("http://hl7.org/fhir/address-type");
-    expect(result.group![0]!.element![0]!.code).toBe("P");
-    expect(result.group![0]!.element![0]!.target![0]!.code).toBe("physical");
-  });
-
   test("uses diagnostic-report-status target system when specified", async () => {
     const { addMappingToConceptMap } = await import(
       "../../../src/code-mapping/concept-map"
@@ -604,69 +561,63 @@ describe("addMappingToConceptMap with different target systems", () => {
     expect(result.group![0]!.element![0]!.target![0]!.code).toBe("cancelled");
   });
 
-  test("creates separate groups for same source with different target systems (address-type vs address-use)", async () => {
+  test("creates separate groups for same source with different target systems", async () => {
     const { addMappingToConceptMap } = await import(
       "../../../src/code-mapping/concept-map"
     );
 
     const conceptMap: ConceptMap = {
       resourceType: "ConceptMap",
-      id: "test-address-mixed",
+      id: "test-mixed-targets",
       status: "active",
-      targetUri: "http://hl7.org/fhir/address-type",
+      targetUri: "http://loinc.org",
       group: [],
     };
 
-    // First, add an address-type mapping (physical)
+    // First, add a LOINC mapping
     const afterFirstMapping = addMappingToConceptMap(
       conceptMap,
-      "http://terminology.hl7.org/CodeSystem/v2-0190",
-      "L",
-      "Legal Address",
-      "physical",
-      "Physical",
-      "http://hl7.org/fhir/address-type",
+      "LOCAL-SYSTEM",
+      "CODE1",
+      "Code 1",
+      "2823-3",
+      "Potassium",
+      "http://loinc.org",
     );
 
     expect(afterFirstMapping.group).toHaveLength(1);
-    expect(afterFirstMapping.group![0]!.target).toBe(
-      "http://hl7.org/fhir/address-type",
-    );
+    expect(afterFirstMapping.group![0]!.target).toBe("http://loinc.org");
 
-    // Now add an address-use mapping (home) from the SAME source system but DIFFERENT target system
+    // Now add a mapping with different target system
     const afterSecondMapping = addMappingToConceptMap(
       afterFirstMapping,
-      "http://terminology.hl7.org/CodeSystem/v2-0190",
-      "H",
-      "Home Address",
-      "home",
-      "Home",
-      "http://hl7.org/fhir/address-use",
+      "LOCAL-SYSTEM",
+      "CODE2",
+      "Code 2",
+      "final",
+      "Final",
+      "http://hl7.org/fhir/diagnostic-report-status",
     );
 
     // Should create a SEPARATE group for the different target system
     expect(afterSecondMapping.group).toHaveLength(2);
 
-    // First group should have address-type target
-    const typeGroup = afterSecondMapping.group!.find(
-      (g) => g.target === "http://hl7.org/fhir/address-type",
+    // First group should have LOINC target
+    const loincGroup = afterSecondMapping.group!.find(
+      (g) => g.target === "http://loinc.org",
     );
-    expect(typeGroup).toBeDefined();
-    expect(typeGroup!.source).toBe(
-      "http://terminology.hl7.org/CodeSystem/v2-0190",
-    );
-    expect(typeGroup!.element).toHaveLength(1);
-    expect(typeGroup!.element![0]!.code).toBe("L");
+    expect(loincGroup).toBeDefined();
+    expect(loincGroup!.source).toBe("LOCAL-SYSTEM");
+    expect(loincGroup!.element).toHaveLength(1);
+    expect(loincGroup!.element![0]!.code).toBe("CODE1");
 
-    // Second group should have address-use target
-    const useGroup = afterSecondMapping.group!.find(
-      (g) => g.target === "http://hl7.org/fhir/address-use",
+    // Second group should have diagnostic-report-status target
+    const statusGroup = afterSecondMapping.group!.find(
+      (g) => g.target === "http://hl7.org/fhir/diagnostic-report-status",
     );
-    expect(useGroup).toBeDefined();
-    expect(useGroup!.source).toBe(
-      "http://terminology.hl7.org/CodeSystem/v2-0190",
-    );
-    expect(useGroup!.element).toHaveLength(1);
-    expect(useGroup!.element![0]!.code).toBe("H");
+    expect(statusGroup).toBeDefined();
+    expect(statusGroup!.source).toBe("LOCAL-SYSTEM");
+    expect(statusGroup!.element).toHaveLength(1);
+    expect(statusGroup!.element![0]!.code).toBe("CODE2");
   });
 });

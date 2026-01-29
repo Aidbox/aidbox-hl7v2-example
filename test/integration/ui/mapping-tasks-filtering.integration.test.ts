@@ -29,7 +29,7 @@ async function createTask(
     intent: "order",
     code: {
       coding: [{
-        system: "http://example.org/task-codes",
+        system: "urn:aidbox-hl7v2-converter:task-code",
         code: taskCode,
         display: taskDisplay,
       }],
@@ -58,13 +58,6 @@ async function createTypedTask(
   return createTask(id, config.taskCode, config.taskDisplay, status);
 }
 
-async function createLegacyLoincTask(
-  id: string,
-  status: "requested" | "completed" = "requested",
-): Promise<Task> {
-  return createTask(id, "local-to-loinc-mapping", "Local code to LOINC mapping", status);
-}
-
 // ============================================================================
 // Tests
 // ============================================================================
@@ -77,50 +70,32 @@ describe("getMappingTasks with type filtering", () => {
   test("returns all tasks when filter is 'all'", async () => {
     // Create one task of each type
     await createTypedTask("task-loinc", "loinc");
-    await createTypedTask("task-address", "address-type");
     await createTypedTask("task-patient-class", "patient-class");
     await createTypedTask("task-obr", "obr-status");
     await createTypedTask("task-obx", "obx-status");
-    await createLegacyLoincTask("task-legacy-loinc");
 
     const result = await getMappingTasks("requested", 1, "all");
 
-    expect(result.tasks.length).toBe(6);
-    expect(result.total).toBe(6);
+    expect(result.tasks.length).toBe(4);
+    expect(result.total).toBe(4);
     expect(result.tasks.some(t => t.id === "task-loinc")).toBe(true);
-    expect(result.tasks.some(t => t.id === "task-address")).toBe(true);
     expect(result.tasks.some(t => t.id === "task-patient-class")).toBe(true);
     expect(result.tasks.some(t => t.id === "task-obr")).toBe(true);
     expect(result.tasks.some(t => t.id === "task-obx")).toBe(true);
-    expect(result.tasks.some(t => t.id === "task-legacy-loinc")).toBe(true);
   });
 
-  test("filters by loinc type including legacy tasks", async () => {
+  test("filters by loinc type", async () => {
     await createTypedTask("task-loinc-1", "loinc");
     await createTypedTask("task-loinc-2", "loinc");
-    await createLegacyLoincTask("task-legacy-1");
     await createTypedTask("task-obr-1", "obr-status");
 
     const result = await getMappingTasks("requested", 1, "loinc");
 
-    expect(result.tasks.length).toBe(3);
-    expect(result.total).toBe(3);
-    expect(result.tasks.some(t => t.id === "task-loinc-1")).toBe(true);
-    expect(result.tasks.some(t => t.id === "task-loinc-2")).toBe(true);
-    expect(result.tasks.some(t => t.id === "task-legacy-1")).toBe(true);
-    expect(result.tasks.some(t => t.id === "task-obr-1")).toBe(false);
-  });
-
-  test("filters by address-type", async () => {
-    await createTypedTask("task-address-1", "address-type");
-    await createTypedTask("task-address-2", "address-type");
-    await createTypedTask("task-loinc-1", "loinc");
-
-    const result = await getMappingTasks("requested", 1, "address-type");
-
     expect(result.tasks.length).toBe(2);
     expect(result.total).toBe(2);
-    expect(result.tasks.every(t => t.id?.startsWith("task-address"))).toBe(true);
+    expect(result.tasks.some(t => t.id === "task-loinc-1")).toBe(true);
+    expect(result.tasks.some(t => t.id === "task-loinc-2")).toBe(true);
+    expect(result.tasks.some(t => t.id === "task-obr-1")).toBe(false);
   });
 
   test("filters by patient-class", async () => {
@@ -189,7 +164,7 @@ describe("getMappingTasks with type filtering", () => {
   test("returns empty result when no tasks match filter", async () => {
     await createTypedTask("task-loinc-1", "loinc");
 
-    const result = await getMappingTasks("requested", 1, "address-type");
+    const result = await getMappingTasks("requested", 1, "patient-class");
 
     expect(result.tasks.length).toBe(0);
     expect(result.total).toBe(0);

@@ -13,6 +13,7 @@ import type {
 import { aidboxFetch, putResource } from "../../aidbox";
 import {
   generateConceptMapId,
+  generateBaseConceptMapId,
   formatSenderAsTitle,
   type SenderContext,
 } from "./lookup";
@@ -33,15 +34,15 @@ export async function fetchConceptMap(
 
 export function createEmptyConceptMap(
   sender: SenderContext,
-  mappingType: MappingTypeName = "loinc",
+  mappingType: MappingTypeName,
 ): ConceptMap {
   const type = MAPPING_TYPES[mappingType];
   const id = generateConceptMapId(sender, mappingType);
-  const baseId = id.replace(type.conceptMapSuffix, "");
+  const baseId = generateBaseConceptMapId(sender);
   return {
     resourceType: "ConceptMap",
     id,
-    name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to ${type.targetField}`,
+    name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to ${type.targetFieldLabel}`,
     status: "active",
     title: formatSenderAsTitle(sender),
     sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${baseId}`,
@@ -114,14 +115,14 @@ export function addMappingToConceptMap(
 export async function getOrCreateConceptMap(
   sender: SenderContext,
 ): Promise<ConceptMap> {
-  const conceptMapId = generateConceptMapId(sender);
+  const conceptMapId = generateConceptMapId(sender, "loinc");
   const existing = await fetchConceptMap(conceptMapId);
 
   if (existing) {
     return existing;
   }
 
-  const newConceptMap = createEmptyConceptMap(sender);
+  const newConceptMap = createEmptyConceptMap(sender, "loinc");
   return putResource("ConceptMap", conceptMapId, newConceptMap);
 }
 
@@ -152,7 +153,7 @@ export async function deleteMapping(
   localCode: string,
   localSystem: string,
 ): Promise<void> {
-  const conceptMapId = generateConceptMapId(sender);
+  const conceptMapId = generateConceptMapId(sender, "loinc");
   const conceptMap = await fetchConceptMap(conceptMapId);
 
   if (!conceptMap) {
@@ -175,7 +176,7 @@ export async function searchMappings(
   sender: SenderContext,
   query?: { localCode?: string; loincCode?: string },
 ): Promise<ConceptMapGroupElement[]> {
-  const conceptMapId = generateConceptMapId(sender);
+  const conceptMapId = generateConceptMapId(sender, "loinc");
   const conceptMap = await fetchConceptMap(conceptMapId);
 
   if (!conceptMap?.group) {

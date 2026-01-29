@@ -22,8 +22,8 @@ import {
   type MappingTypeName,
   isMappingTypeName,
 } from "../../code-mapping/mapping-types";
-import { getValidValuesWithDisplay, getTargetSystemForCode } from "../../code-mapping/validation";
-import { getMappingTypeShortLabel, getMappingTypeBadgeClasses } from "../mapping-type-ui";
+import { getValidValuesWithDisplay } from "../../code-mapping/validation";
+import { getMappingTypeShortLabel } from "../mapping-type-ui";
 import {
   parsePageParam,
   createPagination,
@@ -307,13 +307,9 @@ export async function addConceptMapEntry(
   const { resource: conceptMap, etag: conceptMapEtag } =
     await getResourceWithETag<ConceptMap>("ConceptMap", conceptMapId);
 
-  // Detect mapping type and get the correct target system for this resolved code
-  // (for address-type, this depends on whether it's a type or use value)
+  // Target system comes from the ConceptMap's targetUri
   const mappingType = detectMappingTypeFromConceptMap(conceptMap);
-  const defaultTargetSystem = conceptMap.targetUri || "http://loinc.org";
-  const targetSystem = mappingType
-    ? getTargetSystemForCode(mappingType, targetCode, defaultTargetSystem)
-    : defaultTargetSystem;
+  const targetSystem = conceptMap.targetUri || "http://loinc.org";
 
   // Check for duplicate
   if (checkDuplicateEntry(conceptMap, localSystem, localCode)) {
@@ -423,13 +419,9 @@ export async function updateConceptMapEntry(
     conceptMapId,
   );
 
-  // Detect mapping type and calculate the correct target system for the new code
-  // (for address-type, this depends on whether it's a type or use value)
+  // Target system comes from the ConceptMap's targetUri
   const mappingType = detectMappingTypeFromConceptMap(conceptMap);
-  const defaultTargetSystem = conceptMap.targetUri || "http://loinc.org";
-  const newTargetSystem = mappingType
-    ? getTargetSystemForCode(mappingType, newTargetCode, defaultTargetSystem)
-    : defaultTargetSystem;
+  const newTargetSystem = conceptMap.targetUri || "http://loinc.org";
 
   // Find the element and its current group
   let foundGroup: ConceptMapGroup | null = null;
@@ -455,8 +447,8 @@ export async function updateConceptMapEntry(
     };
   }
 
-  // Check if the target system changed (e.g., address-type -> address-use)
-  const currentTargetSystem = foundGroup.target || defaultTargetSystem;
+  // Check if the target system changed
+  const currentTargetSystem = foundGroup.target || conceptMap.targetUri;
   const targetSystemChanged = currentTargetSystem !== newTargetSystem;
 
   if (targetSystemChanged) {
@@ -556,7 +548,7 @@ export async function deleteConceptMapEntry(
 /**
  * Available type filter options for the UI
  */
-const TYPE_FILTER_OPTIONS: MappingTypeFilter[] = ["all", "loinc", "address-type", "patient-class", "obr-status", "obx-status"];
+const TYPE_FILTER_OPTIONS: MappingTypeFilter[] = ["all", "loinc", "patient-class", "obr-status", "obx-status"];
 
 /**
  * Build URL for a filter combination
@@ -745,18 +737,9 @@ function renderTargetCodeInput(
   `;
 }
 
-/**
- * Get the label for the target code field based on mapping type.
- */
-function getTargetFieldLabel(mappingType: MappingTypeName): string {
-  const config = MAPPING_TYPES[mappingType];
-  const fieldName = config.targetField.split(".").pop() || "code";
-  return `Map to ${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`;
-}
-
 function renderAddMappingForm(conceptMapId: string, mappingType: MappingTypeName, typeFilter: MappingTypeFilter): string {
   const cancelUrl = buildFilterUrl(typeFilter, conceptMapId);
-  const targetLabel = getTargetFieldLabel(mappingType);
+  const targetLabel = `Map to ${MAPPING_TYPES[mappingType].targetFieldLabel}`;
 
   return `
     <div class="bg-white rounded-lg shadow p-6 mb-6">
@@ -807,8 +790,8 @@ export function renderMappingEntryPanel(
   typeFilter: MappingTypeFilter,
 ): string {
   const encodedLocalCode = encodeURIComponent(entry.localCode);
-  const targetLabel = mappingType ? getTargetFieldLabel(mappingType) : "Map to Target Code";
-  const updateLabel = `Update ${mappingType ? MAPPING_TYPES[mappingType].targetField.split(".").pop() : "target"}`;
+  const targetLabel = mappingType ? `Map to ${MAPPING_TYPES[mappingType].targetFieldLabel}` : "Map to Target Code";
+  const updateLabel = mappingType ? `Update ${MAPPING_TYPES[mappingType].targetFieldLabel}` : "Update target";
 
   return `
     <li class="bg-white rounded-lg shadow">

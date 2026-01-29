@@ -22,7 +22,6 @@ import {
   type MappingTypeName,
 } from "./mapping-types";
 import { generateConceptMapId, type SenderContext } from "./concept-map/lookup";
-import { getTargetSystemForCode } from "./validation";
 
 /**
  * Input for creating a mapping task.
@@ -41,12 +40,26 @@ export interface MappingTaskInput {
  *
  * Format: map-{conceptMapId}-{systemHash}-{codeHash}
  * The conceptMapId already includes the mapping type suffix (e.g., "-to-loinc", "-to-address-type")
+ *
+ * @throws Error if localSystem or localCode is empty (fail-fast for data quality issues)
  */
 export function generateMappingTaskId(
   conceptMapId: string,
   localSystem: string,
   localCode: string,
 ): string {
+  if (!localSystem) {
+    throw new Error(
+      `Cannot generate mapping task ID: localSystem is required. ` +
+        `ConceptMap: ${conceptMapId}, localCode: ${localCode}`,
+    );
+  }
+  if (!localCode) {
+    throw new Error(
+      `Cannot generate mapping task ID: localCode is required. ` +
+        `ConceptMap: ${conceptMapId}`,
+    );
+  }
   const systemHash = simpleHash(localSystem);
   const codeHash = simpleHash(localCode);
   return `map-${conceptMapId}-${systemHash}-${codeHash}`;
@@ -61,18 +74,24 @@ export function generateMappingTaskId(
  *
  * @param sender - The sender context (sendingApplication, sendingFacility)
  * @param input - The local code information that needs to be mapped
- * @param mappingType - The type of mapping (defaults to "loinc" for backward compatibility)
+ * @param mappingType - The type of mapping (e.g., "loinc", "obr-status")
  */
 export function createMappingTask(
   sender: SenderContext,
   input: MappingTaskInput,
-  mappingType: MappingTypeName = "loinc",
+  mappingType: MappingTypeName,
 ): Task {
+  if (!input.localSystem) {
+    throw new Error(
+      `Cannot create mapping task: localSystem is required. ` +
+        `localCode: ${input.localCode}, mappingType: ${mappingType}`,
+    );
+  }
   const typeConfig = MAPPING_TYPES[mappingType];
   const conceptMapId = generateConceptMapId(sender, mappingType);
   const taskId = generateMappingTaskId(
     conceptMapId,
-    input.localSystem || "",
+    input.localSystem,
     input.localCode,
   );
 
@@ -91,8 +110,8 @@ export function createMappingTask(
   }
 
   // Add source and target field info from mapping type registry
-  inputs.push({ type: { text: "Source field" }, valueString: typeConfig.sourceField });
-  inputs.push({ type: { text: "Target field" }, valueString: typeConfig.targetField });
+  inputs.push({ type: { text: "Source field" }, valueString: typeConfig.sourceFieldLabel });
+  inputs.push({ type: { text: "Target field" }, valueString: typeConfig.targetFieldLabel });
 
   const now = new Date().toISOString();
 
@@ -104,12 +123,12 @@ export function createMappingTask(
     code: {
       coding: [
         {
-          system: "http://example.org/task-codes",
+          system: "urn:aidbox-hl7v2-converter:task-code",
           code: typeConfig.taskCode,
           display: typeConfig.taskDisplay,
         },
       ],
-      text: `Map ${typeConfig.sourceField} to ${typeConfig.targetField}`,
+      text: `Map ${typeConfig.sourceFieldLabel} to ${typeConfig.targetFieldLabel}`,
     },
     authoredOn: now,
     lastModified: now,
@@ -155,13 +174,7 @@ export async function resolveMappingTask(
   const mappingType = extractMappingTypeFromTask(task);
   const typeConfig = MAPPING_TYPES[mappingType];
 
-  // Get the correct target system for this resolved code
-  // (for address-type, this depends on whether it's a type or use value)
-  const targetSystem = getTargetSystemForCode(
-    mappingType,
-    resolvedCode,
-    typeConfig.targetSystem,
-  );
+  const targetSystem = typeConfig.targetSystem;
 
   const output: TaskOutput = {
     type: { text: "Resolved mapping" },
@@ -187,14 +200,21 @@ export async function resolveMappingTask(
   await putResource("Task", taskId, updatedTask);
 }
 
-export async function removeResolvedTaskFromMessage(
-  message: IncomingHL7v2Message,
+/**
+ * Remove a resolved task reference from a message and update its status.
+ * If no unmapped codes remain, status changes to "received" for reprocessing.
+ *
+ * @param messageId - The ID of the IncomingHL7v2Message
+ * @param taskId - The Task ID to remove from unmappedCodes
+ */
+export async function removeTaskFromMessage(
+  messageId: string,
   taskId: string,
 ): Promise<void> {
   const { resource: currentMessage, etag } =
     await getResourceWithETag<IncomingHL7v2Message>(
       "IncomingHL7v2Message",
-      message.id!,
+      messageId,
     );
 
   const taskReference = `Task/${taskId}`;
@@ -211,8 +231,18 @@ export async function removeResolvedTaskFromMessage(
 
   await updateResourceWithETag(
     "IncomingHL7v2Message",
-    message.id!,
+    messageId,
     updatedMessage,
     etag,
   );
+}
+
+/**
+ * @deprecated Use removeTaskFromMessage(messageId, taskId) instead
+ */
+export async function removeResolvedTaskFromMessage(
+  message: IncomingHL7v2Message,
+  taskId: string,
+): Promise<void> {
+  await removeTaskFromMessage(message.id!, taskId);
 }

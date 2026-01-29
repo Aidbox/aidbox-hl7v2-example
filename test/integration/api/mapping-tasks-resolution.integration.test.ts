@@ -44,12 +44,12 @@ async function createTaskForType(
     code: {
       coding: [
         {
-          system: "http://example.org/task-codes",
+          system: "urn:aidbox-hl7v2-converter:task-code",
           code: typeConfig.taskCode,
           display: typeConfig.taskDisplay,
         },
       ],
-      text: `Map ${typeConfig.sourceField} to ${typeConfig.targetField}`,
+      text: `Map ${typeConfig.sourceFieldLabel} to ${typeConfig.targetFieldLabel}`,
     },
     authoredOn: new Date().toISOString(),
     input: [
@@ -58,8 +58,8 @@ async function createTaskForType(
       { type: { text: "Local code" }, valueString: localCode },
       { type: { text: "Local display" }, valueString: localDisplay },
       { type: { text: "Local system" }, valueString: localSystem },
-      { type: { text: "Source field" }, valueString: typeConfig.sourceField },
-      { type: { text: "Target field" }, valueString: typeConfig.targetField },
+      { type: { text: "Source field" }, valueString: typeConfig.sourceFieldLabel },
+      { type: { text: "Target field" }, valueString: typeConfig.targetFieldLabel },
     ],
   };
 
@@ -78,7 +78,7 @@ async function createLegacyLoincTask(id: string): Promise<Task> {
     code: {
       coding: [
         {
-          system: "http://example.org/task-codes",
+          system: "urn:aidbox-hl7v2-converter:task-code",
           code: "local-to-loinc-mapping",
           display: "Local code to LOINC mapping",
         },
@@ -303,49 +303,6 @@ describe("Task resolution with type detection and validation", () => {
     });
   });
 
-  describe("Address type task resolution", () => {
-    test("resolves address-type task with valid type code", async () => {
-      await createTaskForType("task-addr-valid", "address-type", {
-        localCode: "P",
-        localSystem: "http://terminology.hl7.org/CodeSystem/v2-0190",
-      });
-
-      const result = await resolveTaskWithValidation("task-addr-valid", "physical", "Physical");
-
-      expect(result.success).toBe(true);
-
-      const task = await fetchTask("task-addr-valid");
-      expect(task.status).toBe("completed");
-      expect(task.output?.[0]?.valueCodeableConcept?.coding?.[0]?.code).toBe("physical");
-      expect(task.output?.[0]?.valueCodeableConcept?.coding?.[0]?.system).toBe(
-        "http://hl7.org/fhir/address-type",
-      );
-    });
-
-    test("accepts all valid Address type values", async () => {
-      const validTypes: Array<[string, string]> = [
-        ["postal", "Postal"],
-        ["physical", "Physical"],
-        ["both", "Both"],
-      ];
-
-      for (const [type, display] of validTypes) {
-        await createTaskForType(`task-addr-${type}`, "address-type");
-        const result = await resolveTaskWithValidation(`task-addr-${type}`, type, display);
-        expect(result.success).toBe(true);
-      }
-    });
-
-    test("rejects invalid address type code", async () => {
-      await createTaskForType("task-addr-invalid", "address-type");
-
-      const result = await resolveTaskWithValidation("task-addr-invalid", "invalid-type");
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Invalid Address type");
-    });
-  });
-
   describe("Patient class task resolution", () => {
     test("resolves patient-class task with valid class code", async () => {
       await createTaskForType("task-class-valid", "patient-class", {
@@ -408,7 +365,7 @@ describe("Task resolution with type detection and validation", () => {
       expect(result.success).toBe(true);
 
       const conceptMap = await fetchConceptMap(
-        "hl7v2-test-app-test-facility-to-diagnostic-report-status",
+        "hl7v2-test-app-test-facility-obr-status",
       );
       expect(conceptMap).toBeDefined();
       expect(conceptMap!.status).toBe("active");

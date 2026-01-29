@@ -12,7 +12,7 @@ import { renderNav, renderLayout, type NavData } from "../shared-layout";
 import { htmlResponse, getNavData } from "../shared";
 import { MAPPING_TYPES, type MappingTypeName, getMappingTypeName } from "../../code-mapping/mapping-types";
 import { getValidValuesWithDisplay } from "../../code-mapping/validation";
-import { getMappingTypeShortLabel, getMappingTypeBadgeClasses } from "../mapping-type-ui";
+import { getMappingTypeShortLabel } from "../mapping-type-ui";
 
 /**
  * UI filter types - "status" is a special category that groups OBR and OBX status mappings
@@ -161,7 +161,7 @@ export async function getMappingTasks(
 /**
  * Available type filter options for the UI
  */
-const TYPE_FILTER_OPTIONS: MappingTypeFilter[] = ["all", "loinc", "address-type", "patient-class", "status"];
+const TYPE_FILTER_OPTIONS: MappingTypeFilter[] = ["all", "loinc", "patient-class", "status"];
 
 /**
  * Build URL for a filter combination
@@ -273,7 +273,7 @@ function renderResolutionForm(task: Task, mappingType: MappingTypeName): string 
   // For non-LOINC types, render a dropdown with allowed values
   const typeConfig = MAPPING_TYPES[mappingType];
   const options = getValidValuesWithDisplay(mappingType);
-  const targetLabel = typeConfig.targetField.split(".").pop() || "value";
+  const targetLabel = typeConfig.targetFieldLabel.split(".").pop() || "value";
 
   return `
     <div class="mt-3 pt-3 border-t border-gray-100">
@@ -322,7 +322,7 @@ export function renderMappingTaskPanel(task: Task, isPending: boolean): string {
     : '<span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Completed</span>';
 
   const typeBadge = mappingType
-    ? `<span class="px-2 py-1 rounded-full text-xs font-medium ${getMappingTypeBadgeClasses(mappingType)}">${escapeHtml(getMappingTypeShortLabel(mappingType))}</span>`
+    ? `<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">${escapeHtml(getMappingTypeShortLabel(mappingType))}</span>`
     : "";
 
   return `
