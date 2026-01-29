@@ -15,11 +15,8 @@ import type { OutgoingBarMessage } from "../../src/fhir/aidbox-hl7v2-custom";
 import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { processNextMessage } from "../../src/v2-to-fhir/processor-service";
 import { toKebabCase } from "../../src/utils/string";
-
-export const TEST_AIDBOX_URL = "http://localhost:8888";
-
-export const TEST_CLIENT_ID = "root";
-export const TEST_CLIENT_SECRET = "test_secret";
+import { aidboxFetch } from "../../src/aidbox";
+export { aidboxFetch };
 
 export async function loadFixture(fixturePath: string): Promise<string> {
   return Bun.file(`test/fixtures/hl7v2/${fixturePath}`).text();
@@ -28,29 +25,6 @@ export async function loadFixture(fixturePath: string): Promise<string> {
 interface Bundle<T> {
   resourceType: "Bundle";
   entry?: Array<{ resource: T }>;
-}
-
-export async function testAidboxFetch<T>(
-  path: string,
-  options?: RequestInit,
-): Promise<T> {
-  const auth = Buffer.from(
-    `${TEST_CLIENT_ID}:${TEST_CLIENT_SECRET}`,
-  ).toString("base64");
-  const response = await fetch(`${TEST_AIDBOX_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/fhir+json",
-      Authorization: `Basic ${auth}`,
-      ...options?.headers,
-    },
-  });
-  if (!response.ok) {
-    throw new Error(
-      `Aidbox error: ${response.status} ${await response.text()}`,
-    );
-  }
-  return response.json() as T;
 }
 
 export async function createTestConceptMap(
@@ -95,81 +69,81 @@ export async function createTestConceptMap(
     group: Object.values(groups),
   };
 
-  await testAidboxFetch(`/fhir/ConceptMap/${id}`, {
+  await aidboxFetch(`/fhir/ConceptMap/${id}`, {
     method: "PUT",
     body: JSON.stringify(conceptMap),
   });
 }
 
 export async function getMappingTasks(): Promise<Task[]> {
-  const bundle = await testAidboxFetch<Bundle<Task>>(
+  const bundle = await aidboxFetch<Bundle<Task>>(
     `/fhir/Task?status=requested`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
 export async function getDiagnosticReports(patientRef: string): Promise<DiagnosticReport[]> {
-  const bundle = await testAidboxFetch<Bundle<DiagnosticReport>>(
+  const bundle = await aidboxFetch<Bundle<DiagnosticReport>>(
     `/fhir/DiagnosticReport?subject=${encodeURIComponent(patientRef)}`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
 export async function getObservations(patientRef: string): Promise<Observation[]> {
-  const bundle = await testAidboxFetch<Bundle<Observation>>(
+  const bundle = await aidboxFetch<Bundle<Observation>>(
     `/fhir/Observation?subject=${encodeURIComponent(patientRef)}`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
 export async function getEncounters(patientRef: string): Promise<Encounter[]> {
-  const bundle = await testAidboxFetch<Bundle<Encounter>>(
+  const bundle = await aidboxFetch<Bundle<Encounter>>(
     `/fhir/Encounter?subject=${encodeURIComponent(patientRef)}`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
 export async function getPatient(patientId: string): Promise<Patient> {
-  return testAidboxFetch<Patient>(`/fhir/Patient/${patientId}`);
+  return aidboxFetch<Patient>(`/fhir/Patient/${patientId}`);
 }
 
 export async function getConditions(patientRef: string): Promise<Condition[]> {
-  const bundle = await testAidboxFetch<Bundle<Condition>>(
+  const bundle = await aidboxFetch<Bundle<Condition>>(
     `/fhir/Condition?subject=${encodeURIComponent(patientRef)}`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
 export async function getAllergies(patientRef: string): Promise<AllergyIntolerance[]> {
-  const bundle = await testAidboxFetch<Bundle<AllergyIntolerance>>(
+  const bundle = await aidboxFetch<Bundle<AllergyIntolerance>>(
     `/fhir/AllergyIntolerance?patient=${encodeURIComponent(patientRef)}`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
 export async function getCoverages(patientRef: string): Promise<Coverage[]> {
-  const bundle = await testAidboxFetch<Bundle<Coverage>>(
+  const bundle = await aidboxFetch<Bundle<Coverage>>(
     `/fhir/Coverage?beneficiary=${encodeURIComponent(patientRef)}`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
 export async function getRelatedPersons(patientRef: string): Promise<RelatedPerson[]> {
-  const bundle = await testAidboxFetch<Bundle<RelatedPerson>>(
+  const bundle = await aidboxFetch<Bundle<RelatedPerson>>(
     `/fhir/RelatedPerson?patient=${encodeURIComponent(patientRef)}`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
 export async function getInvoices(patientRef: string): Promise<Invoice[]> {
-  const bundle = await testAidboxFetch<Bundle<Invoice>>(
+  const bundle = await aidboxFetch<Bundle<Invoice>>(
     `/fhir/Invoice?subject=${encodeURIComponent(patientRef)}`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
 export async function getOutgoingBarMessages(): Promise<OutgoingBarMessage[]> {
-  const bundle = await testAidboxFetch<Bundle<OutgoingBarMessage>>(
+  const bundle = await aidboxFetch<Bundle<OutgoingBarMessage>>(
     `/fhir/OutgoingBarMessage`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
@@ -179,7 +153,7 @@ export async function submitAndProcess(
   hl7Message: string,
   messageType: string,
 ): Promise<IncomingHL7v2Message> {
-  const createdMessage = await testAidboxFetch<IncomingHL7v2Message>(
+  const createdMessage = await aidboxFetch<IncomingHL7v2Message>(
     "/fhir/IncomingHL7v2Message",
     {
       method: "POST",
@@ -194,22 +168,17 @@ export async function submitAndProcess(
 
   await processNextMessage().catch(() => {});
 
-  return testAidboxFetch<IncomingHL7v2Message>(
+  return aidboxFetch<IncomingHL7v2Message>(
     `/fhir/IncomingHL7v2Message/${createdMessage.id}`,
   );
 }
 
 export async function cleanupTestResources(): Promise<void> {
-  const auth = Buffer.from(`${TEST_CLIENT_ID}:${TEST_CLIENT_SECRET}`).toString(
-    "base64",
-  );
-
   // Truncate most resources via SQL (fast)
-  await fetch(`${TEST_AIDBOX_URL}/$sql`, {
+  await aidboxFetch("/$sql", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Basic ${auth}`,
     },
     body: JSON.stringify([
       "TRUNCATE task, incominghl7v2message, diagnosticreport, observation, specimen, encounter, patient, condition, allergyintolerance, coverage, relatedperson, invoice, outgoingbarmessage, account, organization, practitioner, chargeitem CASCADE",
@@ -217,7 +186,7 @@ export async function cleanupTestResources(): Promise<void> {
   });
 
   // Delete test ConceptMaps via FHIR batch (needed because Aidbox caches terminology)
-  const conceptMaps = await testAidboxFetch<Bundle<ConceptMap>>(
+  const conceptMaps = await aidboxFetch<Bundle<ConceptMap>>(
     "/fhir/ConceptMap?_count=100",
   );
 
@@ -226,12 +195,8 @@ export async function cleanupTestResources(): Promise<void> {
     .map((e) => e.resource.id);
 
   if (testConceptMapIds.length > 0) {
-    await fetch(`${TEST_AIDBOX_URL}/fhir`, {
+    await aidboxFetch("/fhir", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/fhir+json",
-        Authorization: `Basic ${auth}`,
-      },
       body: JSON.stringify({
         resourceType: "Bundle",
         type: "batch",

@@ -6,7 +6,7 @@
  */
 import { describe, test, expect } from "bun:test";
 import {
-  testAidboxFetch,
+  aidboxFetch,
   createTestConceptMap,
 } from "../helpers";
 import {
@@ -36,7 +36,7 @@ async function createPendingTask(
     localSystem = "ACME-LAB-CODES",
   } = options;
 
-  return testAidboxFetch<Task>(`/fhir/Task/${id}`, {
+  return aidboxFetch<Task>(`/fhir/Task/${id}`, {
     method: "PUT",
     body: JSON.stringify({
       resourceType: "Task",
@@ -71,7 +71,7 @@ async function createPendingTask(
 }
 
 async function createCompletedTask(id: string): Promise<Task> {
-  return testAidboxFetch<Task>(`/fhir/Task/${id}`, {
+  return aidboxFetch<Task>(`/fhir/Task/${id}`, {
     method: "PUT",
     body: JSON.stringify({
       resourceType: "Task",
@@ -139,7 +139,7 @@ async function createMappingErrorMessage(
     })),
   ];
 
-  return testAidboxFetch<IncomingHL7v2Message>(
+  return aidboxFetch<IncomingHL7v2Message>(
     `/fhir/IncomingHL7v2Message/${id}`,
     {
       method: "PUT",
@@ -158,15 +158,15 @@ async function createMappingErrorMessage(
 }
 
 async function fetchTask(id: string): Promise<Task> {
-  return testAidboxFetch<Task>(`/fhir/Task/${id}`);
+  return aidboxFetch<Task>(`/fhir/Task/${id}`);
 }
 
 async function fetchConceptMap(id: string): Promise<ConceptMap> {
-  return testAidboxFetch<ConceptMap>(`/fhir/ConceptMap/${id}`);
+  return aidboxFetch<ConceptMap>(`/fhir/ConceptMap/${id}`);
 }
 
 async function fetchMessage(id: string): Promise<IncomingHL7v2Message> {
-  return testAidboxFetch<IncomingHL7v2Message>(
+  return aidboxFetch<IncomingHL7v2Message>(
     `/fhir/IncomingHL7v2Message/${id}`,
   );
 }

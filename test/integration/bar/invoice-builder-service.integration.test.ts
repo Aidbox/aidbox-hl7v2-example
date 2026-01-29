@@ -6,7 +6,7 @@
  */
 import { describe, test, expect, mock } from "bun:test";
 import {
-  testAidboxFetch,
+  aidboxFetch,
   getOutgoingBarMessages,
 } from "../helpers";
 import {
@@ -21,7 +21,7 @@ import type { Patient } from "../../../src/fhir/hl7-fhir-r4-core/Patient";
 import type { Account } from "../../../src/fhir/hl7-fhir-r4-core/Account";
 
 async function createTestPatient(id: string): Promise<Patient> {
-  return testAidboxFetch<Patient>(`/fhir/Patient/${id}`, {
+  return aidboxFetch<Patient>(`/fhir/Patient/${id}`, {
     method: "PUT",
     body: JSON.stringify({
       resourceType: "Patient",
@@ -35,7 +35,7 @@ async function createTestPatient(id: string): Promise<Patient> {
 }
 
 async function createTestAccount(id: string, patientId: string): Promise<Account> {
-  return testAidboxFetch<Account>(`/fhir/Account/${id}`, {
+  return aidboxFetch<Account>(`/fhir/Account/${id}`, {
     method: "PUT",
     body: JSON.stringify({
       resourceType: "Account",
@@ -53,7 +53,7 @@ async function createTestInvoice(
   accountId: string,
   processingStatus: string = "pending",
 ): Promise<Invoice & { id: string }> {
-  return testAidboxFetch<Invoice & { id: string }>(`/fhir/Invoice/${id}`, {
+  return aidboxFetch<Invoice & { id: string }>(`/fhir/Invoice/${id}`, {
     method: "PUT",
     body: JSON.stringify({
       resourceType: "Invoice",
@@ -72,7 +72,7 @@ async function createTestInvoice(
 }
 
 async function createInvoiceWithoutPatient(id: string): Promise<Invoice & { id: string }> {
-  return testAidboxFetch<Invoice & { id: string }>(`/fhir/Invoice/${id}`, {
+  return aidboxFetch<Invoice & { id: string }>(`/fhir/Invoice/${id}`, {
     method: "PUT",
     body: JSON.stringify({
       resourceType: "Invoice",
@@ -89,7 +89,7 @@ async function createInvoiceWithoutPatient(id: string): Promise<Invoice & { id: 
 }
 
 async function fetchInvoice(id: string): Promise<Invoice & { id: string }> {
-  return testAidboxFetch<Invoice & { id: string }>(`/fhir/Invoice/${id}`);
+  return aidboxFetch<Invoice & { id: string }>(`/fhir/Invoice/${id}`);
 }
 
 function getProcessingStatus(invoice: Invoice): string | undefined {

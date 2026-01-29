@@ -10,7 +10,7 @@
 import { describe, test, expect } from "bun:test";
 import {
   loadFixture,
-  testAidboxFetch,
+  aidboxFetch,
   createTestConceptMap,
   getMappingTasks,
   getDiagnosticReports,
@@ -175,7 +175,7 @@ describe("ORU_R01 E2E Integration", () => {
 
       const specimenRef = diagnosticReports[0]!.specimen![0]!.reference!;
       const specimenId = specimenRef.split("/")[1]!;
-      const specimen = await testAidboxFetch<Specimen>(`/fhir/Specimen/${specimenId}`);
+      const specimen = await aidboxFetch<Specimen>(`/fhir/Specimen/${specimenId}`);
       expect(specimen.type?.coding?.[0]?.code).toBe("Blood");
     });
 
@@ -674,7 +674,7 @@ describe("ORU_R01 E2E Integration", () => {
 
       await processNextMessage();
 
-      const updatedMessage = await testAidboxFetch<IncomingHL7v2Message>(
+      const updatedMessage = await aidboxFetch<IncomingHL7v2Message>(
         `/fhir/IncomingHL7v2Message/${message.id}`,
       );
       expect(updatedMessage.status).toBe("processed");
