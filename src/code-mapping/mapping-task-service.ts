@@ -18,7 +18,7 @@ import {
 import { simpleHash } from "../utils/string";
 import {
   MAPPING_TYPES,
-  LEGACY_TASK_CODE_ALIASES,
+  getMappingTypeName,
   type MappingTypeName,
 } from "./mapping-types";
 import { generateConceptMapId, type SenderContext } from "./concept-map/lookup";
@@ -142,19 +142,7 @@ function extractMappingTypeFromTask(task: Task): MappingTypeName {
   if (!taskCode) {
     throw new Error(`Task ${task.id} has no code`);
   }
-  // Check legacy aliases first
-  if (LEGACY_TASK_CODE_ALIASES[taskCode]) {
-    return LEGACY_TASK_CODE_ALIASES[taskCode];
-  }
-  const entry = Object.entries(MAPPING_TYPES).find(
-    ([, config]) => config.taskCode === taskCode,
-  );
-  if (!entry) {
-    throw new Error(
-      `Unknown mapping task code: ${taskCode}. Add it to MAPPING_TYPES registry.`,
-    );
-  }
-  return entry[0] as MappingTypeName;
+  return getMappingTypeName(taskCode);
 }
 
 export async function resolveMappingTask(
