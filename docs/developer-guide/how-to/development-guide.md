@@ -110,6 +110,14 @@ Key helpers from `test/integration/helpers.ts`:
 
 Tests run serially (`--max-concurrency=1`) to prevent interference between tests that share the Aidbox instance.
 
+#### Future Optimization Ideas
+
+If integration test performance becomes a bottleneck, consider these approaches:
+
+1. **Parallel Aidbox instances** — Spawn multiple independent Aidbox containers (e.g., ports 8888, 8889, 8890) and partition tests across them. Each instance has its own database, enabling true parallel execution without test interference.
+
+2. **Global ConceptMap fixtures** — ConceptMap CRUD operations are slow because Aidbox invalidates its terminology cache on each change. Move ConceptMap creation from individual tests to a global setup phase (in `preload.ts`). Tests that need specific ConceptMap states should use unique sender identifiers (e.g., `TEST1_LAB/TEST1_HOSP`) rather than modifying shared fixtures.
+
 ## Code Generation
 
 Regenerate types after updating `@atomic-ehr` packages:
