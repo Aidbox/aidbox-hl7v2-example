@@ -281,9 +281,10 @@ function renderResolutionForm(task: Task, mappingType: MappingTypeName): string 
         <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-1">Map to ${escapeHtml(targetLabel)}</label>
           <select name="resolvedCode" required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            onchange="this.form.resolvedDisplay.value = this.selectedOptions[0]?.dataset.display || ''">
             <option value="">Select a value...</option>
-            ${options.map(opt => `<option value="${escapeHtml(opt.code)}">${escapeHtml(opt.code)} - ${escapeHtml(opt.display)}</option>`).join("\n            ")}
+            ${options.map(opt => `<option value="${escapeHtml(opt.code)}" data-display="${escapeHtml(opt.display)}">${escapeHtml(opt.code)} - ${escapeHtml(opt.display)}</option>`).join("\n            ")}
           </select>
           <input type="hidden" name="resolvedDisplay" value="">
         </div>

@@ -603,4 +603,70 @@ describe("addMappingToConceptMap with different target systems", () => {
     expect(result.group![0]!.element![0]!.code).toBe("Y");
     expect(result.group![0]!.element![0]!.target![0]!.code).toBe("cancelled");
   });
+
+  test("creates separate groups for same source with different target systems (address-type vs address-use)", async () => {
+    const { addMappingToConceptMap } = await import(
+      "../../../src/code-mapping/concept-map"
+    );
+
+    const conceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "test-address-mixed",
+      status: "active",
+      targetUri: "http://hl7.org/fhir/address-type",
+      group: [],
+    };
+
+    // First, add an address-type mapping (physical)
+    const afterFirstMapping = addMappingToConceptMap(
+      conceptMap,
+      "http://terminology.hl7.org/CodeSystem/v2-0190",
+      "L",
+      "Legal Address",
+      "physical",
+      "Physical",
+      "http://hl7.org/fhir/address-type",
+    );
+
+    expect(afterFirstMapping.group).toHaveLength(1);
+    expect(afterFirstMapping.group![0]!.target).toBe(
+      "http://hl7.org/fhir/address-type",
+    );
+
+    // Now add an address-use mapping (home) from the SAME source system but DIFFERENT target system
+    const afterSecondMapping = addMappingToConceptMap(
+      afterFirstMapping,
+      "http://terminology.hl7.org/CodeSystem/v2-0190",
+      "H",
+      "Home Address",
+      "home",
+      "Home",
+      "http://hl7.org/fhir/address-use",
+    );
+
+    // Should create a SEPARATE group for the different target system
+    expect(afterSecondMapping.group).toHaveLength(2);
+
+    // First group should have address-type target
+    const typeGroup = afterSecondMapping.group!.find(
+      (g) => g.target === "http://hl7.org/fhir/address-type",
+    );
+    expect(typeGroup).toBeDefined();
+    expect(typeGroup!.source).toBe(
+      "http://terminology.hl7.org/CodeSystem/v2-0190",
+    );
+    expect(typeGroup!.element).toHaveLength(1);
+    expect(typeGroup!.element![0]!.code).toBe("L");
+
+    // Second group should have address-use target
+    const useGroup = afterSecondMapping.group!.find(
+      (g) => g.target === "http://hl7.org/fhir/address-use",
+    );
+    expect(useGroup).toBeDefined();
+    expect(useGroup!.source).toBe(
+      "http://terminology.hl7.org/CodeSystem/v2-0190",
+    );
+    expect(useGroup!.element).toHaveLength(1);
+    expect(useGroup!.element![0]!.code).toBe("H");
+  });
 });

@@ -519,13 +519,16 @@ async function resolveOBXStatus(
   status: string | undefined,
   sender: SenderContext,
 ): Promise<OBXStatusResult> {
+  // Normalize empty/whitespace-only strings to undefined
+  const normalizedStatus = status?.trim() || undefined;
+
   // First try hardcoded mappings for standard codes
-  if (status !== undefined && status.toUpperCase() in OBX11_STATUS_MAP) {
-    return { status: OBX11_STATUS_MAP[status.toUpperCase()]! };
+  if (normalizedStatus !== undefined && normalizedStatus.toUpperCase() in OBX11_STATUS_MAP) {
+    return { status: OBX11_STATUS_MAP[normalizedStatus.toUpperCase()]! };
   }
 
-  // If status is undefined, return error immediately (no ConceptMap lookup for missing status)
-  if (status === undefined) {
+  // If status is undefined/empty, return error immediately (no ConceptMap lookup for missing status)
+  if (normalizedStatus === undefined) {
     return {
       error: {
         localCode: "undefined",
@@ -540,7 +543,7 @@ async function resolveOBXStatus(
   const conceptMapId = generateConceptMapId(sender, "obx-status");
   const localSystem = "http://terminology.hl7.org/CodeSystem/v2-0085";
 
-  const translateResult = await translateCode(conceptMapId, status, localSystem);
+  const translateResult = await translateCode(conceptMapId, normalizedStatus, localSystem);
 
   if (translateResult.status === "found" && translateResult.coding.code) {
     const resolvedStatus = translateResult.coding.code as Observation["status"];
@@ -553,8 +556,8 @@ async function resolveOBXStatus(
   // No mapping found - return error for Task creation
   return {
     error: {
-      localCode: status,
-      localDisplay: `OBX-11 status: ${status}`,
+      localCode: normalizedStatus,
+      localDisplay: `OBX-11 status: ${normalizedStatus}`,
       localSystem,
       mappingType: "obx-status",
     },

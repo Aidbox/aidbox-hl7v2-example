@@ -70,7 +70,11 @@ export function addMappingToConceptMap(
     group: conceptMap.group ? [...conceptMap.group] : [],
   };
 
-  let groupIndex = updated.group!.findIndex((g) => g.source === localSystem);
+  // Find group by both source AND target system to correctly handle
+  // different target systems for the same source (e.g., address-type vs address-use)
+  let groupIndex = updated.group!.findIndex(
+    (g) => g.source === localSystem && g.target === targetSystem,
+  );
 
   if (groupIndex === -1) {
     updated.group!.push({
@@ -155,13 +159,14 @@ export async function deleteMapping(
     return;
   }
 
-  const group = conceptMap.group?.find((g) => g.source === localSystem);
-
-  if (!group?.element) {
-    return;
+  // Delete from all groups with matching source system
+  // (handles cases where same local code might exist in multiple target system groups)
+  for (const group of conceptMap.group || []) {
+    if (group.source !== localSystem) continue;
+    if (group.element) {
+      group.element = group.element.filter((e) => e.code !== localCode);
+    }
   }
-
-  group.element = group.element.filter((e) => e.code !== localCode);
 
   await putResource("ConceptMap", conceptMapId, conceptMap);
 }

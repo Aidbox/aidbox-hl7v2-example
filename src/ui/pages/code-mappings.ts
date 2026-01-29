@@ -5,7 +5,7 @@
  * Supports multiple mapping types: LOINC, address type, patient class, OBR/OBX status.
  */
 
-import type { ConceptMap } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
+import type { ConceptMap, ConceptMapGroup, ConceptMapGroupElement } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
 import type { Task, TaskOutput } from "../../fhir/hl7-fhir-r4-core/Task";
 import {
   aidboxFetch,
@@ -22,7 +22,7 @@ import {
   type MappingTypeName,
   isMappingTypeName,
 } from "../../code-mapping/mapping-types";
-import { getValidValuesWithDisplay } from "../../code-mapping/validation";
+import { getValidValuesWithDisplay, getTargetSystemForCode } from "../../code-mapping/validation";
 import { getMappingTypeShortLabel, getMappingTypeBadgeClasses } from "../mapping-type-ui";
 import {
   parsePageParam,
@@ -211,10 +211,13 @@ export async function getMappingsFromConceptMap(
   );
 
   const mappingType = detectMappingTypeFromConceptMap(conceptMap);
-  const targetSystem = conceptMap.targetUri || "";
+  const defaultTargetSystem = conceptMap.targetUri || "";
   const allEntries: MappingEntry[] = [];
 
   for (const group of conceptMap.group || []) {
+    // Use group.target if available, otherwise fall back to conceptMap.targetUri
+    // This is important for ConceptMaps with multiple target systems (e.g., address-type vs address-use)
+    const groupTargetSystem = group.target ?? defaultTargetSystem;
     for (const element of group.element || []) {
       const target = element.target?.[0];
       allEntries.push({
@@ -223,7 +226,7 @@ export async function getMappingsFromConceptMap(
         localSystem: group.source || "",
         targetCode: target?.code || "",
         targetDisplay: target?.display || "",
-        targetSystem,
+        targetSystem: groupTargetSystem,
       });
     }
   }
@@ -304,7 +307,13 @@ export async function addConceptMapEntry(
   const { resource: conceptMap, etag: conceptMapEtag } =
     await getResourceWithETag<ConceptMap>("ConceptMap", conceptMapId);
 
-  const targetSystem = conceptMap.targetUri || "http://loinc.org";
+  // Detect mapping type and get the correct target system for this resolved code
+  // (for address-type, this depends on whether it's a type or use value)
+  const mappingType = detectMappingTypeFromConceptMap(conceptMap);
+  const defaultTargetSystem = conceptMap.targetUri || "http://loinc.org";
+  const targetSystem = mappingType
+    ? getTargetSystemForCode(mappingType, targetCode, defaultTargetSystem)
+    : defaultTargetSystem;
 
   // Check for duplicate
   if (checkDuplicateEntry(conceptMap, localSystem, localCode)) {
@@ -398,7 +407,9 @@ export async function addConceptMapEntry(
 }
 
 /**
- * Update an existing entry in a ConceptMap
+ * Update an existing entry in a ConceptMap.
+ * Handles target system changes (e.g., address-type vs address-use) by moving
+ * the entry to the correct group when necessary.
  */
 export async function updateConceptMapEntry(
   conceptMapId: string,
@@ -412,32 +423,91 @@ export async function updateConceptMapEntry(
     conceptMapId,
   );
 
-  // Find the element
-  let found = false;
+  // Detect mapping type and calculate the correct target system for the new code
+  // (for address-type, this depends on whether it's a type or use value)
+  const mappingType = detectMappingTypeFromConceptMap(conceptMap);
+  const defaultTargetSystem = conceptMap.targetUri || "http://loinc.org";
+  const newTargetSystem = mappingType
+    ? getTargetSystemForCode(mappingType, newTargetCode, defaultTargetSystem)
+    : defaultTargetSystem;
+
+  // Find the element and its current group
+  let foundGroup: ConceptMapGroup | null = null;
+  let foundElementIndex = -1;
+  let foundElement: ConceptMapGroupElement | null = null;
+
   for (const group of conceptMap.group || []) {
     if (group.source !== localSystem) continue;
-    for (const element of group.element || []) {
-      if (element.code === localCode) {
-        // Update the target
-        element.target = [
-          {
-            code: newTargetCode,
-            display: newTargetDisplay,
-            equivalence: "equivalent",
-          },
-        ];
-        found = true;
-        break;
-      }
+    const elements = group.element || [];
+    const elementIndex = elements.findIndex(e => e.code === localCode);
+    if (elementIndex >= 0 && elements[elementIndex]) {
+      foundGroup = group;
+      foundElementIndex = elementIndex;
+      foundElement = elements[elementIndex];
+      break;
     }
-    if (found) break;
   }
 
-  if (!found) {
+  if (!foundGroup || !foundElement || foundElementIndex < 0) {
     return {
       success: false,
       error: `Mapping not found for code "${localCode}" in system "${localSystem}"`,
     };
+  }
+
+  // Check if the target system changed (e.g., address-type -> address-use)
+  const currentTargetSystem = foundGroup.target || defaultTargetSystem;
+  const targetSystemChanged = currentTargetSystem !== newTargetSystem;
+
+  if (targetSystemChanged) {
+    // Remove from current group
+    foundGroup.element = foundGroup.element.filter((_, i) => i !== foundElementIndex);
+
+    // Find or create the new target group
+    let newGroup = (conceptMap.group || []).find(
+      g => g.source === localSystem && g.target === newTargetSystem
+    );
+
+    if (!newGroup) {
+      newGroup = {
+        source: localSystem,
+        target: newTargetSystem,
+        element: [],
+      };
+      conceptMap.group = conceptMap.group || [];
+      conceptMap.group.push(newGroup);
+    }
+
+    // Add the updated element to the new group
+    newGroup.element = newGroup.element || [];
+    newGroup.element.push({
+      code: localCode,
+      ...(foundElement.display && { display: foundElement.display }),
+      target: [
+        {
+          code: newTargetCode,
+          display: newTargetDisplay,
+          equivalence: "equivalent",
+        },
+      ],
+    });
+
+    // Clean up empty groups
+    if (conceptMap.group) {
+      conceptMap.group = conceptMap.group.filter(g => g.element && g.element.length > 0);
+      if (conceptMap.group.length === 0) {
+        conceptMap.group = undefined;
+      }
+    }
+  } else {
+    // Same target system - update in place
+    foundElement.target = [
+      {
+        code: newTargetCode,
+        display: newTargetDisplay,
+        equivalence: "equivalent",
+      },
+    ];
   }
 
   // Save
