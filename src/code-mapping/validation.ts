@@ -181,8 +181,12 @@ export function getValidValues(
     case "patient-class":
       return [...VALID_ENCOUNTER_CLASS];
 
-    default:
+    default: {
+      // Exhaustive type check - TypeScript will error if a new mapping type is added
+      // but not handled above
+      const _exhaustiveCheck: never = mappingType;
       return undefined;
+    }
   }
 }
 

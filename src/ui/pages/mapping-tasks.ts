@@ -12,6 +12,7 @@ import { renderNav, renderLayout, type NavData } from "../shared-layout";
 import { htmlResponse, getNavData } from "../shared";
 import { MAPPING_TYPES, type MappingTypeName, getMappingTypeName } from "../../code-mapping/mapping-types";
 import { getValidValuesWithDisplay } from "../../code-mapping/validation";
+import { getMappingTypeShortLabel, getMappingTypeBadgeClasses } from "../mapping-type-ui";
 
 /**
  * UI filter types - "status" is a special category that groups OBR and OBX status mappings
@@ -25,19 +26,6 @@ export function getMappingTypeFilterDisplay(filter: MappingTypeFilter): string {
   if (filter === "all") return "All";
   if (filter === "status") return "Status";
   return MAPPING_TYPES[filter].taskDisplay.replace(" mapping", "");
-}
-
-/**
- * Get short label for a mapping type (used in badges)
- */
-export function getMappingTypeShortLabel(typeName: MappingTypeName): string {
-  switch (typeName) {
-    case "loinc": return "LOINC";
-    case "address-type": return "Address";
-    case "patient-class": return "Patient Class";
-    case "obr-status": return "OBR Status";
-    case "obx-status": return "OBX Status";
-  }
 }
 
 /**
@@ -258,19 +246,6 @@ export function renderMappingTasksPage(
 }
 
 /**
- * Get badge color classes for a mapping type
- */
-function getMappingTypeBadgeClasses(typeName: MappingTypeName): string {
-  switch (typeName) {
-    case "loinc": return "bg-purple-100 text-purple-800";
-    case "address-type": return "bg-blue-100 text-blue-800";
-    case "patient-class": return "bg-green-100 text-green-800";
-    case "obr-status": return "bg-orange-100 text-orange-800";
-    case "obx-status": return "bg-amber-100 text-amber-800";
-  }
-}
-
-/**
  * Render the resolution form based on task type.
  * LOINC tasks use autocomplete, others use a simple dropdown of valid values.
  */
@@ -305,12 +280,12 @@ function renderResolutionForm(task: Task, mappingType: MappingTypeName): string 
       <form method="POST" action="/api/mapping/tasks/${taskId}/resolve" class="flex items-end gap-3">
         <div class="flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-1">Map to ${escapeHtml(targetLabel)}</label>
-          <select name="loincCode" required
+          <select name="resolvedCode" required
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             <option value="">Select a value...</option>
             ${options.map(opt => `<option value="${escapeHtml(opt.code)}">${escapeHtml(opt.code)} - ${escapeHtml(opt.display)}</option>`).join("\n            ")}
           </select>
-          <input type="hidden" name="loincDisplay" value="">
+          <input type="hidden" name="resolvedDisplay" value="">
         </div>
         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
           Save Mapping

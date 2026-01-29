@@ -8,7 +8,6 @@ import { describe, test, expect } from "bun:test";
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 import {
   getMappingTypeFilterDisplay,
-  getMappingTypeShortLabel,
   parseTypeFilter,
   getTaskInputValue,
   getTaskMappingType,
@@ -17,6 +16,7 @@ import {
   renderMappingTasksPage,
   type MappingTypeFilter,
 } from "../../../src/ui/pages/mapping-tasks";
+import { getMappingTypeShortLabel } from "../../../src/ui/mapping-type-ui";
 import type { NavData } from "../../../src/ui/shared-layout";
 import type { PaginationData } from "../../../src/ui/pagination";
 import { MAPPING_TYPES } from "../../../src/code-mapping/mapping-types";

@@ -1291,13 +1291,8 @@ describe("getMappingTypeFilterDisplay", () => {
 });
 
 describe("getMappingTypeShortLabel", () => {
-  afterEach(() => {
-    mock.restore();
-  });
-
   test("returns short labels for all mapping types", async () => {
-    mock.module("../../../src/aidbox", () => createMockAidbox());
-    const { getMappingTypeShortLabel } = await import("../../../src/ui/pages/code-mappings");
+    const { getMappingTypeShortLabel } = await import("../../../src/ui/mapping-type-ui");
 
     expect(getMappingTypeShortLabel("loinc")).toBe("LOINC");
     expect(getMappingTypeShortLabel("address-type")).toBe("Address");
@@ -1308,13 +1303,8 @@ describe("getMappingTypeShortLabel", () => {
 });
 
 describe("getMappingTypeBadgeClasses", () => {
-  afterEach(() => {
-    mock.restore();
-  });
-
   test("returns different color classes for each mapping type", async () => {
-    mock.module("../../../src/aidbox", () => createMockAidbox());
-    const { getMappingTypeBadgeClasses } = await import("../../../src/ui/pages/code-mappings");
+    const { getMappingTypeBadgeClasses } = await import("../../../src/ui/mapping-type-ui");
 
     expect(getMappingTypeBadgeClasses("loinc")).toContain("purple");
     expect(getMappingTypeBadgeClasses("address-type")).toContain("blue");
