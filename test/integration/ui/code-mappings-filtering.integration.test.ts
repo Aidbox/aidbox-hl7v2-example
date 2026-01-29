@@ -329,6 +329,80 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
     expect(mappings.entries[0]!.targetDisplay).toBe("Postal");
   });
 
+  test("updates entry moving from address-type to address-use system", async () => {
+    // Create ConceptMap with an entry in address-type group (physical is an address-type value)
+    await createConceptMapWithEntry("cm-address-type-to-use", "address-type", "APP|FAC", "P", "physical");
+
+    // Update to "home" which is an address-use value (different target system)
+    const result = await updateConceptMapEntry(
+      "cm-address-type-to-use",
+      "P",
+      "TEST-SYSTEM",
+      "home",
+      "Home",
+    );
+
+    expect(result.success).toBe(true);
+
+    // Verify the entry was updated and moved to correct group
+    const mappings = await getMappingsFromConceptMap("cm-address-type-to-use", 1);
+    expect(mappings.entries.length).toBe(1);
+    expect(mappings.entries[0]!.targetCode).toBe("home");
+    expect(mappings.entries[0]!.targetDisplay).toBe("Home");
+    // The entry should now be in the address-use system group
+    expect(mappings.entries[0]!.targetSystem).toBe("http://hl7.org/fhir/address-use");
+  });
+
+  test("updates entry moving from address-use to address-type system", async () => {
+    // Create ConceptMap with an entry in address-use group (home is an address-use value)
+    const config = MAPPING_TYPES["address-type"];
+    const conceptMap: ConceptMap = {
+      resourceType: "ConceptMap",
+      id: "cm-address-use-to-type",
+      name: "HL7v2 APP|FAC to address-type",
+      status: "active",
+      title: "APP|FAC",
+      sourceUri: "http://example.org/fhir/CodeSystem/cm-address-use-to-type",
+      targetUri: config.targetSystem,
+      group: [
+        {
+          source: "TEST-SYSTEM",
+          target: "http://hl7.org/fhir/address-use", // Start with address-use group
+          element: [
+            {
+              code: "H",
+              display: "Home",
+              target: [{ code: "home", display: "Home", equivalence: "equivalent" }],
+            },
+          ],
+        },
+      ],
+    };
+    await testAidboxFetch<ConceptMap>("/fhir/ConceptMap/cm-address-use-to-type", {
+      method: "PUT",
+      body: JSON.stringify(conceptMap),
+    });
+
+    // Update to "postal" which is an address-type value (different target system)
+    const result = await updateConceptMapEntry(
+      "cm-address-use-to-type",
+      "H",
+      "TEST-SYSTEM",
+      "postal",
+      "Postal",
+    );
+
+    expect(result.success).toBe(true);
+
+    // Verify the entry was updated and moved to correct group
+    const mappings = await getMappingsFromConceptMap("cm-address-use-to-type", 1);
+    expect(mappings.entries.length).toBe(1);
+    expect(mappings.entries[0]!.targetCode).toBe("postal");
+    expect(mappings.entries[0]!.targetDisplay).toBe("Postal");
+    // The entry should now be in the address-type system group
+    expect(mappings.entries[0]!.targetSystem).toBe("http://hl7.org/fhir/address-type");
+  });
+
   test("deletes entry from non-LOINC ConceptMap", async () => {
     // Create ConceptMap with two entries so we can delete one and still have a valid ConceptMap
     const config = MAPPING_TYPES["address-type"];

@@ -268,13 +268,16 @@ async function resolveOBRStatus(
   status: string | undefined,
   sender: SenderContext,
 ): Promise<OBRStatusResult> {
+  // Normalize empty/whitespace-only strings to undefined
+  const normalizedStatus = status?.trim() || undefined;
+
   // First try hardcoded mappings for standard codes
-  if (status !== undefined && status.toUpperCase() in OBR25_STATUS_MAP) {
-    return { status: OBR25_STATUS_MAP[status.toUpperCase()]! };
+  if (normalizedStatus !== undefined && normalizedStatus.toUpperCase() in OBR25_STATUS_MAP) {
+    return { status: OBR25_STATUS_MAP[normalizedStatus.toUpperCase()]! };
   }
 
-  // If status is undefined, return error immediately (no ConceptMap lookup for missing status)
-  if (status === undefined) {
+  // If status is undefined/empty, return error immediately (no ConceptMap lookup for missing status)
+  if (normalizedStatus === undefined) {
     return {
       error: {
         localCode: "undefined",
@@ -289,7 +292,7 @@ async function resolveOBRStatus(
   const conceptMapId = generateConceptMapId(sender, "obr-status");
   const localSystem = "http://terminology.hl7.org/CodeSystem/v2-0123";
 
-  const translateResult = await translateCode(conceptMapId, status, localSystem);
+  const translateResult = await translateCode(conceptMapId, normalizedStatus, localSystem);
 
   if (translateResult.status === "found" && translateResult.coding.code) {
     const resolvedStatus = translateResult.coding
@@ -303,8 +306,8 @@ async function resolveOBRStatus(
   // No mapping found - return error for Task creation
   return {
     error: {
-      localCode: status,
-      localDisplay: `OBR-25 status: ${status}`,
+      localCode: normalizedStatus,
+      localDisplay: `OBR-25 status: ${normalizedStatus}`,
       localSystem,
       mappingType: "obr-status",
     },
