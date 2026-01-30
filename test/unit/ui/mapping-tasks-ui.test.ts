@@ -28,14 +28,14 @@ import { MAPPING_TYPES } from "../../../src/code-mapping/mapping-types";
 function createLoincTask(overrides: Partial<Task> = {}): Task {
   return {
     resourceType: "Task",
-    id: "task-loinc-1",
+    id: "task-observation-code-loinc-1",
     status: "requested",
     intent: "order",
     code: {
       coding: [{
-        system: "urn:aidbox-hl7v2-converter:task-code",
-        code: "loinc-mapping",
-        display: "Local code to LOINC mapping",
+        system: "urn:aidbox-hl7v2-converter:mapping-type",
+        code: "observation-code-loinc",
+        display: "Observation code to LOINC mapping",
       }],
       text: "Map OBX-3 to Observation.code",
     },
@@ -61,8 +61,8 @@ function createObrStatusTask(overrides: Partial<Task> = {}): Task {
     intent: "order",
     code: {
       coding: [{
-        system: "urn:aidbox-hl7v2-converter:task-code",
-        code: "obr-status-mapping",
+        system: "urn:aidbox-hl7v2-converter:mapping-type",
+        code: "obr-status",
         display: "OBR result status mapping",
       }],
       text: "Map OBR-25 to DiagnosticReport.status",
@@ -89,8 +89,8 @@ function createPatientClassTask(overrides: Partial<Task> = {}): Task {
     intent: "order",
     code: {
       coding: [{
-        system: "urn:aidbox-hl7v2-converter:task-code",
-        code: "patient-class-mapping",
+        system: "urn:aidbox-hl7v2-converter:mapping-type",
+        code: "patient-class",
         display: "Patient class mapping",
       }],
       text: "Map PV1-2 to Encounter.class",
@@ -112,7 +112,7 @@ function createPatientClassTask(overrides: Partial<Task> = {}): Task {
 function createCompletedLoincTask(): Task {
   return {
     ...createLoincTask(),
-    id: "task-loinc-completed",
+    id: "task-observation-code-loinc-completed",
     status: "completed",
     output: [{
       type: { text: "Resolved mapping" },
@@ -130,14 +130,14 @@ function createCompletedLoincTask(): Task {
 function createLegacyLoincTask(): Task {
   return {
     resourceType: "Task",
-    id: "task-legacy-loinc",
+    id: "task-legacy-observation-code-loinc",
     status: "completed",
     intent: "order",
     code: {
       coding: [{
-        system: "urn:aidbox-hl7v2-converter:task-code",
-        code: "local-to-loinc-mapping",
-        display: "Local code to LOINC mapping",
+        system: "urn:aidbox-hl7v2-converter:mapping-type",
+        code: "observation-code-loinc",
+        display: "Observation code to LOINC mapping",
       }],
     },
     authoredOn: "2025-02-12T14:20:00Z",
@@ -184,7 +184,7 @@ describe("getMappingTypeFilterDisplay", () => {
   });
 
   test("returns task display without ' mapping' suffix for mapping types", () => {
-    expect(getMappingTypeFilterDisplay("loinc")).toBe("Local code to LOINC");
+    expect(getMappingTypeFilterDisplay("observation-code-loinc")).toBe("Observation code to LOINC");
     expect(getMappingTypeFilterDisplay("patient-class")).toBe("Patient class");
     expect(getMappingTypeFilterDisplay("obr-status")).toBe("OBR result status");
     expect(getMappingTypeFilterDisplay("obx-status")).toBe("OBX observation status");
@@ -193,7 +193,7 @@ describe("getMappingTypeFilterDisplay", () => {
 
 describe("getMappingTypeShortLabel", () => {
   test("returns short labels for each mapping type", () => {
-    expect(getMappingTypeShortLabel("loinc")).toBe("LOINC");
+    expect(getMappingTypeShortLabel("observation-code-loinc")).toBe("LOINC");
     expect(getMappingTypeShortLabel("patient-class")).toBe("Patient Class");
     expect(getMappingTypeShortLabel("obr-status")).toBe("OBR Status");
     expect(getMappingTypeShortLabel("obx-status")).toBe("OBX Status");
@@ -214,7 +214,7 @@ describe("parseTypeFilter", () => {
   });
 
   test("returns mapping type name for valid type parameters", () => {
-    expect(parseTypeFilter("loinc")).toBe("loinc");
+    expect(parseTypeFilter("observation-code-loinc")).toBe("observation-code-loinc");
     expect(parseTypeFilter("patient-class")).toBe("patient-class");
     expect(parseTypeFilter("obr-status")).toBe("obr-status");
     expect(parseTypeFilter("obx-status")).toBe("obx-status");
@@ -251,7 +251,7 @@ describe("getTaskInputValue", () => {
 
 describe("getTaskMappingType", () => {
   test("returns mapping type for LOINC task", () => {
-    expect(getTaskMappingType(createLoincTask())).toBe("loinc");
+    expect(getTaskMappingType(createLoincTask())).toBe("observation-code-loinc");
   });
 
   test("returns mapping type for OBR status task", () => {
@@ -278,7 +278,7 @@ describe("getTaskMappingType", () => {
       intent: "order",
       code: {
         coding: [{
-          system: "urn:aidbox-hl7v2-converter:task-code",
+          system: "urn:aidbox-hl7v2-converter:mapping-type",
           code: "unknown-code",
         }],
       },
@@ -458,7 +458,7 @@ describe("renderMappingTasksPage", () => {
 
     // Check type filter tabs
     expect(html).toContain(">All</a>");
-    expect(html).toContain(">Local code to LOINC</a>");
+    expect(html).toContain(">Observation code to LOINC</a>");
     expect(html).toContain(">Patient class</a>");
     expect(html).toContain(">Status</a>");
   });
@@ -468,13 +468,13 @@ describe("renderMappingTasksPage", () => {
       mockNavData,
       [],
       "requested",
-      "loinc",
+      "observation-code-loinc",
       mockPagination,
       null,
     );
 
     // LOINC filter should be active (blue)
-    expect(html).toContain('class="px-2 py-1 rounded text-xs font-medium bg-blue-600 text-white">Local code to LOINC</a>');
+    expect(html).toContain('class="px-2 py-1 rounded text-xs font-medium bg-blue-600 text-white">Observation code to LOINC</a>');
   });
 
   test("includes type parameter in filter URLs when not 'all'", () => {

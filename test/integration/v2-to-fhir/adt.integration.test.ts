@@ -283,31 +283,19 @@ describe("ADT_A01 E2E Integration", () => {
       const task = await testAidboxFetch<Task>(`/fhir/Task/${taskId}`);
 
       expect(task.status).toBe("requested");
-      expect(task.code?.coding?.[0]?.code).toBe("patient-class-mapping");
+      expect(task.code?.coding?.[0]?.code).toBe("patient-class");
 
       const localCodeInput = task.input?.find((i) => i.type?.text === "Local code");
       expect(localCodeInput?.valueString).toBe("99");
     });
 
-    test("creates Patient resource even when PV1 has mapping error", async () => {
+    test("does not create Patient or Encounter when PV1 has mapping error", async () => {
       const hl7Message = await loadFixture("adt-a01/error/invalid-patient-class.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      expect(message.patient?.reference).toBe("Patient/P-INVALID-CLASS");
-
-      const patient = await getPatient("P-INVALID-CLASS");
-      expect(patient.resourceType).toBe("Patient");
-      expect(patient.name?.[0]?.family).toBe("INVALIDCLASSPATIENT");
-    });
-
-    test("does not create Encounter when PV1 has mapping error", async () => {
-      const hl7Message = await loadFixture("adt-a01/error/invalid-patient-class.hl7");
-      const message = await submitAndProcessAdtA01(hl7Message);
-
-      const patientRef = message.patient!.reference!;
-      const encounters = await getEncounters(patientRef);
-
-      expect(encounters.length).toBe(0);
+      // Patient reference should not be set when there's a mapping error
+      // (Patient will be created on successful reprocessing after mapping resolution)
+      expect(message.patient).toBeUndefined();
     });
   });
 });

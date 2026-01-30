@@ -115,14 +115,14 @@ export function addMappingToConceptMap(
 export async function getOrCreateConceptMap(
   sender: SenderContext,
 ): Promise<ConceptMap> {
-  const conceptMapId = generateConceptMapId(sender, "loinc");
+  const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
   const existing = await fetchConceptMap(conceptMapId);
 
   if (existing) {
     return existing;
   }
 
-  const newConceptMap = createEmptyConceptMap(sender, "loinc");
+  const newConceptMap = createEmptyConceptMap(sender, "observation-code-loinc");
   return putResource("ConceptMap", conceptMapId, newConceptMap);
 }
 
@@ -153,7 +153,7 @@ export async function deleteMapping(
   localCode: string,
   localSystem: string,
 ): Promise<void> {
-  const conceptMapId = generateConceptMapId(sender, "loinc");
+  const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
   const conceptMap = await fetchConceptMap(conceptMapId);
 
   if (!conceptMap) {
@@ -176,7 +176,7 @@ export async function searchMappings(
   sender: SenderContext,
   query?: { localCode?: string; loincCode?: string },
 ): Promise<ConceptMapGroupElement[]> {
-  const conceptMapId = generateConceptMapId(sender, "loinc");
+  const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
   const conceptMap = await fetchConceptMap(conceptMapId);
 
   if (!conceptMap?.group) {

@@ -10,7 +10,7 @@ import { escapeHtml } from "../../utils/html";
 import { parsePageParam, createPagination, PAGE_SIZE, renderPaginationControls, type PaginationData } from "../pagination";
 import { renderNav, renderLayout, type NavData } from "../shared-layout";
 import { htmlResponse, getNavData } from "../shared";
-import { MAPPING_TYPES, type MappingTypeName, getMappingTypeName } from "../../code-mapping/mapping-types";
+import { MAPPING_TYPES, type MappingTypeName, isMappingTypeName } from "../../code-mapping/mapping-types";
 import { getValidValuesWithDisplay } from "../../code-mapping/validation";
 import { getMappingTypeShortLabel } from "../mapping-type-ui";
 
@@ -29,21 +29,16 @@ export function getMappingTypeFilterDisplay(filter: MappingTypeFilter): string {
 }
 
 /**
- * Get task codes for a filter
+ * Get mapping type names for a filter (used to query Task.code)
  */
-function getTaskCodesForFilter(filter: MappingTypeFilter): string[] {
+function getMappingTypesForFilter(filter: MappingTypeFilter): MappingTypeName[] {
   if (filter === "all") {
-    // Include legacy code for backward compatibility
-    return ["local-to-loinc-mapping", ...Object.values(MAPPING_TYPES).map(t => t.taskCode)];
+    return Object.keys(MAPPING_TYPES) as MappingTypeName[];
   }
   if (filter === "status") {
-    return [MAPPING_TYPES["obr-status"].taskCode, MAPPING_TYPES["obx-status"].taskCode];
+    return ["obr-status", "obx-status"];
   }
-  // Legacy LOINC code support
-  if (filter === "loinc") {
-    return ["local-to-loinc-mapping", MAPPING_TYPES.loinc.taskCode];
-  }
-  return [MAPPING_TYPES[filter].taskCode];
+  return [filter];
 }
 
 /**
@@ -97,13 +92,9 @@ export function getTaskInputValue(
  * Get the mapping type from a task's code
  */
 export function getTaskMappingType(task: Task): MappingTypeName | undefined {
-  const taskCode = task.code?.coding?.[0]?.code;
-  if (!taskCode) return undefined;
-  try {
-    return getMappingTypeName(taskCode);
-  } catch {
-    return undefined;
-  }
+  const code = task.code?.coding?.[0]?.code;
+  if (!code || !isMappingTypeName(code)) return undefined;
+  return code;
 }
 
 /**
@@ -142,8 +133,8 @@ export async function getMappingTasks(
     status === "requested" ? "_sort=_lastUpdated" : "_sort=-_lastUpdated";
 
   // Build code filter - multiple codes use comma-separated values
-  const taskCodes = getTaskCodesForFilter(typeFilter);
-  const codeParam = taskCodes.join(",");
+  const mappingTypes = getMappingTypesForFilter(typeFilter);
+  const codeParam = mappingTypes.join(",");
 
   const bundle = await aidboxFetch<Bundle<Task>>(
     `/fhir/Task?code=${encodeURIComponent(codeParam)}&status=${status}&${sortOrder}&_count=${PAGE_SIZE}&_page=${page}`,
@@ -161,7 +152,7 @@ export async function getMappingTasks(
 /**
  * Available type filter options for the UI
  */
-const TYPE_FILTER_OPTIONS: MappingTypeFilter[] = ["all", "loinc", "patient-class", "status"];
+const TYPE_FILTER_OPTIONS: MappingTypeFilter[] = ["all", "observation-code-loinc", "patient-class", "status"];
 
 /**
  * Build URL for a filter combination
@@ -252,7 +243,7 @@ export function renderMappingTasksPage(
 function renderResolutionForm(task: Task, mappingType: MappingTypeName): string {
   const taskId = task.id;
 
-  if (mappingType === "loinc") {
+  if (mappingType === "observation-code-loinc") {
     return `
       <div class="mt-3 pt-3 border-t border-gray-100">
         <form method="POST" action="/api/mapping/tasks/${taskId}/resolve" class="flex items-end gap-3">
@@ -273,6 +264,7 @@ function renderResolutionForm(task: Task, mappingType: MappingTypeName): string 
   // For non-LOINC types, render a dropdown with allowed values
   const typeConfig = MAPPING_TYPES[mappingType];
   const options = getValidValuesWithDisplay(mappingType);
+  // targetFieldLabel usage
   const targetLabel = typeConfig.targetFieldLabel.split(".").pop() || "value";
 
   return `

@@ -5,9 +5,9 @@
  */
 
 import { aidboxFetch } from "../aidbox";
-import { getMappingTypeName } from "../code-mapping/mapping-types";
+import { isMappingTypeName } from "../code-mapping/mapping-types";
 import { validateResolvedCode } from "../code-mapping/validation";
-import { resolveTaskAndUpdateMessages } from "../ui/mapping-tasks-queue";
+import { resolveTaskAndUpdateMessages } from "./task-resolution";
 
 /**
  * Handle task resolution POST request.
@@ -52,18 +52,15 @@ export async function handleTaskResolution(
       code?: { coding?: Array<{ code?: string }> };
     }>(`/fhir/Task/${taskId}`);
 
-    const taskCode = task.code?.coding?.[0]?.code;
-    if (!taskCode) {
+    const mappingType = task.code?.coding?.[0]?.code;
+    if (!mappingType || !isMappingTypeName(mappingType)) {
       return new Response(null, {
         status: 302,
         headers: {
-          Location: `/mapping/tasks?error=${encodeURIComponent("Task has no code - cannot determine mapping type")}`,
+          Location: `/mapping/tasks?error=${encodeURIComponent("Task has invalid mapping type - cannot determine target system")}`,
         },
       });
     }
-
-    // Get the mapping type from the task code
-    const mappingType = getMappingTypeName(taskCode);
 
     // Validate the resolved code against the target value set
     const validationResult = validateResolvedCode(mappingType, resolvedCode);

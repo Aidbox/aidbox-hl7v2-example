@@ -181,7 +181,9 @@ export async function convertOBXToObservationResolving(
         localCode: error.localCode || "",
         localDisplay: error.localDisplay,
         localSystem: error.localSystem,
-        mappingType: "loinc",
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
       });
     } else {
       throw error;
@@ -982,7 +984,7 @@ export async function convertORU_R01(
   }
 
   if (allMappingErrors.length > 0) {
-    return buildMappingErrorResult(senderContext, allMappingErrors, patientRef);
+    return buildMappingErrorResult(senderContext, allMappingErrors);
   }
 
   // Include draft patient in bundle if created

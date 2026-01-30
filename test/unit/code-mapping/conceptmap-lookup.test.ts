@@ -59,10 +59,10 @@ describe("generateConceptMapId", () => {
 
     const result = generateConceptMapId(
       { sendingApplication: "EPIC", sendingFacility: "UIHEALTH" },
-      "loinc",
+      "observation-code-loinc",
     );
 
-    expect(result).toBe("hl7v2-epic-uihealth-loinc");
+    expect(result).toBe("hl7v2-epic-uihealth-observation-code-loinc");
   });
 
   test("handles special characters by converting to kebab-case", async () => {
@@ -74,11 +74,11 @@ describe("generateConceptMapId", () => {
         sendingApplication: "SENdr10",
         sendingFacility: "Sentara Reference Lab Solutions (Epic Beaker)",
       },
-      "loinc",
+      "observation-code-loinc",
     );
 
     expect(result).toBe(
-      "hl7v2-sendr10-sentara-reference-lab-solutions-epic-beaker-loinc",
+      "hl7v2-sendr10-sentara-reference-lab-solutions-epic-beaker-observation-code-loinc",
     );
   });
 
@@ -88,10 +88,10 @@ describe("generateConceptMapId", () => {
 
     const result = generateConceptMapId(
       { sendingApplication: "LAB_SYSTEM", sendingFacility: "HOSPITAL.ONE" },
-      "loinc",
+      "observation-code-loinc",
     );
 
-    expect(result).toBe("hl7v2-lab-system-hospital-one-loinc");
+    expect(result).toBe("hl7v2-lab-system-hospital-one-observation-code-loinc");
   });
 
   test("generates obr-status ConceptMap ID when mappingType is obr-status", async () => {
@@ -151,7 +151,7 @@ describe("translateCode", () => {
       await import("../../../src/code-mapping/concept-map");
 
     const result = await translateCode(
-      "hl7v2-epic-uihealth-loinc",
+      "hl7v2-epic-uihealth-observation-code-loinc",
       "1230148171",
       "LABBLRR",
     );
@@ -164,7 +164,7 @@ describe("translateCode", () => {
     }
 
     expect(aidboxFetchSpy).toHaveBeenCalledWith(
-      "/fhir/ConceptMap/hl7v2-epic-uihealth-loinc/$translate",
+      "/fhir/ConceptMap/hl7v2-epic-uihealth-observation-code-loinc/$translate",
       expect.objectContaining({
         method: "POST",
       }),
@@ -178,7 +178,7 @@ describe("translateCode", () => {
       await import("../../../src/code-mapping/concept-map");
 
     const result = await translateCode(
-      "hl7v2-epic-uihealth-loinc",
+      "hl7v2-epic-uihealth-observation-code-loinc",
       "UNKNOWN_CODE",
       "LABBLRR",
     );
@@ -364,7 +364,7 @@ describe("resolveToLoinc - ConceptMap lookup", () => {
     expect(result.local?.code).toBe("1230148171");
 
     expect(aidboxFetchSpy).toHaveBeenCalledWith(
-      "/fhir/ConceptMap/hl7v2-epic-uihealth-loinc/$translate",
+      "/fhir/ConceptMap/hl7v2-epic-uihealth-observation-code-loinc/$translate",
       expect.anything(),
     );
   });
@@ -428,7 +428,7 @@ describe("resolveToLoinc - ConceptMap lookup", () => {
       expect(loincError.sendingApplication).toBe("APP");
       expect(loincError.sendingFacility).toBe("FAC");
       expect(loincError.message).toContain("ConceptMap not found");
-      expect(loincError.message).toContain("hl7v2-app-fac-loinc");
+      expect(loincError.message).toContain("hl7v2-app-fac-observation-code-loinc");
       expect(loincError.message).not.toContain("No LOINC mapping found");
     }
   });

@@ -11,7 +11,7 @@ For initial setup (Docker, Aidbox, running services), see the [User Guide: Getti
 Unit tests have no external dependencies and run fast. The default test root is `./test/unit` (configured in `bunfig.toml`).
 
 ```sh
-bun test                                    # Run unit tests
+bun test                                    # Run unit tests only
 bun test:unit                               # Same as above (alias)
 bun test test/unit/bar/                     # Run tests in directory
 bun test test/unit/bar/generator.test.ts    # Run specific file

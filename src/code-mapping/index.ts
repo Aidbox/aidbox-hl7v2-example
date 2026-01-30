@@ -23,9 +23,12 @@ export {
 
 export {
   generateMappingTaskId,
+  composeMappingTask,
+  createTaskBundleEntry,
   resolveMappingTask,
+  removeTaskFromMessage,
   removeResolvedTaskFromMessage,
-} from "./mapping-task-service";
+} from "./mapping-task";
 
 export {
   searchLoincCodes,

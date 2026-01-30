@@ -10,25 +10,25 @@ import {
 describe("validateResolvedCode", () => {
   describe("LOINC validation", () => {
     test("accepts any non-empty LOINC code", () => {
-      const result = validateResolvedCode("loinc", "2823-3");
+      const result = validateResolvedCode("observation-code-loinc", "2823-3");
       expect(result.valid).toBe(true);
       expect(result.error).toBeUndefined();
     });
 
     test("accepts LOINC codes with various formats", () => {
-      expect(validateResolvedCode("loinc", "12345-6").valid).toBe(true);
-      expect(validateResolvedCode("loinc", "LP1234-5").valid).toBe(true);
-      expect(validateResolvedCode("loinc", "LA12345-6").valid).toBe(true);
+      expect(validateResolvedCode("observation-code-loinc", "12345-6").valid).toBe(true);
+      expect(validateResolvedCode("observation-code-loinc", "LP1234-5").valid).toBe(true);
+      expect(validateResolvedCode("observation-code-loinc", "LA12345-6").valid).toBe(true);
     });
 
     test("rejects empty LOINC code", () => {
-      const result = validateResolvedCode("loinc", "");
+      const result = validateResolvedCode("observation-code-loinc", "");
       expect(result.valid).toBe(false);
       expect(result.error).toContain("cannot be empty");
     });
 
     test("rejects whitespace-only LOINC code", () => {
-      const result = validateResolvedCode("loinc", "   ");
+      const result = validateResolvedCode("observation-code-loinc", "   ");
       expect(result.valid).toBe(false);
       expect(result.error).toContain("cannot be empty");
     });
@@ -135,7 +135,7 @@ describe("validateResolvedCode", () => {
 
 describe("getValidValues", () => {
   test("returns undefined for LOINC (no fixed set)", () => {
-    const values = getValidValues("loinc");
+    const values = getValidValues("observation-code-loinc");
     expect(values).toBeUndefined();
   });
 

@@ -137,7 +137,7 @@ Create the plan document with:
 - [ ] Add middleware to protected routes in `src/routes/index.ts`
 - [ ] Write unit tests in `src/middleware/validate-user.test.ts`
 - [ ] Write integration test for protected endpoint
-- [ ] Run `bun test` and `bun run typecheck` - must pass before next task
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
 ```
 
 ### Bad Task Structure (avoid)
@@ -245,7 +245,7 @@ Always include commands that verify correctness:
 
 ```markdown
 ## Validation Commands
-- `bun test`                    # Run all tests
+- `bun test:all`                    # Run all tests
 - `bun run typecheck`           # Type checking
 - `bun run lint`                # Linting
 - `bun run build`               # Verify build succeeds

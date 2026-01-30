@@ -314,7 +314,7 @@ describe("ORU_R01 E2E Integration", () => {
       expect(message.unmappedCodes![0]!.localCode).toBe("undefined");
     });
 
-    test("returns mapping_error when OBR-25 is Y and creates obr-status-mapping Task", async () => {
+    test("returns mapping_error when OBR-25 is Y and creates obr-status Task", async () => {
       const hl7Message = await loadFixture("oru-r01/status/obr25-invalid.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
@@ -327,7 +327,7 @@ describe("ORU_R01 E2E Integration", () => {
 
       const task = tasks[0]!;
       expect(task.status).toBe("requested");
-      expect(task.code?.coding?.[0]?.code).toBe("obr-status-mapping");
+      expect(task.code?.coding?.[0]?.code).toBe("obr-status");
       expect(task.input).toContainEqual({
         type: { text: "Local code" },
         valueString: "Y",
@@ -390,7 +390,7 @@ describe("ORU_R01 E2E Integration", () => {
   });
 
   describe("OBX-11 status mapping", () => {
-    test("returns mapping_error when OBX-11 is missing and creates obx-status-mapping Task", async () => {
+    test("returns mapping_error when OBX-11 is missing and creates obx-status Task", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obx11.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
@@ -400,7 +400,7 @@ describe("ORU_R01 E2E Integration", () => {
       expect(message.unmappedCodes![0]!.localCode).toBe("undefined");
 
       const tasks = await getMappingTasks();
-      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status-mapping");
+      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status");
       expect(obxStatusTask).toBeDefined();
       expect(obxStatusTask?.status).toBe("requested");
       expect(obxStatusTask?.input).toContainEqual({
@@ -413,7 +413,7 @@ describe("ORU_R01 E2E Integration", () => {
       });
     });
 
-    test("returns mapping_error when OBX-11 is N and creates obx-status-mapping Task", async () => {
+    test("returns mapping_error when OBX-11 is N and creates obx-status Task", async () => {
       const hl7Message = await loadFixture("oru-r01/error/obx11-n.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
@@ -422,7 +422,7 @@ describe("ORU_R01 E2E Integration", () => {
       expect(message.unmappedCodes![0]!.localCode).toBe("N");
 
       const tasks = await getMappingTasks();
-      const task = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status-mapping");
+      const task = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status");
       expect(task).toBeDefined();
       expect(task?.input).toContainEqual({
         type: { text: "Local code" },
@@ -440,8 +440,8 @@ describe("ORU_R01 E2E Integration", () => {
       const tasks = await getMappingTasks();
       expect(tasks.length).toBe(2);
 
-      const loincTask = tasks.find((t) => t.code?.coding?.[0]?.code === "loinc-mapping");
-      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status-mapping");
+      const loincTask = tasks.find((t) => t.code?.coding?.[0]?.code === "observation-code-loinc");
+      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status");
 
       expect(loincTask).toBeDefined();
       expect(obxStatusTask).toBeDefined();
@@ -464,7 +464,7 @@ describe("ORU_R01 E2E Integration", () => {
 
       // Resolve the task
       const tasks = await getMappingTasks();
-      const task = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status-mapping")!;
+      const task = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status")!;
       await resolveTask(task.id!, "preliminary", "Preliminary");
 
       // Reprocess
@@ -686,16 +686,14 @@ describe("ORU_R01 E2E Integration", () => {
       expect(encounters[0]!.class?.code).toBe("IMP");
     });
 
-    test("includes draft Encounter even when mapping_error occurs", async () => {
+    test("does not create draft Encounter when mapping_error occurs", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-mapping-error.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("mapping_error");
-
-      const patientRef = message.patient!.reference!;
-      const encounters = await getEncounters(patientRef);
-
-      expect(encounters.length).toBe(1);
+      // Patient reference is not set when there's a mapping error
+      // (Patient/Encounter will be created on successful reprocessing)
+      expect(message.patient).toBeUndefined();
     });
   });
 
@@ -821,8 +819,8 @@ describe("ORU_R01 E2E Integration", () => {
       // Verify we have two tasks of different types
       const tasks = await getMappingTasks();
       expect(tasks.length).toBe(2);
-      const loincTask = tasks.find((t) => t.code?.coding?.[0]?.code === "loinc-mapping");
-      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status-mapping");
+      const loincTask = tasks.find((t) => t.code?.coding?.[0]?.code === "observation-code-loinc");
+      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status");
       expect(loincTask).toBeDefined();
       expect(obxStatusTask).toBeDefined();
 

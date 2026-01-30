@@ -16,8 +16,8 @@ export function redirectResponse(location: string): Response {
 }
 
 export async function getPendingTasksCount(): Promise<number> {
-  const taskCodes = Object.values(MAPPING_TYPES).map((t) => t.taskCode);
-  const codeParam = taskCodes.join(",");
+  const mappingTypes = Object.keys(MAPPING_TYPES);
+  const codeParam = mappingTypes.join(",");
   const bundle = await aidboxFetch<Bundle<Task>>(
     `/fhir/Task?code=${codeParam}&status=requested&_count=0&_total=accurate`,
   );
