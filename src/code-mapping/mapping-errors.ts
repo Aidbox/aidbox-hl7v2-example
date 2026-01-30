@@ -12,7 +12,7 @@ import type { MappingTypeName } from "./mapping-types";
 import type { SenderContext } from "./concept-map/lookup";
 import {
   composeMappingTask,
-  createTaskBundleEntry,
+  composeTaskBundleEntry,
   generateMappingTaskId,
 } from "./mapping-task";
 import { generateConceptMapId } from "./concept-map/lookup";
@@ -71,7 +71,7 @@ export function buildMappingErrorResult(
     seenTaskIds.add(taskId);
 
     const task = composeMappingTask(senderContext, error);
-    entries.push(createTaskBundleEntry(task));
+    entries.push(composeTaskBundleEntry(task));
 
     unmappedCodes.push({
       localCode: error.localCode,

@@ -112,10 +112,10 @@ export function composeMappingTask(
 }
 
 /**
- * Create a bundle entry for a Task.
+ * Compose a bundle entry for a Task.
  * Uses PUT for upsert - creates new or resets existing (even if completed) to requested.
  */
-export function createTaskBundleEntry(task: Task): BundleEntry {
+export function composeTaskBundleEntry(task: Task): BundleEntry {
   return {
     resource: task,
     request: {

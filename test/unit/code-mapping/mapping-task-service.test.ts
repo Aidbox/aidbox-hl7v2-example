@@ -3,7 +3,7 @@ import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import {
   composeMappingTask,
-  createTaskBundleEntry,
+  composeTaskBundleEntry,
 } from "../../../src/code-mapping/mapping-task";
 import type { SenderContext } from "../../../src/code-mapping/concept-map/lookup";
 import { MAPPING_TYPES } from "../../../src/code-mapping/mapping-types";
@@ -507,7 +507,7 @@ describe("createTaskBundleEntry", () => {
       intent: "order",
     };
 
-    const entry = createTaskBundleEntry(task);
+    const entry = composeTaskBundleEntry(task);
 
     expect(entry.resource).toBe(task);
     expect(entry.request?.method).toBe("PUT");

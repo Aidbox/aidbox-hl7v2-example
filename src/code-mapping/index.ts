@@ -24,7 +24,7 @@ export {
 export {
   generateMappingTaskId,
   composeMappingTask,
-  createTaskBundleEntry,
+  composeTaskBundleEntry,
   resolveMappingTask,
   removeTaskFromMessage,
   removeResolvedTaskFromMessage,

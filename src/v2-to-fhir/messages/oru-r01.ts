@@ -42,7 +42,7 @@ import type {
 } from "../../fhir/hl7-fhir-r4-core";
 import { getResourceWithETag, NotFoundError } from "../../aidbox";
 import { convertPIDToPatient } from "../segments/pid-patient";
-import { convertPV1ToEncounter } from "../segments/pv1-encounter";
+import { convertPV1WithMappingSupport } from "../segments/pv1-encounter";
 import { convertOBRWithMappingSupport } from "../segments/obr-diagnosticreport";
 import { convertOBXWithMappingSupportAsync } from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
@@ -56,6 +56,10 @@ import {
   buildMappingErrorResult,
   type MappingError,
 } from "../../code-mapping/mapping-errors";
+import {
+  composeMappingTask,
+  composeTaskBundleEntry,
+} from "../../code-mapping/mapping-task";
 
 /**
  * Function type for looking up a Patient by ID.
@@ -608,27 +612,10 @@ function generateEncounterId(senderContext: SenderContext, visitNumber: string):
   return parts.join("-").toLowerCase().replace(/[^a-z0-9-]/g, "-");
 }
 
-/**
- * Create a draft encounter from PV1 segment with status=unknown.
- * Draft encounters are unverified and will be updated when ADT message arrives.
- */
-function createDraftEncounter(
-  pv1: PV1,
-  encounterId: string,
-  patientRef: Reference<"Patient">,
-  baseMeta: Meta,
-): Encounter {
-  const encounter = convertPV1ToEncounter(pv1);
-  encounter.id = encounterId;
-  encounter.status = "unknown";
-  encounter.subject = patientRef;
-  encounter.meta = { ...encounter.meta, ...baseMeta };
-  return encounter;
-}
-
 interface EncounterHandlingResult {
   encounterRef: Reference<"Encounter"> | null;
   encounterEntry: BundleEntry | null;
+  patientClassTaskEntry?: BundleEntry;
 }
 
 /**
@@ -655,6 +642,11 @@ function createConditionalEncounterEntry(encounter: Encounter): BundleEntry {
  * - Extracts visit number from PV1-19, generates deterministic ID with sender context
  * - Looks up existing encounter (does NOT update - ADT is source of truth)
  * - Creates draft encounter with status=unknown if not found
+ *
+ * Patient class mapping errors:
+ * - Do NOT block the message (ORU clinical data is prioritized)
+ * - Create Task for tracking, use fallback class (AMB)
+ * - Message status stays "processed", so won't be requeued when Task is resolved
  *
  * Race condition handling: Uses POST with If-None-Exist to ensure only one
  * draft encounter is created even if multiple ORU messages for the same
@@ -685,10 +677,24 @@ async function handleEncounter(
     return { encounterRef, encounterEntry: null };
   }
 
-  const draftEncounter = createDraftEncounter(pv1, encounterId, patientRef, baseMeta);
-  const encounterEntry = createConditionalEncounterEntry(draftEncounter);
+  // Create draft encounter from PV1 with status=unknown (ADT is source of truth)
+  const result = await convertPV1WithMappingSupport(pv1, senderContext);
+  const encounter = result.encounter;
+  encounter.status = "unknown";
+  encounter.id = encounterId;
+  encounter.subject = patientRef;
+  encounter.meta = { ...encounter.meta, ...baseMeta };
 
-  return { encounterRef, encounterEntry };
+  const encounterEntry = createConditionalEncounterEntry(encounter);
+
+  // ORU policy: create Task for tracking patient class mapping errors, don't block
+  let patientClassTaskEntry: BundleEntry | undefined;
+  if (result.mappingError) {
+    const task = composeMappingTask(senderContext, result.mappingError);
+    patientClassTaskEntry = composeTaskBundleEntry(task);
+  }
+
+  return { encounterRef, encounterEntry, patientClassTaskEntry };
 }
 
 function getOrderNumber(obr: OBR): string {
@@ -958,7 +964,7 @@ export async function convertORU_R01(
   );
 
   const pv1 = parsePV1(parsed);
-  const { encounterRef, encounterEntry } = await handleEncounter(
+  const { encounterRef, encounterEntry, patientClassTaskEntry } = await handleEncounter(
     pv1,
     patientRef,
     baseMeta,
@@ -995,6 +1001,11 @@ export async function convertORU_R01(
   // Include draft encounter in bundle if created
   if (encounterEntry) {
     entries.unshift(encounterEntry);
+  }
+
+  // Include patient class mapping task for tracking (does not block message)
+  if (patientClassTaskEntry) {
+    entries.push(patientClassTaskEntry);
   }
 
   const bundle: Bundle = {
