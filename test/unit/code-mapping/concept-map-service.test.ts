@@ -274,6 +274,7 @@ describe("addMappingToConceptMap", () => {
       "Potassium",
       "2823-3",
       "Potassium [Moles/volume]",
+      "http://loinc.org",
     );
 
     expect(result.group).toHaveLength(1);
@@ -301,6 +302,7 @@ describe("addMappingToConceptMap", () => {
       "", // empty localDisplay
       "11529-5",
       "Surgical pathology study",
+      "http://loinc.org",
     );
 
     // The element should NOT have a display property (Aidbox rejects empty strings)
@@ -332,6 +334,7 @@ describe("addMappingToConceptMap", () => {
       "Local Display",
       "12345-6",
       "", // empty loincDisplay
+      "http://loinc.org",
     );
 
     expect(result.group![0]!.element![0]!.target![0]!.code).toBe("12345-6");
@@ -526,6 +529,7 @@ describe("addMappingToConceptMap with different target systems", () => {
       "Local Display",
       "2823-3",
       "Potassium",
+      "http://loinc.org",
     );
 
     expect(result.group![0]!.target).toBe("http://loinc.org");
