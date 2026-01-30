@@ -43,7 +43,7 @@ import type {
 import { getResourceWithETag, NotFoundError } from "../../aidbox";
 import { convertPIDToPatient } from "../segments/pid-patient";
 import { convertPV1ToEncounter } from "../segments/pv1-encounter";
-import { convertOBRWithMappingSupportAsync } from "../segments/obr-diagnosticreport";
+import { convertOBRWithMappingSupport } from "../segments/obr-diagnosticreport";
 import { convertOBXWithMappingSupportAsync } from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
 import {
@@ -866,7 +866,7 @@ async function processOBRGroup(
   const obr = fromOBR(group.obr);
   const orderNumber = getOrderNumber(obr);
 
-  const obrResult = await convertOBRWithMappingSupportAsync(obr, senderContext);
+  const obrResult = await convertOBRWithMappingSupport(obr, senderContext);
 
   // Collect OBR status mapping error if present
   const mappingErrors: MappingError[] = [];

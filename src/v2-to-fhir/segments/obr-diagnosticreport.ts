@@ -321,60 +321,7 @@ async function resolveOBRStatus(
 }
 
 /**
- * Convert OBR segment to FHIR DiagnosticReport with mapping error support (sync version).
- *
- * This version does NOT check ConceptMap - use convertOBRWithMappingSupportAsync
- * when processing messages where ConceptMap lookup is needed.
- *
- * Instead of throwing on invalid OBR-25 status, returns a mapping error
- * that can be collected alongside other mapping errors (e.g., LOINC).
- *
- * Field mappings:
- * - OBR-3 (Filler Order Number) or OBR-2 (Placer Order Number) → id (deterministic)
- * - OBR-4 (Universal Service ID) → code
- * - OBR-7 (Observation Date/Time) → effectiveDateTime
- * - OBR-22 (Results Report/Status Change) → issued
- * - OBR-25 (Result Status) → status (returns error if invalid)
- */
-export function convertOBRWithMappingSupport(obr: OBR): OBRConversionResult {
-  const id =
-    generateIdFromEI(obr.$3_fillerOrderNumber) ??
-    generateIdFromEI(obr.$2_placerOrderNumber);
-
-  const statusResult = mapOBRStatusToFHIRWithResult(obr.$25_resultStatus);
-
-  if (statusResult.error) {
-    return { error: statusResult.error };
-  }
-
-  const diagnosticReport: DiagnosticReport = {
-    resourceType: "DiagnosticReport",
-    id,
-    status: statusResult.status,
-    code: convertServiceToCodeableConcept(obr.$4_service) || {
-      text: "Unknown",
-    },
-  };
-
-  // OBR-7: Observation Date/Time → effectiveDateTime
-  if (obr.$7_observationDateTime) {
-    diagnosticReport.effectiveDateTime = convertDTMToDateTime(
-      obr.$7_observationDateTime,
-    );
-  }
-
-  // OBR-22: Results Report/Status Change → issued
-  if (obr.$22_resultsRptStatusChngDateTime) {
-    diagnosticReport.issued = convertDTMToInstant(
-      obr.$22_resultsRptStatusChngDateTime,
-    );
-  }
-
-  return { diagnosticReport };
-}
-
-/**
- * Convert OBR segment to FHIR DiagnosticReport with mapping error support (async version).
+ * Convert OBR segment to FHIR DiagnosticReport with mapping error support.
  *
  * This version checks ConceptMap for sender-specific OBR-25 status mappings.
  * Use this when processing messages where Task resolution may have added custom mappings.
@@ -391,7 +338,7 @@ export function convertOBRWithMappingSupport(obr: OBR): OBRConversionResult {
  * - OBR-22 (Results Report/Status Change) → issued
  * - OBR-25 (Result Status) → status (returns error if invalid)
  */
-export async function convertOBRWithMappingSupportAsync(
+export async function convertOBRWithMappingSupport(
   obr: OBR,
   sender: SenderContext,
 ): Promise<OBRConversionResult> {

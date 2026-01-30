@@ -2,7 +2,6 @@ import { describe, test, expect } from "bun:test";
 import {
   convertPV1ToEncounter,
   mapPatientClassToFHIRWithResult,
-  convertPV1WithMappingSupport,
 } from "../../../../src/v2-to-fhir/segments/pv1-encounter";
 import type { PV1 } from "../../../../src/hl7v2/generated/fields";
 
@@ -574,95 +573,6 @@ describe("mapPatientClassToFHIRWithResult", () => {
       // undefined normalizes to "U" which is valid
       expect(result.class).toBeDefined();
       expect(result.class?.code).toBe("AMB");
-    });
-  });
-});
-
-describe("convertPV1WithMappingSupport", () => {
-  describe("valid patient class", () => {
-    test("returns Encounter for valid PV1-2 Patient Class", () => {
-      const pv1: PV1 = {
-        $2_class: "I",
-        $19_visitNumber: { $1_value: "V12345" },
-      };
-
-      const result = convertPV1WithMappingSupport(pv1);
-
-      expect(result.encounter).toBeDefined();
-      expect(result.error).toBeUndefined();
-      expect(result.encounter?.class.code).toBe("IMP");
-      expect(result.encounter?.status).toBe("in-progress");
-    });
-
-    test("includes all standard Encounter fields", () => {
-      const pv1: PV1 = {
-        $2_class: "I",
-        $3_assignedPatientLocation: { $1_careSite: "MED", $2_room: "101" },
-        $7_attendingDoctor: [
-          { $1_value: "DOC001", $2_family: { $1_family: "Smith" } },
-        ],
-        $19_visitNumber: { $1_value: "V12345" },
-        $44_admission: "202312011000",
-      };
-
-      const result = convertPV1WithMappingSupport(pv1);
-
-      expect(result.encounter).toBeDefined();
-      expect(result.encounter?.identifier).toHaveLength(1);
-      expect(result.encounter?.location).toHaveLength(1);
-      expect(result.encounter?.participant).toHaveLength(1);
-      expect(result.encounter?.period?.start).toBe("2023-12-01T10:00:00Z");
-    });
-
-    test("sets status to finished when discharge datetime present", () => {
-      const pv1: PV1 = {
-        $2_class: "I",
-        $45_discharge: ["202312151430"],
-      };
-
-      const result = convertPV1WithMappingSupport(pv1);
-
-      expect(result.encounter?.status).toBe("finished");
-    });
-  });
-
-  describe("invalid patient class", () => {
-    test("returns mapping error for invalid PV1-2 class 1", () => {
-      const pv1: PV1 = {
-        $2_class: "1",
-        $19_visitNumber: { $1_value: "V12345" },
-      };
-
-      const result = convertPV1WithMappingSupport(pv1);
-
-      expect(result.encounter).toBeUndefined();
-      expect(result.error).toBeDefined();
-      expect(result.error?.mappingType).toBe("patient-class");
-      expect(result.error?.localCode).toBe("1");
-    });
-
-    test("returns mapping error for invalid PV1-2 class X", () => {
-      const pv1: PV1 = {
-        $2_class: "X",
-      };
-
-      const result = convertPV1WithMappingSupport(pv1);
-
-      expect(result.encounter).toBeUndefined();
-      expect(result.error).toBeDefined();
-      expect(result.error?.localCode).toBe("X");
-    });
-
-    test("includes proper HL7v2 table system in error", () => {
-      const pv1: PV1 = {
-        $2_class: "99",
-      };
-
-      const result = convertPV1WithMappingSupport(pv1);
-
-      expect(result.error?.localSystem).toBe(
-        "http://terminology.hl7.org/CodeSystem/v2-0004",
-      );
     });
   });
 });
