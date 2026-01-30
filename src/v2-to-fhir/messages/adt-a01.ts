@@ -44,7 +44,7 @@ import type {
   Resource,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertPIDToPatient } from "../segments/pid-patient";
-import { convertPV1WithMappingSupportAsync } from "../segments/pv1-encounter";
+import { convertPV1WithMappingSupport } from "../segments/pv1-encounter";
 import { convertNK1ToRelatedPerson } from "../segments/nk1-relatedperson";
 import { convertDG1ToCondition } from "../segments/dg1-condition";
 import { convertAL1ToAllergyIntolerance } from "../segments/al1-allergyintolerance";
@@ -370,7 +370,7 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   const pv1Segment = findSegment(parsed, "PV1");
   if (pv1Segment) {
     const pv1 = fromPV1(pv1Segment);
-    const pv1Result = await convertPV1WithMappingSupportAsync(pv1, senderContext);
+    const pv1Result = await convertPV1WithMappingSupport(pv1, senderContext);
 
     if (pv1Result.error) {
       // Patient class mapping error - collect it
