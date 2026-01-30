@@ -372,21 +372,22 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
     const pv1 = fromPV1(pv1Segment);
     const pv1Result = await convertPV1WithMappingSupport(pv1, senderContext);
 
-    if (pv1Result.error) {
-      // Patient class mapping error - collect it
-      mappingErrors.push(pv1Result.error);
-    } else {
-      encounter = pv1Result.encounter;
-      (encounter as { subject: { reference?: string } }).subject = {
-        reference: patientRef,
-      };
+    if (pv1Result.mappingError) {
+      // Patient class mapping error - ADT policy: block until resolved
+      mappingErrors.push(pv1Result.mappingError);
+    }
 
-      // Generate encounter ID
-      if (pv1.$19_visitNumber?.$1_value) {
-        encounter.id = pv1.$19_visitNumber.$1_value;
-      } else {
-        encounter.id = generateId("encounter", 1, messageControlId);
-      }
+    // Always use the encounter (may have fallback class if mapping failed)
+    encounter = pv1Result.encounter;
+    (encounter as { subject: { reference?: string } }).subject = {
+      reference: patientRef,
+    };
+
+    // Generate encounter ID
+    if (pv1.$19_visitNumber?.$1_value) {
+      encounter.id = pv1.$19_visitNumber.$1_value;
+    } else {
+      encounter.id = generateId("encounter", 1, messageControlId);
     }
   }
 
