@@ -116,33 +116,33 @@ describe("listConceptMaps with type filtering", () => {
 
   test("returns all ConceptMaps when filter is 'all'", async () => {
     // Create ConceptMaps of different types
-    await createConceptMap("cm-loinc-test", "loinc", "TEST_APP|TEST_FACILITY");
+    await createConceptMap("cm-observation-code-loinc-test", "observation-code-loinc", "TEST_APP|TEST_FACILITY");
     await createConceptMap("cm-obr-status-test", "obr-status", "TEST_APP|TEST_FACILITY");
     await createConceptMap("cm-patient-class-test", "patient-class", "OTHER_APP|OTHER_FACILITY");
 
     const result = await listConceptMaps("all");
 
     expect(result.length).toBe(3);
-    expect(result.some(cm => cm.mappingType === "loinc")).toBe(true);
+    expect(result.some(cm => cm.mappingType === "observation-code-loinc")).toBe(true);
     expect(result.some(cm => cm.mappingType === "obr-status")).toBe(true);
     expect(result.some(cm => cm.mappingType === "patient-class")).toBe(true);
   });
 
-  test("filters by loinc type", async () => {
-    await createConceptMap("cm-loinc-1", "loinc", "LAB1|FACILITY1");
-    await createConceptMap("cm-loinc-2", "loinc", "LAB2|FACILITY2");
+  test("filters by observation-code-loinc type", async () => {
+    await createConceptMap("cm-observation-code-loinc-1", "observation-code-loinc", "LAB1|FACILITY1");
+    await createConceptMap("cm-observation-code-loinc-2", "observation-code-loinc", "LAB2|FACILITY2");
     await createConceptMap("cm-obr-1", "obr-status", "APP1|FAC1");
 
-    const result = await listConceptMaps("loinc");
+    const result = await listConceptMaps("observation-code-loinc");
 
     expect(result.length).toBe(2);
-    expect(result.every(cm => cm.mappingType === "loinc")).toBe(true);
+    expect(result.every(cm => cm.mappingType === "observation-code-loinc")).toBe(true);
     expect(result.every(cm => cm.targetSystem === "http://loinc.org")).toBe(true);
   });
 
   test("filters by patient-class", async () => {
     await createConceptMap("cm-patient-1", "patient-class", "APP1|FAC1");
-    await createConceptMap("cm-loinc-1", "loinc", "LAB1|FACILITY1");
+    await createConceptMap("cm-observation-code-loinc-1", "observation-code-loinc", "LAB1|FACILITY1");
 
     const result = await listConceptMaps("patient-class");
 
@@ -153,7 +153,7 @@ describe("listConceptMaps with type filtering", () => {
 
   test("filters by obr-status", async () => {
     await createConceptMap("cm-obr-1", "obr-status", "APP1|FAC1");
-    await createConceptMap("cm-loinc-1", "loinc", "LAB1|FACILITY1");
+    await createConceptMap("cm-observation-code-loinc-1", "observation-code-loinc", "LAB1|FACILITY1");
 
     const result = await listConceptMaps("obr-status");
 
@@ -163,7 +163,7 @@ describe("listConceptMaps with type filtering", () => {
 
   test("filters by obx-status", async () => {
     await createConceptMap("cm-obx-1", "obx-status", "APP1|FAC1");
-    await createConceptMap("cm-loinc-1", "loinc", "LAB1|FACILITY1");
+    await createConceptMap("cm-observation-code-loinc-1", "observation-code-loinc", "LAB1|FACILITY1");
 
     const result = await listConceptMaps("obx-status");
 
@@ -172,7 +172,7 @@ describe("listConceptMaps with type filtering", () => {
   });
 
   test("excludes ConceptMaps with unknown target systems", async () => {
-    await createConceptMap("cm-loinc-1", "loinc", "LAB1|FACILITY1");
+    await createConceptMap("cm-observation-code-loinc-1", "observation-code-loinc", "LAB1|FACILITY1");
 
     // Create a ConceptMap with unknown target system directly
     const unknownConceptMap: ConceptMap = {
@@ -202,12 +202,12 @@ describe("listConceptMaps with type filtering", () => {
     const result = await listConceptMaps("all");
 
     expect(result.length).toBe(1);
-    expect(result[0]!.mappingType).toBe("loinc");
+    expect(result[0]!.mappingType).toBe("observation-code-loinc");
     expect(result.some(cm => cm.id === "cm-unknown-target")).toBe(false);
   });
 
   test("returns empty result when no ConceptMaps match filter", async () => {
-    await createConceptMap("cm-loinc-1", "loinc", "LAB1|FACILITY1");
+    await createConceptMap("cm-observation-code-loinc-1", "observation-code-loinc", "LAB1|FACILITY1");
 
     const result = await listConceptMaps("obr-status");
 
@@ -221,14 +221,14 @@ describe("listConceptMaps with type filtering", () => {
   });
 
   test("includes mapping type and target system in results", async () => {
-    await createConceptMap("cm-loinc-1", "loinc", "LAB1|FACILITY1");
+    await createConceptMap("cm-observation-code-loinc-1", "observation-code-loinc", "LAB1|FACILITY1");
 
     const result = await listConceptMaps("all");
 
     expect(result.length).toBe(1);
-    expect(result[0]!.id).toBe("cm-loinc-1");
+    expect(result[0]!.id).toBe("cm-observation-code-loinc-1");
     expect(result[0]!.displayName).toBe("LAB1|FACILITY1");
-    expect(result[0]!.mappingType).toBe("loinc");
+    expect(result[0]!.mappingType).toBe("observation-code-loinc");
     expect(result[0]!.targetSystem).toBe("http://loinc.org");
   });
 });
@@ -239,11 +239,11 @@ describe("getMappingsFromConceptMap with type detection", () => {
   });
 
   test("returns mapping type for LOINC ConceptMap", async () => {
-    await createConceptMapWithEntry("cm-loinc-1", "loinc", "LAB1|FAC1", "K_SERUM", "2823-3");
+    await createConceptMapWithEntry("cm-observation-code-loinc-1", "observation-code-loinc", "LAB1|FAC1", "K_SERUM", "2823-3");
 
-    const result = await getMappingsFromConceptMap("cm-loinc-1", 1);
+    const result = await getMappingsFromConceptMap("cm-observation-code-loinc-1", 1);
 
-    expect(result.mappingType).toBe("loinc");
+    expect(result.mappingType).toBe("observation-code-loinc");
     expect(result.entries.length).toBe(1);
     expect(result.entries[0]!.targetSystem).toBe("http://loinc.org");
   });
@@ -259,9 +259,9 @@ describe("getMappingsFromConceptMap with type detection", () => {
   });
 
   test("returns entry with correct target fields", async () => {
-    await createConceptMapWithEntry("cm-loinc-1", "loinc", "LAB1|FAC1", "K_SERUM", "2823-3");
+    await createConceptMapWithEntry("cm-observation-code-loinc-1", "observation-code-loinc", "LAB1|FAC1", "K_SERUM", "2823-3");
 
-    const result = await getMappingsFromConceptMap("cm-loinc-1", 1);
+    const result = await getMappingsFromConceptMap("cm-observation-code-loinc-1", 1);
 
     expect(result.entries.length).toBe(1);
     expect(result.entries[0]!.localCode).toBe("K_SERUM");
@@ -369,11 +369,11 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
   });
 
   test("LOINC CRUD still works as before", async () => {
-    await createConceptMap("cm-loinc-crud", "loinc", "LAB|FAC");
+    await createConceptMap("cm-observation-code-loinc-crud", "observation-code-loinc", "LAB|FAC");
 
     // Add
     const addResult = await addConceptMapEntry(
-      "cm-loinc-crud",
+      "cm-observation-code-loinc-crud",
       "NA_SERUM",
       "Sodium",
       "ACME-LAB-CODES",
@@ -383,16 +383,16 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
     expect(addResult.success).toBe(true);
 
     // Verify add (note: createConceptMap includes a dummy TEST_CODE entry)
-    let mappings = await getMappingsFromConceptMap("cm-loinc-crud", 1);
+    let mappings = await getMappingsFromConceptMap("cm-observation-code-loinc-crud", 1);
     expect(mappings.entries.length).toBe(2);
     const addedEntry = mappings.entries.find(e => e.localCode === "NA_SERUM");
     expect(addedEntry).toBeDefined();
     expect(addedEntry!.targetCode).toBe("2951-2");
-    expect(mappings.mappingType).toBe("loinc");
+    expect(mappings.mappingType).toBe("observation-code-loinc");
 
     // Update
     const updateResult = await updateConceptMapEntry(
-      "cm-loinc-crud",
+      "cm-observation-code-loinc-crud",
       "NA_SERUM",
       "ACME-LAB-CODES",
       "2951-2-UPDATED",
@@ -401,20 +401,20 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
     expect(updateResult.success).toBe(true);
 
     // Verify update (find by localCode since order may vary)
-    mappings = await getMappingsFromConceptMap("cm-loinc-crud", 1);
+    mappings = await getMappingsFromConceptMap("cm-observation-code-loinc-crud", 1);
     const updatedEntry = mappings.entries.find(e => e.localCode === "NA_SERUM");
     expect(updatedEntry).toBeDefined();
     expect(updatedEntry!.targetCode).toBe("2951-2-UPDATED");
 
     // Delete
     await deleteConceptMapEntry(
-      "cm-loinc-crud",
+      "cm-observation-code-loinc-crud",
       "NA_SERUM",
       "ACME-LAB-CODES",
     );
 
     // Verify delete (note: createConceptMap includes a dummy TEST_CODE entry that remains)
-    mappings = await getMappingsFromConceptMap("cm-loinc-crud", 1);
+    mappings = await getMappingsFromConceptMap("cm-observation-code-loinc-crud", 1);
     expect(mappings.entries.length).toBe(1);
     expect(mappings.entries.find(e => e.localCode === "NA_SERUM")).toBeUndefined();
   });

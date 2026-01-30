@@ -18,7 +18,7 @@ import { MAPPING_TYPES, type MappingTypeName } from "../../../src/code-mapping/m
 
 async function createTask(
   id: string,
-  taskCode: string,
+  mappingTypeName: string,
   taskDisplay: string,
   status: "requested" | "completed" = "requested",
 ): Promise<Task> {
@@ -29,8 +29,8 @@ async function createTask(
     intent: "order",
     code: {
       coding: [{
-        system: "urn:aidbox-hl7v2-converter:task-code",
-        code: taskCode,
+        system: "urn:aidbox-hl7v2-converter:mapping-type",
+        code: mappingTypeName,
         display: taskDisplay,
       }],
     },
@@ -55,7 +55,7 @@ async function createTypedTask(
   status: "requested" | "completed" = "requested",
 ): Promise<Task> {
   const config = MAPPING_TYPES[mappingType];
-  return createTask(id, config.taskCode, config.taskDisplay, status);
+  return createTask(id, mappingType, config.taskDisplay, status);
 }
 
 // ============================================================================
@@ -69,7 +69,7 @@ describe("getMappingTasks with type filtering", () => {
 
   test("returns all tasks when filter is 'all'", async () => {
     // Create one task of each type
-    await createTypedTask("task-loinc", "loinc");
+    await createTypedTask("task-observation-code-loinc", "observation-code-loinc");
     await createTypedTask("task-patient-class", "patient-class");
     await createTypedTask("task-obr", "obr-status");
     await createTypedTask("task-obx", "obx-status");
@@ -78,30 +78,30 @@ describe("getMappingTasks with type filtering", () => {
 
     expect(result.tasks.length).toBe(4);
     expect(result.total).toBe(4);
-    expect(result.tasks.some(t => t.id === "task-loinc")).toBe(true);
+    expect(result.tasks.some(t => t.id === "task-observation-code-loinc")).toBe(true);
     expect(result.tasks.some(t => t.id === "task-patient-class")).toBe(true);
     expect(result.tasks.some(t => t.id === "task-obr")).toBe(true);
     expect(result.tasks.some(t => t.id === "task-obx")).toBe(true);
   });
 
-  test("filters by loinc type", async () => {
-    await createTypedTask("task-loinc-1", "loinc");
-    await createTypedTask("task-loinc-2", "loinc");
+  test("filters by observation-code-loinc type", async () => {
+    await createTypedTask("task-observation-code-loinc-1", "observation-code-loinc");
+    await createTypedTask("task-observation-code-loinc-2", "observation-code-loinc");
     await createTypedTask("task-obr-1", "obr-status");
 
-    const result = await getMappingTasks("requested", 1, "loinc");
+    const result = await getMappingTasks("requested", 1, "observation-code-loinc");
 
     expect(result.tasks.length).toBe(2);
     expect(result.total).toBe(2);
-    expect(result.tasks.some(t => t.id === "task-loinc-1")).toBe(true);
-    expect(result.tasks.some(t => t.id === "task-loinc-2")).toBe(true);
+    expect(result.tasks.some(t => t.id === "task-observation-code-loinc-1")).toBe(true);
+    expect(result.tasks.some(t => t.id === "task-observation-code-loinc-2")).toBe(true);
     expect(result.tasks.some(t => t.id === "task-obr-1")).toBe(false);
   });
 
   test("filters by patient-class", async () => {
     await createTypedTask("task-patient-1", "patient-class");
     await createTypedTask("task-patient-2", "patient-class");
-    await createTypedTask("task-loinc-1", "loinc");
+    await createTypedTask("task-observation-code-loinc-1", "observation-code-loinc");
 
     const result = await getMappingTasks("requested", 1, "patient-class");
 
@@ -114,7 +114,7 @@ describe("getMappingTasks with type filtering", () => {
     await createTypedTask("task-obr-1", "obr-status");
     await createTypedTask("task-obr-2", "obr-status");
     await createTypedTask("task-obx-1", "obx-status");
-    await createTypedTask("task-loinc-1", "loinc");
+    await createTypedTask("task-observation-code-loinc-1", "observation-code-loinc");
 
     const result = await getMappingTasks("requested", 1, "status");
 
@@ -123,7 +123,7 @@ describe("getMappingTasks with type filtering", () => {
     expect(result.tasks.some(t => t.id === "task-obr-1")).toBe(true);
     expect(result.tasks.some(t => t.id === "task-obr-2")).toBe(true);
     expect(result.tasks.some(t => t.id === "task-obx-1")).toBe(true);
-    expect(result.tasks.some(t => t.id === "task-loinc-1")).toBe(false);
+    expect(result.tasks.some(t => t.id === "task-observation-code-loinc-1")).toBe(false);
   });
 
   test("filters by obr-status only", async () => {
@@ -147,22 +147,22 @@ describe("getMappingTasks with type filtering", () => {
   });
 
   test("respects status filter (requested vs completed)", async () => {
-    await createTypedTask("task-pending-1", "loinc", "requested");
-    await createTypedTask("task-pending-2", "loinc", "requested");
-    await createTypedTask("task-completed-1", "loinc", "completed");
+    await createTypedTask("task-pending-1", "observation-code-loinc", "requested");
+    await createTypedTask("task-pending-2", "observation-code-loinc", "requested");
+    await createTypedTask("task-completed-1", "observation-code-loinc", "completed");
 
-    const pendingResult = await getMappingTasks("requested", 1, "loinc");
+    const pendingResult = await getMappingTasks("requested", 1, "observation-code-loinc");
     expect(pendingResult.tasks.length).toBe(2);
     expect(pendingResult.total).toBe(2);
 
-    const completedResult = await getMappingTasks("completed", 1, "loinc");
+    const completedResult = await getMappingTasks("completed", 1, "observation-code-loinc");
     expect(completedResult.tasks.length).toBe(1);
     expect(completedResult.total).toBe(1);
     expect(completedResult.tasks[0]!.id).toBe("task-completed-1");
   });
 
   test("returns empty result when no tasks match filter", async () => {
-    await createTypedTask("task-loinc-1", "loinc");
+    await createTypedTask("task-observation-code-loinc-1", "observation-code-loinc");
 
     const result = await getMappingTasks("requested", 1, "patient-class");
 
@@ -180,11 +180,11 @@ describe("getMappingTasks with type filtering", () => {
   test("respects pagination", async () => {
     // Create more tasks than PAGE_SIZE (50)
     // We'll create 5 and use a smaller count for testing
-    await createTypedTask("task-loinc-1", "loinc");
-    await createTypedTask("task-loinc-2", "loinc");
-    await createTypedTask("task-loinc-3", "loinc");
+    await createTypedTask("task-observation-code-loinc-1", "observation-code-loinc");
+    await createTypedTask("task-observation-code-loinc-2", "observation-code-loinc");
+    await createTypedTask("task-observation-code-loinc-3", "observation-code-loinc");
 
-    const result = await getMappingTasks("requested", 1, "loinc");
+    const result = await getMappingTasks("requested", 1, "observation-code-loinc");
 
     expect(result.tasks.length).toBe(3);
     expect(result.total).toBe(3);

@@ -255,7 +255,7 @@ async function resolveFromConceptMap(
     );
   }
 
-  const conceptMapId = generateConceptMapId(sender, "loinc");
+  const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
   const localSystemNormalized = normalizeSystem(localSystem);
 
   const result = await translateCode(

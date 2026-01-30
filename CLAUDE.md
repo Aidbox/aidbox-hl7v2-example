@@ -1,8 +1,18 @@
 ---
-description: Aidbox HL7 Integration - Use Bun instead of Node.js, npm, pnpm, or vite.
+description: Aidbox HL7 Integration Project
 globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
+alwaysApply: true
 ---
+
+# Your Role
+
+Act as a critical, analytical partner. Do not agree with a user suggestion unless you have:
+- evaluated its assumptions
+- explained any weaknesses or risks
+- and offered a stronger alternative
+
+User might be an idiot, so critically review all user suggestions and push back when they don't make sense. Be direct but constructive.
+Only implement a solution that is objectively worse if the user explicitly says: "I request you to do it this way". Otherwise, challenge or refine it.
 
 # Aidbox HL7 Integration
 
@@ -28,9 +38,9 @@ bun run logs                      # Tail server logs
 bun run mllp                      # Start MLLP server (port 2575)
 bun scripts/load-test-data.ts     # Load 5 test patients with related resources
 bun run typecheck                 # TypeScript type checking
-bun test                          # Run unit tests
-bun test:all                      # Run all tests: unit + integration (requires Aidbox)
-bun test:unit                     # Run unit tests (alias for bun test)
+bun test                          # Run unit tests (don't use)
+bun test:all                      # Run all tests: unit + integration (preferred way to test)
+bun test:unit                     # Run unit tests only
 bun test:integration              # Run integration tests only (requires Aidbox)
 bun reset-integration-aidbox      # Destroy and recreate test Aidbox from scratch
 bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
@@ -200,15 +210,15 @@ For implementation details, see `docs/developer-guide/`:
 
 Use Bun instead of Node.js:
 
-| Instead of | Use |
-|------------|-----|
-| `node`/`ts-node`, `npm`/`yarn`/`pnpm` | `bun`, `bun install`, `bun run` |
-| `jest`/`vitest` | `bun test` |
+| Instead of | Use                                       |
+|------------|-------------------------------------------|
+| `node`/`ts-node`, `npm`/`yarn`/`pnpm` | `bun`, `bun install`, `bun run`           |
+| `jest`/`vitest` | `bun test:all`                            |
 | `dotenv` | Not needed (Bun loads .env automatically) |
-| `express` | `Bun.serve()` |
-| `better-sqlite3` / `pg` / `ioredis` | `bun:sqlite` / `Bun.sql` / `Bun.redis` |
-| `ws` | Built-in `WebSocket` |
-| `node:fs readFile/writeFile` | `Bun.file` |
+| `express` | `Bun.serve()`                             |
+| `better-sqlite3` / `pg` / `ioredis` | `bun:sqlite` / `Bun.sql` / `Bun.redis`    |
+| `ws` | Built-in `WebSocket`                      |
+| `node:fs readFile/writeFile` | `Bun.file`                                |
 
 ## Code Style
 

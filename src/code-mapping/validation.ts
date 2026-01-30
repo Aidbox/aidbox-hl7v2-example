@@ -65,7 +65,7 @@ export function validateResolvedCode(
  */
 function getTypeLabel(mappingType: MappingTypeName): string {
   switch (mappingType) {
-    case "loinc":
+    case "observation-code-loinc":
       return "LOINC";
     case "obr-status":
       return "DiagnosticReport status";

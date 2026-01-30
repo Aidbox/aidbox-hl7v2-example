@@ -325,7 +325,7 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   };
 
   // =========================================================================
-  // Extract PID -> Patient (with mapping error support for address types)
+  // Extract PID -> Patient
   // =========================================================================
 
   const pidSegment = findSegment(parsed, "PID");
@@ -334,8 +334,6 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   }
   const pid = fromPID(pidSegment);
   const patient = convertPIDToPatient(pid);
-
-  // Collect mapping errors (e.g., from PV1 patient class mapping)
   const mappingErrors: MappingError[] = [];
 
   // Set patient ID from PID-2 or generate one
@@ -393,11 +391,7 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   }
 
   if (mappingErrors.length > 0) {
-    return buildMappingErrorResult(
-      senderContext,
-      mappingErrors,
-      { reference: patientRef } as import("../../fhir/hl7-fhir-r4-core").Reference<"Patient">,
-    );
+    return buildMappingErrorResult(senderContext, mappingErrors);
   }
 
   const encounterRef = encounter?.id ? `Encounter/${encounter.id}` : undefined;

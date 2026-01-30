@@ -48,9 +48,9 @@ async function createPendingTask(
       code: {
         coding: [
           {
-            system: "urn:aidbox-hl7v2-converter:task-code",
-            code: "local-to-loinc-mapping",
-            display: "Local code to LOINC mapping",
+            system: "urn:aidbox-hl7v2-converter:mapping-type",
+            code: "observation-code-loinc",
+            display: "Observation code to LOINC mapping",
           },
         ],
         text: "Map local lab code to LOINC",
@@ -103,8 +103,8 @@ async function createPendingTaskForType(
       code: {
         coding: [
           {
-            system: "urn:aidbox-hl7v2-converter:task-code",
-            code: typeConfig.taskCode,
+            system: "urn:aidbox-hl7v2-converter:mapping-type",
+            code: mappingType,
             display: typeConfig.taskDisplay,
           },
         ],
@@ -138,8 +138,8 @@ async function createCompletedTask(id: string): Promise<Task> {
       code: {
         coding: [
           {
-            system: "urn:aidbox-hl7v2-converter:task-code",
-            code: "local-to-loinc-mapping",
+            system: "urn:aidbox-hl7v2-converter:mapping-type",
+            code: "observation-code-loinc",
           },
         ],
       },
@@ -244,7 +244,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       expect(task.output).toBeDefined();
       expect(task.output![0]!.valueCodeableConcept!.coding![0]!.code).toBe("2823-3");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-observation-code-loinc");
       expect(conceptMap).toBeDefined();
       expect(conceptMap.status).toBe("active");
 
@@ -272,7 +272,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       await resolveTaskWithMapping("task-resolve-2", "2823-3", "Potassium");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-observation-code-loinc");
       const group = conceptMap.group?.find(
         (g) => g.source === "ACME-LAB-CODES",
       );
@@ -296,7 +296,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       await resolveTaskWithMapping("task-resolve-3", "2823-3", "Potassium");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-observation-code-loinc");
       const acmeGroup = conceptMap.group?.find(
         (g) => g.source === "ACME-LAB-CODES",
       );
@@ -317,7 +317,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       await resolveTaskWithMapping("task-resolve-new-cm", "2823-3", "Potassium");
 
-      const conceptMap = await fetchConceptMap("hl7v2-new-lab-new-hosp-to-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-new-lab-new-hosp-observation-code-loinc");
       expect(conceptMap).toBeDefined();
       expect(conceptMap.resourceType).toBe("ConceptMap");
       expect(conceptMap.status).toBe("active");
@@ -388,7 +388,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       expect(task.status).toBe("completed");
       expect(task.output![0]!.valueCodeableConcept!.coding![0]!.code).toBe("2823-3");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-observation-code-loinc");
       expect(conceptMap).toBeDefined();
 
       const message = await fetchMessage("msg-full-flow");

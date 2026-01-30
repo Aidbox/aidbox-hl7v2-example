@@ -100,6 +100,8 @@ export function mapPatientClassToFHIRWithResult(
         localDisplay: `PV1-2 Patient Class: ${patientClass ?? "missing"}`,
         localSystem: PATIENT_CLASS_V2_SYSTEM,
         mappingType: "patient-class",
+        sourceFieldLabel: "PV1.2",
+        targetFieldLabel: "Encounter.class",
       },
     };
   }
@@ -232,6 +234,8 @@ async function resolvePatientClass(
       localDisplay: `PV1-2 Patient Class: ${patientClass ?? "missing"}`,
       localSystem: PATIENT_CLASS_V2_SYSTEM,
       mappingType: "patient-class",
+      sourceFieldLabel: "PV1.2",
+      targetFieldLabel: "Encounter.class",
     },
   };
 }

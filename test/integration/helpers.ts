@@ -38,7 +38,7 @@ export async function createTestConceptMap(
     loincDisplay: string;
   }>,
 ): Promise<void> {
-  const id = `hl7v2-${toKebabCase(sendingApp)}-${toKebabCase(sendingFacility)}-loinc`;
+  const id = `hl7v2-${toKebabCase(sendingApp)}-${toKebabCase(sendingFacility)}-observation-code-loinc`;
 
   const groups: Record<string, NonNullable<ConceptMap["group"]>[0]> = {};
   for (const m of mappings) {
@@ -65,7 +65,7 @@ export async function createTestConceptMap(
     resourceType: "ConceptMap",
     id,
     status: "active",
-    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-loinc", "")}`,
+    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-observation-code-loinc", "")}`,
     targetUri: "http://loinc.org",
     group: Object.values(groups),
   };

@@ -11,7 +11,7 @@ import {
 } from "../helpers";
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
-import { MAPPING_TYPES, type MappingTypeName, getMappingTypeName } from "../../../src/code-mapping/mapping-types";
+import { MAPPING_TYPES, type MappingTypeName, isMappingTypeName } from "../../../src/code-mapping/mapping-types";
 import { validateResolvedCode } from "../../../src/code-mapping/validation";
 import { resolveTaskAndUpdateMessages } from "../../../src/ui/mapping-tasks-queue";
 
@@ -44,8 +44,8 @@ async function createTaskForType(
     code: {
       coding: [
         {
-          system: "urn:aidbox-hl7v2-converter:task-code",
-          code: typeConfig.taskCode,
+          system: "urn:aidbox-hl7v2-converter:mapping-type",
+          code: mappingType,
           display: typeConfig.taskDisplay,
         },
       ],
@@ -78,9 +78,9 @@ async function createLegacyLoincTask(id: string): Promise<Task> {
     code: {
       coding: [
         {
-          system: "urn:aidbox-hl7v2-converter:task-code",
-          code: "local-to-loinc-mapping",
-          display: "Local code to LOINC mapping",
+          system: "urn:aidbox-hl7v2-converter:mapping-type",
+          code: "observation-code-loinc",
+          display: "Observation code to LOINC mapping",
         },
       ],
     },
@@ -120,18 +120,15 @@ async function resolveTaskWithValidation(
   }
 
   // Get mapping type from task code
-  const taskCode = task.code?.coding?.[0]?.code;
-  if (!taskCode) {
+  const mappingType = task.code?.coding?.[0]?.code;
+  if (!mappingType) {
     return { success: false, error: "Task has no code" };
   }
 
-  let mappingType: MappingTypeName;
-  try {
-    mappingType = getMappingTypeName(taskCode);
-  } catch (error) {
+  if (!isMappingTypeName(mappingType)) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown task type",
+      error: `Unknown mapping type: ${mappingType}`,
     };
   }
 
@@ -176,7 +173,7 @@ describe("Task resolution with type detection and validation", () => {
 
   describe("LOINC task resolution", () => {
     test("resolves LOINC task with valid code", async () => {
-      await createTaskForType("task-loinc-valid", "loinc");
+      await createTaskForType("task-loinc-valid", "observation-code-loinc");
 
       const result = await resolveTaskWithValidation("task-loinc-valid", "2823-3", "Potassium");
 
@@ -204,7 +201,7 @@ describe("Task resolution with type detection and validation", () => {
     });
 
     test("rejects empty LOINC code", async () => {
-      await createTaskForType("task-loinc-empty", "loinc");
+      await createTaskForType("task-loinc-empty", "observation-code-loinc");
 
       const result = await resolveTaskWithValidation("task-loinc-empty", "");
 

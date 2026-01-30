@@ -12,7 +12,7 @@ import type { MappingTypeName } from "../code-mapping/mapping-types";
  */
 export function getMappingTypeShortLabel(typeName: MappingTypeName): string {
   switch (typeName) {
-    case "loinc":
+    case "observation-code-loinc":
       return "LOINC";
     case "patient-class":
       return "Patient Class";

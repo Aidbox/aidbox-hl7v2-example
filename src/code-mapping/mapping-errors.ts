@@ -5,16 +5,16 @@
  * (LOINC, address type, patient class, OBR/OBX status, etc.)
  */
 
-import type { Bundle, BundleEntry, Reference } from "../fhir/hl7-fhir-r4-core";
+import type { Bundle, BundleEntry } from "../fhir/hl7-fhir-r4-core";
 import type { UnmappedCode } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import type { ConversionResult } from "../v2-to-fhir/converter";
 import type { MappingTypeName } from "./mapping-types";
 import type { SenderContext } from "./concept-map/lookup";
 import {
-  createMappingTask,
+  composeMappingTask,
   createTaskBundleEntry,
   generateMappingTaskId,
-} from "./mapping-task-service";
+} from "./mapping-task";
 import { generateConceptMapId } from "./concept-map/lookup";
 
 /**
@@ -26,6 +26,8 @@ export interface MappingError {
   localDisplay?: string;
   localSystem?: string;
   mappingType: MappingTypeName;
+  sourceFieldLabel: string;
+  targetFieldLabel: string;
 }
 
 /**
@@ -40,12 +42,10 @@ export interface MappingError {
  *
  * @param senderContext - The sender context (sendingApplication, sendingFacility)
  * @param mappingErrors - Array of mapping errors from the conversion
- * @param patientRef - Reference to the patient resource (for messageUpdate.patient)
  */
 export function buildMappingErrorResult(
   senderContext: SenderContext,
   mappingErrors: MappingError[],
-  patientRef: Reference<"Patient">,
 ): ConversionResult {
   const seenTaskIds = new Set<string>();
   const entries: BundleEntry[] = [];
@@ -70,15 +70,7 @@ export function buildMappingErrorResult(
     if (seenTaskIds.has(taskId)) continue;
     seenTaskIds.add(taskId);
 
-    const task = createMappingTask(
-      senderContext,
-      {
-        localCode: error.localCode,
-        localDisplay: error.localDisplay,
-        localSystem: error.localSystem,
-      },
-      error.mappingType,
-    );
+    const task = composeMappingTask(senderContext, error);
     entries.push(createTaskBundleEntry(task));
 
     unmappedCodes.push({
@@ -100,7 +92,6 @@ export function buildMappingErrorResult(
     messageUpdate: {
       status: "mapping_error",
       unmappedCodes: unmappedCodes.length > 0 ? unmappedCodes : undefined,
-      patient: patientRef,
     },
   };
 }

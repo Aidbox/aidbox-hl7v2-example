@@ -4,7 +4,6 @@ import {
   type MappingError,
 } from "../../../src/code-mapping/mapping-errors";
 import type { SenderContext } from "../../../src/code-mapping/concept-map/lookup";
-import type { Reference } from "../../../src/fhir/hl7-fhir-r4-core";
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 
 const sender: SenderContext = {
@@ -12,15 +11,13 @@ const sender: SenderContext = {
   sendingFacility: "ACME_HOSP",
 };
 
-const patientRef: Reference<"Patient"> = { reference: "Patient/123" };
-
 describe("buildMappingErrorResult", () => {
   test("returns mapping_error status with empty unmappedCodes for empty errors array", () => {
-    const result = buildMappingErrorResult(sender, [], patientRef);
+    const result = buildMappingErrorResult(sender, []);
 
     expect(result.messageUpdate.status).toBe("mapping_error");
     expect(result.messageUpdate.unmappedCodes).toBeUndefined();
-    expect(result.messageUpdate.patient).toBe(patientRef);
+    expect(result.messageUpdate.patient).toBeUndefined();
     expect(result.bundle.entry).toBeUndefined();
   });
 
@@ -30,11 +27,13 @@ describe("buildMappingErrorResult", () => {
         localCode: "K_SERUM",
         localDisplay: "Potassium [Serum/Plasma]",
         localSystem: "ACME-LAB-CODES",
-        mappingType: "loinc",
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
       },
     ];
 
-    const result = buildMappingErrorResult(sender, errors, patientRef);
+    const result = buildMappingErrorResult(sender, errors);
 
     expect(result.messageUpdate.status).toBe("mapping_error");
     expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
@@ -47,15 +46,15 @@ describe("buildMappingErrorResult", () => {
     );
     expect(
       result.messageUpdate.unmappedCodes![0]!.mappingTask.reference,
-    ).toMatch(/^Task\/map-hl7v2-acme-lab-acme-hosp-loinc-/);
+    ).toMatch(/^Task\/map-hl7v2-acme-lab-acme-hosp-observation-code-loinc-/);
 
     // Check that Task is created with correct type
     expect(result.bundle.entry).toHaveLength(1);
     const task = result.bundle.entry![0]!.resource as Task;
     expect(task.resourceType).toBe("Task");
     expect(task.status).toBe("requested");
-    expect(task.code?.coding?.[0]?.code).toBe("loinc-mapping");
-    expect(task.code?.coding?.[0]?.display).toBe("Local code to LOINC mapping");
+    expect(task.code?.coding?.[0]?.code).toBe("observation-code-loinc");
+    expect(task.code?.coding?.[0]?.display).toBe("Observation code to LOINC mapping");
   });
 
   test("creates Task for obr-status mapping error", () => {
@@ -65,17 +64,19 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Unknown status",
         localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
         mappingType: "obr-status",
+        sourceFieldLabel: "OBR-25",
+        targetFieldLabel: "DiagnosticReport.status",
       },
     ];
 
-    const result = buildMappingErrorResult(sender, errors, patientRef);
+    const result = buildMappingErrorResult(sender, errors);
 
     expect(
       result.messageUpdate.unmappedCodes![0]!.mappingTask.reference,
     ).toMatch(/^Task\/map-hl7v2-acme-lab-acme-hosp-obr-status-/);
 
     const task = result.bundle.entry![0]!.resource as Task;
-    expect(task.code?.coding?.[0]?.code).toBe("obr-status-mapping");
+    expect(task.code?.coding?.[0]?.code).toBe("obr-status");
   });
 
   test("creates Task for obx-status mapping error", () => {
@@ -85,17 +86,19 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Not applicable",
         localSystem: "http://terminology.hl7.org/CodeSystem/v2-0085",
         mappingType: "obx-status",
+        sourceFieldLabel: "OBX-11",
+        targetFieldLabel: "Observation.status",
       },
     ];
 
-    const result = buildMappingErrorResult(sender, errors, patientRef);
+    const result = buildMappingErrorResult(sender, errors);
 
     expect(
       result.messageUpdate.unmappedCodes![0]!.mappingTask.reference,
     ).toMatch(/^Task\/map-hl7v2-acme-lab-acme-hosp-obx-status-/);
 
     const task = result.bundle.entry![0]!.resource as Task;
-    expect(task.code?.coding?.[0]?.code).toBe("obx-status-mapping");
+    expect(task.code?.coding?.[0]?.code).toBe("obx-status");
   });
 
   test("creates Task for patient-class mapping error", () => {
@@ -105,17 +108,19 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Unknown class",
         localSystem: "http://terminology.hl7.org/CodeSystem/v2-0004",
         mappingType: "patient-class",
+        sourceFieldLabel: "PV1.2",
+        targetFieldLabel: "Encounter.class",
       },
     ];
 
-    const result = buildMappingErrorResult(sender, errors, patientRef);
+    const result = buildMappingErrorResult(sender, errors);
 
     expect(
       result.messageUpdate.unmappedCodes![0]!.mappingTask.reference,
     ).toMatch(/^Task\/map-hl7v2-acme-lab-acme-hosp-patient-class-/);
 
     const task = result.bundle.entry![0]!.resource as Task;
-    expect(task.code?.coding?.[0]?.code).toBe("patient-class-mapping");
+    expect(task.code?.coding?.[0]?.code).toBe("patient-class");
   });
 
   test("creates multiple Tasks for errors of different types", () => {
@@ -124,23 +129,29 @@ describe("buildMappingErrorResult", () => {
         localCode: "K_SERUM",
         localDisplay: "Potassium",
         localSystem: "ACME-LAB",
-        mappingType: "loinc",
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
       },
       {
         localCode: "Y",
         localDisplay: "Unknown",
         localSystem: "v2-0123",
         mappingType: "obr-status",
+        sourceFieldLabel: "OBR-25",
+        targetFieldLabel: "DiagnosticReport.status",
       },
       {
         localCode: "N",
         localDisplay: "NA",
         localSystem: "v2-0085",
         mappingType: "obx-status",
+        sourceFieldLabel: "OBX-11",
+        targetFieldLabel: "Observation.status",
       },
     ];
 
-    const result = buildMappingErrorResult(sender, errors, patientRef);
+    const result = buildMappingErrorResult(sender, errors);
 
     expect(result.messageUpdate.unmappedCodes).toHaveLength(3);
     expect(result.bundle.entry).toHaveLength(3);
@@ -148,9 +159,9 @@ describe("buildMappingErrorResult", () => {
     const taskCodes = result.bundle.entry!.map(
       (e) => (e.resource as Task).code?.coding?.[0]?.code,
     );
-    expect(taskCodes).toContain("loinc-mapping");
-    expect(taskCodes).toContain("obr-status-mapping");
-    expect(taskCodes).toContain("obx-status-mapping");
+    expect(taskCodes).toContain("observation-code-loinc");
+    expect(taskCodes).toContain("obr-status");
+    expect(taskCodes).toContain("obx-status");
   });
 
   test("deduplicates Tasks with same ID (same code and type)", () => {
@@ -159,17 +170,21 @@ describe("buildMappingErrorResult", () => {
         localCode: "K_SERUM",
         localDisplay: "Potassium",
         localSystem: "ACME-LAB",
-        mappingType: "loinc",
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
       },
       {
         localCode: "K_SERUM",
         localDisplay: "Potassium [Serum]",
         localSystem: "ACME-LAB",
-        mappingType: "loinc",
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
       },
     ];
 
-    const result = buildMappingErrorResult(sender, errors, patientRef);
+    const result = buildMappingErrorResult(sender, errors);
 
     // Should have only 1 Task since both errors have same code/system/type
     expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
@@ -183,16 +198,20 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Final",
         localSystem: "LOCAL",
         mappingType: "obr-status",
+        sourceFieldLabel: "OBR-25",
+        targetFieldLabel: "DiagnosticReport.status",
       },
       {
         localCode: "F",
         localDisplay: "Final",
         localSystem: "LOCAL",
         mappingType: "obx-status",
+        sourceFieldLabel: "OBX-11",
+        targetFieldLabel: "Observation.status",
       },
     ];
 
-    const result = buildMappingErrorResult(sender, errors, patientRef);
+    const result = buildMappingErrorResult(sender, errors);
 
     // Should have 2 Tasks since mapping types are different
     expect(result.messageUpdate.unmappedCodes).toHaveLength(2);
@@ -201,8 +220,8 @@ describe("buildMappingErrorResult", () => {
     const taskCodes = result.bundle.entry!.map(
       (e) => (e.resource as Task).code?.coding?.[0]?.code,
     );
-    expect(taskCodes).toContain("obr-status-mapping");
-    expect(taskCodes).toContain("obx-status-mapping");
+    expect(taskCodes).toContain("obr-status");
+    expect(taskCodes).toContain("obx-status");
   });
 
   test("skips errors with empty localCode", () => {
@@ -211,17 +230,21 @@ describe("buildMappingErrorResult", () => {
         localCode: "",
         localDisplay: "Empty code",
         localSystem: "ACME-LAB",
-        mappingType: "loinc",
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
       },
       {
         localCode: "K_SERUM",
         localDisplay: "Potassium",
         localSystem: "ACME-LAB",
-        mappingType: "loinc",
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
       },
     ];
 
-    const result = buildMappingErrorResult(sender, errors, patientRef);
+    const result = buildMappingErrorResult(sender, errors);
 
     // Only the second error should create a Task
     expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
@@ -229,14 +252,16 @@ describe("buildMappingErrorResult", () => {
   });
 
   test("throws error for missing localSystem", () => {
-    const errors: MappingError[] = [
+    const errors = [
       {
         localCode: "TEST",
-        mappingType: "loinc",
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
       },
-    ];
+    ] as MappingError[];
 
-    expect(() => buildMappingErrorResult(sender, errors, patientRef)).toThrow(
+    expect(() => buildMappingErrorResult(sender, errors)).toThrow(
       "localSystem is required",
     );
   });
@@ -247,11 +272,13 @@ describe("buildMappingErrorResult", () => {
         localCode: "K_SERUM",
         localDisplay: "Potassium",
         localSystem: "ACME-LAB",
-        mappingType: "loinc",
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
       },
     ];
 
-    const result = buildMappingErrorResult(sender, errors, patientRef);
+    const result = buildMappingErrorResult(sender, errors);
 
     expect(result.bundle.resourceType).toBe("Bundle");
     expect(result.bundle.type).toBe("transaction");
@@ -263,11 +290,13 @@ describe("buildMappingErrorResult", () => {
         localCode: "K_SERUM",
         localDisplay: "Potassium",
         localSystem: "ACME-LAB",
-        mappingType: "loinc",
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
       },
     ];
 
-    const result = buildMappingErrorResult(sender, errors, patientRef);
+    const result = buildMappingErrorResult(sender, errors);
 
     const taskEntry = result.bundle.entry![0]!;
     expect(taskEntry.request?.method).toBe("PUT");

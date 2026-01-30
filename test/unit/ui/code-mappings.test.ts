@@ -20,7 +20,7 @@ interface Bundle<T> {
 
 const sampleConceptMap: ConceptMap = {
   resourceType: "ConceptMap",
-  id: "hl7v2-acme-lab-acme-hosp-to-loinc",
+  id: "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
   name: "HL7v2 ACME_LAB/ACME_HOSP to LOINC",
   status: "active",
   title: "ACME_LAB|ACME_HOSP",
@@ -49,7 +49,7 @@ const sampleConceptMap: ConceptMap = {
 
 const sampleConceptMap2: ConceptMap = {
   resourceType: "ConceptMap",
-  id: "hl7v2-other-lab-other-hosp-to-loinc",
+  id: "hl7v2-other-lab-other-hosp-to-observation-code-loinc",
   name: "HL7v2 OTHER_LAB/OTHER_HOSP to LOINC",
   status: "active",
   title: "OTHER_LAB|OTHER_HOSP",
@@ -59,7 +59,7 @@ const sampleConceptMap2: ConceptMap = {
 };
 
 // Generated using generateMappingTaskId({ sendingApplication: 'ACME_LAB', sendingFacility: 'ACME_HOSP' }, 'ACME-LAB-CODES', 'NA_SERUM')
-const SAMPLE_TASK_ID = "map-hl7v2-acme-lab-acme-hosp-to-loinc-japqda-511msp";
+const SAMPLE_TASK_ID = "map-hl7v2-acme-lab-acme-hosp-to-observation-code-loinc-japqda-511msp";
 
 const samplePendingTask: Task = {
   resourceType: "Task",
@@ -70,7 +70,7 @@ const samplePendingTask: Task = {
     coding: [
       {
         system: "http://example.org/task-codes",
-        code: "local-to-loinc-mapping",
+        code: "observation-code-loinc",
       },
     ],
   },
@@ -174,7 +174,7 @@ describe("listConceptMaps", () => {
     const result = await listConceptMaps();
 
     expect(result).toHaveLength(2);
-    expect(result[0]!.id).toBe("hl7v2-acme-lab-acme-hosp-to-loinc");
+    expect(result[0]!.id).toBe("hl7v2-acme-lab-acme-hosp-to-observation-code-loinc");
     expect(result[0]!.displayName).toBe("ACME_LAB|ACME_HOSP");
   });
 
@@ -216,7 +216,7 @@ describe("listConceptMaps", () => {
     const result = await listConceptMaps();
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.id).toBe("hl7v2-acme-lab-acme-hosp-to-loinc");
+    expect(result[0]!.id).toBe("hl7v2-acme-lab-acme-hosp-to-observation-code-loinc");
   });
 });
 
@@ -235,7 +235,7 @@ describe("getMappingsFromConceptMap", () => {
       await import("../../../src/ui/pages/code-mappings");
 
     const result = await getMappingsFromConceptMap(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       1,
     );
 
@@ -260,7 +260,7 @@ describe("getMappingsFromConceptMap", () => {
       await import("../../../src/ui/pages/code-mappings");
 
     const result = await getMappingsFromConceptMap(
-      "hl7v2-other-lab-other-hosp-to-loinc",
+      "hl7v2-other-lab-other-hosp-to-observation-code-loinc",
       1,
     );
 
@@ -295,7 +295,7 @@ describe("getMappingsFromConceptMap", () => {
       await import("../../../src/ui/pages/code-mappings");
 
     const page1 = await getMappingsFromConceptMap(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       1,
     );
     expect(page1.entries).toHaveLength(50);
@@ -303,7 +303,7 @@ describe("getMappingsFromConceptMap", () => {
     expect(page1.entries[0]!.localCode).toBe("CODE_0");
 
     const page2 = await getMappingsFromConceptMap(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       2,
     );
     expect(page2.entries).toHaveLength(25);
@@ -352,7 +352,7 @@ describe("addConceptMapEntry", () => {
     const { addConceptMapEntry } = await import("../../../src/ui/pages/code-mappings");
 
     const result = await addConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "NA_SERUM",
       "Sodium [Serum/Plasma]",
       "ACME-LAB-CODES",
@@ -406,7 +406,7 @@ describe("addConceptMapEntry", () => {
     const { addConceptMapEntry } = await import("../../../src/ui/pages/code-mappings");
 
     await addConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "GLU",
       "Glucose",
       "OTHER-SYSTEM",
@@ -438,7 +438,7 @@ describe("addConceptMapEntry", () => {
     const { addConceptMapEntry } = await import("../../../src/ui/pages/code-mappings");
 
     const result = await addConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "K_SERUM", // Already exists
       "Potassium [Serum/Plasma]",
       "ACME-LAB-CODES",
@@ -500,7 +500,7 @@ describe("addConceptMapEntry", () => {
     const { addConceptMapEntry } = await import("../../../src/ui/pages/code-mappings");
 
     await addConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "NA_SERUM",
       "Sodium [Serum/Plasma]",
       "ACME-LAB-CODES",
@@ -548,7 +548,7 @@ describe("updateConceptMapEntry", () => {
       await import("../../../src/ui/pages/code-mappings");
 
     const result = await updateConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "K_SERUM",
       "ACME-LAB-CODES",
       "2823-3-UPDATED",
@@ -582,7 +582,7 @@ describe("updateConceptMapEntry", () => {
       await import("../../../src/ui/pages/code-mappings");
 
     const result = await updateConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "NONEXISTENT",
       "ACME-LAB-CODES",
       "1234-5",
@@ -610,7 +610,7 @@ describe("updateConceptMapEntry", () => {
       await import("../../../src/ui/pages/code-mappings");
 
     await updateConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "K_SERUM",
       "ACME-LAB-CODES",
       "2823-3",
@@ -619,7 +619,7 @@ describe("updateConceptMapEntry", () => {
 
     expect(mockAidbox.updateResourceWithETag).toHaveBeenCalledWith(
       "ConceptMap",
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       expect.any(Object),
       '"specific-etag"',
     );
@@ -657,7 +657,7 @@ describe("deleteConceptMapEntry", () => {
       await import("../../../src/ui/pages/code-mappings");
 
     await deleteConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "K_SERUM",
       "ACME-LAB-CODES",
     );
@@ -695,7 +695,7 @@ describe("deleteConceptMapEntry", () => {
       await import("../../../src/ui/pages/code-mappings");
 
     await deleteConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "K_SERUM",
       "ACME-LAB-CODES",
     );
@@ -724,7 +724,7 @@ describe("deleteConceptMapEntry", () => {
 
     // Should not throw
     await deleteConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "NONEXISTENT",
       "ACME-LAB-CODES",
     );
@@ -1063,7 +1063,7 @@ describe("integration: add mapping flow", () => {
     const { addConceptMapEntry } = await import("../../../src/ui/pages/code-mappings");
 
     await addConceptMapEntry(
-      "hl7v2-acme-lab-acme-hosp-to-loinc",
+      "hl7v2-acme-lab-acme-hosp-to-observation-code-loinc",
       "NA_SERUM",
       "Sodium [Serum/Plasma]",
       "ACME-LAB-CODES",
@@ -1148,12 +1148,12 @@ describe("listConceptMaps - type filtering", () => {
     const result = await listConceptMaps("all");
 
     expect(result).toHaveLength(3);
-    expect(result.map(cm => cm.mappingType)).toContain("loinc");
+    expect(result.map(cm => cm.mappingType)).toContain("observation-code-loinc");
     expect(result.map(cm => cm.mappingType)).toContain("obr-status");
     expect(result.map(cm => cm.mappingType)).toContain("patient-class");
   });
 
-  test("filters to only LOINC ConceptMaps when filter is 'loinc'", async () => {
+  test("filters to only LOINC ConceptMaps when filter is 'observation-code-loinc'", async () => {
     const mockAidbox = createMockAidbox({
       aidboxFetch: mock((path: string) => {
         if (path.includes("/fhir/ConceptMap")) {
@@ -1172,10 +1172,10 @@ describe("listConceptMaps - type filtering", () => {
     mock.module("../../../src/aidbox", () => mockAidbox);
     const { listConceptMaps } = await import("../../../src/ui/pages/code-mappings");
 
-    const result = await listConceptMaps("loinc");
+    const result = await listConceptMaps("observation-code-loinc");
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.mappingType).toBe("loinc");
+    expect(result[0]!.mappingType).toBe("observation-code-loinc");
     expect(result[0]!.targetSystem).toBe("http://loinc.org");
   });
 
@@ -1234,7 +1234,7 @@ describe("listConceptMaps - type filtering", () => {
     const result = await listConceptMaps("all");
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.mappingType).toBe("loinc");
+    expect(result[0]!.mappingType).toBe("observation-code-loinc");
   });
 });
 
@@ -1261,7 +1261,7 @@ describe("parseTypeFilter", () => {
     mock.module("../../../src/aidbox", () => createMockAidbox());
     const { parseTypeFilter } = await import("../../../src/ui/pages/code-mappings");
 
-    expect(parseTypeFilter("loinc")).toBe("loinc");
+    expect(parseTypeFilter("observation-code-loinc")).toBe("observation-code-loinc");
     expect(parseTypeFilter("patient-class")).toBe("patient-class");
     expect(parseTypeFilter("obr-status")).toBe("obr-status");
     expect(parseTypeFilter("obx-status")).toBe("obx-status");
@@ -1284,7 +1284,7 @@ describe("getMappingTypeFilterDisplay", () => {
     mock.module("../../../src/aidbox", () => createMockAidbox());
     const { getMappingTypeFilterDisplay } = await import("../../../src/ui/pages/code-mappings");
 
-    expect(getMappingTypeFilterDisplay("loinc")).toBe("Local code to LOINC");
+    expect(getMappingTypeFilterDisplay("observation-code-loinc")).toBe("Observation code to LOINC");
     expect(getMappingTypeFilterDisplay("obr-status")).toBe("OBR result status");
   });
 });
@@ -1293,7 +1293,7 @@ describe("getMappingTypeShortLabel", () => {
   test("returns short labels for all mapping types", async () => {
     const { getMappingTypeShortLabel } = await import("../../../src/ui/mapping-type-ui");
 
-    expect(getMappingTypeShortLabel("loinc")).toBe("LOINC");
+    expect(getMappingTypeShortLabel("observation-code-loinc")).toBe("LOINC");
     expect(getMappingTypeShortLabel("patient-class")).toBe("Patient Class");
     expect(getMappingTypeShortLabel("obr-status")).toBe("OBR Status");
     expect(getMappingTypeShortLabel("obx-status")).toBe("OBX Status");
@@ -1309,7 +1309,7 @@ describe("detectMappingTypeFromConceptMap", () => {
     mock.module("../../../src/aidbox", () => createMockAidbox());
     const { detectMappingTypeFromConceptMap } = await import("../../../src/ui/pages/code-mappings");
 
-    expect(detectMappingTypeFromConceptMap(sampleConceptMap)).toBe("loinc");
+    expect(detectMappingTypeFromConceptMap(sampleConceptMap)).toBe("observation-code-loinc");
   });
 
   test("detects obr-status mapping type", async () => {
@@ -1363,7 +1363,7 @@ describe("getValidValuesForType", () => {
     mock.module("../../../src/aidbox", () => createMockAidbox());
     const { getValidValuesForType } = await import("../../../src/ui/pages/code-mappings");
 
-    const values = getValidValuesForType("loinc");
+    const values = getValidValuesForType("observation-code-loinc");
     expect(values).toHaveLength(0);
   });
 });
@@ -1386,7 +1386,7 @@ describe("renderMappingEntryPanel", () => {
       targetSystem: "http://loinc.org",
     };
 
-    const html = renderMappingEntryPanel(entry, "cm-id", "loinc", "all");
+    const html = renderMappingEntryPanel(entry, "cm-id", "observation-code-loinc", "all");
 
     expect(html).toContain("K_SERUM");
     expect(html).toContain("2823-3");
@@ -1394,7 +1394,7 @@ describe("renderMappingEntryPanel", () => {
     expect(html).toContain("Potassium [Moles/volume]");
   });
 
-  test("renders LOINC autocomplete input for loinc type", async () => {
+  test("renders LOINC autocomplete input for observation-code-loinc type", async () => {
     mock.module("../../../src/aidbox", () => createMockAidbox());
     const { renderMappingEntryPanel } = await import("../../../src/ui/pages/code-mappings");
 
@@ -1407,7 +1407,7 @@ describe("renderMappingEntryPanel", () => {
       targetSystem: "http://loinc.org",
     };
 
-    const html = renderMappingEntryPanel(entry, "cm-id", "loinc", "all");
+    const html = renderMappingEntryPanel(entry, "cm-id", "observation-code-loinc", "all");
 
     expect(html).toContain("data-loinc-autocomplete");
   });
@@ -1457,7 +1457,7 @@ describe("renderCodeMappingsPage", () => {
     );
 
     expect(html).toContain("All Types");
-    expect(html).toContain("Local code to LOINC");
+    expect(html).toContain("Observation code to LOINC");
     expect(html).toContain("Patient class");
   });
 
@@ -1475,12 +1475,12 @@ describe("renderCodeMappingsPage", () => {
       false,
       null,
       undefined,
-      "loinc",
+      "observation-code-loinc",
       null,
     );
 
     // The active filter should have the blue background class
-    expect(html).toMatch(/href="\/mapping\/table\?type=loinc"[^>]*class="[^"]*bg-blue-600[^"]*"/);
+    expect(html).toMatch(/href="\/mapping\/table\?type=observation-code-loinc"[^>]*class="[^"]*bg-blue-600[^"]*"/);
   });
 
   test("includes mapping type badge in sender dropdown", async () => {
@@ -1489,7 +1489,7 @@ describe("renderCodeMappingsPage", () => {
 
     const navData = { pendingMappingTasksCount: 0 };
     const conceptMaps = [
-      { id: "cm-1", displayName: "ACME_LAB|ACME_HOSP", mappingType: "loinc" as const, targetSystem: "http://loinc.org" },
+      { id: "cm-1", displayName: "ACME_LAB|ACME_HOSP", mappingType: "observation-code-loinc" as const, targetSystem: "http://loinc.org" },
       { id: "cm-2", displayName: "OTHER_LAB|OTHER_HOSP", mappingType: "obr-status" as const, targetSystem: "http://hl7.org/fhir/diagnostic-report-status" },
     ];
 

@@ -3,7 +3,7 @@ import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 
 const sampleConceptMap: ConceptMap = {
   resourceType: "ConceptMap",
-  id: "hl7v2-acme-lab-acme-hosp-loinc",
+  id: "hl7v2-acme-lab-acme-hosp-observation-code-loinc",
   name: "HL7v2 ACME_LAB/ACME_HOSP to LOINC",
   status: "active",
   sourceUri: "http://example.org/fhir/CodeSystem/hl7v2-acme-lab-acme-hosp",
@@ -45,9 +45,9 @@ describe("getOrCreateConceptMap", () => {
       sendingFacility: "ACME_HOSP",
     });
 
-    expect(result.id).toBe("hl7v2-acme-lab-acme-hosp-loinc");
+    expect(result.id).toBe("hl7v2-acme-lab-acme-hosp-observation-code-loinc");
     expect(mockAidbox.aidboxFetch).toHaveBeenCalledWith(
-      "/fhir/ConceptMap/hl7v2-acme-lab-acme-hosp-loinc",
+      "/fhir/ConceptMap/hl7v2-acme-lab-acme-hosp-observation-code-loinc",
     );
     expect(mockAidbox.putResource).not.toHaveBeenCalled();
   });
@@ -71,12 +71,12 @@ describe("getOrCreateConceptMap", () => {
     });
 
     expect(result.resourceType).toBe("ConceptMap");
-    expect(result.id).toBe("hl7v2-new-lab-new-hosp-loinc");
+    expect(result.id).toBe("hl7v2-new-lab-new-hosp-observation-code-loinc");
     expect(result.status).toBe("active");
     expect(result.targetUri).toBe("http://loinc.org");
     expect(mockAidbox.putResource).toHaveBeenCalledWith(
       "ConceptMap",
-      "hl7v2-new-lab-new-hosp-loinc",
+      "hl7v2-new-lab-new-hosp-observation-code-loinc",
       expect.objectContaining({
         resourceType: "ConceptMap",
         status: "active",
@@ -464,10 +464,10 @@ describe("createEmptyConceptMap with different mapping types", () => {
 
     const result = createEmptyConceptMap(
       { sendingApplication: "LAB", sendingFacility: "HOSP" },
-      "loinc",
+      "observation-code-loinc",
     );
 
-    expect(result.id).toBe("hl7v2-lab-hosp-loinc");
+    expect(result.id).toBe("hl7v2-lab-hosp-observation-code-loinc");
     expect(result.targetUri).toBe("http://loinc.org");
     expect(result.name).toContain("Observation.code");
   });

@@ -15,7 +15,7 @@ import {
   type Bundle,
 } from "../../aidbox";
 import { escapeHtml } from "../../utils/html";
-import { generateMappingTaskId } from "../../code-mapping/mapping-task-service";
+import { generateMappingTaskId } from "../../code-mapping/mapping-task";
 import { addMappingToConceptMap } from "../../code-mapping/concept-map";
 import {
   MAPPING_TYPES,
@@ -548,7 +548,7 @@ export async function deleteConceptMapEntry(
 /**
  * Available type filter options for the UI
  */
-const TYPE_FILTER_OPTIONS: MappingTypeFilter[] = ["all", "loinc", "patient-class", "obr-status", "obx-status"];
+const TYPE_FILTER_OPTIONS: MappingTypeFilter[] = ["all", "observation-code-loinc", "patient-class", "obr-status", "obx-status"];
 
 /**
  * Build URL for a filter combination
@@ -715,7 +715,7 @@ function renderTargetCodeInput(
   currentValue?: string,
   currentDisplay?: string,
 ): string {
-  if (mappingType === "loinc") {
+  if (mappingType === "observation-code-loinc") {
     return `
       <input type="text" name="targetCode" ${currentValue ? `value="${escapeHtml(currentValue)}"` : ""} required placeholder="Search LOINC codes..."
         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -790,7 +790,7 @@ export function renderMappingEntryPanel(
   typeFilter: MappingTypeFilter,
 ): string {
   const encodedLocalCode = encodeURIComponent(entry.localCode);
-  const targetLabel = mappingType ? `Map to ${MAPPING_TYPES[mappingType].targetFieldLabel}` : "Map to Target Code";
+  // targetFieldLabel usage
   const updateLabel = mappingType ? `Update ${MAPPING_TYPES[mappingType].targetFieldLabel}` : "Update target";
 
   return `
