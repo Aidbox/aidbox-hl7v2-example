@@ -54,8 +54,6 @@ export function createEmptyConceptMap(
 /**
  * Add or update a mapping in a ConceptMap (pure function, non-mutating).
  * If an element with the same localCode exists in the group, it will be replaced.
- *
- * @param targetSystem - The target system URI. Defaults to LOINC for backward compatibility.
  */
 export function addMappingToConceptMap(
   conceptMap: ConceptMap,
@@ -64,7 +62,7 @@ export function addMappingToConceptMap(
   localDisplay: string,
   targetCode: string,
   targetDisplay: string,
-  targetSystem: string = "http://loinc.org",
+  targetSystem: string,
 ): ConceptMap {
   const updated: ConceptMap = {
     ...conceptMap,
@@ -143,6 +141,7 @@ export async function addMapping(
     localDisplay,
     loincCode,
     loincDisplay,
+    "http://loinc.org",
   );
 
   await putResource("ConceptMap", updatedConceptMap.id!, updatedConceptMap);
