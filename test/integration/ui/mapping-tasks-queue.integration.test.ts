@@ -93,7 +93,7 @@ async function createPendingTaskForType(
 
   const typeConfig = MAPPING_TYPES[mappingType];
 
-  return testAidboxFetch<Task>(`/fhir/Task/${id}`, {
+  return aidboxFetch<Task>(`/fhir/Task/${id}`, {
     method: "PUT",
     body: JSON.stringify({
       resourceType: "Task",

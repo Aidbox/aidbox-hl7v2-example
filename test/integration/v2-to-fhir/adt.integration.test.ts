@@ -15,7 +15,7 @@ import {
   getRelatedPersons,
   getMappingTasks,
   submitAndProcess,
-  testAidboxFetch,
+  aidboxFetch,
 } from "../helpers";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
@@ -280,7 +280,7 @@ describe("ADT_A01 E2E Integration", () => {
       expect(message.unmappedCodes![0]!.mappingTask?.reference).toMatch(/^Task\//);
 
       const taskId = message.unmappedCodes![0]!.mappingTask!.reference!.replace("Task/", "");
-      const task = await testAidboxFetch<Task>(`/fhir/Task/${taskId}`);
+      const task = await aidboxFetch<Task>(`/fhir/Task/${taskId}`);
 
       expect(task.status).toBe("requested");
       expect(task.code?.coding?.[0]?.code).toBe("patient-class");

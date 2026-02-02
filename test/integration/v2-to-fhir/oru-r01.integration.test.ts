@@ -365,7 +365,7 @@ describe("ORU_R01 E2E Integration", () => {
       // Reprocess
       await processNextMessage();
 
-      const updatedMessage = await testAidboxFetch<IncomingHL7v2Message>(
+      const updatedMessage = await aidboxFetch<IncomingHL7v2Message>(
         `/fhir/IncomingHL7v2Message/${message.id}`,
       );
       expect(updatedMessage.status).toBe("processed");
@@ -470,7 +470,7 @@ describe("ORU_R01 E2E Integration", () => {
       // Reprocess
       await processNextMessage();
 
-      const updatedMessage = await testAidboxFetch<IncomingHL7v2Message>(
+      const updatedMessage = await aidboxFetch<IncomingHL7v2Message>(
         `/fhir/IncomingHL7v2Message/${message.id}`,
       );
       expect(updatedMessage.status).toBe("processed");
@@ -839,7 +839,7 @@ describe("ORU_R01 E2E Integration", () => {
       await processNextMessage();
 
       // Message should still be mapping_error because OBX status task is not resolved
-      const stillBlockedMessage = await testAidboxFetch<IncomingHL7v2Message>(
+      const stillBlockedMessage = await aidboxFetch<IncomingHL7v2Message>(
         `/fhir/IncomingHL7v2Message/${message.id}`,
       );
       expect(stillBlockedMessage.status).toBe("mapping_error");
@@ -861,7 +861,7 @@ describe("ORU_R01 E2E Integration", () => {
       await processNextMessage();
 
       // Now message should be processed
-      const finalMessage = await testAidboxFetch<IncomingHL7v2Message>(
+      const finalMessage = await aidboxFetch<IncomingHL7v2Message>(
         `/fhir/IncomingHL7v2Message/${message.id}`,
       );
       expect(finalMessage.status).toBe("processed");

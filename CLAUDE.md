@@ -39,11 +39,10 @@ bun run logs                      # Tail server logs
 bun run mllp                      # Start MLLP server (port 2575)
 bun scripts/load-test-data.ts     # Load 5 test patients with related resources
 bun run typecheck                 # TypeScript type checking
-bun test                          # Run unit tests (don't use)
-bun test:all                      # Run all tests: unit + integration (preferred way to test)
+bun test:all                      # Run all tests: unit + integration
 bun test:unit                     # Run unit tests only
-bun test:integration              # Run integration tests only (requires Aidbox)
-bun reset-integration-aidbox      # Destroy and recreate test Aidbox from scratch
+bun test:integration              # Run integration tests only
+bun reset-integration-aidbox      # Destroy and recreate test Aidbox from scratch (if test data in the db creates problems)
 bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
 bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
 ```

@@ -4,7 +4,7 @@
  * Tests listConceptMaps() function with type filtering against a real Aidbox instance.
  */
 import { describe, test, expect, beforeEach } from "bun:test";
-import { testAidboxFetch, cleanupTestResources } from "../helpers";
+import { aidboxFetch, cleanupTestResources } from "../helpers";
 import {
   listConceptMaps,
   getMappingsFromConceptMap,
@@ -56,7 +56,7 @@ async function createConceptMap(
     ],
   };
 
-  return testAidboxFetch<ConceptMap>(`/fhir/ConceptMap/${id}`, {
+  return aidboxFetch<ConceptMap>(`/fhir/ConceptMap/${id}`, {
     method: "PUT",
     body: JSON.stringify(conceptMap),
   });
@@ -99,7 +99,7 @@ async function createConceptMapWithEntry(
     ],
   };
 
-  return testAidboxFetch<ConceptMap>(`/fhir/ConceptMap/${id}`, {
+  return aidboxFetch<ConceptMap>(`/fhir/ConceptMap/${id}`, {
     method: "PUT",
     body: JSON.stringify(conceptMap),
   });
@@ -194,7 +194,7 @@ describe("listConceptMaps with type filtering", () => {
         },
       ],
     };
-    await testAidboxFetch<ConceptMap>("/fhir/ConceptMap/cm-unknown-target", {
+    await aidboxFetch<ConceptMap>("/fhir/ConceptMap/cm-unknown-target", {
       method: "PUT",
       body: JSON.stringify(unknownConceptMap),
     });
@@ -347,7 +347,7 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
         },
       ],
     };
-    await testAidboxFetch<ConceptMap>("/fhir/ConceptMap/cm-obr-delete", {
+    await aidboxFetch<ConceptMap>("/fhir/ConceptMap/cm-obr-delete", {
       method: "PUT",
       body: JSON.stringify(conceptMap),
     });

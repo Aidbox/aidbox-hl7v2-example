@@ -4,7 +4,7 @@
  * Tests getMappingTasks() function with type filtering against a real Aidbox instance.
  */
 import { describe, test, expect, beforeEach } from "bun:test";
-import { testAidboxFetch, cleanupTestResources } from "../helpers";
+import { aidboxFetch, cleanupTestResources } from "../helpers";
 import {
   getMappingTasks,
   type MappingTypeFilter,
@@ -43,7 +43,7 @@ async function createTask(
     ],
   };
 
-  return testAidboxFetch<Task>(`/fhir/Task/${id}`, {
+  return aidboxFetch<Task>(`/fhir/Task/${id}`, {
     method: "PUT",
     body: JSON.stringify(task),
   });

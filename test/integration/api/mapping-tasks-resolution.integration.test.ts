@@ -6,7 +6,7 @@
  */
 import { describe, test, expect, beforeEach } from "bun:test";
 import {
-  testAidboxFetch,
+  aidboxFetch,
   cleanupTestResources,
 } from "../helpers";
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
@@ -63,7 +63,7 @@ async function createTaskForType(
     ],
   };
 
-  return testAidboxFetch<Task>(`/fhir/Task/${id}`, {
+  return aidboxFetch<Task>(`/fhir/Task/${id}`, {
     method: "PUT",
     body: JSON.stringify(task),
   });
@@ -93,7 +93,7 @@ async function createLegacyLoincTask(id: string): Promise<Task> {
     ],
   };
 
-  return testAidboxFetch<Task>(`/fhir/Task/${id}`, {
+  return aidboxFetch<Task>(`/fhir/Task/${id}`, {
     method: "PUT",
     body: JSON.stringify(task),
   });
@@ -111,7 +111,7 @@ async function resolveTaskWithValidation(
   // Fetch the task to get its type
   let task: Task;
   try {
-    task = await testAidboxFetch<Task>(`/fhir/Task/${taskId}`);
+    task = await aidboxFetch<Task>(`/fhir/Task/${taskId}`);
   } catch (error) {
     return {
       success: false,
@@ -151,12 +151,12 @@ async function resolveTaskWithValidation(
 }
 
 async function fetchTask(id: string): Promise<Task> {
-  return testAidboxFetch<Task>(`/fhir/Task/${id}`);
+  return aidboxFetch<Task>(`/fhir/Task/${id}`);
 }
 
 async function fetchConceptMap(id: string): Promise<ConceptMap | null> {
   try {
-    return await testAidboxFetch<ConceptMap>(`/fhir/ConceptMap/${id}`);
+    return await aidboxFetch<ConceptMap>(`/fhir/ConceptMap/${id}`);
   } catch {
     return null;
   }
