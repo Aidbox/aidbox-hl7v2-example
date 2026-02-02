@@ -609,7 +609,7 @@ export function renderCodeMappingsPage(
     <div class="mb-6 flex items-center gap-4">
       <div class="flex-1">
         <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Sender</label>
-        <select onchange="window.location.href = this.value ? '${buildFilterUrl(typeFilter)}&conceptMapId=' + this.value : '${buildFilterUrl(typeFilter)}'"
+        <select onchange="window.location.href = this.value ? '${buildFilterUrl(typeFilter)}${buildFilterUrl(typeFilter).includes('?') ? '&' : '?'}conceptMapId=' + this.value : '${buildFilterUrl(typeFilter)}'"
           class="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
           <option value="">Select a sender...</option>
           ${conceptMaps
