@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test";
 import {
   convertOBXToObservation,
   mapOBXStatusToFHIR,
+  mapOBXStatusToFHIRWithResult,
   parseReferenceRange,
   parseStructuredNumeric,
 } from "../../../../src/v2-to-fhir/segments/obx-observation";
@@ -627,6 +628,87 @@ describe("mapOBXStatusToFHIR validation", () => {
 
     test("error message includes invalid status value", () => {
       expect(() => mapOBXStatusToFHIR("N")).toThrow(/"N"/);
+    });
+  });
+});
+
+describe("mapOBXStatusToFHIRWithResult", () => {
+  describe("valid statuses", () => {
+    test.each([
+      ["F", "final"],
+      ["B", "final"],
+      ["V", "final"],
+      ["U", "final"],
+      ["P", "preliminary"],
+      ["R", "preliminary"],
+      ["S", "preliminary"],
+      ["I", "registered"],
+      ["O", "registered"],
+      ["C", "corrected"],
+      ["A", "amended"],
+      ["D", "entered-in-error"],
+      ["W", "entered-in-error"],
+      ["X", "cancelled"],
+    ] as const)("maps %s to %s", (input, expected) => {
+      const result = mapOBXStatusToFHIRWithResult(input);
+      expect(result.status).toBe(expected);
+      expect(result.error).toBeUndefined();
+    });
+
+    test("accepts lowercase status", () => {
+      const result = mapOBXStatusToFHIRWithResult("f");
+      expect(result.status).toBe("final");
+      expect(result.error).toBeUndefined();
+    });
+  });
+
+  describe("invalid statuses", () => {
+    test("returns error for missing status (undefined)", () => {
+      const result = mapOBXStatusToFHIRWithResult(undefined);
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.mappingType).toBe("obx-status");
+      expect(result.error?.localCode).toBe("undefined");
+      expect(result.error?.localDisplay).toContain("missing");
+    });
+
+    test("returns error for status N (not asked)", () => {
+      const result = mapOBXStatusToFHIRWithResult("N");
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.mappingType).toBe("obx-status");
+      expect(result.error?.localCode).toBe("N");
+      expect(result.error?.localSystem).toBe(
+        "http://terminology.hl7.org/CodeSystem/v2-0085",
+      );
+    });
+
+    test("returns error for lowercase n", () => {
+      const result = mapOBXStatusToFHIRWithResult("n");
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.localCode).toBe("n");
+    });
+
+    test("returns error for unknown status Y", () => {
+      const result = mapOBXStatusToFHIRWithResult("Y");
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.localCode).toBe("Y");
+    });
+
+    test("returns error for unknown status Z", () => {
+      const result = mapOBXStatusToFHIRWithResult("Z");
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.localCode).toBe("Z");
+    });
+
+    test("returns error for empty string status", () => {
+      const result = mapOBXStatusToFHIRWithResult("");
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.localCode).toBe("undefined");
     });
   });
 });

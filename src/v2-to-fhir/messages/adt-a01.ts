@@ -44,12 +44,17 @@ import type {
   Resource,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertPIDToPatient } from "../segments/pid-patient";
-import { convertPV1ToEncounter } from "../segments/pv1-encounter";
+import { convertPV1WithMappingSupport } from "../segments/pv1-encounter";
 import { convertNK1ToRelatedPerson } from "../segments/nk1-relatedperson";
 import { convertDG1ToCondition } from "../segments/dg1-condition";
 import { convertAL1ToAllergyIntolerance } from "../segments/al1-allergyintolerance";
 import { convertIN1ToCoverage } from "../segments/in1-coverage";
 import { toKebabCase } from "../../utils/string";
+import {
+  buildMappingErrorResult,
+  type MappingError,
+} from "../../code-mapping/mapping-errors";
+import type { SenderContext } from "../../code-mapping/concept-map/lookup";
 
 // ============================================================================
 // Helper Functions
@@ -289,7 +294,7 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  * AL1 - Allergy Information (0..*)
  * IN1 - Insurance (0..*)
  */
-export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
+export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionResult> {
   // =========================================================================
   // Extract MSH
   // =========================================================================
@@ -300,6 +305,19 @@ export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
   }
   const msh = fromMSH(mshSegment);
   const messageControlId = msh.$10_messageControlId;
+
+  // Extract sender context for mapping error handling
+  const sendingApplication = msh.$3_sendingApplication?.$1_namespace;
+  const sendingFacility = msh.$4_sendingFacility?.$1_namespace;
+
+  if (!sendingApplication || !sendingFacility) {
+    throw new Error(
+      `MSH-3 (sending application) and MSH-4 (sending facility) are required. ` +
+        `Got: MSH-3="${sendingApplication || ""}", MSH-4="${sendingFacility || ""}"`,
+    );
+  }
+
+  const senderContext: SenderContext = { sendingApplication, sendingFacility };
 
   // Create base meta with tags
   const baseMeta: Meta = {
@@ -316,6 +334,7 @@ export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
   }
   const pid = fromPID(pidSegment);
   const patient = convertPIDToPatient(pid);
+  const mappingErrors: MappingError[] = [];
 
   // Set patient ID from PID-2 or generate one
   if (pid.$2_patientId?.$1_value) {
@@ -345,14 +364,21 @@ export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
   const patientRef = patient.id ? `Patient/${patient.id}` : "Patient/unknown";
 
   // =========================================================================
-  // Extract PV1 -> Encounter
+  // Extract PV1 -> Encounter (with mapping error support)
   // =========================================================================
-
   let encounter: Encounter | undefined;
   const pv1Segment = findSegment(parsed, "PV1");
   if (pv1Segment) {
     const pv1 = fromPV1(pv1Segment);
-    encounter = convertPV1ToEncounter(pv1);
+    const pv1Result = await convertPV1WithMappingSupport(pv1, senderContext);
+
+    if (pv1Result.mappingError) {
+      // Patient class mapping error - ADT policy: block until resolved
+      mappingErrors.push(pv1Result.mappingError);
+    }
+
+    // Always use the encounter (may have fallback class if mapping failed)
+    encounter = pv1Result.encounter;
     (encounter as { subject: { reference?: string } }).subject = {
       reference: patientRef,
     };
@@ -363,6 +389,10 @@ export function convertADT_A01(parsed: HL7v2Message): ConversionResult {
     } else {
       encounter.id = generateId("encounter", 1, messageControlId);
     }
+  }
+
+  if (mappingErrors.length > 0) {
+    return buildMappingErrorResult(senderContext, mappingErrors);
   }
 
   const encounterRef = encounter?.id ? `Encounter/${encounter.id}` : undefined;

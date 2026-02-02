@@ -5,6 +5,7 @@
 import type { Task } from "../fhir/hl7-fhir-r4-core/Task";
 import { aidboxFetch, type Bundle } from "../aidbox";
 import type { NavData } from "./shared-layout";
+import { MAPPING_TYPES } from "../code-mapping/mapping-types";
 
 export function htmlResponse(html: string): Response {
   return new Response(html, { headers: { "Content-Type": "text/html" } });
@@ -15,8 +16,10 @@ export function redirectResponse(location: string): Response {
 }
 
 export async function getPendingTasksCount(): Promise<number> {
+  const mappingTypes = Object.keys(MAPPING_TYPES);
+  const codeParam = mappingTypes.join(",");
   const bundle = await aidboxFetch<Bundle<Task>>(
-    "/fhir/Task?code=local-to-loinc-mapping&status=requested&_count=0&_total=accurate",
+    `/fhir/Task?code=${codeParam}&status=requested&_count=0&_total=accurate`,
   );
   return bundle.total || 0;
 }

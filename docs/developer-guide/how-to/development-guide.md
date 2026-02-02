@@ -11,7 +11,7 @@ For initial setup (Docker, Aidbox, running services), see the [User Guide: Getti
 Unit tests have no external dependencies and run fast. The default test root is `./test/unit` (configured in `bunfig.toml`).
 
 ```sh
-bun test                                    # Run unit tests
+bun test                                    # Run unit tests only
 bun test:unit                               # Same as above (alias)
 bun test test/unit/bar/                     # Run tests in directory
 bun test test/unit/bar/generator.test.ts    # Run specific file
@@ -77,7 +77,7 @@ test/
 │   └── v2-to-fhir/
 └── integration/            # Integration tests (require Aidbox)
     ├── preload.ts          # Global setup (container lifecycle, migrations)
-    ├── helpers.ts          # Shared utilities (testAidboxFetch, cleanup, fixtures)
+    ├── helpers.ts          # Shared utilities (aidboxFetch, cleanup, fixtures)
     ├── bar/
     ├── ui/
     └── v2-to-fhir/
@@ -104,7 +104,7 @@ For converters, test both the happy path and edge cases (missing fields, malform
 Integration test files use the naming convention `*.integration.test.ts`.
 
 Key helpers from `test/integration/helpers.ts`:
-- **`testAidboxFetch()`** — authenticated HTTP client for the test Aidbox (port 8888)
+- **`aidboxFetch()`** — authenticated HTTP client for Aidbox (uses test instance on port 8888 during integration tests)
 - **`loadFixture(path)`** — loads HL7v2 messages from `test/fixtures/hl7v2/`
 - **`cleanupTestResources()`** — runs in `beforeEach` (configured in `preload.ts`) to give each test a clean state
 

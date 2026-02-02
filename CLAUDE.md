@@ -1,8 +1,19 @@
 ---
-description: Aidbox HL7 Integration - Use Bun instead of Node.js, npm, pnpm, or vite.
+description: Aidbox HL7 Integration Project
 globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
+alwaysApply: true
 ---
+
+# Your Role
+
+Act as a critical, analytical partner. Before implementing ANY user suggestion:
+- evaluate assumptions and tradeoffs
+- state if you see weaknesses even for "reasonable" requests
+- proceed only after this review (can be 1-2 sentences for simple cases)
+
+Keep in mind that user might be an idiot and suggests things without thinking about them, so critically review ALL user suggestions, requests and thoughts.
+State tradeoffs before implementing, even if the suggestion seems reasonable. Be direct but constructive.
+If the change has clear downsides and the user still wants it, they must say: "I request you to do it this way".
 
 # Aidbox HL7 Integration
 
@@ -28,11 +39,10 @@ bun run logs                      # Tail server logs
 bun run mllp                      # Start MLLP server (port 2575)
 bun scripts/load-test-data.ts     # Load 5 test patients with related resources
 bun run typecheck                 # TypeScript type checking
-bun test                          # Run unit tests
-bun test:all                      # Run all tests: unit + integration (requires Aidbox)
-bun test:unit                     # Run unit tests (alias for bun test)
-bun test:integration              # Run integration tests only (requires Aidbox)
-bun reset-integration-aidbox      # Destroy and recreate test Aidbox from scratch
+bun test:all                      # Run all tests: unit + integration
+bun test:unit                     # Run unit tests only
+bun test:integration              # Run integration tests only
+bun reset-integration-aidbox      # Destroy and recreate test Aidbox from scratch (if test data in the db creates problems)
 bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
 bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
 ```
@@ -112,15 +122,17 @@ V2-to-FHIR Processor polls received IncomingHL7v2Message and:
 
 → Details: `docs/developer-guide/oru-processing.md`
 
-### Code Mapping (LOINC Resolution)
+### Code Mapping (Multiple Types)
 
-When OBX-3 can't resolve to LOINC:
+When HL7v2 codes can't be mapped to valid FHIR values:
 1. Message gets `status=mapping_error`, code stored in `unmappedCodes[]`
-2. Task created (deterministic ID from sender + code)
+2. Task created (deterministic ID from sender + code + mapping type)
 3. User resolves via `/mapping/tasks` or `/mapping/table`
 4. On resolution: Task completed, message requeued for processing
 
-**ConceptMap per sender**: Same local code from different senders can map to different LOINC codes.
+Mapping types are defined in `src/code-mapping/mapping-types.ts`.
+
+**ConceptMap per sender per type**: Same local code from different senders can map to different values.
 
 → Details: `docs/developer-guide/code-mapping.md`
 
@@ -171,7 +183,9 @@ src/
 │   ├── processor-service.ts  # Polling service
 │   ├── messages/         # ADT_A01, ORU_R01 converters
 │   └── segments/         # PID, OBX, etc. converters
-├── code-mapping/         # LOINC code resolution
+├── code-mapping/         # Code mapping for multiple field types
+│   ├── mapping-types.ts  # Mapping type registry (CRITICAL: add new types here)
+│   ├── mapping-errors.ts # MappingError types and builders
 │   ├── concept-map/      # ConceptMap CRUD, lookup
 │   └── mapping-task-service.ts  # Task creation/resolution
 ├── mllp/                 # MLLP TCP server
@@ -196,16 +210,16 @@ For implementation details, see `docs/developer-guide/`:
 
 Use Bun instead of Node.js:
 
-| Instead of | Use |
-|------------|-----|
-| `node`/`ts-node`, `npm`/`yarn`/`pnpm` | `bun`, `bun install`, `bun run` |
-| `jest`/`vitest` | `bun test` |
+| Instead of | Use                                       |
+|------------|-------------------------------------------|
+| `node`/`ts-node`, `npm`/`yarn`/`pnpm` | `bun`, `bun install`, `bun run`           |
+| `jest`/`vitest` | `bun test:all`                            |
 | `dotenv` | Not needed (Bun loads .env automatically) |
-| `express` | `Bun.serve()` |
-| `better-sqlite3` / `pg` / `ioredis` | `bun:sqlite` / `Bun.sql` / `Bun.redis` |
-| `ws` | Built-in `WebSocket` |
-| `node:fs readFile/writeFile` | `Bun.file` |
+| `express` | `Bun.serve()`                             |
+| `better-sqlite3` / `pg` / `ioredis` | `bun:sqlite` / `Bun.sql` / `Bun.redis`    |
+| `ws` | Built-in `WebSocket`                      |
+| `node:fs readFile/writeFile` | `Bun.file`                                |
 
 ## Code Style
 
-Always read `.claude/code-style.md` before writing or modifying code.
+IMPORTANT: Always read `.claude/code-style.md` before writing or modifying code.

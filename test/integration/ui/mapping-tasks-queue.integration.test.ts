@@ -8,6 +8,7 @@ import { describe, test, expect } from "bun:test";
 import {
   aidboxFetch,
   createTestConceptMap,
+  createTestConceptMapForType,
 } from "../helpers";
 import {
   resolveTaskWithMapping,
@@ -17,6 +18,7 @@ import {
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
+import { MAPPING_TYPES, type MappingTypeName } from "../../../src/code-mapping/mapping-types";
 
 async function createPendingTask(
   id: string,
@@ -46,9 +48,9 @@ async function createPendingTask(
       code: {
         coding: [
           {
-            system: "http://example.org/task-codes",
-            code: "local-to-loinc-mapping",
-            display: "Local code to LOINC mapping",
+            system: "urn:aidbox-hl7v2-converter:mapping-type",
+            code: "observation-code-loinc",
+            display: "Observation code to LOINC mapping",
           },
         ],
         text: "Map local lab code to LOINC",
@@ -70,6 +72,61 @@ async function createPendingTask(
   });
 }
 
+async function createPendingTaskForType(
+  id: string,
+  mappingType: MappingTypeName,
+  options: {
+    sendingApplication?: string;
+    sendingFacility?: string;
+    localCode?: string;
+    localDisplay?: string;
+    localSystem?: string;
+  } = {},
+): Promise<Task> {
+  const {
+    sendingApplication = "ACME_LAB",
+    sendingFacility = "ACME_HOSP",
+    localCode = "LOCAL_CODE",
+    localDisplay = "Local Code Display",
+    localSystem = "ACME-LOCAL-CODES",
+  } = options;
+
+  const typeConfig = MAPPING_TYPES[mappingType];
+
+  return aidboxFetch<Task>(`/fhir/Task/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      resourceType: "Task",
+      id,
+      status: "requested",
+      intent: "order",
+      code: {
+        coding: [
+          {
+            system: "urn:aidbox-hl7v2-converter:mapping-type",
+            code: mappingType,
+            display: typeConfig.taskDisplay,
+          },
+        ],
+        text: `Map ${typeConfig.sourceFieldLabel} to ${typeConfig.targetFieldLabel}`,
+      },
+      authoredOn: "2025-02-12T14:20:00Z",
+      lastModified: "2025-02-12T14:20:00Z",
+      requester: { display: "ORU Processor" },
+      owner: { display: "Mapping Team" },
+      input: [
+        { type: { text: "Sending application" }, valueString: sendingApplication },
+        { type: { text: "Sending facility" }, valueString: sendingFacility },
+        { type: { text: "Local code" }, valueString: localCode },
+        { type: { text: "Local display" }, valueString: localDisplay },
+        { type: { text: "Local system" }, valueString: localSystem },
+        { type: { text: "Source field" }, valueString: typeConfig.sourceFieldLabel },
+        { type: { text: "Target field" }, valueString: typeConfig.targetFieldLabel },
+      ],
+    }),
+  });
+}
+
 async function createCompletedTask(id: string): Promise<Task> {
   return aidboxFetch<Task>(`/fhir/Task/${id}`, {
     method: "PUT",
@@ -81,8 +138,8 @@ async function createCompletedTask(id: string): Promise<Task> {
       code: {
         coding: [
           {
-            system: "http://example.org/task-codes",
-            code: "local-to-loinc-mapping",
+            system: "urn:aidbox-hl7v2-converter:mapping-type",
+            code: "observation-code-loinc",
           },
         ],
       },
@@ -187,7 +244,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       expect(task.output).toBeDefined();
       expect(task.output![0]!.valueCodeableConcept!.coding![0]!.code).toBe("2823-3");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-to-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-observation-code-loinc");
       expect(conceptMap).toBeDefined();
       expect(conceptMap.status).toBe("active");
 
@@ -215,7 +272,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       await resolveTaskWithMapping("task-resolve-2", "2823-3", "Potassium");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-to-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-observation-code-loinc");
       const group = conceptMap.group?.find(
         (g) => g.source === "ACME-LAB-CODES",
       );
@@ -239,7 +296,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       await resolveTaskWithMapping("task-resolve-3", "2823-3", "Potassium");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-to-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-observation-code-loinc");
       const acmeGroup = conceptMap.group?.find(
         (g) => g.source === "ACME-LAB-CODES",
       );
@@ -260,7 +317,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
 
       await resolveTaskWithMapping("task-resolve-new-cm", "2823-3", "Potassium");
 
-      const conceptMap = await fetchConceptMap("hl7v2-new-lab-new-hosp-to-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-new-lab-new-hosp-observation-code-loinc");
       expect(conceptMap).toBeDefined();
       expect(conceptMap.resourceType).toBe("ConceptMap");
       expect(conceptMap.status).toBe("active");
@@ -331,12 +388,127 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       expect(task.status).toBe("completed");
       expect(task.output![0]!.valueCodeableConcept!.coding![0]!.code).toBe("2823-3");
 
-      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-to-loinc");
+      const conceptMap = await fetchConceptMap("hl7v2-acme-lab-acme-hosp-observation-code-loinc");
       expect(conceptMap).toBeDefined();
 
       const message = await fetchMessage("msg-full-flow");
       expect(message.unmappedCodes).toBeUndefined();
       expect(message.status).toBe("received");
+    });
+  });
+
+  describe("resolveTaskWithMapping for different mapping types", () => {
+    test("resolves OBR status mapping task with correct target system", async () => {
+      await createPendingTaskForType("task-obr-status-1", "obr-status", {
+        localCode: "Y",
+        localDisplay: "Order received; specimen not yet received",
+        localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
+      });
+
+      await resolveTaskWithMapping(
+        "task-obr-status-1",
+        "preliminary",
+        "Preliminary",
+      );
+
+      const task = await fetchTask("task-obr-status-1");
+      expect(task.status).toBe("completed");
+      expect(task.output![0]!.type!.text).toBe("Resolved mapping");
+      expect(task.output![0]!.valueCodeableConcept!.coding![0]!.system).toBe(
+        "http://hl7.org/fhir/diagnostic-report-status",
+      );
+      expect(task.output![0]!.valueCodeableConcept!.coding![0]!.code).toBe("preliminary");
+
+      const conceptMap = await fetchConceptMap(
+        "hl7v2-acme-lab-acme-hosp-obr-status",
+      );
+      expect(conceptMap).toBeDefined();
+      expect(conceptMap.targetUri).toBe("http://hl7.org/fhir/diagnostic-report-status");
+    });
+
+    test("resolves OBX status mapping task with correct target system", async () => {
+      await createPendingTaskForType("task-obx-status-1", "obx-status", {
+        localCode: "N",
+        localDisplay: "Not asked",
+        localSystem: "http://terminology.hl7.org/CodeSystem/v2-0085",
+      });
+
+      await resolveTaskWithMapping(
+        "task-obx-status-1",
+        "preliminary",
+        "Preliminary",
+      );
+
+      const task = await fetchTask("task-obx-status-1");
+      expect(task.status).toBe("completed");
+      expect(task.output![0]!.valueCodeableConcept!.coding![0]!.system).toBe(
+        "http://hl7.org/fhir/observation-status",
+      );
+
+      const conceptMap = await fetchConceptMap(
+        "hl7v2-acme-lab-acme-hosp-obx-status",
+      );
+      expect(conceptMap).toBeDefined();
+      expect(conceptMap.targetUri).toBe("http://hl7.org/fhir/observation-status");
+    });
+
+    test("resolves patient-class mapping task with correct target system", async () => {
+      await createPendingTaskForType("task-pat-class-1", "patient-class", {
+        localCode: "1",
+        localDisplay: "Unknown class",
+        localSystem: "http://terminology.hl7.org/CodeSystem/v2-0004",
+      });
+
+      await resolveTaskWithMapping(
+        "task-pat-class-1",
+        "AMB",
+        "Ambulatory",
+      );
+
+      const task = await fetchTask("task-pat-class-1");
+      expect(task.status).toBe("completed");
+      expect(task.output![0]!.valueCodeableConcept!.coding![0]!.system).toBe(
+        "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+      );
+
+      const conceptMap = await fetchConceptMap(
+        "hl7v2-acme-lab-acme-hosp-patient-class",
+      );
+      expect(conceptMap).toBeDefined();
+      expect(conceptMap.targetUri).toBe("http://terminology.hl7.org/CodeSystem/v3-ActCode");
+    });
+
+    test("adds mapping to existing ConceptMap for non-LOINC type", async () => {
+      await createTestConceptMapForType("ACME_LAB", "ACME_HOSP", "obr-status", [
+        {
+          localCode: "P",
+          localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
+          targetCode: "partial",
+          targetDisplay: "Partial",
+        },
+      ]);
+
+      await createPendingTaskForType("task-obr-status-2", "obr-status", {
+        localCode: "F",
+        localDisplay: "Final results",
+        localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
+      });
+
+      await resolveTaskWithMapping(
+        "task-obr-status-2",
+        "final",
+        "Final",
+      );
+
+      const conceptMap = await fetchConceptMap(
+        "hl7v2-acme-lab-acme-hosp-obr-status",
+      );
+      const group = conceptMap.group?.find(
+        (g) => g.source === "http://terminology.hl7.org/CodeSystem/v2-0123",
+      );
+      expect(group!.element!.length).toBe(2);
+      expect(group!.element!.some((e) => e.code === "P")).toBe(true);
+      expect(group!.element!.some((e) => e.code === "F")).toBe(true);
     });
   });
 });

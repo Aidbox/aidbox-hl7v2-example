@@ -39,24 +39,27 @@ import type {
   Meta,
   Resource,
   Reference,
-  Task,
-  TaskInput,
 } from "../../fhir/hl7-fhir-r4-core";
 import { getResourceWithETag, NotFoundError } from "../../aidbox";
 import { convertPIDToPatient } from "../segments/pid-patient";
-import { convertPV1ToEncounter } from "../segments/pv1-encounter";
-import type { UnmappedCode } from "../../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
-import { convertOBRToDiagnosticReport } from "../segments/obr-diagnosticreport";
-import { convertOBXToObservation } from "../segments/obx-observation";
+import { convertPV1WithMappingSupport } from "../segments/pv1-encounter";
+import { convertOBRWithMappingSupport } from "../segments/obr-diagnosticreport";
+import { convertOBXWithMappingSupportAsync } from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
 import {
   buildCodeableConcept,
   LoincResolutionError,
   resolveToLoinc,
-  generateConceptMapId,
   type SenderContext,
 } from "../../code-mapping/concept-map";
-import { simpleHash } from "../../utils/string";
+import {
+  buildMappingErrorResult,
+  type MappingError,
+} from "../../code-mapping/mapping-errors";
+import {
+  composeMappingTask,
+  composeTaskBundleEntry,
+} from "../../code-mapping/mapping-task";
 
 /**
  * Function type for looking up a Patient by ID.
@@ -140,19 +143,68 @@ function createDraftPatient(pid: PID, patientId: string, baseMeta: Meta): Patien
   return patient;
 }
 
+/**
+ * Result type for OBX conversion with both status and LOINC resolution.
+ * Can return an Observation or mapping errors (both status and/or LOINC).
+ */
+export type OBXResolutionResult =
+  | { observation: Observation; errors?: never }
+  | { observation?: never; errors: MappingError[] };
+
+/**
+ * Convert OBX to Observation with both status mapping and LOINC resolution.
+ *
+ * This function:
+ * 1. Attempts to resolve OBX-11 status using ConceptMap lookup
+ * 2. Attempts to resolve LOINC code from OBX-3
+ * 3. Collects all errors from both operations
+ * 4. Returns observation only if BOTH succeed, otherwise returns all errors
+ *
+ * @returns Either an Observation (on success) or an array of mapping errors
+ */
 export async function convertOBXToObservationResolving(
   obx: OBX,
   orderNumber: string,
   senderContext: SenderContext,
-): Promise<Observation> {
-  const resolution = await resolveToLoinc(
-    obx.$3_observationIdentifier,
-    senderContext,
-  );
-  const resolvedCode = buildCodeableConcept(resolution);
-  const observation = convertOBXToObservation(obx, orderNumber);
+): Promise<OBXResolutionResult> {
+  const errors: MappingError[] = [];
+
+  // Try OBX-11 status resolution
+  const obxResult = await convertOBXWithMappingSupportAsync(obx, orderNumber, senderContext);
+  if (obxResult.error) {
+    errors.push(obxResult.error);
+  }
+
+  // Try LOINC code resolution
+  let loincResolution: Awaited<ReturnType<typeof resolveToLoinc>> | undefined;
+  try {
+    loincResolution = await resolveToLoinc(obx.$3_observationIdentifier, senderContext);
+  } catch (error) {
+    if (error instanceof LoincResolutionError) {
+      errors.push({
+        localCode: error.localCode || "",
+        localDisplay: error.localDisplay,
+        localSystem: error.localSystem,
+        mappingType: "observation-code-loinc",
+        sourceFieldLabel: "OBX-3",
+        targetFieldLabel: "Observation.code",
+      });
+    } else {
+      throw error;
+    }
+  }
+
+  // If any errors occurred, return them all
+  if (errors.length > 0) {
+    return { errors };
+  }
+
+  // Both succeeded - build the final observation
+  const observation = obxResult.observation!;
+  const resolvedCode = buildCodeableConcept(loincResolution!);
   observation.code = resolvedCode;
-  return observation;
+
+  return { observation };
 }
 
 interface OBRGroup {
@@ -258,78 +310,6 @@ function createBundleEntry(
   };
 }
 
-/**
- * Create a bundle entry for a Task.
- * Uses PUT for upsert - creates new or resets existing (even if completed) to requested.
- */
-function createTaskBundleEntry(task: Task): BundleEntry {
-  return {
-    resource: task,
-    request: {
-      method: "PUT",
-      url: `Task/${task.id}`,
-    },
-  };
-}
-
-/**
- * Generate a deterministic Task ID based on sender and code.
- */
-function generateMappingTaskId(
-  conceptMapId: string,
-  localSystem: string,
-  localCode: string,
-): string {
-  const systemHash = simpleHash(localSystem);
-  const codeHash = simpleHash(localCode);
-  return `map-${conceptMapId}-${systemHash}-${codeHash}`;
-}
-
-function createMappingTask(
-  sender: SenderContext,
-  error: LoincResolutionError,
-): Task {
-  const conceptMapId = generateConceptMapId(sender);
-  const taskId = generateMappingTaskId(
-    conceptMapId,
-    error.localSystem || "",
-    error.localCode || "",
-  );
-
-  const inputs = [
-    ["Sending application", sender.sendingApplication],
-    ["Sending facility", sender.sendingFacility],
-    ["Local code", error.localCode],
-    ["Local display", error.localDisplay],
-    ["Local system", error.localSystem],
-  ]
-    .filter(([, value]) => value)
-    .map(([label, value]) => ({ type: { text: label }, valueString: value }));
-
-  const now = new Date().toISOString();
-
-  return {
-    resourceType: "Task",
-    id: taskId,
-    status: "requested",
-    intent: "order",
-    code: {
-      coding: [
-        {
-          system: "http://example.org/task-codes",
-          code: "local-to-loinc-mapping",
-          display: "Local code to LOINC mapping",
-        },
-      ],
-      text: "Map local lab code to LOINC",
-    },
-    authoredOn: now,
-    lastModified: now,
-    requester: { display: "ORU Processor" },
-    owner: { display: "Mapping Team" },
-    input: inputs,
-  };
-}
 
 /**
  * Group segments by OBR parent
@@ -632,27 +612,10 @@ function generateEncounterId(senderContext: SenderContext, visitNumber: string):
   return parts.join("-").toLowerCase().replace(/[^a-z0-9-]/g, "-");
 }
 
-/**
- * Create a draft encounter from PV1 segment with status=unknown.
- * Draft encounters are unverified and will be updated when ADT message arrives.
- */
-function createDraftEncounter(
-  pv1: PV1,
-  encounterId: string,
-  patientRef: Reference<"Patient">,
-  baseMeta: Meta,
-): Encounter {
-  const encounter = convertPV1ToEncounter(pv1);
-  encounter.id = encounterId;
-  encounter.status = "unknown";
-  encounter.subject = patientRef;
-  encounter.meta = { ...encounter.meta, ...baseMeta };
-  return encounter;
-}
-
 interface EncounterHandlingResult {
   encounterRef: Reference<"Encounter"> | null;
   encounterEntry: BundleEntry | null;
+  patientClassTaskEntry?: BundleEntry;
 }
 
 /**
@@ -679,6 +642,11 @@ function createConditionalEncounterEntry(encounter: Encounter): BundleEntry {
  * - Extracts visit number from PV1-19, generates deterministic ID with sender context
  * - Looks up existing encounter (does NOT update - ADT is source of truth)
  * - Creates draft encounter with status=unknown if not found
+ *
+ * Patient class mapping errors:
+ * - Do NOT block the message (ORU clinical data is prioritized)
+ * - Create Task for tracking, use fallback class (AMB)
+ * - Message status stays "processed", so won't be requeued when Task is resolved
  *
  * Race condition handling: Uses POST with If-None-Exist to ensure only one
  * draft encounter is created even if multiple ORU messages for the same
@@ -709,10 +677,24 @@ async function handleEncounter(
     return { encounterRef, encounterEntry: null };
   }
 
-  const draftEncounter = createDraftEncounter(pv1, encounterId, patientRef, baseMeta);
-  const encounterEntry = createConditionalEncounterEntry(draftEncounter);
+  // Create draft encounter from PV1 with status=unknown (ADT is source of truth)
+  const result = await convertPV1WithMappingSupport(pv1, senderContext);
+  const encounter = result.encounter;
+  encounter.status = "unknown";
+  encounter.id = encounterId;
+  encounter.subject = patientRef;
+  encounter.meta = { ...encounter.meta, ...baseMeta };
 
-  return { encounterRef, encounterEntry };
+  const encounterEntry = createConditionalEncounterEntry(encounter);
+
+  // ORU policy: create Task for tracking patient class mapping errors, don't block
+  let patientClassTaskEntry: BundleEntry | undefined;
+  if (result.mappingError) {
+    const task = composeMappingTask(senderContext, result.mappingError);
+    patientClassTaskEntry = composeTaskBundleEntry(task);
+  }
+
+  return { encounterRef, encounterEntry, patientClassTaskEntry };
 }
 
 function getOrderNumber(obr: OBR): string {
@@ -734,7 +716,7 @@ function getOrderNumber(obr: OBR): string {
 
 interface ProcessObservationsResult {
   observations: Observation[];
-  mappingErrors: LoincResolutionError[];
+  mappingErrors: MappingError[];
 }
 
 async function processObservations(
@@ -744,26 +726,24 @@ async function processObservations(
   baseMeta: Meta,
 ): Promise<ProcessObservationsResult> {
   const observations: Observation[] = [];
-  const mappingErrors: LoincResolutionError[] = [];
+  const mappingErrors: MappingError[] = [];
 
   for (const obsGroup of observationGroups) {
     const obx = fromOBX(obsGroup.obx);
 
-    let observation: Observation;
-    try {
-      observation = await convertOBXToObservationResolving(
-        obx,
-        orderNumber,
-        senderContext,
-      );
-    } catch (error) {
-      if (error instanceof LoincResolutionError) {
-        mappingErrors.push(error);
-        continue;
-      }
-      throw error;
+    const result = await convertOBXToObservationResolving(
+      obx,
+      orderNumber,
+      senderContext,
+    );
+
+    // Check for mapping errors (can be multiple: status + LOINC)
+    if (result.errors) {
+      mappingErrors.push(...result.errors);
+      continue;
     }
 
+    const observation = result.observation;
     observation.meta = { ...observation.meta, ...baseMeta };
 
     if (obsGroup.ntes.length > 0) {
@@ -879,7 +859,7 @@ function buildBundleEntries(
 
 interface ProcessOBRGroupResult {
   entries: BundleEntry[];
-  mappingErrors: LoincResolutionError[];
+  mappingErrors: MappingError[];
 }
 
 async function processOBRGroup(
@@ -892,16 +872,29 @@ async function processOBRGroup(
   const obr = fromOBR(group.obr);
   const orderNumber = getOrderNumber(obr);
 
-  const diagnosticReport = convertOBRToDiagnosticReport(obr);
+  const obrResult = await convertOBRWithMappingSupport(obr, senderContext);
+
+  // Collect OBR status mapping error if present
+  const mappingErrors: MappingError[] = [];
+  if (obrResult.error) {
+    mappingErrors.push(obrResult.error);
+    // Cannot proceed without a valid DiagnosticReport status
+    // Return empty entries with the mapping error
+    return { entries: [], mappingErrors };
+  }
+
+  const diagnosticReport = obrResult.diagnosticReport;
   diagnosticReport.meta = { ...diagnosticReport.meta, ...baseMeta };
   diagnosticReport.result = [];
 
-  const { observations, mappingErrors } = await processObservations(
+  const { observations, mappingErrors: obxMappingErrors } = await processObservations(
     group.observations,
     orderNumber,
     senderContext,
     baseMeta,
   );
+
+  mappingErrors.push(...obxMappingErrors);
 
   diagnosticReport.result = observations.map(
     (obs) =>
@@ -971,7 +964,7 @@ export async function convertORU_R01(
   );
 
   const pv1 = parsePV1(parsed);
-  const { encounterRef, encounterEntry } = await handleEncounter(
+  const { encounterRef, encounterEntry, patientClassTaskEntry } = await handleEncounter(
     pv1,
     patientRef,
     baseMeta,
@@ -982,7 +975,7 @@ export async function convertORU_R01(
   const obrGroups = groupSegmentsByOBR(parsed);
 
   const entries: BundleEntry[] = [];
-  const allMappingErrors: LoincResolutionError[] = [];
+  const allMappingErrors: MappingError[] = [];
 
   for (const group of obrGroups) {
     const { entries: groupEntries, mappingErrors } = await processOBRGroup(
@@ -997,7 +990,7 @@ export async function convertORU_R01(
   }
 
   if (allMappingErrors.length > 0) {
-    return buildMappingErrorResult(senderContext, allMappingErrors, patientRef, patientEntry, encounterEntry);
+    return buildMappingErrorResult(senderContext, allMappingErrors);
   }
 
   // Include draft patient in bundle if created
@@ -1010,6 +1003,11 @@ export async function convertORU_R01(
     entries.unshift(encounterEntry);
   }
 
+  // Include patient class mapping task for tracking (does not block message)
+  if (patientClassTaskEntry) {
+    entries.push(patientClassTaskEntry);
+  }
+
   const bundle: Bundle = {
     resourceType: "Bundle",
     type: "transaction",
@@ -1020,64 +1018,6 @@ export async function convertORU_R01(
     bundle,
     messageUpdate: {
       status: "processed",
-      patient: patientRef,
-    },
-  };
-}
-
-function buildMappingErrorResult(
-  senderContext: SenderContext,
-  mappingErrors: LoincResolutionError[],
-  patientRef: Reference<"Patient">,
-  patientEntry: BundleEntry | null,
-  encounterEntry: BundleEntry | null,
-): ConversionResult {
-  const conceptMapId = generateConceptMapId(senderContext);
-  const seenTaskIds = new Set<string>();
-  const entries: BundleEntry[] = [];
-
-  if (patientEntry) {
-    entries.push(patientEntry);
-  }
-  if (encounterEntry) {
-    entries.push(encounterEntry);
-  }
-  const unmappedCodes: UnmappedCode[] = [];
-
-  for (const error of mappingErrors) {
-    if (!error.localCode) continue;
-
-    const taskId = generateMappingTaskId(
-      conceptMapId,
-      error.localSystem || "",
-      error.localCode,
-    );
-
-    if (seenTaskIds.has(taskId)) continue;
-    seenTaskIds.add(taskId);
-
-    const task = createMappingTask(senderContext, error);
-    entries.push(createTaskBundleEntry(task));
-
-    unmappedCodes.push({
-      localCode: error.localCode,
-      localDisplay: error.localDisplay,
-      localSystem: error.localSystem,
-      mappingTask: { reference: `Task/${taskId}` },
-    });
-  }
-
-  const bundle: Bundle = {
-    resourceType: "Bundle",
-    type: "transaction",
-    entry: entries.length > 0 ? entries : undefined,
-  };
-
-  return {
-    bundle,
-    messageUpdate: {
-      status: "mapping_error",
-      unmappedCodes: unmappedCodes.length > 0 ? unmappedCodes : undefined,
       patient: patientRef,
     },
   };

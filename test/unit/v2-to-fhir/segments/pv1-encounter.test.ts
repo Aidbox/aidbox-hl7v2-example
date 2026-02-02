@@ -1,15 +1,68 @@
 import { describe, test, expect } from "bun:test";
-import { convertPV1ToEncounter } from "../../../../src/v2-to-fhir/segments/pv1-encounter";
+import {
+  buildEncounterFromPV1,
+  mapPatientClassToFHIRWithResult,
+  extractPatientClass,
+} from "../../../../src/v2-to-fhir/segments/pv1-encounter";
 import type { PV1 } from "../../../../src/hl7v2/generated/fields";
+import type { Coding, Encounter } from "../../../../src/fhir/hl7-fhir-r4-core";
 
-describe("convertPV1ToEncounter", () => {
-  describe("class and status", () => {
-    test("converts PV1-2 Patient Class E to EMER", () => {
-      const pv1: PV1 = {
-        $2_class: "E",
+// Helper to build encounter with class resolved via mapPatientClassToFHIRWithResult
+function buildEncounterWithClassResolution(pv1: PV1): Encounter {
+  const classCode = extractPatientClass(pv1);
+  const hasDischarge = !!(pv1.$45_discharge?.[0]);
+  const classResult = mapPatientClassToFHIRWithResult(classCode, hasDischarge);
+
+  if (classResult.error) {
+    throw new Error(`Unexpected class mapping error for ${classCode}`);
+  }
+
+  return buildEncounterFromPV1(pv1, classResult.class, classResult.status);
+}
+
+// Standard FHIR class for tests that don't care about class
+const DEFAULT_CLASS: Coding = {
+  system: "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+  code: "IMP",
+  display: "inpatient encounter",
+};
+
+describe("buildEncounterFromPV1", () => {
+  describe("basic structure", () => {
+    test("creates Encounter with provided class and status", () => {
+      const pv1: PV1 = { $2_class: "I" };
+      const encounterClass: Coding = {
+        system: "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        code: "EMER",
+        display: "emergency",
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, encounterClass, "in-progress");
+
+      expect(encounter.resourceType).toBe("Encounter");
+      expect(encounter.class.code).toBe("EMER");
+      expect(encounter.class.display).toBe("emergency");
+      expect(encounter.status).toBe("in-progress");
+    });
+
+    test("accepts any valid status", () => {
+      const pv1: PV1 = { $2_class: "I" };
+
+      const finished = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "finished");
+      const planned = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "planned");
+      const unknown = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "unknown");
+
+      expect(finished.status).toBe("finished");
+      expect(planned.status).toBe("planned");
+      expect(unknown.status).toBe("unknown");
+    });
+  });
+
+  describe("class and status via mapPatientClassToFHIRWithResult", () => {
+    test("converts PV1-2 Patient Class E to EMER", () => {
+      const pv1: PV1 = { $2_class: "E" };
+
+      const encounter = buildEncounterWithClassResolution(pv1);
 
       expect(encounter.class.code).toBe("EMER");
       expect(encounter.class.display).toBe("emergency");
@@ -17,33 +70,27 @@ describe("convertPV1ToEncounter", () => {
     });
 
     test("converts PV1-2 Patient Class I to IMP", () => {
-      const pv1: PV1 = {
-        $2_class: "I",
-      };
+      const pv1: PV1 = { $2_class: "I" };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterWithClassResolution(pv1);
 
       expect(encounter.class.code).toBe("IMP");
       expect(encounter.class.display).toBe("inpatient encounter");
     });
 
     test("converts PV1-2 Patient Class O to AMB", () => {
-      const pv1: PV1 = {
-        $2_class: "O",
-      };
+      const pv1: PV1 = { $2_class: "O" };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterWithClassResolution(pv1);
 
       expect(encounter.class.code).toBe("AMB");
       expect(encounter.class.display).toBe("ambulatory");
     });
 
     test("converts PV1-2 Patient Class P to PRENC with planned status", () => {
-      const pv1: PV1 = {
-        $2_class: "P",
-      };
+      const pv1: PV1 = { $2_class: "P" };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterWithClassResolution(pv1);
 
       expect(encounter.class.code).toBe("PRENC");
       expect(encounter.class.display).toBe("pre-admission");
@@ -56,32 +103,17 @@ describe("convertPV1ToEncounter", () => {
         $45_discharge: ["202312151430"],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterWithClassResolution(pv1);
 
       expect(encounter.status).toBe("finished");
     });
 
     test("derives status from class when PV1-45 not valued", () => {
-      const pv1: PV1 = {
-        $2_class: "I",
-      };
+      const pv1: PV1 = { $2_class: "I" };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterWithClassResolution(pv1);
 
       expect(encounter.status).toBe("in-progress");
-    });
-
-    test("preserves unknown patient class codes in v2-0004 system", () => {
-      const pv1: PV1 = {
-        $2_class: "1",
-      };
-
-      const encounter = convertPV1ToEncounter(pv1);
-
-      expect(encounter.class.system).toBe("http://terminology.hl7.org/CodeSystem/v2-0004");
-      expect(encounter.class.code).toBe("1");
-      expect(encounter.class.display).toBeUndefined();
-      expect(encounter.status).toBe("unknown");
     });
   });
 
@@ -95,7 +127,7 @@ describe("convertPV1ToEncounter", () => {
         },
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.identifier).toHaveLength(1);
       expect(encounter.identifier![0]!.value).toBe("V12345");
@@ -111,7 +143,7 @@ describe("convertPV1ToEncounter", () => {
         },
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.identifier).toHaveLength(1);
       expect(encounter.identifier![0]!.value).toBe("ALT123");
@@ -125,7 +157,7 @@ describe("convertPV1ToEncounter", () => {
         $4_admissionType: "E",
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.type).toHaveLength(1);
       expect(encounter.type![0]!.coding?.[0]?.code).toBe("E");
@@ -137,7 +169,7 @@ describe("convertPV1ToEncounter", () => {
         $10_hospitalService: "MED",
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.serviceType?.coding?.[0]?.code).toBe("MED");
     });
@@ -150,7 +182,7 @@ describe("convertPV1ToEncounter", () => {
         $44_admission: "202312011000",
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.period?.start).toBe("2023-12-01T10:00:00Z");
     });
@@ -162,7 +194,7 @@ describe("convertPV1ToEncounter", () => {
         $45_discharge: ["202312051430"],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "finished");
 
       expect(encounter.period?.start).toBe("2023-12-01T10:00:00Z");
       expect(encounter.period?.end).toBe("2023-12-05T14:30:00Z");
@@ -182,7 +214,7 @@ describe("convertPV1ToEncounter", () => {
         ],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.participant).toHaveLength(1);
       expect(encounter.participant![0]!.type![0]?.coding?.[0]?.code).toBe("ATND");
@@ -202,7 +234,7 @@ describe("convertPV1ToEncounter", () => {
         ],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.participant).toHaveLength(1);
       expect(encounter.participant![0]!.type![0]?.coding?.[0]?.code).toBe("REF");
@@ -220,7 +252,7 @@ describe("convertPV1ToEncounter", () => {
         ],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.participant).toHaveLength(1);
       expect(encounter.participant![0]!.type![0]?.coding?.[0]?.code).toBe("CON");
@@ -238,7 +270,7 @@ describe("convertPV1ToEncounter", () => {
         ],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.participant).toHaveLength(1);
       expect(encounter.participant![0]!.type![0]?.coding?.[0]?.code).toBe("ADM");
@@ -253,14 +285,14 @@ describe("convertPV1ToEncounter", () => {
         $17_admittingDoctor: [{ $1_value: "DOC003", $2_family: { $1_family: "Admitting" } }],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.participant).toHaveLength(3);
     });
   });
 
   describe("locations", () => {
-    test("converts PV1-3 Assigned Patient Location with status active", () => {
+    test("converts PV1-3 Assigned Patient Location with status active for non-PRENC class", () => {
       const pv1: PV1 = {
         $2_class: "I",
         $3_assignedPatientLocation: {
@@ -270,22 +302,27 @@ describe("convertPV1ToEncounter", () => {
         },
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.location).toHaveLength(1);
       expect(encounter.location![0]!.status).toBe("active");
       expect(encounter.location![0]!.location.display).toContain("A");
     });
 
-    test("converts PV1-3 with class P to location status planned", () => {
+    test("converts PV1-3 with PRENC class to location status planned", () => {
       const pv1: PV1 = {
         $2_class: "P",
         $3_assignedPatientLocation: {
           $1_careSite: "PreAdmit",
         },
       };
+      const prencClass: Coding = {
+        system: "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        code: "PRENC",
+        display: "pre-admission",
+      };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, prencClass, "planned");
 
       expect(encounter.location![0]!.status).toBe("planned");
     });
@@ -299,7 +336,7 @@ describe("convertPV1ToEncounter", () => {
         },
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.location).toHaveLength(1);
       expect(encounter.location![0]!.status).toBe("completed");
@@ -314,7 +351,7 @@ describe("convertPV1ToEncounter", () => {
         },
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.location).toHaveLength(1);
       expect(encounter.location![0]!.status).toBe("active");
@@ -331,7 +368,7 @@ describe("convertPV1ToEncounter", () => {
         },
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.location).toHaveLength(1);
       expect(encounter.location![0]!.status).toBe("reserved");
@@ -345,7 +382,7 @@ describe("convertPV1ToEncounter", () => {
         $42_pendingLocation: { $1_careSite: "Pending" },
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.location).toHaveLength(3);
     });
@@ -360,7 +397,7 @@ describe("convertPV1ToEncounter", () => {
         },
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.hospitalization?.preAdmissionIdentifier?.value).toBe("PRE123");
     });
@@ -371,7 +408,7 @@ describe("convertPV1ToEncounter", () => {
         $13_reAdmissionIndicator: "R",
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.hospitalization?.reAdmission?.coding?.[0]?.code).toBe("R");
     });
@@ -382,7 +419,7 @@ describe("convertPV1ToEncounter", () => {
         $14_admitSource: "7",
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.hospitalization?.admitSource?.coding?.[0]?.code).toBe("7");
     });
@@ -393,7 +430,7 @@ describe("convertPV1ToEncounter", () => {
         $15_ambulatoryStatus: ["A01", "A02"],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.hospitalization?.specialArrangement).toHaveLength(2);
     });
@@ -404,7 +441,7 @@ describe("convertPV1ToEncounter", () => {
         $16_vip: "VIP",
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.hospitalization?.specialCourtesy?.[0]?.coding?.[0]?.code).toBe("VIP");
     });
@@ -416,7 +453,7 @@ describe("convertPV1ToEncounter", () => {
         $45_discharge: ["202312051430"],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "finished");
 
       expect(encounter.hospitalization?.dischargeDisposition?.coding?.[0]?.code).toBe("01");
     });
@@ -430,7 +467,7 @@ describe("convertPV1ToEncounter", () => {
         $45_discharge: ["202312051430"],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "finished");
 
       expect(encounter.hospitalization?.destination?.display).toBe("HOME");
     });
@@ -444,7 +481,7 @@ describe("convertPV1ToEncounter", () => {
         },
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterFromPV1(pv1, DEFAULT_CLASS, "in-progress");
 
       expect(encounter.hospitalization?.dietPreference?.[0]?.coding?.[0]?.code).toBe("DAB");
     });
@@ -475,7 +512,7 @@ describe("convertPV1ToEncounter", () => {
         $45_discharge: ["202312051430"],
       };
 
-      const encounter = convertPV1ToEncounter(pv1);
+      const encounter = buildEncounterWithClassResolution(pv1);
 
       expect(encounter.resourceType).toBe("Encounter");
       expect(encounter.class.code).toBe("IMP");
@@ -489,6 +526,105 @@ describe("convertPV1ToEncounter", () => {
       expect(encounter.location).toHaveLength(1);
       expect(encounter.hospitalization?.preAdmissionIdentifier?.value).toBe("PRE001");
       expect(encounter.hospitalization?.admitSource?.coding?.[0]?.code).toBe("1");
+    });
+  });
+});
+
+describe("extractPatientClass", () => {
+  test("extracts uppercase patient class", () => {
+    expect(extractPatientClass({ $2_class: "I" })).toBe("I");
+  });
+
+  test("normalizes lowercase to uppercase", () => {
+    expect(extractPatientClass({ $2_class: "e" })).toBe("E");
+  });
+
+  test("returns U for undefined class", () => {
+    expect(extractPatientClass({} as PV1)).toBe("U");
+  });
+
+  test("returns U for null class", () => {
+    expect(extractPatientClass({ $2_class: null as unknown as string })).toBe("U");
+  });
+});
+
+describe("mapPatientClassToFHIRWithResult", () => {
+  describe("valid patient classes", () => {
+    test.each([
+      ["E", "EMER", "emergency", "in-progress"],
+      ["I", "IMP", "inpatient encounter", "in-progress"],
+      ["O", "AMB", "ambulatory", "in-progress"],
+      ["P", "PRENC", "pre-admission", "planned"],
+      ["R", "IMP", "inpatient encounter", "in-progress"],
+      ["B", "IMP", "inpatient encounter", "in-progress"],
+      ["C", "IMP", "inpatient encounter", "in-progress"],
+      ["N", "IMP", "inpatient encounter", "unknown"],
+      ["U", "AMB", "ambulatory", "unknown"],
+    ] as const)("maps %s to %s with status %s", (input, expectedCode, expectedDisplay, expectedStatus) => {
+      const result = mapPatientClassToFHIRWithResult(input);
+
+      expect(result.class).toBeDefined();
+      expect(result.error).toBeUndefined();
+      expect(result.class?.code).toBe(expectedCode);
+      expect(result.class?.display).toBe(expectedDisplay);
+      expect(result.class?.system).toBe("http://terminology.hl7.org/CodeSystem/v3-ActCode");
+      expect(result.status).toBe(expectedStatus);
+    });
+
+    test("accepts lowercase patient class", () => {
+      const result = mapPatientClassToFHIRWithResult("e");
+
+      expect(result.class).toBeDefined();
+      expect(result.class?.code).toBe("EMER");
+    });
+
+    test("returns finished status when discharge datetime is present", () => {
+      const result = mapPatientClassToFHIRWithResult("I", true);
+
+      expect(result.class).toBeDefined();
+      expect(result.status).toBe("finished");
+    });
+  });
+
+  describe("invalid patient classes", () => {
+    test("returns error for invalid class 1", () => {
+      const result = mapPatientClassToFHIRWithResult("1");
+
+      expect(result.class).toBeUndefined();
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.mappingType).toBe("patient-class");
+      expect(result.error?.localCode).toBe("1");
+      expect(result.error?.localSystem).toBe("http://terminology.hl7.org/CodeSystem/v2-0004");
+    });
+
+    test("returns error for invalid class X", () => {
+      const result = mapPatientClassToFHIRWithResult("X");
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.localCode).toBe("X");
+    });
+
+    test("returns error for invalid class 99", () => {
+      const result = mapPatientClassToFHIRWithResult("99");
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.localCode).toBe("99");
+    });
+
+    test("error includes descriptive local display", () => {
+      const result = mapPatientClassToFHIRWithResult("CUSTOM");
+
+      expect(result.error?.localDisplay).toContain("PV1-2");
+      expect(result.error?.localDisplay).toContain("CUSTOM");
+    });
+
+    test("handles undefined patient class", () => {
+      const result = mapPatientClassToFHIRWithResult(undefined);
+
+      // undefined normalizes to "U" which is valid
+      expect(result.class).toBeDefined();
+      expect(result.class?.code).toBe("AMB");
     });
   });
 });

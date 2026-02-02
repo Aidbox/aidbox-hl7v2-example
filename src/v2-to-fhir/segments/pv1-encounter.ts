@@ -21,6 +21,12 @@ import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { convertXCNToPractitioner } from "../datatypes/xcn-practitioner";
 import { convertPLToLocation, type LocationData } from "../datatypes/pl-converters";
 import { convertDLDToLocationDischarge } from "../datatypes/dld-location-discharge";
+import type { MappingError } from "../../code-mapping/mapping-errors";
+import {
+  generateConceptMapId,
+  translateCode,
+  type SenderContext,
+} from "../../code-mapping/concept-map/lookup";
 
 // ============================================================================
 // Code Systems
@@ -49,6 +55,72 @@ const PATIENT_CLASS_MAP: Record<string, { code: string; display: string }> = {
 
 const PATIENT_CLASS_V2_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0004";
 
+const VALID_PATIENT_CLASSES = Object.keys(PATIENT_CLASS_MAP).join(", ");
+
+// ============================================================================
+// Patient Class Mapping with Error Support
+// ============================================================================
+
+/**
+ * Result type for PV1-2 Patient Class mapping.
+ * Returns either a valid FHIR class and status or a mapping error.
+ */
+export type PatientClassResult =
+  | {
+      class: Coding;
+      status: Encounter["status"];
+      error?: never;
+    }
+  | { class?: never; status?: never; error: MappingError };
+
+/**
+ * Map PV1-2 Patient Class to FHIR Encounter.class and status.
+ * Returns a result object instead of throwing, allowing collection of mapping errors.
+ *
+ * When the patient class is not in the standard mapping table (PATIENT_CLASS_MAP),
+ * returns a mapping error that can be used to create a Task for manual resolution.
+ *
+ * @param patientClass - The PV1-2 Patient Class value
+ * @param hasDischargeDateTime - Whether PV1-45 (Discharge Date/Time) is valued
+ */
+export function mapPatientClassToFHIRWithResult(
+  patientClass: string | undefined,
+  hasDischargeDateTime: boolean = false,
+): PatientClassResult {
+  // Normalize to uppercase for comparison
+  const classCode = patientClass?.toUpperCase() || "U";
+
+  const classMapping = PATIENT_CLASS_MAP[classCode];
+
+  // If mapping not found, return error for Task creation
+  if (!classMapping) {
+    return {
+      error: {
+        localCode: classCode,
+        localDisplay: `PV1-2 Patient Class: ${patientClass ?? "missing"}`,
+        localSystem: PATIENT_CLASS_V2_SYSTEM,
+        mappingType: "patient-class",
+        sourceFieldLabel: "PV1.2",
+        targetFieldLabel: "Encounter.class",
+      },
+    };
+  }
+
+  // Build the class coding
+  const encounterClass: Coding = {
+    system: ENCOUNTER_CLASS_SYSTEM,
+    code: classMapping.code,
+    display: classMapping.display,
+  };
+
+  // Determine status
+  const status: Encounter["status"] = hasDischargeDateTime
+    ? "finished"
+    : (PATIENT_CLASS_STATUS_MAP[classCode] || "unknown");
+
+  return { class: encounterClass, status };
+}
+
 // ============================================================================
 // Patient Class to Status Mapping (when PV1-45 not valued)
 // ============================================================================
@@ -65,12 +137,126 @@ const PATIENT_CLASS_STATUS_MAP: Record<string, Encounter["status"]> = {
   U: "unknown",
 };
 
+// Maps RESOLVED FHIR Encounter.class codes to Encounter.status
+// Used for ConceptMap-resolved patient classes to derive status from the resolved code
+const FHIR_CLASS_STATUS_MAP: Record<string, Encounter["status"]> = {
+  PRENC: "planned",     // Pre-admission -> planned
+  IMP: "in-progress",   // Inpatient encounter -> in-progress
+  AMB: "in-progress",   // Ambulatory -> in-progress
+  EMER: "in-progress",  // Emergency -> in-progress
+  FLD: "in-progress",   // Field -> in-progress
+  HH: "in-progress",    // Home health -> in-progress
+  ACUTE: "in-progress", // Inpatient acute -> in-progress
+  NONAC: "in-progress", // Inpatient non-acute -> in-progress
+  OBSENC: "in-progress", // Observation encounter -> in-progress
+  SS: "in-progress",    // Short stay -> in-progress
+  VR: "in-progress",    // Virtual -> in-progress
+};
+
+/**
+ * Default fallback class for when patient class cannot be resolved.
+ * Used by ORU processing which cannot block on mapping errors.
+ */
+export const FALLBACK_ENCOUNTER_CLASS: Coding = {
+  system: ENCOUNTER_CLASS_SYSTEM,
+  code: "AMB",
+  display: "ambulatory",
+};
+
+/**
+ * Valid FHIR Encounter.class codes (v3-ActCode subset for encounters)
+ * Must match VALID_ENCOUNTER_CLASS in code-mapping/validation.ts
+ */
+const VALID_ENCOUNTER_CLASS_CODES = new Set([
+  "AMB",     // ambulatory
+  "EMER",    // emergency
+  "FLD",     // field
+  "HH",      // home health
+  "IMP",     // inpatient encounter
+  "ACUTE",   // inpatient acute
+  "NONAC",   // inpatient non-acute
+  "OBSENC",  // observation encounter
+  "PRENC",   // pre-admission
+  "SS",      // short stay
+  "VR",      // virtual
+]);
+
+/**
+ * Resolve PV1-2 Patient Class to FHIR Encounter.class and status.
+ *
+ * Resolution algorithm:
+ * 1. Check hardcoded PATIENT_CLASS_MAP for standard HL7v2 patient class codes
+ * 2. If not found, lookup in sender-specific ConceptMap via $translate
+ * 3. If no mapping found, return error for Task creation
+ *
+ * @param patientClass - The PV1-2 Patient Class value
+ * @param hasDischargeDateTime - Whether PV1-45 (Discharge Date/Time) is valued
+ * @param sender - The sender context for ConceptMap lookup
+ */
+export async function resolvePatientClass(
+  patientClass: string | undefined,
+  hasDischargeDateTime: boolean,
+  sender: SenderContext,
+): Promise<PatientClassResult> {
+  // Normalize to uppercase for comparison
+  const classCode = patientClass?.toUpperCase() || "U";
+
+  // First try hardcoded mappings for standard codes
+  const classMapping = PATIENT_CLASS_MAP[classCode];
+  if (classMapping) {
+    const encounterClass: Coding = {
+      system: ENCOUNTER_CLASS_SYSTEM,
+      code: classMapping.code,
+      display: classMapping.display,
+    };
+    const status: Encounter["status"] = hasDischargeDateTime
+      ? "finished"
+      : (PATIENT_CLASS_STATUS_MAP[classCode] || "unknown");
+    return { class: encounterClass, status };
+  }
+
+  // Try ConceptMap lookup for non-standard patient class codes
+  const conceptMapId = generateConceptMapId(sender, "patient-class");
+
+  const translateResult = await translateCode(conceptMapId, classCode, PATIENT_CLASS_V2_SYSTEM);
+
+  if (translateResult.status === "found" && translateResult.coding.code) {
+    const resolvedCode = translateResult.coding.code;
+    // Validate the resolved code is a valid FHIR encounter class
+    if (VALID_ENCOUNTER_CLASS_CODES.has(resolvedCode)) {
+      const encounterClass: Coding = {
+        system: ENCOUNTER_CLASS_SYSTEM,
+        code: resolvedCode,
+        display: translateResult.coding.display || resolvedCode,
+      };
+      // Derive status from the resolved FHIR class code, same as standard mappings
+      const status: Encounter["status"] = hasDischargeDateTime
+        ? "finished"
+        : (FHIR_CLASS_STATUS_MAP[resolvedCode] || "unknown");
+      return { class: encounterClass, status };
+    }
+  }
+
+  // No mapping found - return error for Task creation
+  return {
+    error: {
+      localCode: classCode,
+      localDisplay: `PV1-2 Patient Class: ${patientClass ?? "missing"}`,
+      localSystem: PATIENT_CLASS_V2_SYSTEM,
+      mappingType: "patient-class",
+      sourceFieldLabel: "PV1.2",
+      targetFieldLabel: "Encounter.class",
+    },
+  };
+}
+
 // ============================================================================
 // Location Status Mapping
 // ============================================================================
 
-const LOCATION_STATUS_FOR_CLASS: Record<string, EncounterLocation["status"]> = {
-  P: "planned",  // Pre-admit -> planned
+// Maps RESOLVED FHIR Encounter.class codes to location status
+const LOCATION_STATUS_FOR_FHIR_CLASS: Record<string, EncounterLocation["status"]> = {
+  PRENC: "planned",  // Pre-admission -> planned
 };
 
 // ============================================================================
@@ -260,14 +446,13 @@ function createEncounterLocation(
 }
 
 // ============================================================================
-// Main Converter Function
+// Core Builder Function
 // ============================================================================
 
 /**
- * Convert HL7v2 PV1 segment to FHIR Encounter
+ * Build FHIR Encounter from PV1 segment with pre-resolved class and status.
  *
  * Field Mappings:
- * - PV1-2  -> class (Coding), status (if PV1-45 not valued)
  * - PV1-3  -> location[1] (Assigned Patient Location)
  * - PV1-4  -> type (Admission Type)
  * - PV1-5  -> hospitalization.preAdmissionIdentifier
@@ -288,58 +473,28 @@ function createEncounterLocation(
  * - PV1-38 -> hospitalization.dietPreference
  * - PV1-42 -> location[4] (Pending Location, status=reserved)
  * - PV1-44 -> period.start
- * - PV1-45 -> period.end, status=finished
+ * - PV1-45 -> period.end
  * - PV1-50 -> identifier (Alternate Visit ID)
- * - PV1-52 -> participant (Other Healthcare Provider, type=PART)
+ *
+ * @param pv1 - The PV1 segment to convert
+ * @param encounterClass - Pre-resolved FHIR Encounter.class coding
+ * @param status - Pre-resolved Encounter.status
  */
-export function convertPV1ToEncounter(pv1: PV1): Encounter {
-  // =========================================================================
-  // Class (required)
-  // =========================================================================
-
-  // PV1-2: Patient Class -> class
-  let classCode = "U";
-  if (pv1.$2_class) {
-    if (typeof pv1.$2_class === "string") {
-      classCode = pv1.$2_class.toUpperCase();
-    } else if (typeof (pv1.$2_class as any).toUpperCase === "function") {
-      classCode = (pv1.$2_class as any).toUpperCase();
-    }
-  }
-
-  const classMapping = PATIENT_CLASS_MAP[classCode];
-
-  const encounterClass: Coding = classMapping
-    ? {
-        system: ENCOUNTER_CLASS_SYSTEM,
-        code: classMapping.code,
-        display: classMapping.display,
-      }
-    : {
-        system: PATIENT_CLASS_V2_SYSTEM,
-        code: classCode,
-      };
-
-  // =========================================================================
-  // Status
-  // =========================================================================
-
-  // PV1-45: Discharge Date/Time -> if valued, status = "finished"
-  // Otherwise, derive from PV1-2
-  let status: Encounter["status"];
-  const dischargeDateTime = pv1.$45_discharge?.[0];
-
-  if (dischargeDateTime) {
-    status = "finished";
-  } else {
-    status = PATIENT_CLASS_STATUS_MAP[classCode] || "unknown";
-  }
-
+export function buildEncounterFromPV1(
+  pv1: PV1,
+  encounterClass: Coding,
+  status: Encounter["status"],
+): Encounter {
   const encounter: Encounter = {
     resourceType: "Encounter",
     class: encounterClass,
     status,
   };
+
+  // Determine location status for assigned location based on resolved class
+  const resolvedFhirClassCode = encounterClass.code ?? "";
+  const assignedLocationStatus: EncounterLocation["status"] =
+    LOCATION_STATUS_FOR_FHIR_CLASS[resolvedFhirClassCode] || "active";
 
   // =========================================================================
   // Identifiers
@@ -405,7 +560,7 @@ export function convertPV1ToEncounter(pv1: PV1): Encounter {
   // PV1-44: Admit Date/Time -> period.start
   // PV1-45: Discharge Date/Time -> period.end
   const periodStart = convertDTMToDateTime(pv1.$44_admission);
-  const periodEnd = convertDTMToDateTime(dischargeDateTime);
+  const periodEnd = convertDTMToDateTime(pv1.$45_discharge?.[0]);
 
   if (periodStart || periodEnd) {
     encounter.period = {
@@ -432,9 +587,6 @@ export function convertPV1ToEncounter(pv1: PV1): Encounter {
   // PV1-17: Admitting Doctor -> participant with type=ADM
   participants.push(...createParticipant(pv1.$17_admittingDoctor, "ADM", "admitter"));
 
-  // PV1-52: Other Healthcare Provider -> participant with type=PART
-  // Note: The generated type may not include this field
-
   if (participants.length > 0) {
     encounter.participant = participants;
   }
@@ -446,10 +598,6 @@ export function convertPV1ToEncounter(pv1: PV1): Encounter {
   const locations: EncounterLocation[] = [];
 
   // PV1-3: Assigned Patient Location -> location[1]
-  // Status depends on PV1-2: if "P" (pre-admit) -> planned, else active
-  const assignedLocationStatus: EncounterLocation["status"] =
-    LOCATION_STATUS_FOR_CLASS[classCode] || "active";
-
   const assignedLocation = createEncounterLocation(
     pv1.$3_assignedPatientLocation,
     assignedLocationStatus
@@ -588,4 +736,79 @@ export function convertPV1ToEncounter(pv1: PV1): Encounter {
   return encounter;
 }
 
-export default convertPV1ToEncounter;
+// ============================================================================
+// PV1 Conversion with Mapping Support
+// ============================================================================
+
+/**
+ * Result type for PV1 conversion.
+ * Always returns an encounter (using fallback class if mapping fails).
+ * Caller decides policy for handling mapping errors.
+ */
+export type PV1ConversionResult = {
+  encounter: Encounter;
+  /** Present if patient class couldn't be mapped - caller decides whether to block or create Task */
+  mappingError?: MappingError;
+};
+
+/**
+ * Convert PV1 segment to FHIR Encounter with mapping support.
+ *
+ * Always returns an encounter. If patient class mapping fails, uses fallback class (AMB)
+ * and returns the mapping error for the caller to handle according to their policy:
+ * - ADT: typically blocks (returns mapping_error status)
+ * - ORU: typically creates Task and proceeds (clinical data prioritized)
+ *
+ * Resolution algorithm for PV1-2 Patient Class:
+ * 1. Check hardcoded PATIENT_CLASS_MAP for standard HL7v2 patient class codes
+ * 2. If not found, lookup in sender-specific ConceptMap via $translate
+ * 3. If no mapping found, use FALLBACK_ENCOUNTER_CLASS and return mappingError
+ *
+ * @param pv1 - The PV1 segment to convert
+ * @param sender - The sender context for ConceptMap lookup
+ */
+export async function convertPV1WithMappingSupport(
+  pv1: PV1,
+  sender: SenderContext,
+): Promise<PV1ConversionResult> {
+  const hasDischargeDateTime = !!(pv1.$45_discharge?.[0]);
+  const classCode = extractPatientClass(pv1);
+
+  const classResult = await resolvePatientClass(classCode, hasDischargeDateTime, sender);
+
+  let encounterClass: Coding;
+  let status: Encounter["status"];
+  let mappingError: MappingError | undefined;
+
+  if (classResult.error) {
+    // Use fallback class, return error for caller to handle
+    encounterClass = FALLBACK_ENCOUNTER_CLASS;
+    status = hasDischargeDateTime ? "finished" : "unknown";
+    mappingError = classResult.error;
+  } else {
+    encounterClass = classResult.class;
+    status = classResult.status;
+  }
+
+  const encounter = buildEncounterFromPV1(pv1, encounterClass, status);
+
+  return { encounter, mappingError };
+}
+
+/**
+ * Extract and normalize patient class from PV1-2.
+ * Returns uppercase code, defaults to "U" (Unknown) if not present.
+ */
+export function extractPatientClass(pv1: PV1): string {
+  if (!pv1.$2_class) return "U";
+
+  if (typeof pv1.$2_class === "string") {
+    return pv1.$2_class.toUpperCase();
+  }
+
+  if (typeof (pv1.$2_class as any).toUpperCase === "function") {
+    return (pv1.$2_class as any).toUpperCase();
+  }
+
+  return "U";
+}

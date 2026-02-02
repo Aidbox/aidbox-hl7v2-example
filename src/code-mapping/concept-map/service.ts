@@ -1,7 +1,8 @@
 /**
  * ConceptMap Service
  *
- * Manages sender-specific ConceptMaps for local code to LOINC mappings.
+ * Manages sender-specific ConceptMaps for code mappings.
+ * Supports multiple target systems (LOINC, address types, status codes, etc.).
  */
 
 import type {
@@ -12,9 +13,11 @@ import type {
 import { aidboxFetch, putResource } from "../../aidbox";
 import {
   generateConceptMapId,
+  generateBaseConceptMapId,
   formatSenderAsTitle,
   type SenderContext,
 } from "./lookup";
+import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
 
 export async function fetchConceptMap(
   conceptMapId: string,
@@ -29,16 +32,21 @@ export async function fetchConceptMap(
   }
 }
 
-export function createEmptyConceptMap(sender: SenderContext): ConceptMap {
-  const id = generateConceptMapId(sender);
+export function createEmptyConceptMap(
+  sender: SenderContext,
+  mappingType: MappingTypeName,
+): ConceptMap {
+  const type = MAPPING_TYPES[mappingType];
+  const id = generateConceptMapId(sender, mappingType);
+  const baseId = generateBaseConceptMapId(sender);
   return {
     resourceType: "ConceptMap",
     id,
-    name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to LOINC`,
+    name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to ${type.targetFieldLabel}`,
     status: "active",
     title: formatSenderAsTitle(sender),
-    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${id.replace("-to-loinc", "")}`,
-    targetUri: "http://loinc.org",
+    sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${baseId}`,
+    targetUri: type.targetSystem,
     group: [],
   };
 }
@@ -52,20 +60,25 @@ export function addMappingToConceptMap(
   localSystem: string,
   localCode: string,
   localDisplay: string,
-  loincCode: string,
-  loincDisplay: string,
+  targetCode: string,
+  targetDisplay: string,
+  targetSystem: string,
 ): ConceptMap {
   const updated: ConceptMap = {
     ...conceptMap,
     group: conceptMap.group ? [...conceptMap.group] : [],
   };
 
-  let groupIndex = updated.group!.findIndex((g) => g.source === localSystem);
+  // Find group by both source AND target system to correctly handle
+  // different target systems for the same source (e.g., address-type vs address-use)
+  let groupIndex = updated.group!.findIndex(
+    (g) => g.source === localSystem && g.target === targetSystem,
+  );
 
   if (groupIndex === -1) {
     updated.group!.push({
       source: localSystem,
-      target: "http://loinc.org",
+      target: targetSystem,
       element: [],
     });
     groupIndex = updated.group!.length - 1;
@@ -80,8 +93,8 @@ export function addMappingToConceptMap(
     ...(localDisplay && { display: localDisplay }),
     target: [
       {
-        code: loincCode,
-        ...(loincDisplay && { display: loincDisplay }),
+        code: targetCode,
+        ...(targetDisplay && { display: targetDisplay }),
         equivalence: "equivalent",
       },
     ],
@@ -100,14 +113,14 @@ export function addMappingToConceptMap(
 export async function getOrCreateConceptMap(
   sender: SenderContext,
 ): Promise<ConceptMap> {
-  const conceptMapId = generateConceptMapId(sender);
+  const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
   const existing = await fetchConceptMap(conceptMapId);
 
   if (existing) {
     return existing;
   }
 
-  const newConceptMap = createEmptyConceptMap(sender);
+  const newConceptMap = createEmptyConceptMap(sender, "observation-code-loinc");
   return putResource("ConceptMap", conceptMapId, newConceptMap);
 }
 
@@ -128,6 +141,7 @@ export async function addMapping(
     localDisplay,
     loincCode,
     loincDisplay,
+    "http://loinc.org",
   );
 
   await putResource("ConceptMap", updatedConceptMap.id!, updatedConceptMap);
@@ -138,20 +152,21 @@ export async function deleteMapping(
   localCode: string,
   localSystem: string,
 ): Promise<void> {
-  const conceptMapId = generateConceptMapId(sender);
+  const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
   const conceptMap = await fetchConceptMap(conceptMapId);
 
   if (!conceptMap) {
     return;
   }
 
-  const group = conceptMap.group?.find((g) => g.source === localSystem);
-
-  if (!group?.element) {
-    return;
+  // Delete from all groups with matching source system
+  // (handles cases where same local code might exist in multiple target system groups)
+  for (const group of conceptMap.group || []) {
+    if (group.source !== localSystem) continue;
+    if (group.element) {
+      group.element = group.element.filter((e) => e.code !== localCode);
+    }
   }
-
-  group.element = group.element.filter((e) => e.code !== localCode);
 
   await putResource("ConceptMap", conceptMapId, conceptMap);
 }
@@ -160,7 +175,7 @@ export async function searchMappings(
   sender: SenderContext,
   query?: { localCode?: string; loincCode?: string },
 ): Promise<ConceptMapGroupElement[]> {
-  const conceptMapId = generateConceptMapId(sender);
+  const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
   const conceptMap = await fetchConceptMap(conceptMapId);
 
   if (!conceptMap?.group) {

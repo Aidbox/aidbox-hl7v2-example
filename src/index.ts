@@ -23,6 +23,7 @@ import {
   deleteConceptMapEntry,
 } from "./ui/pages/code-mappings";
 import { handleMLLPClientPage, sendMLLPTest } from "./ui/pages/mllp-client";
+import { handleTaskResolution } from "./api/mapping-tasks";
 
 // ============================================================================
 // Server
@@ -92,45 +93,7 @@ Bun.serve({
     // Task Resolution API
     // =========================================================================
     "/api/mapping/tasks/:id/resolve": {
-      POST: async (req) => {
-        const taskId = req.params.id;
-
-        if (!taskId) {
-          return new Response("Task ID is required", { status: 400 });
-        }
-
-        const formData = await req.formData();
-        const loincCode = formData.get("loincCode")?.toString();
-        const loincDisplay = formData.get("loincDisplay")?.toString() || "";
-
-        if (!loincCode) {
-          return new Response(null, {
-            status: 302,
-            headers: {
-              Location: `/mapping/tasks?error=${encodeURIComponent("LOINC code is required")}`,
-            },
-          });
-        }
-
-        try {
-          const { resolveTaskAndUpdateMessages } = await import("./ui/mapping-tasks-queue");
-          await resolveTaskAndUpdateMessages(taskId, loincCode, loincDisplay);
-
-          return new Response(null, {
-            status: 302,
-            headers: { Location: "/mapping/tasks" },
-          });
-        } catch (error) {
-          console.error("Task resolution error:", error);
-          const message = error instanceof Error ? error.message : "Resolution failed";
-          return new Response(null, {
-            status: 302,
-            headers: {
-              Location: `/mapping/tasks?error=${encodeURIComponent(message)}`,
-            },
-          });
-        }
-      },
+      POST: handleTaskResolution,
     },
 
     // =========================================================================
@@ -144,14 +107,15 @@ Bun.serve({
         const localCode = formData.get("localCode")?.toString();
         const localDisplay = formData.get("localDisplay")?.toString() || "";
         const localSystem = formData.get("localSystem")?.toString();
-        const loincCode = formData.get("loincCode")?.toString();
-        const loincDisplay = formData.get("loincDisplay")?.toString() || "";
+        // Support both old (loincCode) and new (targetCode) field names for backward compatibility
+        const targetCode = formData.get("targetCode")?.toString() || formData.get("loincCode")?.toString();
+        const targetDisplay = formData.get("targetDisplay")?.toString() || formData.get("loincDisplay")?.toString() || "";
 
-        if (!localCode || !localSystem || !loincCode) {
+        if (!localCode || !localSystem || !targetCode) {
           return new Response(null, {
             status: 302,
             headers: {
-              Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local code, local system, and LOINC code are required")}`,
+              Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local code, local system, and target code are required")}`,
             },
           });
         }
@@ -162,8 +126,8 @@ Bun.serve({
             localCode,
             localDisplay,
             localSystem,
-            loincCode,
-            loincDisplay,
+            targetCode,
+            targetDisplay,
           );
 
           if (!result.success) {
@@ -200,14 +164,15 @@ Bun.serve({
 
         const formData = await req.formData();
         const localSystem = formData.get("localSystem")?.toString();
-        const loincCode = formData.get("loincCode")?.toString();
-        const loincDisplay = formData.get("loincDisplay")?.toString() || "";
+        // Support both old (loincCode) and new (targetCode) field names for backward compatibility
+        const targetCode = formData.get("targetCode")?.toString() || formData.get("loincCode")?.toString();
+        const targetDisplay = formData.get("targetDisplay")?.toString() || formData.get("loincDisplay")?.toString() || "";
 
-        if (!localSystem || !loincCode) {
+        if (!localSystem || !targetCode) {
           return new Response(null, {
             status: 302,
             headers: {
-              Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local system and LOINC code are required")}`,
+              Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local system and target code are required")}`,
             },
           });
         }
@@ -217,8 +182,8 @@ Bun.serve({
             conceptMapId,
             localCode,
             localSystem,
-            loincCode,
-            loincDisplay,
+            targetCode,
+            targetDisplay,
           );
 
           if (!result.success) {

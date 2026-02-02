@@ -2,6 +2,7 @@ import { describe, test, expect } from "bun:test";
 import {
   convertOBRToDiagnosticReport,
   mapOBRStatusToFHIR,
+  mapOBRStatusToFHIRWithResult,
 } from "../../../../src/v2-to-fhir/segments/obr-diagnosticreport";
 import type { OBR } from "../../../../src/hl7v2/generated/fields";
 
@@ -217,6 +218,63 @@ describe("mapOBRStatusToFHIR validation", () => {
 
     test("error message includes invalid status value", () => {
       expect(() => mapOBRStatusToFHIR("Y")).toThrow(/"Y"/);
+    });
+  });
+});
+
+describe("mapOBRStatusToFHIRWithResult", () => {
+  describe("valid statuses", () => {
+    test.each([
+      ["O", "registered"],
+      ["I", "registered"],
+      ["S", "registered"],
+      ["P", "preliminary"],
+      ["A", "partial"],
+      ["R", "partial"],
+      ["N", "partial"],
+      ["C", "corrected"],
+      ["M", "corrected"],
+      ["F", "final"],
+      ["X", "cancelled"],
+    ] as const)("maps %s to %s", (input, expected) => {
+      const result = mapOBRStatusToFHIRWithResult(input);
+      expect(result.status).toBe(expected);
+      expect(result.error).toBeUndefined();
+    });
+
+    test("accepts lowercase status", () => {
+      const result = mapOBRStatusToFHIRWithResult("f");
+      expect(result.status).toBe("final");
+      expect(result.error).toBeUndefined();
+    });
+  });
+
+  describe("invalid statuses", () => {
+    test("returns error for missing status", () => {
+      const result = mapOBRStatusToFHIRWithResult(undefined);
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.mappingType).toBe("obr-status");
+      expect(result.error?.localCode).toBe("undefined");
+      expect(result.error?.localDisplay).toContain("missing");
+    });
+
+    test("returns error for status Y", () => {
+      const result = mapOBRStatusToFHIRWithResult("Y");
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.mappingType).toBe("obr-status");
+      expect(result.error?.localCode).toBe("Y");
+      expect(result.error?.localSystem).toBe(
+        "http://terminology.hl7.org/CodeSystem/v2-0123",
+      );
+    });
+
+    test("returns error for status Z", () => {
+      const result = mapOBRStatusToFHIRWithResult("Z");
+      expect(result.status).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.localCode).toBe("Z");
     });
   });
 });

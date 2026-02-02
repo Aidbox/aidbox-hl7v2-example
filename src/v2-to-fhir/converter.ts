@@ -84,7 +84,7 @@ export async function convertToFHIR(
 
   switch (messageType) {
     case "ADT_A01":
-      return convertADT_A01(parsed);
+      return await convertADT_A01(parsed);
 
     case "ADT_A08":
       return convertADT_A08(parsed);

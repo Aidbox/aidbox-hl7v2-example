@@ -107,4 +107,4 @@ To avoid cycles:
 
 - Don't add error handling, fallbacks, or validation for scenarios that can't happen
 - Always use static imports at the top of the file. Never use dynamic `await import()` inside functions or route handlers
-- Remove unused code immediately; do not keep dead code or commented-out code
+- Remove unused code immediately; do not keep dead code or commented-out code; do not keep code in src/ that is only used in tests

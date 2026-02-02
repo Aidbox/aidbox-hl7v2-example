@@ -12,6 +12,7 @@ import {
   loadFixture,
   aidboxFetch,
   createTestConceptMap,
+  createTestConceptMapForType,
   getMappingTasks,
   getDiagnosticReports,
   getObservations,
@@ -302,45 +303,78 @@ describe("ORU_R01 E2E Integration", () => {
     });
   });
 
-  describe("OBR-25 and OBX-11 status validation", () => {
-    test("sets error when OBR-25 is missing", async () => {
+  describe("OBR-25 status mapping", () => {
+    test("returns mapping_error when OBR-25 is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obr25.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
-      expect(message.error).toMatch(/OBR-25/);
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes).toBeDefined();
+      expect(message.unmappedCodes!.length).toBeGreaterThan(0);
+      expect(message.unmappedCodes![0]!.localCode).toBe("undefined");
     });
 
-    test("sets error when OBR-25 is Y", async () => {
-      const hl7Message = await loadFixture("oru-r01/error/obr25-y.hl7");
+    test("returns mapping_error when OBR-25 is Y and creates obr-status Task", async () => {
+      const hl7Message = await loadFixture("oru-r01/status/obr25-invalid.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
-      expect(message.error).toMatch(/OBR-25/);
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes).toBeDefined();
+      expect(message.unmappedCodes![0]!.localCode).toBe("Y");
+
+      const tasks = await getMappingTasks();
+      expect(tasks.length).toBe(1);
+
+      const task = tasks[0]!;
+      expect(task.status).toBe("requested");
+      expect(task.code?.coding?.[0]?.code).toBe("obr-status");
+      expect(task.input).toContainEqual({
+        type: { text: "Local code" },
+        valueString: "Y",
+      });
+      expect(task.input).toContainEqual({
+        type: { text: "Source field" },
+        valueString: "OBR-25",
+      });
+      expect(task.input).toContainEqual({
+        type: { text: "Target field" },
+        valueString: "DiagnosticReport.status",
+      });
     });
 
-    test("sets error when OBR-25 is Z", async () => {
-      const hl7Message = await loadFixture("oru-r01/error/obr25-z.hl7");
+    test("reprocesses message after OBR-25 status mapping task resolution", async () => {
+      const hl7Message = await loadFixture("oru-r01/status/obr25-invalid.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
+      expect(message.status).toBe("mapping_error");
 
-      expect(message.status).toBe("error");
-      expect(message.error).toMatch(/OBR-25/);
-    });
+      // Create ConceptMap with the mapping
+      await createTestConceptMapForType("LAB", "HOSP", "obr-status", [
+        {
+          localCode: "Y",
+          localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
+          targetCode: "final",
+          targetDisplay: "Final",
+        },
+      ]);
 
-    test("sets error when OBX-11 is missing", async () => {
-      const hl7Message = await loadFixture("oru-r01/error/missing-obx11.hl7");
-      const message = await submitAndProcessOruR01(hl7Message);
+      // Resolve the task
+      const tasks = await getMappingTasks();
+      const task = tasks[0]!;
+      await resolveTask(task.id!, "final", "Final");
 
-      expect(message.status).toBe("error");
-      expect(message.error).toMatch(/OBX-11/);
-    });
+      // Reprocess
+      await processNextMessage();
 
-    test("sets error when OBX-11 is N", async () => {
-      const hl7Message = await loadFixture("oru-r01/error/obx11-n.hl7");
-      const message = await submitAndProcessOruR01(hl7Message);
+      const updatedMessage = await aidboxFetch<IncomingHL7v2Message>(
+        `/fhir/IncomingHL7v2Message/${message.id}`,
+      );
+      expect(updatedMessage.status).toBe("processed");
 
-      expect(message.status).toBe("error");
-      expect(message.error).toMatch(/OBX-11/);
+      // Verify DiagnosticReport was created with the resolved status
+      const patientRef = updatedMessage.patient!.reference!;
+      const diagnosticReports = await getDiagnosticReports(patientRef);
+      expect(diagnosticReports.length).toBe(1);
+      expect(diagnosticReports[0]!.status).toBe("final");
     });
 
     test("processes message with valid OBR-25 P (preliminary)", async () => {
@@ -352,6 +386,100 @@ describe("ORU_R01 E2E Integration", () => {
       const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
       expect(diagnosticReports[0]!.status).toBe("preliminary");
+    });
+  });
+
+  describe("OBX-11 status mapping", () => {
+    test("returns mapping_error when OBX-11 is missing and creates obx-status Task", async () => {
+      const hl7Message = await loadFixture("oru-r01/error/missing-obx11.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes).toBeDefined();
+      expect(message.unmappedCodes!.length).toBeGreaterThan(0);
+      expect(message.unmappedCodes![0]!.localCode).toBe("undefined");
+
+      const tasks = await getMappingTasks();
+      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status");
+      expect(obxStatusTask).toBeDefined();
+      expect(obxStatusTask?.status).toBe("requested");
+      expect(obxStatusTask?.input).toContainEqual({
+        type: { text: "Source field" },
+        valueString: "OBX-11",
+      });
+      expect(obxStatusTask?.input).toContainEqual({
+        type: { text: "Target field" },
+        valueString: "Observation.status",
+      });
+    });
+
+    test("returns mapping_error when OBX-11 is N and creates obx-status Task", async () => {
+      const hl7Message = await loadFixture("oru-r01/error/obx11-n.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes).toBeDefined();
+      expect(message.unmappedCodes![0]!.localCode).toBe("N");
+
+      const tasks = await getMappingTasks();
+      const task = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status");
+      expect(task).toBeDefined();
+      expect(task?.input).toContainEqual({
+        type: { text: "Local code" },
+        valueString: "N",
+      });
+    });
+
+    test("creates Tasks for combined LOINC and OBX-11 errors", async () => {
+      const hl7Message = await loadFixture("oru-r01/status/obx11-n-and-local-loinc.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes!.length).toBe(2);
+
+      const tasks = await getMappingTasks();
+      expect(tasks.length).toBe(2);
+
+      const loincTask = tasks.find((t) => t.code?.coding?.[0]?.code === "observation-code-loinc");
+      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status");
+
+      expect(loincTask).toBeDefined();
+      expect(obxStatusTask).toBeDefined();
+    });
+
+    test("reprocesses message after OBX-11 status mapping task resolution", async () => {
+      const hl7Message = await loadFixture("oru-r01/error/obx11-n.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+      expect(message.status).toBe("mapping_error");
+
+      // Create ConceptMap with the mapping
+      await createTestConceptMapForType("LAB", "HOSP", "obx-status", [
+        {
+          localCode: "N",
+          localSystem: "http://terminology.hl7.org/CodeSystem/v2-0085",
+          targetCode: "preliminary",
+          targetDisplay: "Preliminary",
+        },
+      ]);
+
+      // Resolve the task
+      const tasks = await getMappingTasks();
+      const task = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status")!;
+      await resolveTask(task.id!, "preliminary", "Preliminary");
+
+      // Reprocess
+      await processNextMessage();
+
+      const updatedMessage = await aidboxFetch<IncomingHL7v2Message>(
+        `/fhir/IncomingHL7v2Message/${message.id}`,
+      );
+      expect(updatedMessage.status).toBe("processed");
+
+      // Verify Observation was created with the resolved status
+      const patientRef = updatedMessage.patient!.reference!;
+      const observations = await getObservations(patientRef);
+      expect(observations.length).toBe(1);
+      expect(observations[0]!.status).toBe("preliminary");
     });
   });
 
@@ -558,16 +686,14 @@ describe("ORU_R01 E2E Integration", () => {
       expect(encounters[0]!.class?.code).toBe("IMP");
     });
 
-    test("includes draft Encounter even when mapping_error occurs", async () => {
+    test("does not create draft Encounter when mapping_error occurs", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-mapping-error.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("mapping_error");
-
-      const patientRef = message.patient!.reference!;
-      const encounters = await getEncounters(patientRef);
-
-      expect(encounters.length).toBe(1);
+      // Patient reference is not set when there's a mapping error
+      // (Patient/Encounter will be created on successful reprocessing)
+      expect(message.patient).toBeUndefined();
     });
   });
 
@@ -678,6 +804,90 @@ describe("ORU_R01 E2E Integration", () => {
         `/fhir/IncomingHL7v2Message/${message.id}`,
       );
       expect(updatedMessage.status).toBe("processed");
+    });
+  });
+
+  describe("edge cases for multiple mapping errors", () => {
+    test("resolving one Task of different types leaves message blocked until all resolved", async () => {
+      // Send message with unknown LOINC code AND invalid OBX-11 status
+      const hl7Message = await loadFixture("oru-r01/status/obx11-n-and-local-loinc.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+
+      expect(message.status).toBe("mapping_error");
+      expect(message.unmappedCodes!.length).toBe(2);
+
+      // Verify we have two tasks of different types
+      const tasks = await getMappingTasks();
+      expect(tasks.length).toBe(2);
+      const loincTask = tasks.find((t) => t.code?.coding?.[0]?.code === "observation-code-loinc");
+      const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status");
+      expect(loincTask).toBeDefined();
+      expect(obxStatusTask).toBeDefined();
+
+      // Resolve only the LOINC task
+      await createTestConceptMap("LAB", "HOSP", [
+        {
+          localCode: "12345",
+          localSystem: "LOCAL",
+          loincCode: "2823-3",
+          loincDisplay: "Potassium",
+        },
+      ]);
+      await resolveTask(loincTask!.id!, "2823-3", "Potassium");
+
+      // Reprocess
+      await processNextMessage();
+
+      // Message should still be mapping_error because OBX status task is not resolved
+      const stillBlockedMessage = await aidboxFetch<IncomingHL7v2Message>(
+        `/fhir/IncomingHL7v2Message/${message.id}`,
+      );
+      expect(stillBlockedMessage.status).toBe("mapping_error");
+      expect(stillBlockedMessage.unmappedCodes!.length).toBe(1);
+      expect(stillBlockedMessage.unmappedCodes![0]!.localCode).toBe("N");
+
+      // Now resolve the OBX status task
+      await createTestConceptMapForType("LAB", "HOSP", "obx-status", [
+        {
+          localCode: "N",
+          localSystem: "http://terminology.hl7.org/CodeSystem/v2-0085",
+          targetCode: "preliminary",
+          targetDisplay: "Preliminary",
+        },
+      ]);
+      await resolveTask(obxStatusTask!.id!, "preliminary", "Preliminary");
+
+      // Reprocess again
+      await processNextMessage();
+
+      // Now message should be processed
+      const finalMessage = await aidboxFetch<IncomingHL7v2Message>(
+        `/fhir/IncomingHL7v2Message/${message.id}`,
+      );
+      expect(finalMessage.status).toBe("processed");
+    }, 15000); // Extended timeout for multi-step test
+
+    test("no new Task created when ConceptMap already has mapping for a code", async () => {
+      // First create ConceptMap with the mapping
+      await createTestConceptMap("LAB", "HOSP", [
+        {
+          localCode: "12345",
+          localSystem: "LOCAL",
+          loincCode: "2823-3",
+          loincDisplay: "Potassium",
+        },
+      ]);
+
+      // Send message with local-only code that already has mapping in ConceptMap
+      const hl7Message = await loadFixture("oru-r01/loinc/conceptmap-resolve.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+
+      // Should process successfully without creating any tasks
+      expect(message.status).toBe("processed");
+
+      // Verify no mapping tasks were created
+      const tasks = await getMappingTasks();
+      expect(tasks.length).toBe(0);
     });
   });
 });
