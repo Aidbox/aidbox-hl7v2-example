@@ -1,5 +1,5 @@
 ---
-status: ai-reviewed
+status: approved
 reviewer-iterations: 1
 prototype-files:
   - src/api/concept-map-entries.ts
@@ -376,4 +376,15 @@ Considered but correctly rejected:
 3. **Test file in prototype list mismatch**: The frontmatter lists `src/code-mapping/concept-map/observation-code-resolver.ts` but the affected components table says "Create" for this file when it's actually a rename of lookup.ts. This is just a documentation detail.
 
 ## User Feedback
-[To be filled after user review]
+
+**User Questions:**
+1. Is it possible to have a generic CodeResolutionResult across the system instead of LOINC-specific?
+2. Can buildCodeableConcept be generalized for different codes?
+
+**Resolution:**
+Analyzed current mapping type implementations. Non-LOINC mappings (patient-class, obr-status, obx-status) return simple enum values, not Coding objects. Only observation-code-loinc produces CodeableConcept. Generalizing is **not needed** for current use cases - other mappings use MappingError + direct string values.
+
+**Decision:** Keep design as-is. CodeResolutionResult and buildCodeableConcept remain observation-specific. If future mapping types need Coding resolution (e.g., procedure codes → SNOMED), we'll introduce a generic interface then with a concrete use case.
+
+**Status:** Approved by user to proceed. 
+ 
