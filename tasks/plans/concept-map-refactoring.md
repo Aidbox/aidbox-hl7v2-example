@@ -431,14 +431,14 @@ Remove the dead LOINC-hardcoded functions that are only called by tests, not pro
 
 Rename the file and update all imports throughout the codebase.
 
-- [ ] Create `src/code-mapping/concept-map/observation-code-resolver.ts` as a copy of `lookup.ts`
-- [ ] Update `src/code-mapping/concept-map/index.ts` to export from `./observation-code-resolver` instead of `./lookup`
-- [ ] Delete `src/code-mapping/concept-map/lookup.ts`
-- [ ] Rename `test/unit/code-mapping/conceptmap-lookup.test.ts` to `test/unit/code-mapping/observation-code-resolver.test.ts`
-- [ ] Update imports in the renamed test file to reference `observation-code-resolver`
-- [ ] Search for any other imports of `lookup` and update them (use grep to verify)
-- [ ] Remove DESIGN PROTOTYPE comments about renaming from the new observation-code-resolver.ts
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Create `src/code-mapping/concept-map/observation-code-resolver.ts` as a copy of `lookup.ts`
+- [x] Update `src/code-mapping/concept-map/index.ts` to export from `./observation-code-resolver` instead of `./lookup`
+- [x] Delete `src/code-mapping/concept-map/lookup.ts`
+- [x] Rename `test/unit/code-mapping/conceptmap-lookup.test.ts` to `test/unit/code-mapping/observation-code-resolver.test.ts`
+- [x] Update imports in the renamed test file to reference `observation-code-resolver`
+- [x] Search for any other imports of `lookup` and update them (use grep to verify)
+- [x] Remove DESIGN PROTOTYPE comments about renaming from the new observation-code-resolver.ts
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

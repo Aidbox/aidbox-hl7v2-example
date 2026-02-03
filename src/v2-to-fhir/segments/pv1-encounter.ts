@@ -26,7 +26,7 @@ import {
   generateConceptMapId,
   translateCode,
   type SenderContext,
-} from "../../code-mapping/concept-map/lookup";
+} from "../../code-mapping/concept-map/observation-code-resolver";
 
 // ============================================================================
 // Code Systems

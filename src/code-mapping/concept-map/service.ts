@@ -33,13 +33,13 @@ import type {
 } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
 // DESIGN PROTOTYPE: Will also import getResourceWithETag, updateResourceWithETag, NotFoundError, HttpError, Bundle
 import { aidboxFetch, putResource } from "../../aidbox";
-// DESIGN PROTOTYPE: These imports will be removed - functions moved here from lookup.ts
+// DESIGN PROTOTYPE: These imports will be removed - functions moved here from observation-code-resolver.ts
 import {
   generateConceptMapId,
   generateBaseConceptMapId,
   formatSenderAsTitle,
   type SenderContext,
-} from "./lookup";
+} from "./observation-code-resolver";
 import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
 
 // DESIGN PROTOTYPE: Types to be added (moved from ui/pages/code-mappings.ts)

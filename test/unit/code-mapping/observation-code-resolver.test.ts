@@ -1,20 +1,9 @@
 /**
+ * Unit tests for observation-code-resolver.ts
+ *
  * DESIGN PROTOTYPE: concept-map-refactoring.md
  *
- * This test file will be RENAMED to: observation-code-resolver.test.ts
- *
- * IMPORT CHANGES:
- * - Update imports to reference renamed file (observation-code-resolver.ts)
- * - translateCode tests may need to import from service.ts instead
- *
- * TESTS TO KEEP (observation-specific):
- * - describe("resolveToLoinc - inline LOINC detection")
- * - describe("resolveToLoinc - ConceptMap lookup")
- * - describe("resolveToLoinc - error cases")
- * - describe("buildCodeableConcept")
- * - describe("edge cases")
- *
- * TESTS THAT MAY NEED IMPORT UPDATES:
+ * TESTS THAT MAY NEED IMPORT UPDATES (when functions move to service.ts):
  * - describe("generateConceptMapId") - function moves to service.ts
  * - describe("translateCode") - function moves to service.ts
  */

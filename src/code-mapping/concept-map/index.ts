@@ -31,5 +31,5 @@
  * - MissingLocalSystemError
  */
 
-export * from "./lookup"; // DESIGN PROTOTYPE: Will change to "./observation-code-resolver"
+export * from "./observation-code-resolver";
 export * from "./service";

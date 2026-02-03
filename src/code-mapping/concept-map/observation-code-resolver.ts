@@ -1,12 +1,10 @@
 /**
- * DESIGN PROTOTYPE: concept-map-refactoring.md
- *
- * This file will be RENAMED to: observation-code-resolver.ts
- *
  * Observation Code Resolution Service
  *
  * Resolves OBX-3 observation identifiers to LOINC codes.
  * Uses inline LOINC detection first, then falls back to ConceptMap lookup.
+ *
+ * DESIGN PROTOTYPE: concept-map-refactoring.md
  *
  * FUNCTIONS TO MOVE TO service.ts (generic utilities):
  * - generateBaseConceptMapId()
@@ -16,21 +14,6 @@
  *   - TranslateResponseParameter, TranslateResponse
  *   - TranslateResult
  *   - extractCodingFromTranslateResponse()
- *
- * FUNCTIONS TO KEEP (observation-specific):
- * - resolveToLoinc() - public API
- * - buildCodeableConcept() - public API
- * - tryResolveFromInlineLoinc() - internal
- * - resolveFromConceptMap() -> RENAME to resolveObservationCodeViaConceptMap() - internal
- * - hasLoincInPrimaryCoding(), hasLoincInAlternateCoding() - internal
- * - extractLoincFromPrimary(), extractLoincFromAlternate() - internal
- * - extractLocalFromPrimary() - internal
- *
- * TYPES TO KEEP:
- * - SenderContext
- * - CodeResolutionResult
- * - LoincResolutionError
- * - MissingLocalSystemError
  */
 
 import type { CE } from "../../hl7v2/generated/fields";

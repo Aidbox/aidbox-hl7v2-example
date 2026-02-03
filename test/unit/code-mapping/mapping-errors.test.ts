@@ -3,7 +3,7 @@ import {
   buildMappingErrorResult,
   type MappingError,
 } from "../../../src/code-mapping/mapping-errors";
-import type { SenderContext } from "../../../src/code-mapping/concept-map/lookup";
+import type { SenderContext } from "../../../src/code-mapping/concept-map/observation-code-resolver";
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 
 const sender: SenderContext = {
