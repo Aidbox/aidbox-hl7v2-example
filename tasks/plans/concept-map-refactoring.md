@@ -582,7 +582,7 @@ Ensure code-mappings.ts contains only UI rendering logic.
 
 Move CRUD tests to service test file and update imports.
 
-- [ ] Move CRUD test describes from `test/unit/ui/code-mappings.test.ts` to `test/unit/code-mapping/concept-map-service.test.ts`:
+- [x] Move CRUD test describes from `test/unit/ui/code-mappings.test.ts` to `test/unit/code-mapping/concept-map-service.test.ts`:
   - `describe("listConceptMaps")`
   - `describe("getMappingsFromConceptMap")`
   - `describe("addConceptMapEntry")`
@@ -592,16 +592,16 @@ Move CRUD tests to service test file and update imports.
   - `describe("integration: add mapping flow")`
   - `describe("listConceptMaps - type filtering")`
   - `describe("detectMappingTypeFromConceptMap")`
-- [ ] Update imports in moved tests to reference service.ts
-- [ ] Keep UI rendering tests in code-mappings.test.ts:
+- [x] Update imports in moved tests to reference service.ts
+- [x] Keep UI rendering tests in code-mappings.test.ts:
   - `describe("parseTypeFilter")`
   - `describe("getMappingTypeFilterDisplay")`
   - `describe("getMappingTypeShortLabel")`
   - `describe("getValidValuesForType")`
   - `describe("renderMappingEntryPanel")`
   - `describe("renderCodeMappingsPage")`
-- [ ] Remove DESIGN PROTOTYPE comments from all test files
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Remove DESIGN PROTOTYPE comments from all test files
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

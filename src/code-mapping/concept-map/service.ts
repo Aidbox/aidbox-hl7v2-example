@@ -4,26 +4,11 @@
  * Manages sender-specific ConceptMaps for code mappings.
  * Supports multiple target systems (LOINC, address types, status codes, etc.).
  *
- * DESIGN PROTOTYPE: concept-map-refactoring.md
- *
- * This file will be expanded to include:
- * 1. Generic utilities moved from lookup.ts:
- *    - generateBaseConceptMapId() - DONE
- *    - generateConceptMapId() - DONE
- *    - formatSenderAsTitle() - DONE
- *    - translateCode() and related types (TranslateResult, TranslateResponse) - DONE
- *
- * 2. CRUD operations moved from ui/pages/code-mappings.ts:
- *    - listConceptMaps()
- *    - getMappingsFromConceptMap()
- *    - addConceptMapEntry()
- *    - updateConceptMapEntry()
- *    - deleteConceptMapEntry()
- *
- * 3. Types moved from ui/pages/code-mappings.ts:
- *    - MappingTypeFilter
- *    - ConceptMapSummary
- *    - MappingEntry
+ * Provides:
+ * - Generic ID generation utilities (generateConceptMapId, formatSenderAsTitle)
+ * - $translate operation (translateCode)
+ * - CRUD operations (listConceptMaps, getMappingsFromConceptMap, add/update/deleteConceptMapEntry)
+ * - Types (MappingTypeFilter, ConceptMapSummary, MappingEntry, TranslateResult)
  */
 
 import type {
