@@ -1,6 +1,6 @@
 ---
-status: ready-for-review
-reviewer-iterations: 0
+status: ai-reviewed
+reviewer-iterations: 1
 prototype-files:
   - src/api/concept-map-entries.ts
   - src/code-mapping/concept-map/service.ts
@@ -316,7 +316,64 @@ src/
 ```
 
 ## AI Review Notes
-[To be filled by Review agent]
+
+### Review Summary: APPROVED
+
+The design is well-structured and addresses all stated problems. No blockers found.
+
+### 1. Completeness - PASS
+
+All four problem areas are addressed:
+- Dead code removal: Clear identification of functions to delete
+- Business logic relocation: CRUD moves from UI to service layer
+- Inverted dependency fix: API handler pattern mirrors mapping-tasks.ts
+- File renaming: lookup.ts -> observation-code-resolver.ts
+
+### 2. Consistency with Codebase - PASS
+
+- Follows established `api/mapping-tasks.ts` pattern for HTTP handlers
+- Uses existing conventions: ETag concurrency, atomic bundles, discriminated unions
+- Import structure matches existing modules
+
+### 3. Clean Architecture - PASS
+
+- Clear separation: UI (rendering) -> API (HTTP handling) -> Service (business logic)
+- Dependencies flow correctly: index.ts -> api -> service
+- Service functions remain testable (pure functions + mocked aidbox calls)
+
+### 4. Best Practices - PASS
+
+- Adheres to code style: no dead code, co-located types, minimal public interface
+- Error handling preserved (ETag conflicts, not-found cases)
+- Edge cases documented with existing solutions
+
+### 5. Feasibility - PASS
+
+- Atomic migration (single commit) avoids partial breakage
+- Prototype files clearly mark all change locations
+- Test file mapping is comprehensive
+
+### 6. Simpler Alternatives - PASS
+
+Considered but correctly rejected:
+- Keeping CRUD in UI: violates separation of concerns
+- Separate types.ts: over-engineering for tightly coupled types
+- Inline handlers in index.ts: inconsistent with mapping-tasks.ts pattern
+
+### 7. Test Coverage - PASS
+
+- Dead function tests marked for deletion
+- CRUD tests move with functions (service.test.ts)
+- Lookup tests renamed to observation-code-resolver.test.ts
+- Import path updates documented
+
+### Minor Notes (non-blocking)
+
+1. **buildCodeableConcept location**: The design shows it staying in observation-code-resolver.ts, but in the lookup.ts classification it's listed under "generic utilities". Since it's only used by resolveToLoinc result processing, keeping it in observation-code-resolver.ts is correct.
+
+2. **SenderContext type**: Exported from observation-code-resolver.ts but used by service.ts for generateConceptMapId. The re-export strategy mentioned in the prototype (service.ts re-exports from observation-code-resolver.ts) handles this cleanly.
+
+3. **Test file in prototype list mismatch**: The frontmatter lists `src/code-mapping/concept-map/observation-code-resolver.ts` but the affected components table says "Create" for this file when it's actually a rename of lookup.ts. This is just a documentation detail.
 
 ## User Feedback
 [To be filled after user review]
