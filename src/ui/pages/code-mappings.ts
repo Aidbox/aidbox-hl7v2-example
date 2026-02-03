@@ -63,15 +63,6 @@ export function getMappingTypeFilterDisplay(filter: MappingTypeFilter): string {
   return MAPPING_TYPES[filter].taskDisplay.replace(" mapping", "");
 }
 
-// Re-export functions from service layer for backward compatibility
-export {
-  detectMappingTypeFromConceptMap,
-  listConceptMaps,
-  getMappingsFromConceptMap,
-  addConceptMapEntry,
-  updateConceptMapEntry,
-  deleteConceptMapEntry,
-} from "../../code-mapping/concept-map";
 
 // ============================================================================
 // Handler Functions (exported)
