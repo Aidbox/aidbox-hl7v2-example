@@ -32,7 +32,16 @@ import type {
   ConceptMapGroupElement,
 } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
 import type { Coding } from "../../fhir/hl7-fhir-r4-core";
-import { aidboxFetch, putResource, HttpError } from "../../aidbox";
+import type { Task, TaskOutput } from "../../fhir/hl7-fhir-r4-core/Task";
+import {
+  aidboxFetch,
+  putResource,
+  HttpError,
+  getResourceWithETag,
+  updateResourceWithETag,
+  NotFoundError,
+  type Bundle,
+} from "../../aidbox";
 import { toKebabCase } from "../../utils/string";
 import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
 
@@ -296,6 +305,98 @@ export function addMappingToConceptMap(
 }
 
 
+// ============================================================================
+// Helper functions for CRUD operations (moved from ui/pages/code-mappings.ts)
+// ============================================================================
+
+/**
+ * Get all target systems from the mapping types registry.
+ * Used to filter ConceptMaps to only those managed by our system.
+ */
+export function getKnownTargetSystems(): Set<string> {
+  return new Set(Object.values(MAPPING_TYPES).map((t) => t.targetSystem));
+}
+
+/**
+ * Detect mapping type from ConceptMap targetUri
+ */
+export function detectMappingTypeFromConceptMap(
+  conceptMap: ConceptMap,
+): MappingTypeName | null {
+  const targetUri = conceptMap.targetUri;
+  if (!targetUri) return null;
+
+  for (const [name, config] of Object.entries(MAPPING_TYPES)) {
+    if (config.targetSystem === targetUri) {
+      return name as MappingTypeName;
+    }
+  }
+  return null;
+}
+
+/**
+ * Check if a mapping entry matches a search query
+ */
+export function matchesSearch(entry: MappingEntry, search: string): boolean {
+  const query = search.toLowerCase();
+  return (
+    entry.localCode.toLowerCase().includes(query) ||
+    entry.localDisplay.toLowerCase().includes(query) ||
+    entry.targetCode.toLowerCase().includes(query) ||
+    entry.targetDisplay.toLowerCase().includes(query)
+  );
+}
+
+/**
+ * Check if a mapping entry already exists
+ */
+export function checkDuplicateEntry(
+  conceptMap: ConceptMap,
+  localSystem: string,
+  localCode: string,
+): boolean {
+  for (const group of conceptMap.group || []) {
+    if (group.source !== localSystem) continue;
+    for (const element of group.element || []) {
+      if (element.code === localCode) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Build a completed Task with resolved mapping output
+ */
+export function buildCompletedTask(
+  task: Task,
+  targetCode: string,
+  targetDisplay: string,
+  targetSystem: string,
+): Task {
+  const output: TaskOutput = {
+    type: { text: "Resolved mapping" },
+    valueCodeableConcept: {
+      coding: [
+        {
+          system: targetSystem,
+          code: targetCode,
+          display: targetDisplay,
+        },
+      ],
+      text: targetDisplay,
+    },
+  };
+
+  return {
+    ...task,
+    status: "completed",
+    lastModified: new Date().toISOString(),
+    output: [output],
+  };
+}
+
 // DESIGN PROTOTYPE: Add CRUD functions here (moved from ui/pages/code-mappings.ts)
 //
 // export async function listConceptMaps(typeFilter: MappingTypeFilter = "all"): Promise<ConceptMapSummary[]> { ... }
@@ -303,9 +404,3 @@ export function addMappingToConceptMap(
 // export async function addConceptMapEntry(conceptMapId: string, localCode: string, localDisplay: string, localSystem: string, targetCode: string, targetDisplay: string): Promise<{ success: boolean; error?: string }> { ... }
 // export async function updateConceptMapEntry(conceptMapId: string, localCode: string, localSystem: string, newTargetCode: string, newTargetDisplay: string): Promise<{ success: boolean; error?: string }> { ... }
 // export async function deleteConceptMapEntry(conceptMapId: string, localCode: string, localSystem: string): Promise<void> { ... }
-//
-// Helper functions to move:
-// - detectMappingTypeFromConceptMap()
-// - checkDuplicateEntry()
-// - buildCompletedTask()
-// - matchesSearch()

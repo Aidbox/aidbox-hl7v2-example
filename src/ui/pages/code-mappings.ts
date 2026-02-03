@@ -54,6 +54,11 @@ import { escapeHtml } from "../../utils/html";
 import { generateMappingTaskId } from "../../code-mapping/mapping-task";
 import {
   addMappingToConceptMap,
+  detectMappingTypeFromConceptMap,
+  getKnownTargetSystems,
+  matchesSearch,
+  checkDuplicateEntry,
+  buildCompletedTask,
   type MappingTypeFilter,
   type ConceptMapSummary,
   type MappingEntry,
@@ -112,20 +117,8 @@ export function getMappingTypeFilterDisplay(filter: MappingTypeFilter): string {
   return MAPPING_TYPES[filter].taskDisplay.replace(" mapping", "");
 }
 
-/**
- * Detect mapping type from ConceptMap targetUri
- */
-export function detectMappingTypeFromConceptMap(conceptMap: ConceptMap): MappingTypeName | null {
-  const targetUri = conceptMap.targetUri;
-  if (!targetUri) return null;
-
-  for (const [name, config] of Object.entries(MAPPING_TYPES)) {
-    if (config.targetSystem === targetUri) {
-      return name as MappingTypeName;
-    }
-  }
-  return null;
-}
+// Re-export detectMappingTypeFromConceptMap from service layer for backward compatibility
+export { detectMappingTypeFromConceptMap } from "../../code-mapping/concept-map";
 
 // ============================================================================
 // Handler Functions (exported)
@@ -176,13 +169,6 @@ export async function handleCodeMappingsPage(req: Request): Promise<Response> {
 // DESIGN PROTOTYPE: MOVE ALL FUNCTIONS IN THIS SECTION TO service.ts
 // These are business logic functions, not UI rendering
 
-/**
- * Get all target systems from the mapping types registry.
- * Used to filter ConceptMaps to only those managed by our system.
- */
-function getKnownTargetSystems(): Set<string> {
-  return new Set(Object.values(MAPPING_TYPES).map(t => t.targetSystem));
-}
 
 // DESIGN PROTOTYPE: MOVE TO service.ts
 /**
@@ -220,15 +206,6 @@ export async function listConceptMaps(typeFilter: MappingTypeFilter = "all"): Pr
     });
 }
 
-function matchesSearch(entry: MappingEntry, search: string): boolean {
-  const query = search.toLowerCase();
-  return (
-    entry.localCode.toLowerCase().includes(query) ||
-    entry.localDisplay.toLowerCase().includes(query) ||
-    entry.targetCode.toLowerCase().includes(query) ||
-    entry.targetDisplay.toLowerCase().includes(query)
-  );
-}
 
 // DESIGN PROTOTYPE: MOVE TO service.ts
 /**
@@ -275,55 +252,7 @@ export async function getMappingsFromConceptMap(
   return { entries, total, mappingType };
 }
 
-/**
- * Check if a mapping entry already exists
- */
-function checkDuplicateEntry(
-  conceptMap: ConceptMap,
-  localSystem: string,
-  localCode: string,
-): boolean {
-  for (const group of conceptMap.group || []) {
-    if (group.source !== localSystem) continue;
-    for (const element of group.element || []) {
-      if (element.code === localCode) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
 
-/**
- * Build a completed Task with resolved mapping output
- */
-function buildCompletedTask(
-  task: Task,
-  targetCode: string,
-  targetDisplay: string,
-  targetSystem: string,
-): Task {
-  const output: TaskOutput = {
-    type: { text: "Resolved mapping" },
-    valueCodeableConcept: {
-      coding: [
-        {
-          system: targetSystem,
-          code: targetCode,
-          display: targetDisplay,
-        },
-      ],
-      text: targetDisplay,
-    },
-  };
-
-  return {
-    ...task,
-    status: "completed",
-    lastModified: new Date().toISOString(),
-    output: [output],
-  };
-}
 
 // DESIGN PROTOTYPE: MOVE TO service.ts
 /**

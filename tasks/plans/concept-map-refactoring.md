@@ -484,15 +484,15 @@ Move the data types that are used by CRUD operations from the UI layer to the se
 
 Move the internal helper functions used by CRUD operations.
 
-- [ ] Move `getKnownTargetSystems()` function from code-mappings.ts to service.ts
-- [ ] Move `detectMappingTypeFromConceptMap()` function from code-mappings.ts to service.ts (keep export in UI for rendering)
-- [ ] Move `matchesSearch()` function from code-mappings.ts to service.ts
-- [ ] Move `checkDuplicateEntry()` function from code-mappings.ts to service.ts
-- [ ] Move `buildCompletedTask()` function from code-mappings.ts to service.ts
-- [ ] Add required imports to service.ts: `Task`, `TaskOutput`, `getResourceWithETag`, `updateResourceWithETag`, `NotFoundError`, `Bundle`
-- [ ] Update code-mappings.ts to import `detectMappingTypeFromConceptMap` from service
-- [ ] Export `detectMappingTypeFromConceptMap` from service.ts (used by UI for rendering)
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Move `getKnownTargetSystems()` function from code-mappings.ts to service.ts
+- [x] Move `detectMappingTypeFromConceptMap()` function from code-mappings.ts to service.ts (keep export in UI for rendering)
+- [x] Move `matchesSearch()` function from code-mappings.ts to service.ts
+- [x] Move `checkDuplicateEntry()` function from code-mappings.ts to service.ts
+- [x] Move `buildCompletedTask()` function from code-mappings.ts to service.ts
+- [x] Add required imports to service.ts: `Task`, `TaskOutput`, `getResourceWithETag`, `updateResourceWithETag`, `NotFoundError`, `Bundle`
+- [x] Update code-mappings.ts to import `detectMappingTypeFromConceptMap` from service
+- [x] Export `detectMappingTypeFromConceptMap` from service.ts (used by UI for rendering)
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
