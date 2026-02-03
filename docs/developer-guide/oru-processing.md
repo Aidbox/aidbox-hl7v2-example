@@ -124,7 +124,7 @@ OBX-3 (Observation Identifier) uses the CE/CWE datatype with primary and alterna
 | 5 | Alternate Text | LOINC display |
 | 6 | Name of Alternate Coding System | `LN` |
 
-**Resolution algorithm** (see `resolveToLoinc()` in `code-mapping/concept-map/lookup.ts`):
+**Resolution algorithm** (see `resolveToLoinc()` in `code-mapping/concept-map/observation-code-resolver.ts`):
 
 1. **Check primary coding** (components 1-3): If OBX-3.3 is "LN", use OBX-3.1 as LOINC code
 2. **Check alternate coding** (components 4-6): If OBX-3.6 is "LN", use OBX-3.4 as LOINC code (preserving local code from primary)

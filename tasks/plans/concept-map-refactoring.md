@@ -609,16 +609,16 @@ Move CRUD tests to service test file and update imports.
 
 Update documentation files that reference renamed files or deleted functions.
 
-- [ ] Update `docs/developer-guide/code-mapping.md`:
+- [x] Update `docs/developer-guide/code-mapping.md`:
   - Line 49: Change `lookup.ts` to `observation-code-resolver.ts` in code organization tree
   - Lines 109-122: Remove or replace `addMapping()` example - this function is deleted. Replace with `addConceptMapEntry()` from service layer or remove the "Adding a mapping programmatically" section
   - Update any import paths if needed
-- [ ] Update `docs/developer-guide/oru-processing.md`:
+- [x] Update `docs/developer-guide/oru-processing.md`:
   - Line 127: Change `code-mapping/concept-map/lookup.ts` to `code-mapping/concept-map/observation-code-resolver.ts`
-- [ ] Update `docs/developer-guide/how-to/extracting-modules.md`:
+- [x] Update `docs/developer-guide/how-to/extracting-modules.md`:
   - Lines 193-196: Change `lookup.ts` to `observation-code-resolver.ts` in file tree
-- [ ] Verify no other docs reference `lookup.ts`: `grep -r "lookup\.ts" docs/`
-- [ ] Verify no docs reference dead functions: `grep -r "addMapping\|deleteMapping\|searchMappings\|getOrCreateConceptMap" docs/`
+- [x] Verify no other docs reference `lookup.ts`: `grep -r "lookup\.ts" docs/`
+- [x] Verify no docs reference dead functions: `grep -r "addMapping\|deleteMapping\|searchMappings\|getOrCreateConceptMap" docs/`
 
 ---
 

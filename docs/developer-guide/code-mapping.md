@@ -46,8 +46,8 @@ src/code-mapping/
 ├── mapping-types.ts                 # Mapping type registry (CRITICAL: add new types here)
 ├── mapping-errors.ts                # MappingError types and builders
 ├── concept-map/
-│   ├── lookup.ts                    # resolveToLoinc(), lookupInConceptMap()
-│   ├── service.ts                   # ConceptMap CRUD
+│   ├── observation-code-resolver.ts # resolveToLoinc() for OBX-3 resolution
+│   ├── service.ts                   # ConceptMap CRUD, ID generation, translateCode
 │   └── index.ts
 ├── mapping-task-service.ts          # Task creation and resolution
 └── terminology-api.ts               # LOINC search/validation
@@ -109,15 +109,21 @@ Note: A message may have multiple unmapped codes of different types. Each code i
 ### Adding a mapping programmatically
 
 ```typescript
-import { addMapping } from "./code-mapping";
+import { addConceptMapEntry, generateConceptMapId } from "./code-mapping";
 
-await addMapping(
+// Generate the ConceptMap ID from sender context
+const conceptMapId = generateConceptMapId(
   { sendingApplication: "LAB_SYS", sendingFacility: "HOSP_A" },
+  "loinc"
+);
+
+await addConceptMapEntry(
+  conceptMapId,
   "K_SERUM",        // local code
-  "urn:oid:acme",   // local system
   "Potassium",      // local display
-  "2823-3",         // LOINC code
-  "Potassium [Moles/volume] in Serum or Plasma",
+  "urn:oid:acme",   // local system
+  "2823-3",         // target code (LOINC)
+  "Potassium [Moles/volume] in Serum or Plasma",  // target display
 );
 ```
 
