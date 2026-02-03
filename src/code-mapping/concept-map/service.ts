@@ -29,8 +29,7 @@ import {
 } from "../../aidbox";
 import { toKebabCase } from "../../utils/string";
 import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
-import { generateMappingTaskId } from "../mapping-task";
-import { updateAffectedMessages } from "../../api/task-resolution";
+import { generateMappingTaskId, updateAffectedMessages } from "../mapping-task";
 import { PAGE_SIZE } from "../../ui/pagination";
 
 // SenderContext is defined here as the canonical location

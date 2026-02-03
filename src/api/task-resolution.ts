@@ -7,7 +7,6 @@
 
 import type { Task } from "../fhir/hl7-fhir-r4-core/Task";
 import type { ConceptMap } from "../fhir/hl7-fhir-r4-core/ConceptMap";
-import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import {
   aidboxFetch,
   getResourceWithETag,
@@ -26,7 +25,7 @@ import {
   isMappingTypeName,
   type MappingTypeName,
 } from "../code-mapping/mapping-types";
-import { removeTaskFromMessage } from "../code-mapping/mapping-task";
+import { updateAffectedMessages } from "../code-mapping/mapping-task";
 
 /**
  * Get a value from a Task's input array by type text.
@@ -168,21 +167,8 @@ export async function resolveTaskWithMapping(
   });
 }
 
-/**
- * Update all messages affected by a resolved task.
- * Removes the task reference from each message's unmappedCodes.
- */
-export async function updateAffectedMessages(taskId: string): Promise<void> {
-  const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(
-    `/fhir/IncomingHL7v2Message?status=mapping_error&unmapped-task=Task/${taskId}`,
-  );
-
-  const messages = bundle.entry?.map((e) => e.resource) || [];
-
-  for (const message of messages) {
-    await removeTaskFromMessage(message.id!, taskId);
-  }
-}
+// Re-export updateAffectedMessages for backward compatibility
+export { updateAffectedMessages } from "../code-mapping/mapping-task";
 
 /**
  * Resolve a mapping task and update all affected messages.
