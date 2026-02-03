@@ -9,7 +9,7 @@ import type { Task, TaskInput } from "../../fhir/hl7-fhir-r4-core/Task";
 import type { BundleEntry } from "../../fhir/hl7-fhir-r4-core/Bundle";
 import { MAPPING_TYPES } from "../mapping-types";
 import type { MappingError } from "../mapping-errors";
-import { generateConceptMapId, type SenderContext } from "../concept-map/lookup";
+import { generateConceptMapId, type SenderContext } from "../concept-map";
 import { simpleHash } from "../../utils/string";
 
 /**

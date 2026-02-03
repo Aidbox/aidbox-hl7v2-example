@@ -11,7 +11,7 @@ import { parsePageParam, createPagination, PAGE_SIZE, renderPaginationControls, 
 import { renderNav, renderLayout, type NavData } from "../shared-layout";
 import { htmlResponse, getNavData } from "../shared";
 import { MAPPING_TYPES, type MappingTypeName, isMappingTypeName } from "../../code-mapping/mapping-types";
-import { getValidValuesWithDisplay } from "../../code-mapping/validation";
+import { getValidValuesWithDisplay } from "../../code-mapping/mapping-type-options";
 import { getMappingTypeShortLabel } from "../mapping-type-ui";
 
 /**
@@ -99,14 +99,12 @@ export function getTaskMappingType(task: Task): MappingTypeName | undefined {
 
 /**
  * Get the resolved mapping output from a task.
- * Supports both "Resolved LOINC" (legacy) and "Resolved mapping" (new) output types.
  */
 export function getTaskOutputMapping(
   task: Task,
 ): { code: string; display: string } | undefined {
-  // Support both legacy "Resolved LOINC" and new "Resolved mapping" output types
   const output = task.output?.find(
-    (o) => o.type?.text === "Resolved mapping" || o.type?.text === "Resolved LOINC"
+    (o) => o.type?.text === "Resolved mapping"
   );
   const coding = output?.valueCodeableConcept?.coding?.[0];
   if (coding?.code) {
@@ -249,10 +247,10 @@ function renderResolutionForm(task: Task, mappingType: MappingTypeName): string 
         <form method="POST" action="/api/mapping/tasks/${taskId}/resolve" class="flex items-end gap-3">
           <div class="flex-1">
             <label class="block text-sm font-medium text-gray-700 mb-1">Map to LOINC Code</label>
-            <input type="text" name="loincCode" required placeholder="Search LOINC codes..."
+            <input type="text" name="resolvedCode" required placeholder="Search LOINC codes..."
               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               data-loinc-autocomplete>
-            <input type="hidden" name="loincDisplay">
+            <input type="hidden" name="resolvedDisplay">
           </div>
           <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
             Save Mapping
@@ -393,9 +391,9 @@ export function renderMappingTaskPanel(task: Task, isPending: boolean): string {
             <form method="POST" action="/api/mapping/tasks/${task.id}/resolve" class="flex items-end gap-3">
               <div class="flex-1">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Map to Code</label>
-                <input type="text" name="loincCode" required placeholder="Enter code..."
+                <input type="text" name="resolvedCode" required placeholder="Enter code..."
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <input type="hidden" name="loincDisplay">
+                <input type="hidden" name="resolvedDisplay">
               </div>
               <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
                 Save Mapping

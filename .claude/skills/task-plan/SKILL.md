@@ -154,19 +154,21 @@ Add `# Implementation Plan` section to `tasks/plans/YYYY-MM-DD-feature-name.md` 
 Critically and thoroughly review the plan before presenting to user:
 
 - Plan is written inside the design document under `# Implementation Plan`
-- Overview clearly explains what and why
 - Every affected file from design's Affected Components is covered in tasks
 - Every prototype placeholder location has a corresponding task
 - Tasks are ordered so dependencies are satisfied
 - Each task has 2-8 specific checkboxes
-- Every task includes test checkboxes
 - Every task ends with validation gate
 - Tasks reference design's Technical Details for implementation specifics
 - Tasks reference design's Edge Cases for error handling
-- Tasks cover all test cases requested by the design document
-- Documentation task updates relevant docs (CLAUDE.md, docs, user guides, inline comments)
-- Cleanup task removes all DESIGN PROTOTYPE markers
+- Tasks cover ALL test cases mentioned in the design document
+- There's a task focused on documentation updates (CLAUDE.md, docs, user guides, inline comments)
+- There's a task focused on cleaning up all DESIGN PROTOTYPE markers
 - Post-completion verification steps are defined
+
+### Phase 6: Update the document status
+
+Change the design document status to `planned`.
 
 ---
 

@@ -13,7 +13,7 @@ import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 import { MAPPING_TYPES, type MappingTypeName, isMappingTypeName } from "../../../src/code-mapping/mapping-types";
 import { validateResolvedCode } from "../../../src/code-mapping/validation";
-import { resolveTaskAndUpdateMessages } from "../../../src/ui/mapping-tasks-queue";
+import { resolveTaskAndUpdateMessages } from "../../../src/api/task-resolution";
 
 // ============================================================================
 // Test Helpers
@@ -69,35 +69,6 @@ async function createTaskForType(
   });
 }
 
-async function createLegacyLoincTask(id: string): Promise<Task> {
-  const task: Task = {
-    resourceType: "Task",
-    id,
-    status: "requested",
-    intent: "order",
-    code: {
-      coding: [
-        {
-          system: "urn:aidbox-hl7v2-converter:mapping-type",
-          code: "observation-code-loinc",
-          display: "Observation code to LOINC mapping",
-        },
-      ],
-    },
-    authoredOn: new Date().toISOString(),
-    input: [
-      { type: { text: "Sending application" }, valueString: "TEST_APP" },
-      { type: { text: "Sending facility" }, valueString: "TEST_FACILITY" },
-      { type: { text: "Local code" }, valueString: "LEGACY_CODE" },
-      { type: { text: "Local system" }, valueString: "LEGACY-SYSTEM" },
-    ],
-  };
-
-  return aidboxFetch<Task>(`/fhir/Task/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(task),
-  });
-}
 
 /**
  * Simulates the API endpoint logic: fetch task, validate code, resolve.
@@ -183,21 +154,6 @@ describe("Task resolution with type detection and validation", () => {
       const task = await fetchTask("task-loinc-valid");
       expect(task.status).toBe("completed");
       expect(task.output?.[0]?.valueCodeableConcept?.coding?.[0]?.code).toBe("2823-3");
-    });
-
-    test("resolves legacy LOINC task correctly", async () => {
-      await createLegacyLoincTask("task-legacy-loinc-valid");
-
-      const result = await resolveTaskWithValidation(
-        "task-legacy-loinc-valid",
-        "12345-6",
-        "Test LOINC",
-      );
-
-      expect(result.success).toBe(true);
-
-      const task = await fetchTask("task-legacy-loinc-valid");
-      expect(task.status).toBe("completed");
     });
 
     test("rejects empty LOINC code", async () => {

@@ -1,22 +1,11 @@
 /**
- * DESIGN PROTOTYPE: concept-map-refactoring.md
+ * Unit tests for observation-code-resolver.ts and related service functions
  *
- * This test file will be RENAMED to: observation-code-resolver.test.ts
- *
- * IMPORT CHANGES:
- * - Update imports to reference renamed file (observation-code-resolver.ts)
- * - translateCode tests may need to import from service.ts instead
- *
- * TESTS TO KEEP (observation-specific):
- * - describe("resolveToLoinc - inline LOINC detection")
- * - describe("resolveToLoinc - ConceptMap lookup")
- * - describe("resolveToLoinc - error cases")
- * - describe("buildCodeableConcept")
- * - describe("edge cases")
- *
- * TESTS THAT MAY NEED IMPORT UPDATES:
- * - describe("generateConceptMapId") - function moves to service.ts
- * - describe("translateCode") - function moves to service.ts
+ * Tests for:
+ * - generateConceptMapId() - generic ID generation (service.ts)
+ * - translateCode() - $translate operation (service.ts)
+ * - resolveToLoinc() - observation-specific LOINC resolution
+ * - buildCodeableConcept() - observation-specific CodeableConcept builder
  */
 import { describe, test, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import * as aidboxModule from "../../../src/aidbox";
@@ -69,11 +58,8 @@ function teardownAidboxSpy() {
 }
 
 // ============================================================================
-// Unit Tests: generateConceptMapId
+// Unit Tests: generateConceptMapId (from service.ts)
 // ============================================================================
-// DESIGN PROTOTYPE: Update import path after refactoring
-// Function moves to service.ts, import will change to:
-// import { generateConceptMapId } from "../../../src/code-mapping/concept-map/service";
 
 describe("generateConceptMapId", () => {
   test("generates correct ID format", async () => {
@@ -157,9 +143,8 @@ describe("generateConceptMapId", () => {
 // ============================================================================
 // Unit Tests: translateCode
 // ============================================================================
-// DESIGN PROTOTYPE: Update import path after refactoring
-// Function moves to service.ts, import will change to:
-// import { translateCode } from "../../../src/code-mapping/concept-map/service";
+// Unit Tests: translateCode (from service.ts)
+// ============================================================================
 
 describe("translateCode", () => {
   beforeEach(() => {

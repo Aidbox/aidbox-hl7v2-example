@@ -5,7 +5,7 @@ import {
   composeMappingTask,
   composeTaskBundleEntry,
 } from "../../../src/code-mapping/mapping-task";
-import type { SenderContext } from "../../../src/code-mapping/concept-map/lookup";
+import type { SenderContext } from "../../../src/code-mapping/concept-map";
 import { MAPPING_TYPES } from "../../../src/code-mapping/mapping-types";
 import type { MappingError } from "../../../src/code-mapping/mapping-errors";
 

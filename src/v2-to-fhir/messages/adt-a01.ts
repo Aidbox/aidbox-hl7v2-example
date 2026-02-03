@@ -54,7 +54,7 @@ import {
   buildMappingErrorResult,
   type MappingError,
 } from "../../code-mapping/mapping-errors";
-import type { SenderContext } from "../../code-mapping/concept-map/lookup";
+import type { SenderContext } from "../../code-mapping/concept-map";
 
 // ============================================================================
 // Helper Functions

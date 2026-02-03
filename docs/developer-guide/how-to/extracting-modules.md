@@ -192,8 +192,8 @@ The `src/code-mapping/` module handles local-to-LOINC code mappings.
 ```
 src/code-mapping/
 ├── concept-map/
-│   ├── lookup.ts      # ConceptMap lookup
-│   ├── service.ts     # ConceptMap CRUD
+│   ├── observation-code-resolver.ts  # resolveToLoinc() for OBX-3 resolution
+│   ├── service.ts                    # ConceptMap CRUD, ID generation, translateCode
 │   └── index.ts
 ├── mapping-task-service.ts   # Task lifecycle
 ├── terminology-api.ts        # External LOINC lookup

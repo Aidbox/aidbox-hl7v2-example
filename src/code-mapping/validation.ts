@@ -11,12 +11,6 @@ import {
   getValidValues as getValidValuesFromOptions,
 } from "./mapping-type-options";
 
-// Re-export from mapping-type-options for backward compatibility
-export {
-  getValidValues,
-  getValidValuesWithDisplay,
-} from "./mapping-type-options";
-
 /**
  * Validation result
  */

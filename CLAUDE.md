@@ -170,6 +170,10 @@ src/
 ├── index.ts              # HTTP server and routes
 ├── aidbox.ts             # Aidbox FHIR client
 ├── migrate.ts            # Database migrations (loads init-bundle.json)
+├── api/                  # API handlers (HTTP request/response handling)
+│   ├── concept-map-entries.ts  # ConceptMap entry CRUD endpoints
+│   ├── mapping-tasks.ts        # Mapping task endpoints
+│   └── task-resolution.ts      # Task resolution business logic
 ├── fhir/                 # FHIR R4 types (generated)
 ├── hl7v2/                # HL7v2 types, builders, formatters (generated)
 │   ├── generated/        # types.ts, fields.ts, messages.ts, tables.ts
@@ -186,7 +190,7 @@ src/
 ├── code-mapping/         # Code mapping for multiple field types
 │   ├── mapping-types.ts  # Mapping type registry (CRITICAL: add new types here)
 │   ├── mapping-errors.ts # MappingError types and builders
-│   ├── concept-map/      # ConceptMap CRUD, lookup
+│   ├── concept-map/      # ConceptMap CRUD and observation code resolution
 │   └── mapping-task-service.ts  # Task creation/resolution
 ├── mllp/                 # MLLP TCP server
 └── ui/                   # Server-rendered HTML pages

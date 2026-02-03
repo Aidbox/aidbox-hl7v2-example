@@ -11,6 +11,7 @@ import {
   putResource,
   getResourceWithETag,
   updateResourceWithETag,
+  type Bundle,
 } from "../../aidbox";
 import { MAPPING_TYPES, isMappingTypeName, type MappingTypeName } from "../mapping-types";
 
@@ -110,4 +111,20 @@ export async function removeResolvedTaskFromMessage(
   taskId: string,
 ): Promise<void> {
   await removeTaskFromMessage(message.id!, taskId);
+}
+
+/**
+ * Update all messages affected by a resolved task.
+ * Removes the task reference from each message's unmappedCodes.
+ */
+export async function updateAffectedMessages(taskId: string): Promise<void> {
+  const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(
+    `/fhir/IncomingHL7v2Message?status=mapping_error&unmapped-task=Task/${taskId}`,
+  );
+
+  const messages = bundle.entry?.map((e) => e.resource) || [];
+
+  for (const message of messages) {
+    await removeTaskFromMessage(message.id!, taskId);
+  }
 }

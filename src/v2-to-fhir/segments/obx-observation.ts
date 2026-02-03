@@ -18,7 +18,7 @@ import {
   generateConceptMapId,
   translateCode,
   type SenderContext,
-} from "../../code-mapping/concept-map/lookup";
+} from "../../code-mapping/concept-map";
 
 // ============================================================================
 // Status Validation and Mapping

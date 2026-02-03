@@ -201,8 +201,7 @@ export async function convertOBXToObservationResolving(
 
   // Both succeeded - build the final observation
   const observation = obxResult.observation!;
-  const resolvedCode = buildCodeableConcept(loincResolution!);
-  observation.code = resolvedCode;
+  observation.code = buildCodeableConcept(loincResolution!);
 
   return { observation };
 }

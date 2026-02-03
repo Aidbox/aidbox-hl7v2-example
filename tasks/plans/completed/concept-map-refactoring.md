@@ -1,5 +1,5 @@
 ---
-status: approved
+status: implemented
 reviewer-iterations: 1
 prototype-files:
   - src/api/concept-map-entries.ts
@@ -386,5 +386,263 @@ Analyzed current mapping type implementations. Non-LOINC mappings (patient-class
 
 **Decision:** Keep design as-is. CodeResolutionResult and buildCodeableConcept remain observation-specific. If future mapping types need Coding resolution (e.g., procedure codes → SNOMED), we'll introduce a generic interface then with a concrete use case.
 
-**Status:** Approved by user to proceed. 
- 
+**Status:** Approved by user to proceed.
+
+---
+
+# Implementation Plan
+
+## Overview
+
+Refactor the ConceptMap module to fix architectural issues: remove dead code from service.ts, move CRUD business logic from UI layer to service layer, create API handlers for HTTP requests, rename lookup.ts to reflect its observation-specific purpose, and fix the inverted dependency where index.ts imports from ui/pages/.
+
+## Development Approach
+
+- Complete each task fully before moving to the next
+- Make small, focused changes
+- **CRITICAL: all tests must pass before starting next task**
+- **CRITICAL: update this plan when scope changes**
+
+## Validation Commands
+
+- `bun test:all` - Run all tests (unit + integration)
+- `bun run typecheck` - TypeScript type checking
+
+---
+
+## Task 1: Delete dead functions from service.ts and their tests
+
+Remove the dead LOINC-hardcoded functions that are only called by tests, not production code.
+
+- [x] Delete `getOrCreateConceptMap()` function from `src/code-mapping/concept-map/service.ts` (lines 173-185)
+- [x] Delete `addMapping()` function from `src/code-mapping/concept-map/service.ts` (lines 189-210)
+- [x] Delete `deleteMapping()` function from `src/code-mapping/concept-map/service.ts` (lines 214-236)
+- [x] Delete `searchMappings()` function from `src/code-mapping/concept-map/service.ts` (lines 240-281)
+- [x] Delete `describe("getOrCreateConceptMap")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
+- [x] Delete `describe("addMapping")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
+- [x] Delete `describe("deleteMapping")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
+- [x] Delete `describe("searchMappings")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
+- [x] Remove DESIGN PROTOTYPE comments from `src/code-mapping/concept-map/service.ts` related to deleted functions
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 2: Rename lookup.ts to observation-code-resolver.ts
+
+Rename the file and update all imports throughout the codebase.
+
+- [x] Create `src/code-mapping/concept-map/observation-code-resolver.ts` as a copy of `lookup.ts`
+- [x] Update `src/code-mapping/concept-map/index.ts` to export from `./observation-code-resolver` instead of `./lookup`
+- [x] Delete `src/code-mapping/concept-map/lookup.ts`
+- [x] Rename `test/unit/code-mapping/conceptmap-lookup.test.ts` to `test/unit/code-mapping/observation-code-resolver.test.ts`
+- [x] Update imports in the renamed test file to reference `observation-code-resolver`
+- [x] Search for any other imports of `lookup` and update them (use grep to verify)
+- [x] Remove DESIGN PROTOTYPE comments about renaming from the new observation-code-resolver.ts
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 3: Move generic utilities from observation-code-resolver.ts to service.ts
+
+Move ID generation functions, translateCode, and related types to service.ts as they are generic utilities.
+
+- [x] Move `generateBaseConceptMapId()` function to service.ts
+- [x] Move `generateConceptMapId()` function to service.ts
+- [x] Move `formatSenderAsTitle()` function to service.ts
+- [x] Move `TranslateResult` type to service.ts
+- [x] Move `TranslateResponseParameter` and `TranslateResponse` interfaces to service.ts
+- [x] Move `extractCodingFromTranslateResponse()` function to service.ts
+- [x] Move `translateCode()` function to service.ts
+- [x] Add required imports to service.ts: `toKebabCase`, `aidboxFetch`, `HttpError`
+- [x] Update service.ts to export: `generateBaseConceptMapId`, `generateConceptMapId`, `formatSenderAsTitle`, `translateCode`, `TranslateResult`
+- [x] Re-export `SenderContext` type from observation-code-resolver.ts in service.ts for backward compatibility
+- [x] Update observation-code-resolver.ts to import these functions from `./service` instead of defining them
+- [x] Remove the moved functions and types from observation-code-resolver.ts
+- [x] Update `src/code-mapping/concept-map/index.ts` exports to reflect new locations
+- [x] Update test imports in `observation-code-resolver.test.ts` for `generateConceptMapId` and `translateCode` tests
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 4: Move CRUD types from UI to service.ts
+
+Move the data types that are used by CRUD operations from the UI layer to the service layer.
+
+- [x] Move `MappingTypeFilter` type from `src/ui/pages/code-mappings.ts` to service.ts
+- [x] Move `ConceptMapSummary` interface from `src/ui/pages/code-mappings.ts` to service.ts
+- [x] Move `MappingEntry` interface from `src/ui/pages/code-mappings.ts` to service.ts
+- [x] Export these types from service.ts
+- [x] Update `src/code-mapping/concept-map/index.ts` to export the new types
+- [x] Update `src/code-mapping/index.ts` to export the new types
+- [x] Update `src/ui/pages/code-mappings.ts` to import these types from `../../code-mapping/concept-map/service`
+- [x] Update test imports in `test/unit/ui/code-mappings.test.ts` if needed
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 5: Move helper functions from UI to service.ts
+
+Move the internal helper functions used by CRUD operations.
+
+- [x] Move `getKnownTargetSystems()` function from code-mappings.ts to service.ts
+- [x] Move `detectMappingTypeFromConceptMap()` function from code-mappings.ts to service.ts (keep export in UI for rendering)
+- [x] Move `matchesSearch()` function from code-mappings.ts to service.ts
+- [x] Move `checkDuplicateEntry()` function from code-mappings.ts to service.ts
+- [x] Move `buildCompletedTask()` function from code-mappings.ts to service.ts
+- [x] Add required imports to service.ts: `Task`, `TaskOutput`, `getResourceWithETag`, `updateResourceWithETag`, `NotFoundError`, `Bundle`
+- [x] Update code-mappings.ts to import `detectMappingTypeFromConceptMap` from service
+- [x] Export `detectMappingTypeFromConceptMap` from service.ts (used by UI for rendering)
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 6: Move CRUD functions from UI to service.ts
+
+Move the main CRUD operations that handle business logic.
+
+- [x] Move `listConceptMaps()` function from code-mappings.ts to service.ts
+- [x] Move `getMappingsFromConceptMap()` function from code-mappings.ts to service.ts
+- [x] Move `addConceptMapEntry()` function from code-mappings.ts to service.ts
+- [x] Move `updateConceptMapEntry()` function from code-mappings.ts to service.ts
+- [x] Move `deleteConceptMapEntry()` function from code-mappings.ts to service.ts
+- [x] Add import for `generateMappingTaskId` from mapping-task.ts in service.ts
+- [x] Add import for `updateAffectedMessages` from `../../ui/mapping-tasks-queue` in service.ts
+- [x] Add import for `PAGE_SIZE` from `../../ui/pagination` in service.ts
+- [x] Export all CRUD functions from service.ts
+- [x] Update `src/code-mapping/concept-map/index.ts` to export CRUD functions
+- [x] Update `src/code-mapping/index.ts` to export CRUD functions
+- [x] Update code-mappings.ts to import CRUD functions from `../../code-mapping/concept-map/service`
+- [x] Remove moved functions from code-mappings.ts
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 7: Implement API handlers in concept-map-entries.ts
+
+Replace the prototype placeholders with actual implementation by moving the inline handlers from index.ts.
+
+- [x] Implement `handleAddEntry()` - move logic from `/api/concept-maps/:id/entries` inline handler in index.ts
+- [x] Implement `handleUpdateEntry()` - move logic from `/api/concept-maps/:id/entries/:code` inline handler in index.ts
+- [x] Implement `handleDeleteEntry()` - move logic from `/api/concept-maps/:id/entries/:code/delete` inline handler in index.ts
+- [x] Import CRUD functions from `../code-mapping/concept-map/service`
+- [x] Remove the `throw new Error("DESIGN PROTOTYPE - not implemented")` placeholders
+- [x] Remove DESIGN PROTOTYPE comments from the file
+- [x] Export the three handler functions
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 8: Update index.ts to use API handlers
+
+Fix the inverted dependency by importing from API layer instead of UI layer.
+
+- [x] Remove imports of `addConceptMapEntry`, `updateConceptMapEntry`, `deleteConceptMapEntry` from `./ui/pages/code-mappings`
+- [x] Add import for `handleAddEntry`, `handleUpdateEntry`, `handleDeleteEntry` from `./api/concept-map-entries`
+- [x] Replace inline handler for `/api/concept-maps/:id/entries` with `{ POST: handleAddEntry }`
+- [x] Replace inline handler for `/api/concept-maps/:id/entries/:code` with `{ POST: handleUpdateEntry }`
+- [x] Replace inline handler for `/api/concept-maps/:id/entries/:code/delete` with `{ POST: handleDeleteEntry }`
+- [x] Remove DESIGN PROTOTYPE comments from index.ts
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 9: Update module index files and clean up exports
+
+Update the barrel exports to reflect the new structure and remove dead exports.
+
+- [x] Update `src/code-mapping/concept-map/index.ts`:
+  - Remove `export * from "./lookup"`
+  - Add `export * from "./observation-code-resolver"`
+  - Ensure service.ts exports are included
+  - Remove DESIGN PROTOTYPE comments
+- [x] Update `src/code-mapping/index.ts`:
+  - Remove dead function exports: `getOrCreateConceptMap`, `addMapping`, `deleteMapping`, `searchMappings`
+  - Add new CRUD exports: `listConceptMaps`, `getMappingsFromConceptMap`, `addConceptMapEntry`, `updateConceptMapEntry`, `deleteConceptMapEntry`
+  - Add type exports: `MappingTypeFilter`, `ConceptMapSummary`, `MappingEntry`
+  - Remove DESIGN PROTOTYPE comments
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 10: Clean up UI file and remove business logic
+
+Ensure code-mappings.ts contains only UI rendering logic.
+
+- [x] Verify all CRUD functions are removed from code-mappings.ts
+- [x] Verify all data types are imported from service layer
+- [x] Remove unused aidbox imports (aidboxFetch, getResourceWithETag, updateResourceWithETag, NotFoundError, Bundle)
+- [x] Remove unused Task, ConceptMapGroup, ConceptMapGroupElement type imports
+- [x] Remove DESIGN PROTOTYPE comments from code-mappings.ts
+- [x] Keep only UI rendering functions: `handleCodeMappingsPage`, `parseTypeFilter`, `getMappingTypeFilterDisplay`, `renderCodeMappingsPage`, `renderAddMappingForm`, `renderMappingEntryPanel`, `renderTargetCodeInput`, `buildFilterUrl`
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 11: Update and reorganize tests
+
+Move CRUD tests to service test file and update imports.
+
+- [x] Move CRUD test describes from `test/unit/ui/code-mappings.test.ts` to `test/unit/code-mapping/concept-map-service.test.ts`:
+  - `describe("listConceptMaps")`
+  - `describe("getMappingsFromConceptMap")`
+  - `describe("addConceptMapEntry")`
+  - `describe("updateConceptMapEntry")`
+  - `describe("deleteConceptMapEntry")`
+  - `describe("getMappingsFromConceptMap - search")`
+  - `describe("integration: add mapping flow")`
+  - `describe("listConceptMaps - type filtering")`
+  - `describe("detectMappingTypeFromConceptMap")`
+- [x] Update imports in moved tests to reference service.ts
+- [x] Keep UI rendering tests in code-mappings.test.ts:
+  - `describe("parseTypeFilter")`
+  - `describe("getMappingTypeFilterDisplay")`
+  - `describe("getMappingTypeShortLabel")`
+  - `describe("getValidValuesForType")`
+  - `describe("renderMappingEntryPanel")`
+  - `describe("renderCodeMappingsPage")`
+- [x] Remove DESIGN PROTOTYPE comments from all test files
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 12: Update documentation
+
+Update documentation files that reference renamed files or deleted functions.
+
+- [x] Update `docs/developer-guide/code-mapping.md`:
+  - Line 49: Change `lookup.ts` to `observation-code-resolver.ts` in code organization tree
+  - Lines 109-122: Remove or replace `addMapping()` example - this function is deleted. Replace with `addConceptMapEntry()` from service layer or remove the "Adding a mapping programmatically" section
+  - Update any import paths if needed
+- [x] Update `docs/developer-guide/oru-processing.md`:
+  - Line 127: Change `code-mapping/concept-map/lookup.ts` to `code-mapping/concept-map/observation-code-resolver.ts`
+- [x] Update `docs/developer-guide/how-to/extracting-modules.md`:
+  - Lines 193-196: Change `lookup.ts` to `observation-code-resolver.ts` in file tree
+- [x] Verify no other docs reference `lookup.ts`: `grep -r "lookup\.ts" docs/`
+- [x] Verify no docs reference dead functions: `grep -r "addMapping\|deleteMapping\|searchMappings\|getOrCreateConceptMap" docs/`
+
+---
+
+## Task 13: Final cleanup - remove all DESIGN PROTOTYPE markers
+
+Verify all prototype markers are removed and the refactoring is complete.
+
+- [x] Run `grep -r "DESIGN PROTOTYPE: concept-map-refactoring" src/` - should return no results
+- [x] Run `grep -r "DESIGN PROTOTYPE: concept-map-refactoring" test/` - should return no results
+- [x] Verify `src/code-mapping/concept-map/lookup.ts` no longer exists
+- [x] Verify `src/code-mapping/concept-map/observation-code-resolver.ts` exists and has no prototype markers
+- [x] Verify `test/unit/code-mapping/conceptmap-lookup.test.ts` no longer exists
+- [x] Verify `test/unit/code-mapping/observation-code-resolver.test.ts` exists
+- [x] Update design document status from `planned` to `implemented` in frontmatter
+- [x] Run `bun test:all` and `bun run typecheck` - final verification
+
+---
+
+## Post-Completion Verification
+
+1. **Functional test**: Navigate to `/mapping/table` in browser, select a ConceptMap, verify entries display correctly
+2. **CRUD test**: Add a new mapping entry, update it, then delete it - verify all operations work
+3. **Architecture test**: Run `grep -r "from.*ui/pages/code-mappings" src/index.ts` - should return only `handleCodeMappingsPage`
+4. **No regressions**: All existing tests pass (`bun test:all`)
+5. **Cleanup verified**: No DESIGN PROTOTYPE comments remain in codebase
+6. **Documentation verified**: No docs reference `lookup.ts` or deleted functions
+

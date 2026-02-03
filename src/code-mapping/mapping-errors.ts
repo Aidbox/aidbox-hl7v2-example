@@ -9,13 +9,13 @@ import type { Bundle, BundleEntry } from "../fhir/hl7-fhir-r4-core";
 import type { UnmappedCode } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import type { ConversionResult } from "../v2-to-fhir/converter";
 import type { MappingTypeName } from "./mapping-types";
-import type { SenderContext } from "./concept-map/lookup";
+import type { SenderContext } from "./concept-map";
 import {
   composeMappingTask,
   composeTaskBundleEntry,
   generateMappingTaskId,
 } from "./mapping-task";
-import { generateConceptMapId } from "./concept-map/lookup";
+import { generateConceptMapId } from "./concept-map";
 
 /**
  * Generic mapping error interface for any field type.

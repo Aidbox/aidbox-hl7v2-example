@@ -5,9 +5,8 @@
  * Can be called from any UI or external system.
  */
 
-import type { Task, TaskOutput } from "../fhir/hl7-fhir-r4-core/Task";
+import type { Task } from "../fhir/hl7-fhir-r4-core/Task";
 import type { ConceptMap } from "../fhir/hl7-fhir-r4-core/ConceptMap";
-import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import {
   aidboxFetch,
   getResourceWithETag,
@@ -19,13 +18,13 @@ import {
   type SenderContext,
   createEmptyConceptMap,
   addMappingToConceptMap,
+  buildCompletedTask,
 } from "../code-mapping/concept-map";
+import { getMappingTypeOrFail } from "../code-mapping/mapping-types";
 import {
-  getMappingTypeOrFail,
-  isMappingTypeName,
-  type MappingTypeName,
-} from "../code-mapping/mapping-types";
-import { removeTaskFromMessage } from "../code-mapping/mapping-task";
+  updateAffectedMessages,
+  extractMappingTypeFromTask,
+} from "../code-mapping/mapping-task";
 
 /**
  * Get a value from a Task's input array by type text.
@@ -42,17 +41,6 @@ function extractSenderFromTask(task: Task): SenderContext {
     getTaskInputValue(task, "Sending application") || "";
   const sendingFacility = getTaskInputValue(task, "Sending facility") || "";
   return { sendingApplication, sendingFacility };
-}
-
-/**
- * Extract the mapping type from a Task's code.
- */
-function extractMappingTypeFromTask(task: Task): MappingTypeName {
-  const code = task.code?.coding?.[0]?.code;
-  if (!code || !isMappingTypeName(code)) {
-    throw new Error(`Task ${task.id} has invalid mapping type: ${code}`);
-  }
-  return code;
 }
 
 /**
@@ -124,26 +112,12 @@ export async function resolveTaskWithMapping(
     targetSystem,
   );
 
-  const output: TaskOutput = {
-    type: { text: "Resolved mapping" },
-    valueCodeableConcept: {
-      coding: [
-        {
-          system: targetSystem,
-          code: resolvedCode,
-          display: resolvedDisplay,
-        },
-      ],
-      text: resolvedDisplay,
-    },
-  };
-
-  const updatedTask: Task = {
-    ...task,
-    status: "completed",
-    lastModified: new Date().toISOString(),
-    output: [output],
-  };
+  const updatedTask = buildCompletedTask(
+    task,
+    resolvedCode,
+    resolvedDisplay,
+    targetSystem,
+  );
 
   // Build conditional update for ConceptMap
   const conceptMapCondition = isNewConceptMap
@@ -179,22 +153,6 @@ export async function resolveTaskWithMapping(
     method: "POST",
     body: JSON.stringify(bundle),
   });
-}
-
-/**
- * Update all messages affected by a resolved task.
- * Removes the task reference from each message's unmappedCodes.
- */
-export async function updateAffectedMessages(taskId: string): Promise<void> {
-  const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(
-    `/fhir/IncomingHL7v2Message?status=mapping_error&unmapped-task=Task/${taskId}`,
-  );
-
-  const messages = bundle.entry?.map((e) => e.resource) || [];
-
-  for (const message of messages) {
-    await removeTaskFromMessage(message.id!, taskId);
-  }
 }
 
 /**

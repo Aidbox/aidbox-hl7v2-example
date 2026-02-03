@@ -12,9 +12,9 @@ import {
 } from "../helpers";
 import {
   resolveTaskWithMapping,
-  updateAffectedMessages,
   resolveTaskAndUpdateMessages,
-} from "../../../src/ui/mapping-tasks-queue";
+} from "../../../src/api/task-resolution";
+import { updateAffectedMessages } from "../../../src/code-mapping/mapping-task";
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
@@ -151,7 +151,7 @@ async function createCompletedTask(id: string): Promise<Task> {
       ],
       output: [
         {
-          type: { text: "Resolved LOINC" },
+          type: { text: "Resolved mapping" },
           valueCodeableConcept: {
             coding: [
               {

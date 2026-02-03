@@ -12,7 +12,7 @@ import {
   updateConceptMapEntry,
   deleteConceptMapEntry,
   type MappingTypeFilter,
-} from "../../../src/ui/pages/code-mappings";
+} from "../../../src/code-mapping/concept-map/service";
 import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 import { MAPPING_TYPES, type MappingTypeName } from "../../../src/code-mapping/mapping-types";
 
