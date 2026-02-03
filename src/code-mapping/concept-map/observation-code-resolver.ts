@@ -3,45 +3,19 @@
  *
  * Resolves OBX-3 observation identifiers to LOINC codes.
  * Uses inline LOINC detection first, then falls back to ConceptMap lookup.
- *
- * DESIGN PROTOTYPE: concept-map-refactoring.md
- *
- * FUNCTIONS TO MOVE TO service.ts (generic utilities):
- * - generateBaseConceptMapId()
- * - generateConceptMapId()
- * - formatSenderAsTitle()
- * - translateCode() and related types/helpers:
- *   - TranslateResponseParameter, TranslateResponse
- *   - TranslateResult
- *   - extractCodingFromTranslateResponse()
  */
 
 import type { CE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
 import { normalizeSystem } from "../../v2-to-fhir/code-mapping/coding-systems";
-import { toKebabCase } from "../../utils/string";
-import { aidboxFetch, HttpError } from "../../aidbox";
-import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
+import {
+  generateConceptMapId,
+  translateCode,
+  type SenderContext,
+} from "./service";
 
-// DESIGN PROTOTYPE: After refactoring, import from service.ts instead of defining here:
-// import { generateConceptMapId, translateCode } from "./service";
-
-interface TranslateResponseParameter {
-  name: string;
-  valueBoolean?: boolean;
-  valueCoding?: Coding;
-  part?: TranslateResponseParameter[];
-}
-
-interface TranslateResponse {
-  resourceType: "Parameters";
-  parameter?: TranslateResponseParameter[];
-}
-
-export interface SenderContext {
-  sendingApplication: string;
-  sendingFacility: string;
-}
+// Re-export SenderContext for backward compatibility
+export type { SenderContext } from "./service";
 
 export interface CodeResolutionResult {
   loinc: Coding;
@@ -73,32 +47,6 @@ export class MissingLocalSystemError extends Error {
     super(message);
     this.name = "MissingLocalSystemError";
   }
-}
-
-// DESIGN PROTOTYPE: MOVE TO service.ts - Generic ID generation utilities
-/**
- * Generate the base ConceptMap ID from sender context (without mapping type).
- * Format: hl7v2-{sendingApplication}-{sendingFacility}
- */
-export function generateBaseConceptMapId(sender: SenderContext): string {
-  const app = toKebabCase(sender.sendingApplication);
-  const facility = toKebabCase(sender.sendingFacility);
-  return `hl7v2-${app}-${facility}`;
-}
-
-// DESIGN PROTOTYPE: MOVE TO service.ts - Generic ID generation
-/**
- * Generate ConceptMap ID from sender context
- * Format: hl7v2-{sendingApplication}-{sendingFacility}-{mappingType}
- *
- * @param sender - The sender context with sendingApplication and sendingFacility
- * @param mappingType - The mapping type name (e.g., "loinc", "obr-status")
- */
-export function generateConceptMapId(
-  sender: SenderContext,
-  mappingType: MappingTypeName,
-): string {
-  return `${generateBaseConceptMapId(sender)}-${mappingType}`;
 }
 
 /**
@@ -147,84 +95,6 @@ function extractLocalFromPrimary(ce: CE): Coding | undefined {
     display: ce.$2_text,
     system: normalizeSystem(ce.$3_system),
   };
-}
-
-// DESIGN PROTOTYPE: MOVE TO service.ts - Generic $translate infrastructure
-export type TranslateResult =
-  | { status: "found"; coding: Coding }
-  | { status: "no_mapping" }
-  | { status: "not_found" };
-
-// DESIGN PROTOTYPE: MOVE TO service.ts
-function extractCodingFromTranslateResponse(
-  response: TranslateResponse,
-): Coding | null {
-  const resultParam = response.parameter?.find((p) => p.name === "result");
-  if (!resultParam?.valueBoolean) {
-    return null;
-  }
-
-  const matchParam = response.parameter?.find((p) => p.name === "match");
-  if (!matchParam?.part) {
-    return null;
-  }
-
-  const conceptPart = matchParam.part.find((p) => p.name === "concept");
-  if (!conceptPart?.valueCoding?.code) {
-    return null;
-  }
-
-  return {
-    code: conceptPart.valueCoding.code,
-    display: conceptPart.valueCoding.display,
-    system: "http://loinc.org",
-  };
-}
-
-// DESIGN PROTOTYPE: MOVE TO service.ts - Generic $translate operation
-/**
- * Translate a local code to LOINC using Aidbox $translate operation.
- *
- * @param conceptMapId - The ConceptMap resource ID
- * @param localCode - The local code to translate
- * @param localSystem - The local coding system URI
- * @returns Discriminated result: "found" with coding, "no_mapping", or "not_found"
- */
-export async function translateCode(
-  conceptMapId: string,
-  localCode: string,
-  localSystem: string | undefined,
-): Promise<TranslateResult> {
-  const requestBody = {
-    resourceType: "Parameters",
-    parameter: [
-      { name: "code", valueCode: localCode },
-      ...(localSystem ? [{ name: "system", valueUri: localSystem }] : []),
-    ],
-  };
-
-  let response: TranslateResponse;
-  try {
-    response = await aidboxFetch<TranslateResponse>(
-      `/fhir/ConceptMap/${conceptMapId}/$translate`,
-      {
-        method: "POST",
-        body: JSON.stringify(requestBody),
-      },
-    );
-  } catch (error) {
-    if (error instanceof HttpError && error.status === 404) {
-      return { status: "not_found" };
-    }
-    throw error;
-  }
-
-  const coding = extractCodingFromTranslateResponse(response);
-  if (!coding) {
-    return { status: "no_mapping" };
-  }
-
-  return { status: "found", coding };
 }
 
 function tryResolveFromInlineLoinc(
@@ -353,11 +223,3 @@ export function buildCodeableConcept(
   };
 }
 
-// DESIGN PROTOTYPE: MOVE TO service.ts - Generic utility for ConceptMap title
-/**
- * Format sender context as title string (format: "APP | FACILITY")
- * Used for ConceptMap.title field
- */
-export function formatSenderAsTitle(sender: SenderContext): string {
-  return `${sender.sendingApplication} | ${sender.sendingFacility}`;
-}

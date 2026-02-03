@@ -446,21 +446,21 @@ Rename the file and update all imports throughout the codebase.
 
 Move ID generation functions, translateCode, and related types to service.ts as they are generic utilities.
 
-- [ ] Move `generateBaseConceptMapId()` function to service.ts
-- [ ] Move `generateConceptMapId()` function to service.ts
-- [ ] Move `formatSenderAsTitle()` function to service.ts
-- [ ] Move `TranslateResult` type to service.ts
-- [ ] Move `TranslateResponseParameter` and `TranslateResponse` interfaces to service.ts
-- [ ] Move `extractCodingFromTranslateResponse()` function to service.ts
-- [ ] Move `translateCode()` function to service.ts
-- [ ] Add required imports to service.ts: `toKebabCase`, `aidboxFetch`, `HttpError`
-- [ ] Update service.ts to export: `generateBaseConceptMapId`, `generateConceptMapId`, `formatSenderAsTitle`, `translateCode`, `TranslateResult`
-- [ ] Re-export `SenderContext` type from observation-code-resolver.ts in service.ts for backward compatibility
-- [ ] Update observation-code-resolver.ts to import these functions from `./service` instead of defining them
-- [ ] Remove the moved functions and types from observation-code-resolver.ts
-- [ ] Update `src/code-mapping/concept-map/index.ts` exports to reflect new locations
-- [ ] Update test imports in `observation-code-resolver.test.ts` for `generateConceptMapId` and `translateCode` tests
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Move `generateBaseConceptMapId()` function to service.ts
+- [x] Move `generateConceptMapId()` function to service.ts
+- [x] Move `formatSenderAsTitle()` function to service.ts
+- [x] Move `TranslateResult` type to service.ts
+- [x] Move `TranslateResponseParameter` and `TranslateResponse` interfaces to service.ts
+- [x] Move `extractCodingFromTranslateResponse()` function to service.ts
+- [x] Move `translateCode()` function to service.ts
+- [x] Add required imports to service.ts: `toKebabCase`, `aidboxFetch`, `HttpError`
+- [x] Update service.ts to export: `generateBaseConceptMapId`, `generateConceptMapId`, `formatSenderAsTitle`, `translateCode`, `TranslateResult`
+- [x] Re-export `SenderContext` type from observation-code-resolver.ts in service.ts for backward compatibility
+- [x] Update observation-code-resolver.ts to import these functions from `./service` instead of defining them
+- [x] Remove the moved functions and types from observation-code-resolver.ts
+- [x] Update `src/code-mapping/concept-map/index.ts` exports to reflect new locations
+- [x] Update test imports in `observation-code-resolver.test.ts` for `generateConceptMapId` and `translateCode` tests
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

@@ -1,11 +1,11 @@
 /**
- * Unit tests for observation-code-resolver.ts
+ * Unit tests for observation-code-resolver.ts and related service functions
  *
- * DESIGN PROTOTYPE: concept-map-refactoring.md
- *
- * TESTS THAT MAY NEED IMPORT UPDATES (when functions move to service.ts):
- * - describe("generateConceptMapId") - function moves to service.ts
- * - describe("translateCode") - function moves to service.ts
+ * Tests for:
+ * - generateConceptMapId() - generic ID generation (service.ts)
+ * - translateCode() - $translate operation (service.ts)
+ * - resolveToLoinc() - observation-specific LOINC resolution
+ * - buildCodeableConcept() - observation-specific CodeableConcept builder
  */
 import { describe, test, expect, beforeEach, afterEach, spyOn } from "bun:test";
 import * as aidboxModule from "../../../src/aidbox";
@@ -58,11 +58,8 @@ function teardownAidboxSpy() {
 }
 
 // ============================================================================
-// Unit Tests: generateConceptMapId
+// Unit Tests: generateConceptMapId (from service.ts)
 // ============================================================================
-// DESIGN PROTOTYPE: Update import path after refactoring
-// Function moves to service.ts, import will change to:
-// import { generateConceptMapId } from "../../../src/code-mapping/concept-map/service";
 
 describe("generateConceptMapId", () => {
   test("generates correct ID format", async () => {
@@ -146,9 +143,8 @@ describe("generateConceptMapId", () => {
 // ============================================================================
 // Unit Tests: translateCode
 // ============================================================================
-// DESIGN PROTOTYPE: Update import path after refactoring
-// Function moves to service.ts, import will change to:
-// import { translateCode } from "../../../src/code-mapping/concept-map/service";
+// Unit Tests: translateCode (from service.ts)
+// ============================================================================
 
 describe("translateCode", () => {
   beforeEach(() => {
