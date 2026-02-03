@@ -148,7 +148,7 @@ function extractCodingFromTranslateResponse(
   return {
     code: conceptPart.valueCoding.code,
     display: conceptPart.valueCoding.display,
-    system: "http://loinc.org",
+    system: conceptPart.valueCoding.system,
   };
 }
 

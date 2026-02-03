@@ -5,7 +5,7 @@
  * Can be called from any UI or external system.
  */
 
-import type { Task, TaskOutput } from "../fhir/hl7-fhir-r4-core/Task";
+import type { Task } from "../fhir/hl7-fhir-r4-core/Task";
 import type { ConceptMap } from "../fhir/hl7-fhir-r4-core/ConceptMap";
 import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import {
@@ -19,6 +19,7 @@ import {
   type SenderContext,
   createEmptyConceptMap,
   addMappingToConceptMap,
+  buildCompletedTask,
 } from "../code-mapping/concept-map";
 import {
   getMappingTypeOrFail,
@@ -124,26 +125,12 @@ export async function resolveTaskWithMapping(
     targetSystem,
   );
 
-  const output: TaskOutput = {
-    type: { text: "Resolved mapping" },
-    valueCodeableConcept: {
-      coding: [
-        {
-          system: targetSystem,
-          code: resolvedCode,
-          display: resolvedDisplay,
-        },
-      ],
-      text: resolvedDisplay,
-    },
-  };
-
-  const updatedTask: Task = {
-    ...task,
-    status: "completed",
-    lastModified: new Date().toISOString(),
-    output: [output],
-  };
+  const updatedTask = buildCompletedTask(
+    task,
+    resolvedCode,
+    resolvedDisplay,
+    targetSystem,
+  );
 
   // Build conditional update for ConceptMap
   const conceptMapCondition = isNewConceptMap
