@@ -536,13 +536,13 @@ Replace the prototype placeholders with actual implementation by moving the inli
 
 Fix the inverted dependency by importing from API layer instead of UI layer.
 
-- [ ] Remove imports of `addConceptMapEntry`, `updateConceptMapEntry`, `deleteConceptMapEntry` from `./ui/pages/code-mappings`
-- [ ] Add import for `handleAddEntry`, `handleUpdateEntry`, `handleDeleteEntry` from `./api/concept-map-entries`
-- [ ] Replace inline handler for `/api/concept-maps/:id/entries` with `{ POST: handleAddEntry }`
-- [ ] Replace inline handler for `/api/concept-maps/:id/entries/:code` with `{ POST: handleUpdateEntry }`
-- [ ] Replace inline handler for `/api/concept-maps/:id/entries/:code/delete` with `{ POST: handleDeleteEntry }`
-- [ ] Remove DESIGN PROTOTYPE comments from index.ts
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Remove imports of `addConceptMapEntry`, `updateConceptMapEntry`, `deleteConceptMapEntry` from `./ui/pages/code-mappings`
+- [x] Add import for `handleAddEntry`, `handleUpdateEntry`, `handleDeleteEntry` from `./api/concept-map-entries`
+- [x] Replace inline handler for `/api/concept-maps/:id/entries` with `{ POST: handleAddEntry }`
+- [x] Replace inline handler for `/api/concept-maps/:id/entries/:code` with `{ POST: handleUpdateEntry }`
+- [x] Replace inline handler for `/api/concept-maps/:id/entries/:code/delete` with `{ POST: handleDeleteEntry }`
+- [x] Remove DESIGN PROTOTYPE comments from index.ts
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
