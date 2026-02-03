@@ -521,14 +521,14 @@ Move the main CRUD operations that handle business logic.
 
 Replace the prototype placeholders with actual implementation by moving the inline handlers from index.ts.
 
-- [ ] Implement `handleAddEntry()` - move logic from `/api/concept-maps/:id/entries` inline handler in index.ts
-- [ ] Implement `handleUpdateEntry()` - move logic from `/api/concept-maps/:id/entries/:code` inline handler in index.ts
-- [ ] Implement `handleDeleteEntry()` - move logic from `/api/concept-maps/:id/entries/:code/delete` inline handler in index.ts
-- [ ] Import CRUD functions from `../code-mapping/concept-map/service`
-- [ ] Remove the `throw new Error("DESIGN PROTOTYPE - not implemented")` placeholders
-- [ ] Remove DESIGN PROTOTYPE comments from the file
-- [ ] Export the three handler functions
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Implement `handleAddEntry()` - move logic from `/api/concept-maps/:id/entries` inline handler in index.ts
+- [x] Implement `handleUpdateEntry()` - move logic from `/api/concept-maps/:id/entries/:code` inline handler in index.ts
+- [x] Implement `handleDeleteEntry()` - move logic from `/api/concept-maps/:id/entries/:code/delete` inline handler in index.ts
+- [x] Import CRUD functions from `../code-mapping/concept-map/service`
+- [x] Remove the `throw new Error("DESIGN PROTOTYPE - not implemented")` placeholders
+- [x] Remove DESIGN PROTOTYPE comments from the file
+- [x] Export the three handler functions
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
