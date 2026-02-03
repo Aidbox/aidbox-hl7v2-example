@@ -568,13 +568,13 @@ Update the barrel exports to reflect the new structure and remove dead exports.
 
 Ensure code-mappings.ts contains only UI rendering logic.
 
-- [ ] Verify all CRUD functions are removed from code-mappings.ts
-- [ ] Verify all data types are imported from service layer
-- [ ] Remove unused aidbox imports (aidboxFetch, getResourceWithETag, updateResourceWithETag, NotFoundError, Bundle)
-- [ ] Remove unused Task, ConceptMapGroup, ConceptMapGroupElement type imports
-- [ ] Remove DESIGN PROTOTYPE comments from code-mappings.ts
-- [ ] Keep only UI rendering functions: `handleCodeMappingsPage`, `parseTypeFilter`, `getMappingTypeFilterDisplay`, `renderCodeMappingsPage`, `renderAddMappingForm`, `renderMappingEntryPanel`, `renderTargetCodeInput`, `buildFilterUrl`
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Verify all CRUD functions are removed from code-mappings.ts
+- [x] Verify all data types are imported from service layer
+- [x] Remove unused aidbox imports (aidboxFetch, getResourceWithETag, updateResourceWithETag, NotFoundError, Bundle)
+- [x] Remove unused Task, ConceptMapGroup, ConceptMapGroupElement type imports
+- [x] Remove DESIGN PROTOTYPE comments from code-mappings.ts
+- [x] Keep only UI rendering functions: `handleCodeMappingsPage`, `parseTypeFilter`, `getMappingTypeFilterDisplay`, `renderCodeMappingsPage`, `renderAddMappingForm`, `renderMappingEntryPanel`, `renderTargetCodeInput`, `buildFilterUrl`
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

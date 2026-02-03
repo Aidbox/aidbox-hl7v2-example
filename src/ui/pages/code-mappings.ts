@@ -4,40 +4,8 @@
  * Displays and manages ConceptMap entries for code mappings.
  * Supports multiple mapping types: LOINC, address type, patient class, OBR/OBX status.
  *
- * DESIGN PROTOTYPE: concept-map-refactoring.md
- *
- * This file will be refactored to ONLY contain UI rendering logic.
- *
- * TYPES TO MOVE TO service.ts:
- * - MappingTypeFilter
- * - ConceptMapSummary
- * - MappingEntry
- *
- * FUNCTIONS TO MOVE TO service.ts:
- * - listConceptMaps()
- * - getMappingsFromConceptMap()
- * - addConceptMapEntry()
- * - updateConceptMapEntry()
- * - deleteConceptMapEntry()
- * - detectMappingTypeFromConceptMap()
- * - checkDuplicateEntry()
- * - buildCompletedTask()
- * - matchesSearch()
- *
- * FUNCTIONS TO KEEP (UI rendering):
- * - handleCodeMappingsPage()
- * - parseTypeFilter()
- * - getMappingTypeFilterDisplay()
- * - renderCodeMappingsPage()
- * - renderAddMappingForm()
- * - renderMappingEntryPanel()
- * - renderTargetCodeInput()
- * - buildFilterUrl()
- *
- * After refactoring, imports will change:
- * - Import CRUD functions from "../../code-mapping/concept-map/service"
- * - Remove aidbox imports (no longer needed in UI layer)
- * - Remove Task, ConceptMapGroup, ConceptMapGroupElement type imports
+ * This file contains UI rendering logic only. CRUD operations are imported from
+ * the service layer (../../code-mapping/concept-map/service).
  */
 
 import { escapeHtml } from "../../utils/html";
@@ -96,7 +64,6 @@ export function getMappingTypeFilterDisplay(filter: MappingTypeFilter): string {
 }
 
 // Re-export functions from service layer for backward compatibility
-// These will be imported from api/concept-map-entries.ts in Task 8
 export {
   detectMappingTypeFromConceptMap,
   listConceptMaps,
