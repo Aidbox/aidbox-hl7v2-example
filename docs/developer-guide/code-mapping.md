@@ -114,7 +114,7 @@ import { addConceptMapEntry, generateConceptMapId } from "./code-mapping";
 // Generate the ConceptMap ID from sender context
 const conceptMapId = generateConceptMapId(
   { sendingApplication: "LAB_SYS", sendingFacility: "HOSP_A" },
-  "loinc"
+  "observation-code-loinc"
 );
 
 await addConceptMapEntry(

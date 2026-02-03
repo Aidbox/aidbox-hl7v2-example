@@ -153,7 +153,7 @@ function extractCodingFromTranslateResponse(
 }
 
 /**
- * Translate a local code to LOINC using Aidbox $translate operation.
+ * Translate a local code using Aidbox $translate operation.
  *
  * @param conceptMapId - The ConceptMap resource ID
  * @param localCode - The local code to translate
