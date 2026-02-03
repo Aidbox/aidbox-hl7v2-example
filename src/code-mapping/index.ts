@@ -25,6 +25,9 @@ export {
   type SenderContext,
   type CodeResolutionResult,
   type TranslateResult,
+  type MappingTypeFilter,
+  type ConceptMapSummary,
+  type MappingEntry,
 } from "./concept-map";
 // DESIGN PROTOTYPE: Add new exports after refactoring:
 // export {
@@ -33,9 +36,6 @@ export {
 //   addConceptMapEntry,
 //   updateConceptMapEntry,
 //   deleteConceptMapEntry,
-//   type MappingTypeFilter,
-//   type ConceptMapSummary,
-//   type MappingEntry,
 // } from "./concept-map";
 
 export {

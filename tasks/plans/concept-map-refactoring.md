@@ -468,15 +468,15 @@ Move ID generation functions, translateCode, and related types to service.ts as 
 
 Move the data types that are used by CRUD operations from the UI layer to the service layer.
 
-- [ ] Move `MappingTypeFilter` type from `src/ui/pages/code-mappings.ts` to service.ts
-- [ ] Move `ConceptMapSummary` interface from `src/ui/pages/code-mappings.ts` to service.ts
-- [ ] Move `MappingEntry` interface from `src/ui/pages/code-mappings.ts` to service.ts
-- [ ] Export these types from service.ts
-- [ ] Update `src/code-mapping/concept-map/index.ts` to export the new types
-- [ ] Update `src/code-mapping/index.ts` to export the new types
-- [ ] Update `src/ui/pages/code-mappings.ts` to import these types from `../../code-mapping/concept-map/service`
-- [ ] Update test imports in `test/unit/ui/code-mappings.test.ts` if needed
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Move `MappingTypeFilter` type from `src/ui/pages/code-mappings.ts` to service.ts
+- [x] Move `ConceptMapSummary` interface from `src/ui/pages/code-mappings.ts` to service.ts
+- [x] Move `MappingEntry` interface from `src/ui/pages/code-mappings.ts` to service.ts
+- [x] Export these types from service.ts
+- [x] Update `src/code-mapping/concept-map/index.ts` to export the new types
+- [x] Update `src/code-mapping/index.ts` to export the new types
+- [x] Update `src/ui/pages/code-mappings.ts` to import these types from `../../code-mapping/concept-map/service`
+- [x] Update test imports in `test/unit/ui/code-mappings.test.ts` if needed
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

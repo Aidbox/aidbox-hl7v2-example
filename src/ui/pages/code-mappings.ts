@@ -52,7 +52,12 @@ import {
 } from "../../aidbox";
 import { escapeHtml } from "../../utils/html";
 import { generateMappingTaskId } from "../../code-mapping/mapping-task";
-import { addMappingToConceptMap } from "../../code-mapping/concept-map";
+import {
+  addMappingToConceptMap,
+  type MappingTypeFilter,
+  type ConceptMapSummary,
+  type MappingEntry,
+} from "../../code-mapping/concept-map";
 // DESIGN PROTOTYPE: Will also import listConceptMaps, getMappingsFromConceptMap, etc. from concept-map
 // import {
 //   listConceptMaps,
@@ -61,9 +66,6 @@ import { addMappingToConceptMap } from "../../code-mapping/concept-map";
 //   updateConceptMapEntry,
 //   deleteConceptMapEntry,
 //   detectMappingTypeFromConceptMap,
-//   type MappingTypeFilter,
-//   type ConceptMapSummary,
-//   type MappingEntry,
 // } from "../../code-mapping/concept-map/service";
 import {
   MAPPING_TYPES,
@@ -84,31 +86,9 @@ import { renderNav, renderLayout, type NavData } from "../shared-layout";
 import { htmlResponse, getNavData } from "../shared";
 
 // ============================================================================
-// Types (exported for testing)
+// Types re-exported from service layer for backward compatibility
 // ============================================================================
-// DESIGN PROTOTYPE: MOVE TO service.ts - These are data types, not UI-specific
-
-/**
- * Mapping type filter options for the UI.
- * "all" shows all mapping types.
- */
-export type MappingTypeFilter = MappingTypeName | "all";
-
-export interface ConceptMapSummary {
-  id: string;
-  displayName: string;
-  mappingType: MappingTypeName;
-  targetSystem: string;
-}
-
-export interface MappingEntry {
-  localCode: string;
-  localDisplay: string;
-  localSystem: string;
-  targetCode: string;
-  targetDisplay: string;
-  targetSystem: string;
-}
+export type { MappingTypeFilter, ConceptMapSummary, MappingEntry };
 
 // ============================================================================
 // Helper Functions (exported for testing)

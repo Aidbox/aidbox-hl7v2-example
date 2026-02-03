@@ -44,6 +44,32 @@ export interface SenderContext {
 }
 
 // ============================================================================
+// Types for CRUD operations (moved from ui/pages/code-mappings.ts)
+// ============================================================================
+
+/**
+ * Mapping type filter options for the UI.
+ * "all" shows all mapping types.
+ */
+export type MappingTypeFilter = MappingTypeName | "all";
+
+export interface ConceptMapSummary {
+  id: string;
+  displayName: string;
+  mappingType: MappingTypeName;
+  targetSystem: string;
+}
+
+export interface MappingEntry {
+  localCode: string;
+  localDisplay: string;
+  localSystem: string;
+  targetCode: string;
+  targetDisplay: string;
+  targetSystem: string;
+}
+
+// ============================================================================
 // Types for $translate operation (moved from observation-code-resolver.ts)
 // ============================================================================
 
