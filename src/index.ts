@@ -16,12 +16,19 @@ import {
   handleIncomingMessagesPage,
 } from "./ui/pages/messages";
 import { handleMappingTasksPage } from "./ui/pages/mapping-tasks";
+// DESIGN PROTOTYPE: concept-map-refactoring.md
+// INVERTED DEPENDENCY - This imports business logic from UI layer
+// After refactoring:
+// - handleCodeMappingsPage stays in ui/pages/code-mappings.ts (UI rendering)
+// - CRUD functions imported from api/concept-map-entries.ts (HTTP handlers)
 import {
   handleCodeMappingsPage,
   addConceptMapEntry,
   updateConceptMapEntry,
   deleteConceptMapEntry,
 } from "./ui/pages/code-mappings";
+// DESIGN PROTOTYPE: After refactoring, import from API layer:
+// import { handleAddEntry, handleUpdateEntry, handleDeleteEntry } from "./api/concept-map-entries";
 import { handleMLLPClientPage, sendMLLPTest } from "./ui/pages/mllp-client";
 import { handleTaskResolution } from "./api/mapping-tasks";
 
@@ -99,6 +106,12 @@ Bun.serve({
     // =========================================================================
     // ConceptMap Entry API
     // =========================================================================
+    // DESIGN PROTOTYPE: concept-map-refactoring.md
+    // These inline handlers will be replaced with:
+    //   "/api/concept-maps/:id/entries": { POST: handleAddEntry },
+    //   "/api/concept-maps/:id/entries/:code": { POST: handleUpdateEntry },
+    //   "/api/concept-maps/:id/entries/:code/delete": { POST: handleDeleteEntry },
+    // where handleAddEntry, handleUpdateEntry, handleDeleteEntry are imported from api/concept-map-entries.ts
     "/api/concept-maps/:id/entries": {
       POST: async (req) => {
         const conceptMapId = req.params.id;

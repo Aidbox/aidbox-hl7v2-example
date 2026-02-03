@@ -1,8 +1,36 @@
 /**
- * ConceptMap Lookup Service for HL7v2 to LOINC Code Resolution
+ * DESIGN PROTOTYPE: concept-map-refactoring.md
  *
- * Resolves local codes to LOINC codes using sender-specific ConceptMaps.
- * ConceptMap ID convention: hl7v2-{sendingApplication}-{sendingFacility}-to-loinc
+ * This file will be RENAMED to: observation-code-resolver.ts
+ *
+ * Observation Code Resolution Service
+ *
+ * Resolves OBX-3 observation identifiers to LOINC codes.
+ * Uses inline LOINC detection first, then falls back to ConceptMap lookup.
+ *
+ * FUNCTIONS TO MOVE TO service.ts (generic utilities):
+ * - generateBaseConceptMapId()
+ * - generateConceptMapId()
+ * - formatSenderAsTitle()
+ * - translateCode() and related types/helpers:
+ *   - TranslateResponseParameter, TranslateResponse
+ *   - TranslateResult
+ *   - extractCodingFromTranslateResponse()
+ *
+ * FUNCTIONS TO KEEP (observation-specific):
+ * - resolveToLoinc() - public API
+ * - buildCodeableConcept() - public API
+ * - tryResolveFromInlineLoinc() - internal
+ * - resolveFromConceptMap() -> RENAME to resolveObservationCodeViaConceptMap() - internal
+ * - hasLoincInPrimaryCoding(), hasLoincInAlternateCoding() - internal
+ * - extractLoincFromPrimary(), extractLoincFromAlternate() - internal
+ * - extractLocalFromPrimary() - internal
+ *
+ * TYPES TO KEEP:
+ * - SenderContext
+ * - CodeResolutionResult
+ * - LoincResolutionError
+ * - MissingLocalSystemError
  */
 
 import type { CE } from "../../hl7v2/generated/fields";
@@ -11,6 +39,9 @@ import { normalizeSystem } from "../../v2-to-fhir/code-mapping/coding-systems";
 import { toKebabCase } from "../../utils/string";
 import { aidboxFetch, HttpError } from "../../aidbox";
 import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
+
+// DESIGN PROTOTYPE: After refactoring, import from service.ts instead of defining here:
+// import { generateConceptMapId, translateCode } from "./service";
 
 interface TranslateResponseParameter {
   name: string;
@@ -61,6 +92,7 @@ export class MissingLocalSystemError extends Error {
   }
 }
 
+// DESIGN PROTOTYPE: MOVE TO service.ts - Generic ID generation utilities
 /**
  * Generate the base ConceptMap ID from sender context (without mapping type).
  * Format: hl7v2-{sendingApplication}-{sendingFacility}
@@ -71,6 +103,7 @@ export function generateBaseConceptMapId(sender: SenderContext): string {
   return `hl7v2-${app}-${facility}`;
 }
 
+// DESIGN PROTOTYPE: MOVE TO service.ts - Generic ID generation
 /**
  * Generate ConceptMap ID from sender context
  * Format: hl7v2-{sendingApplication}-{sendingFacility}-{mappingType}
@@ -133,11 +166,13 @@ function extractLocalFromPrimary(ce: CE): Coding | undefined {
   };
 }
 
+// DESIGN PROTOTYPE: MOVE TO service.ts - Generic $translate infrastructure
 export type TranslateResult =
   | { status: "found"; coding: Coding }
   | { status: "no_mapping" }
   | { status: "not_found" };
 
+// DESIGN PROTOTYPE: MOVE TO service.ts
 function extractCodingFromTranslateResponse(
   response: TranslateResponse,
 ): Coding | null {
@@ -163,6 +198,7 @@ function extractCodingFromTranslateResponse(
   };
 }
 
+// DESIGN PROTOTYPE: MOVE TO service.ts - Generic $translate operation
 /**
  * Translate a local code to LOINC using Aidbox $translate operation.
  *
@@ -334,6 +370,7 @@ export function buildCodeableConcept(
   };
 }
 
+// DESIGN PROTOTYPE: MOVE TO service.ts - Generic utility for ConceptMap title
 /**
  * Format sender context as title string (format: "APP | FACILITY")
  * Used for ConceptMap.title field

@@ -3,10 +3,46 @@
  *
  * Displays and manages ConceptMap entries for code mappings.
  * Supports multiple mapping types: LOINC, address type, patient class, OBR/OBX status.
+ *
+ * DESIGN PROTOTYPE: concept-map-refactoring.md
+ *
+ * This file will be refactored to ONLY contain UI rendering logic.
+ *
+ * TYPES TO MOVE TO service.ts:
+ * - MappingTypeFilter
+ * - ConceptMapSummary
+ * - MappingEntry
+ *
+ * FUNCTIONS TO MOVE TO service.ts:
+ * - listConceptMaps()
+ * - getMappingsFromConceptMap()
+ * - addConceptMapEntry()
+ * - updateConceptMapEntry()
+ * - deleteConceptMapEntry()
+ * - detectMappingTypeFromConceptMap()
+ * - checkDuplicateEntry()
+ * - buildCompletedTask()
+ * - matchesSearch()
+ *
+ * FUNCTIONS TO KEEP (UI rendering):
+ * - handleCodeMappingsPage()
+ * - parseTypeFilter()
+ * - getMappingTypeFilterDisplay()
+ * - renderCodeMappingsPage()
+ * - renderAddMappingForm()
+ * - renderMappingEntryPanel()
+ * - renderTargetCodeInput()
+ * - buildFilterUrl()
+ *
+ * After refactoring, imports will change:
+ * - Import CRUD functions from "../../code-mapping/concept-map/service"
+ * - Remove aidbox imports (no longer needed in UI layer)
+ * - Remove Task, ConceptMapGroup, ConceptMapGroupElement type imports
  */
 
 import type { ConceptMap, ConceptMapGroup, ConceptMapGroupElement } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
 import type { Task, TaskOutput } from "../../fhir/hl7-fhir-r4-core/Task";
+// DESIGN PROTOTYPE: These aidbox imports will be removed (moved to service.ts)
 import {
   aidboxFetch,
   getResourceWithETag,
@@ -17,6 +53,18 @@ import {
 import { escapeHtml } from "../../utils/html";
 import { generateMappingTaskId } from "../../code-mapping/mapping-task";
 import { addMappingToConceptMap } from "../../code-mapping/concept-map";
+// DESIGN PROTOTYPE: Will also import listConceptMaps, getMappingsFromConceptMap, etc. from concept-map
+// import {
+//   listConceptMaps,
+//   getMappingsFromConceptMap,
+//   addConceptMapEntry,
+//   updateConceptMapEntry,
+//   deleteConceptMapEntry,
+//   detectMappingTypeFromConceptMap,
+//   type MappingTypeFilter,
+//   type ConceptMapSummary,
+//   type MappingEntry,
+// } from "../../code-mapping/concept-map/service";
 import {
   MAPPING_TYPES,
   type MappingTypeName,
@@ -38,6 +86,7 @@ import { htmlResponse, getNavData } from "../shared";
 // ============================================================================
 // Types (exported for testing)
 // ============================================================================
+// DESIGN PROTOTYPE: MOVE TO service.ts - These are data types, not UI-specific
 
 /**
  * Mapping type filter options for the UI.
@@ -144,6 +193,8 @@ export async function handleCodeMappingsPage(req: Request): Promise<Response> {
 // ============================================================================
 // Service Functions (exported for testing and API operations)
 // ============================================================================
+// DESIGN PROTOTYPE: MOVE ALL FUNCTIONS IN THIS SECTION TO service.ts
+// These are business logic functions, not UI rendering
 
 /**
  * Get all target systems from the mapping types registry.
@@ -153,6 +204,7 @@ function getKnownTargetSystems(): Set<string> {
   return new Set(Object.values(MAPPING_TYPES).map(t => t.targetSystem));
 }
 
+// DESIGN PROTOTYPE: MOVE TO service.ts
 /**
  * List all ConceptMaps for sender dropdown.
  * Optionally filter by mapping type.
@@ -198,6 +250,7 @@ function matchesSearch(entry: MappingEntry, search: string): boolean {
   );
 }
 
+// DESIGN PROTOTYPE: MOVE TO service.ts
 /**
  * Get paginated mapping entries from a ConceptMap
  */
@@ -292,6 +345,7 @@ function buildCompletedTask(
   };
 }
 
+// DESIGN PROTOTYPE: MOVE TO service.ts
 /**
  * Add a new entry to a ConceptMap.
  * Uses atomic transaction when a matching Task exists.
@@ -402,6 +456,7 @@ export async function addConceptMapEntry(
   return { success: true };
 }
 
+// DESIGN PROTOTYPE: MOVE TO service.ts
 /**
  * Update an existing entry in a ConceptMap.
  * Handles target system changes (e.g., address-type vs address-use) by moving
@@ -508,6 +563,7 @@ export async function updateConceptMapEntry(
   return { success: true };
 }
 
+// DESIGN PROTOTYPE: MOVE TO service.ts
 /**
  * Delete an entry from a ConceptMap
  */

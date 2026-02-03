@@ -3,6 +3,33 @@
  *
  * Manages sender-specific ConceptMaps for code mappings.
  * Supports multiple target systems (LOINC, address types, status codes, etc.).
+ *
+ * DESIGN PROTOTYPE: concept-map-refactoring.md
+ *
+ * This file will be expanded to include:
+ * 1. Generic utilities moved from lookup.ts:
+ *    - generateBaseConceptMapId()
+ *    - generateConceptMapId()
+ *    - formatSenderAsTitle()
+ *    - translateCode() and related types (TranslateResult, TranslateResponse)
+ *
+ * 2. CRUD operations moved from ui/pages/code-mappings.ts:
+ *    - listConceptMaps()
+ *    - getMappingsFromConceptMap()
+ *    - addConceptMapEntry()
+ *    - updateConceptMapEntry()
+ *    - deleteConceptMapEntry()
+ *
+ * 3. Types moved from ui/pages/code-mappings.ts:
+ *    - MappingTypeFilter
+ *    - ConceptMapSummary
+ *    - MappingEntry
+ *
+ * 4. Dead functions to DELETE:
+ *    - getOrCreateConceptMap() - only used by addMapping(), hardcoded for LOINC
+ *    - addMapping() - only called by tests, hardcoded for LOINC
+ *    - deleteMapping() - only called by tests, hardcoded for LOINC
+ *    - searchMappings() - only called by tests, hardcoded for LOINC
  */
 
 import type {
@@ -10,7 +37,9 @@ import type {
   ConceptMapGroup,
   ConceptMapGroupElement,
 } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
+// DESIGN PROTOTYPE: Will also import getResourceWithETag, updateResourceWithETag, NotFoundError, HttpError, Bundle
 import { aidboxFetch, putResource } from "../../aidbox";
+// DESIGN PROTOTYPE: These imports will be removed - functions moved here from lookup.ts
 import {
   generateConceptMapId,
   generateBaseConceptMapId,
@@ -18,6 +47,35 @@ import {
   type SenderContext,
 } from "./lookup";
 import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
+
+// DESIGN PROTOTYPE: Types to be added (moved from ui/pages/code-mappings.ts)
+//
+// export type MappingTypeFilter = MappingTypeName | "all";
+//
+// export interface ConceptMapSummary {
+//   id: string;
+//   displayName: string;
+//   mappingType: MappingTypeName;
+//   targetSystem: string;
+// }
+//
+// export interface MappingEntry {
+//   localCode: string;
+//   localDisplay: string;
+//   localSystem: string;
+//   targetCode: string;
+//   targetDisplay: string;
+//   targetSystem: string;
+// }
+//
+// // TranslateResult and related types from lookup.ts
+// export type TranslateResult =
+//   | { status: "found"; coding: Coding }
+//   | { status: "no_mapping" }
+//   | { status: "not_found" };
+
+// DESIGN PROTOTYPE: Re-export SenderContext for backward compatibility
+// export type { SenderContext } from "./observation-code-resolver";
 
 export async function fetchConceptMap(
   conceptMapId: string,
@@ -110,6 +168,8 @@ export function addMappingToConceptMap(
   return updated;
 }
 
+// DESIGN PROTOTYPE: DELETE - Dead function, only used by addMapping() below
+// Hardcoded for "observation-code-loinc" mapping type, doesn't support multi-type
 export async function getOrCreateConceptMap(
   sender: SenderContext,
 ): Promise<ConceptMap> {
@@ -124,6 +184,8 @@ export async function getOrCreateConceptMap(
   return putResource("ConceptMap", conceptMapId, newConceptMap);
 }
 
+// DESIGN PROTOTYPE: DELETE - Dead function, only called by tests
+// Hardcoded for LOINC target system, doesn't support multi-type mappings
 export async function addMapping(
   sender: SenderContext,
   localCode: string,
@@ -147,6 +209,8 @@ export async function addMapping(
   await putResource("ConceptMap", updatedConceptMap.id!, updatedConceptMap);
 }
 
+// DESIGN PROTOTYPE: DELETE - Dead function, only called by tests
+// Hardcoded for "observation-code-loinc" mapping type
 export async function deleteMapping(
   sender: SenderContext,
   localCode: string,
@@ -171,6 +235,8 @@ export async function deleteMapping(
   await putResource("ConceptMap", conceptMapId, conceptMap);
 }
 
+// DESIGN PROTOTYPE: DELETE - Dead function, only called by tests
+// Hardcoded for "observation-code-loinc" mapping type
 export async function searchMappings(
   sender: SenderContext,
   query?: { localCode?: string; loincCode?: string },
@@ -213,3 +279,17 @@ export async function searchMappings(
     return true;
   });
 }
+
+// DESIGN PROTOTYPE: Add CRUD functions here (moved from ui/pages/code-mappings.ts)
+//
+// export async function listConceptMaps(typeFilter: MappingTypeFilter = "all"): Promise<ConceptMapSummary[]> { ... }
+// export async function getMappingsFromConceptMap(conceptMapId: string, page: number, search?: string): Promise<{ entries: MappingEntry[]; total: number; mappingType: MappingTypeName | null }> { ... }
+// export async function addConceptMapEntry(conceptMapId: string, localCode: string, localDisplay: string, localSystem: string, targetCode: string, targetDisplay: string): Promise<{ success: boolean; error?: string }> { ... }
+// export async function updateConceptMapEntry(conceptMapId: string, localCode: string, localSystem: string, newTargetCode: string, newTargetDisplay: string): Promise<{ success: boolean; error?: string }> { ... }
+// export async function deleteConceptMapEntry(conceptMapId: string, localCode: string, localSystem: string): Promise<void> { ... }
+//
+// Helper functions to move:
+// - detectMappingTypeFromConceptMap()
+// - checkDuplicateEntry()
+// - buildCompletedTask()
+// - matchesSearch()

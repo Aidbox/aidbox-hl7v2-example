@@ -1,3 +1,27 @@
+/**
+ * DESIGN PROTOTYPE: concept-map-refactoring.md
+ *
+ * This test file needs updates:
+ *
+ * TESTS TO DELETE (testing dead functions):
+ * - describe("getOrCreateConceptMap") - entire block
+ * - describe("addMapping") - entire block
+ * - describe("deleteMapping") - entire block
+ * - describe("searchMappings") - entire block
+ *
+ * TESTS TO KEEP:
+ * - describe("addMappingToConceptMap") - pure function, still used
+ * - describe("createEmptyConceptMap with different mapping types") - still used
+ * - describe("addMappingToConceptMap with different target systems") - still used
+ *
+ * TESTS TO ADD (moved from ui/code-mappings.test.ts):
+ * - describe("listConceptMaps")
+ * - describe("getMappingsFromConceptMap")
+ * - describe("addConceptMapEntry")
+ * - describe("updateConceptMapEntry")
+ * - describe("deleteConceptMapEntry")
+ * - describe("detectMappingTypeFromConceptMap")
+ */
 import { describe, test, expect, beforeEach, mock } from "bun:test";
 import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 
@@ -29,6 +53,7 @@ const sampleConceptMap: ConceptMap = {
   ],
 };
 
+// DESIGN PROTOTYPE: DELETE - Tests dead function getOrCreateConceptMap
 describe("getOrCreateConceptMap", () => {
   test("returns existing ConceptMap when found", async () => {
     const mockAidbox = {
@@ -85,6 +110,7 @@ describe("getOrCreateConceptMap", () => {
   });
 });
 
+// DESIGN PROTOTYPE: DELETE - Tests dead function addMapping
 describe("addMapping", () => {
   test("adds mapping to existing group with matching source system", async () => {
     let savedConceptMap: ConceptMap | null = null;
@@ -197,6 +223,7 @@ describe("addMapping", () => {
   });
 });
 
+// DESIGN PROTOTYPE: DELETE - Tests dead function deleteMapping
 describe("deleteMapping", () => {
   test("removes mapping from ConceptMap", async () => {
     let savedConceptMap: ConceptMap | null = null;
@@ -342,6 +369,7 @@ describe("addMappingToConceptMap", () => {
   });
 });
 
+// DESIGN PROTOTYPE: DELETE - Tests dead function searchMappings
 describe("searchMappings", () => {
   test("returns all mappings when no query specified", async () => {
     const mockAidbox = {

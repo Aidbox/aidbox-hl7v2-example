@@ -1,12 +1,32 @@
 /**
  * Tests for Code Mappings UI - CRUD operations
  *
- * Covers:
- * - listConceptMaps: returns all HL7v2-to-LOINC ConceptMaps
- * - addConceptMapEntry: adds entry, detects duplicates, completes Task
- * - updateConceptMapEntry: updates LOINC mapping with ETag
- * - deleteConceptMapEntry: removes entry, cleans up empty groups
- * - Integration: add → Task completed → message updated
+ * DESIGN PROTOTYPE: concept-map-refactoring.md
+ *
+ * After refactoring, CRUD tests should MOVE to concept-map-service.test.ts
+ * because the functions move from ui/pages/code-mappings.ts to code-mapping/concept-map/service.ts
+ *
+ * TESTS TO MOVE TO concept-map-service.test.ts:
+ * - describe("listConceptMaps")
+ * - describe("getMappingsFromConceptMap")
+ * - describe("addConceptMapEntry")
+ * - describe("updateConceptMapEntry")
+ * - describe("deleteConceptMapEntry")
+ * - describe("getMappingsFromConceptMap - search")
+ * - describe("integration: add mapping flow")
+ * - describe("listConceptMaps - type filtering")
+ * - describe("detectMappingTypeFromConceptMap")
+ *
+ * TESTS TO KEEP (UI rendering):
+ * - describe("parseTypeFilter")
+ * - describe("getMappingTypeFilterDisplay")
+ * - describe("getMappingTypeShortLabel")
+ * - describe("getValidValuesForType")
+ * - describe("renderMappingEntryPanel")
+ * - describe("renderCodeMappingsPage")
+ *
+ * IMPORT CHANGES NEEDED:
+ * - CRUD function imports change from ui/pages/code-mappings to code-mapping/concept-map/service
  */
 import { describe, test, expect, mock, afterEach } from "bun:test";
 import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
@@ -148,6 +168,7 @@ function createMockAidbox(overrides: Record<string, unknown> = {}) {
   };
 }
 
+// DESIGN PROTOTYPE: MOVE TO concept-map-service.test.ts
 describe("listConceptMaps", () => {
   afterEach(() => {
     mock.restore();
@@ -220,6 +241,7 @@ describe("listConceptMaps", () => {
   });
 });
 
+// DESIGN PROTOTYPE: MOVE TO concept-map-service.test.ts
 describe("getMappingsFromConceptMap", () => {
   afterEach(() => {
     mock.restore();
@@ -311,6 +333,7 @@ describe("getMappingsFromConceptMap", () => {
   });
 });
 
+// DESIGN PROTOTYPE: MOVE TO concept-map-service.test.ts
 describe("addConceptMapEntry", () => {
   afterEach(() => {
     mock.restore();
@@ -517,6 +540,7 @@ describe("addConceptMapEntry", () => {
   });
 });
 
+// DESIGN PROTOTYPE: MOVE TO concept-map-service.test.ts
 describe("updateConceptMapEntry", () => {
   afterEach(() => {
     mock.restore();
@@ -626,6 +650,7 @@ describe("updateConceptMapEntry", () => {
   });
 });
 
+// DESIGN PROTOTYPE: MOVE TO concept-map-service.test.ts
 describe("deleteConceptMapEntry", () => {
   afterEach(() => {
     mock.restore();
@@ -797,6 +822,7 @@ const searchTestConceptMap: ConceptMap = {
   ],
 };
 
+// DESIGN PROTOTYPE: MOVE TO concept-map-service.test.ts
 describe("getMappingsFromConceptMap - search", () => {
   afterEach(() => {
     mock.restore();
@@ -993,6 +1019,7 @@ describe("getMappingsFromConceptMap - search", () => {
   });
 });
 
+// DESIGN PROTOTYPE: MOVE TO concept-map-service.test.ts
 describe("integration: add mapping flow", () => {
   afterEach(() => {
     mock.restore();
@@ -1121,6 +1148,7 @@ const patientClassConceptMap: ConceptMap = {
   group: [],
 };
 
+// DESIGN PROTOTYPE: MOVE TO concept-map-service.test.ts
 describe("listConceptMaps - type filtering", () => {
   afterEach(() => {
     mock.restore();
@@ -1300,6 +1328,7 @@ describe("getMappingTypeShortLabel", () => {
   });
 });
 
+// DESIGN PROTOTYPE: MOVE TO concept-map-service.test.ts
 describe("detectMappingTypeFromConceptMap", () => {
   afterEach(() => {
     mock.restore();
