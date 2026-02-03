@@ -44,6 +44,9 @@ import {
 } from "../../aidbox";
 import { toKebabCase } from "../../utils/string";
 import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
+import { generateMappingTaskId } from "../mapping-task";
+import { updateAffectedMessages } from "../../api/task-resolution";
+import { PAGE_SIZE } from "../../ui/pagination";
 
 // SenderContext is defined here as the canonical location
 // observation-code-resolver.ts re-exports it for backward compatibility
@@ -397,10 +400,347 @@ export function buildCompletedTask(
   };
 }
 
-// DESIGN PROTOTYPE: Add CRUD functions here (moved from ui/pages/code-mappings.ts)
-//
-// export async function listConceptMaps(typeFilter: MappingTypeFilter = "all"): Promise<ConceptMapSummary[]> { ... }
-// export async function getMappingsFromConceptMap(conceptMapId: string, page: number, search?: string): Promise<{ entries: MappingEntry[]; total: number; mappingType: MappingTypeName | null }> { ... }
-// export async function addConceptMapEntry(conceptMapId: string, localCode: string, localDisplay: string, localSystem: string, targetCode: string, targetDisplay: string): Promise<{ success: boolean; error?: string }> { ... }
-// export async function updateConceptMapEntry(conceptMapId: string, localCode: string, localSystem: string, newTargetCode: string, newTargetDisplay: string): Promise<{ success: boolean; error?: string }> { ... }
-// export async function deleteConceptMapEntry(conceptMapId: string, localCode: string, localSystem: string): Promise<void> { ... }
+// ============================================================================
+// CRUD operations (moved from ui/pages/code-mappings.ts)
+// ============================================================================
+
+/**
+ * List all ConceptMaps for sender dropdown.
+ * Optionally filter by mapping type.
+ */
+export async function listConceptMaps(
+  typeFilter: MappingTypeFilter = "all",
+): Promise<ConceptMapSummary[]> {
+  const bundle = await aidboxFetch<Bundle<ConceptMap>>(
+    "/fhir/ConceptMap?_count=100",
+  );
+
+  const conceptMaps = bundle.entry?.map((e) => e.resource) || [];
+  const knownTargetSystems = getKnownTargetSystems();
+
+  return conceptMaps
+    .filter((cm) => {
+      // Only include ConceptMaps targeting systems we know about
+      if (!cm.targetUri || !knownTargetSystems.has(cm.targetUri)) {
+        return false;
+      }
+      // Apply type filter if specified
+      if (typeFilter !== "all") {
+        return cm.targetUri === MAPPING_TYPES[typeFilter].targetSystem;
+      }
+      return true;
+    })
+    .map((cm) => {
+      const mappingType = detectMappingTypeFromConceptMap(cm)!;
+      return {
+        id: cm.id!,
+        displayName: cm.title || cm.id!,
+        mappingType,
+        targetSystem: cm.targetUri!,
+      };
+    });
+}
+
+/**
+ * Get paginated mapping entries from a ConceptMap
+ */
+export async function getMappingsFromConceptMap(
+  conceptMapId: string,
+  page: number,
+  search?: string,
+): Promise<{
+  entries: MappingEntry[];
+  total: number;
+  mappingType: MappingTypeName | null;
+}> {
+  const conceptMap = await aidboxFetch<ConceptMap>(
+    `/fhir/ConceptMap/${conceptMapId}`,
+  );
+
+  const mappingType = detectMappingTypeFromConceptMap(conceptMap);
+  const defaultTargetSystem = conceptMap.targetUri || "";
+  const allEntries: MappingEntry[] = [];
+
+  for (const group of conceptMap.group || []) {
+    // Use group.target if available, otherwise fall back to conceptMap.targetUri
+    // This is important for ConceptMaps with multiple target systems (e.g., address-type vs address-use)
+    const groupTargetSystem = group.target ?? defaultTargetSystem;
+    for (const element of group.element || []) {
+      const target = element.target?.[0];
+      allEntries.push({
+        localCode: element.code || "",
+        localDisplay: element.display || "",
+        localSystem: group.source || "",
+        targetCode: target?.code || "",
+        targetDisplay: target?.display || "",
+        targetSystem: groupTargetSystem,
+      });
+    }
+  }
+
+  const filteredEntries = search
+    ? allEntries.filter((entry) => matchesSearch(entry, search))
+    : allEntries;
+
+  const total = filteredEntries.length;
+  const startIndex = (page - 1) * PAGE_SIZE;
+  const entries = filteredEntries.slice(startIndex, startIndex + PAGE_SIZE);
+
+  return { entries, total, mappingType };
+}
+
+/**
+ * Add a new entry to a ConceptMap.
+ * Uses atomic transaction when a matching Task exists.
+ */
+export async function addConceptMapEntry(
+  conceptMapId: string,
+  localCode: string,
+  localDisplay: string,
+  localSystem: string,
+  targetCode: string,
+  targetDisplay: string,
+): Promise<{ success: boolean; error?: string }> {
+  const { resource: conceptMap, etag: conceptMapEtag } =
+    await getResourceWithETag<ConceptMap>("ConceptMap", conceptMapId);
+
+  // Target system comes from the ConceptMap's targetUri
+  const targetSystem = conceptMap.targetUri || "http://loinc.org";
+
+  // Check for duplicate
+  if (checkDuplicateEntry(conceptMap, localSystem, localCode)) {
+    return {
+      success: false,
+      error: `Mapping already exists for code "${localCode}" in system "${localSystem}"`,
+    };
+  }
+
+  // Prepare updated ConceptMap
+  const updatedConceptMap = addMappingToConceptMap(
+    conceptMap,
+    localSystem,
+    localCode,
+    localDisplay,
+    targetCode,
+    targetDisplay,
+    targetSystem,
+  );
+
+  // Check if a matching Task exists
+  const taskId = generateMappingTaskId(conceptMapId, localSystem, localCode);
+  let task: Task | null = null;
+  let taskEtag: string = "";
+
+  try {
+    const result = await getResourceWithETag<Task>("Task", taskId);
+    if (result.resource.status === "requested") {
+      task = result.resource;
+      taskEtag = result.etag;
+    }
+  } catch (error) {
+    if (!(error instanceof NotFoundError)) {
+      throw error;
+    }
+    // Task doesn't exist - that's fine
+  }
+
+  if (task) {
+    // Atomic transaction: update ConceptMap AND complete Task together
+    const completedTask = buildCompletedTask(
+      task,
+      targetCode,
+      targetDisplay,
+      targetSystem,
+    );
+
+    const bundle = {
+      resourceType: "Bundle",
+      type: "transaction",
+      entry: [
+        {
+          resource: updatedConceptMap,
+          request: {
+            method: "PUT",
+            url: `ConceptMap/${conceptMapId}`,
+            ...(conceptMapEtag && { ifMatch: conceptMapEtag }),
+          },
+        },
+        {
+          resource: completedTask,
+          request: {
+            method: "PUT",
+            url: `Task/${taskId}`,
+            ...(taskEtag && { ifMatch: taskEtag }),
+          },
+        },
+      ],
+    };
+
+    await aidboxFetch("/fhir", {
+      method: "POST",
+      body: JSON.stringify(bundle),
+    });
+
+    // Update affected messages (non-critical, log warning if fails)
+    try {
+      await updateAffectedMessages(taskId);
+    } catch (updateError) {
+      console.warn(
+        `Failed to update affected messages for task ${taskId}:`,
+        updateError,
+      );
+    }
+  } else {
+    // No matching Task - just update ConceptMap
+    await updateResourceWithETag(
+      "ConceptMap",
+      conceptMapId,
+      updatedConceptMap,
+      conceptMapEtag,
+    );
+  }
+
+  return { success: true };
+}
+
+/**
+ * Update an existing entry in a ConceptMap.
+ * Handles target system changes (e.g., address-type vs address-use) by moving
+ * the entry to the correct group when necessary.
+ */
+export async function updateConceptMapEntry(
+  conceptMapId: string,
+  localCode: string,
+  localSystem: string,
+  newTargetCode: string,
+  newTargetDisplay: string,
+): Promise<{ success: boolean; error?: string }> {
+  const { resource: conceptMap, etag } = await getResourceWithETag<ConceptMap>(
+    "ConceptMap",
+    conceptMapId,
+  );
+
+  // Target system comes from the ConceptMap's targetUri
+  const newTargetSystem = conceptMap.targetUri || "http://loinc.org";
+
+  // Find the element and its current group
+  let foundGroup: ConceptMapGroup | null = null;
+  let foundElementIndex = -1;
+  let foundElement: ConceptMapGroupElement | null = null;
+
+  for (const group of conceptMap.group || []) {
+    if (group.source !== localSystem) continue;
+    const elements = group.element || [];
+    const elementIndex = elements.findIndex((e) => e.code === localCode);
+    if (elementIndex >= 0 && elements[elementIndex]) {
+      foundGroup = group;
+      foundElementIndex = elementIndex;
+      foundElement = elements[elementIndex];
+      break;
+    }
+  }
+
+  if (!foundGroup || !foundElement || foundElementIndex < 0) {
+    return {
+      success: false,
+      error: `Mapping not found for code "${localCode}" in system "${localSystem}"`,
+    };
+  }
+
+  // Check if the target system changed
+  const currentTargetSystem = foundGroup.target || conceptMap.targetUri;
+  const targetSystemChanged = currentTargetSystem !== newTargetSystem;
+
+  if (targetSystemChanged) {
+    // Remove from current group
+    foundGroup.element = foundGroup.element.filter(
+      (_, i) => i !== foundElementIndex,
+    );
+
+    // Find or create the new target group
+    let newGroup = (conceptMap.group || []).find(
+      (g) => g.source === localSystem && g.target === newTargetSystem,
+    );
+
+    if (!newGroup) {
+      newGroup = {
+        source: localSystem,
+        target: newTargetSystem,
+        element: [],
+      };
+      conceptMap.group = conceptMap.group || [];
+      conceptMap.group.push(newGroup);
+    }
+
+    // Add the updated element to the new group
+    newGroup.element = newGroup.element || [];
+    newGroup.element.push({
+      code: localCode,
+      ...(foundElement.display && { display: foundElement.display }),
+      target: [
+        {
+          code: newTargetCode,
+          display: newTargetDisplay,
+          equivalence: "equivalent",
+        },
+      ],
+    });
+
+    // Clean up empty groups
+    if (conceptMap.group) {
+      conceptMap.group = conceptMap.group.filter(
+        (g) => g.element && g.element.length > 0,
+      );
+      if (conceptMap.group.length === 0) {
+        conceptMap.group = undefined;
+      }
+    }
+  } else {
+    // Same target system - update in place
+    foundElement.target = [
+      {
+        code: newTargetCode,
+        display: newTargetDisplay,
+        equivalence: "equivalent",
+      },
+    ];
+  }
+
+  // Save
+  await updateResourceWithETag("ConceptMap", conceptMapId, conceptMap, etag);
+
+  return { success: true };
+}
+
+/**
+ * Delete an entry from a ConceptMap
+ */
+export async function deleteConceptMapEntry(
+  conceptMapId: string,
+  localCode: string,
+  localSystem: string,
+): Promise<void> {
+  const { resource: conceptMap, etag } = await getResourceWithETag<ConceptMap>(
+    "ConceptMap",
+    conceptMapId,
+  );
+
+  // Find and remove the element
+  for (const group of conceptMap.group || []) {
+    if (group.source !== localSystem) continue;
+    if (group.element) {
+      group.element = group.element.filter((e) => e.code !== localCode);
+    }
+  }
+
+  // Remove empty groups (set to undefined if all groups removed to avoid FHIR validation error)
+  if (conceptMap.group) {
+    const nonEmptyGroups = conceptMap.group.filter(
+      (g) => g.element && g.element.length > 0,
+    );
+    conceptMap.group = nonEmptyGroups.length > 0 ? nonEmptyGroups : undefined;
+  }
+
+  // Save
+  await updateResourceWithETag("ConceptMap", conceptMapId, conceptMap, etag);
+}

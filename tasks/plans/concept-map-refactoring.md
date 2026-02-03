@@ -500,20 +500,20 @@ Move the internal helper functions used by CRUD operations.
 
 Move the main CRUD operations that handle business logic.
 
-- [ ] Move `listConceptMaps()` function from code-mappings.ts to service.ts
-- [ ] Move `getMappingsFromConceptMap()` function from code-mappings.ts to service.ts
-- [ ] Move `addConceptMapEntry()` function from code-mappings.ts to service.ts
-- [ ] Move `updateConceptMapEntry()` function from code-mappings.ts to service.ts
-- [ ] Move `deleteConceptMapEntry()` function from code-mappings.ts to service.ts
-- [ ] Add import for `generateMappingTaskId` from mapping-task.ts in service.ts
-- [ ] Add import for `updateAffectedMessages` from `../../ui/mapping-tasks-queue` in service.ts
-- [ ] Add import for `PAGE_SIZE` from `../../ui/pagination` in service.ts
-- [ ] Export all CRUD functions from service.ts
-- [ ] Update `src/code-mapping/concept-map/index.ts` to export CRUD functions
-- [ ] Update `src/code-mapping/index.ts` to export CRUD functions
-- [ ] Update code-mappings.ts to import CRUD functions from `../../code-mapping/concept-map/service`
-- [ ] Remove moved functions from code-mappings.ts
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Move `listConceptMaps()` function from code-mappings.ts to service.ts
+- [x] Move `getMappingsFromConceptMap()` function from code-mappings.ts to service.ts
+- [x] Move `addConceptMapEntry()` function from code-mappings.ts to service.ts
+- [x] Move `updateConceptMapEntry()` function from code-mappings.ts to service.ts
+- [x] Move `deleteConceptMapEntry()` function from code-mappings.ts to service.ts
+- [x] Add import for `generateMappingTaskId` from mapping-task.ts in service.ts
+- [x] Add import for `updateAffectedMessages` from `../../ui/mapping-tasks-queue` in service.ts
+- [x] Add import for `PAGE_SIZE` from `../../ui/pagination` in service.ts
+- [x] Export all CRUD functions from service.ts
+- [x] Update `src/code-mapping/concept-map/index.ts` to export CRUD functions
+- [x] Update `src/code-mapping/index.ts` to export CRUD functions
+- [x] Update code-mappings.ts to import CRUD functions from `../../code-mapping/concept-map/service`
+- [x] Remove moved functions from code-mappings.ts
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

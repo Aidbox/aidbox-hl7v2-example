@@ -3,10 +3,12 @@
  *
  * Provides ConceptMap management and code resolution services.
  *
- * From service.ts (core ConceptMap operations + generic utilities):
+ * From service.ts (core ConceptMap operations + generic utilities + CRUD):
  * - fetchConceptMap, createEmptyConceptMap, addMappingToConceptMap
  * - generateBaseConceptMapId, generateConceptMapId, formatSenderAsTitle
  * - translateCode, TranslateResult
+ * - listConceptMaps, getMappingsFromConceptMap, addConceptMapEntry, updateConceptMapEntry, deleteConceptMapEntry
+ * - MappingTypeFilter, ConceptMapSummary, MappingEntry types
  * - SenderContext type
  *
  * From observation-code-resolver.ts (observation-specific):

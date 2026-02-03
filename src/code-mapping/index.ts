@@ -22,6 +22,11 @@ export {
   resolveToLoinc,
   buildCodeableConcept,
   LoincResolutionError,
+  listConceptMaps,
+  getMappingsFromConceptMap,
+  addConceptMapEntry,
+  updateConceptMapEntry,
+  deleteConceptMapEntry,
   type SenderContext,
   type CodeResolutionResult,
   type TranslateResult,
@@ -29,14 +34,6 @@ export {
   type ConceptMapSummary,
   type MappingEntry,
 } from "./concept-map";
-// DESIGN PROTOTYPE: Add new exports after refactoring:
-// export {
-//   listConceptMaps,
-//   getMappingsFromConceptMap,
-//   addConceptMapEntry,
-//   updateConceptMapEntry,
-//   deleteConceptMapEntry,
-// } from "./concept-map";
 
 export {
   generateMappingTaskId,
