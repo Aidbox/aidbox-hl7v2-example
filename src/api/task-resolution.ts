@@ -20,12 +20,11 @@ import {
   addMappingToConceptMap,
   buildCompletedTask,
 } from "../code-mapping/concept-map";
+import { getMappingTypeOrFail } from "../code-mapping/mapping-types";
 import {
-  getMappingTypeOrFail,
-  isMappingTypeName,
-  type MappingTypeName,
-} from "../code-mapping/mapping-types";
-import { updateAffectedMessages } from "../code-mapping/mapping-task";
+  updateAffectedMessages,
+  extractMappingTypeFromTask,
+} from "../code-mapping/mapping-task";
 
 /**
  * Get a value from a Task's input array by type text.
@@ -42,17 +41,6 @@ function extractSenderFromTask(task: Task): SenderContext {
     getTaskInputValue(task, "Sending application") || "";
   const sendingFacility = getTaskInputValue(task, "Sending facility") || "";
   return { sendingApplication, sendingFacility };
-}
-
-/**
- * Extract the mapping type from a Task's code.
- */
-function extractMappingTypeFromTask(task: Task): MappingTypeName {
-  const code = task.code?.coding?.[0]?.code;
-  if (!code || !isMappingTypeName(code)) {
-    throw new Error(`Task ${task.id} has invalid mapping type: ${code}`);
-  }
-  return code;
 }
 
 /**
