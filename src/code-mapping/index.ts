@@ -3,16 +3,6 @@
  *
  * Provides services for managing code mappings and
  * tracking unmapped codes via FHIR Task resources.
- *
- * DESIGN PROTOTYPE: concept-map-refactoring.md
- *
- * New exports will be added:
- * - listConceptMaps
- * - getMappingsFromConceptMap
- * - addConceptMapEntry
- * - updateConceptMapEntry
- * - deleteConceptMapEntry
- * - MappingTypeFilter, ConceptMapSummary, MappingEntry types
  */
 
 export {

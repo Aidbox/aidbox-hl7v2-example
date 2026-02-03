@@ -550,17 +550,17 @@ Fix the inverted dependency by importing from API layer instead of UI layer.
 
 Update the barrel exports to reflect the new structure and remove dead exports.
 
-- [ ] Update `src/code-mapping/concept-map/index.ts`:
+- [x] Update `src/code-mapping/concept-map/index.ts`:
   - Remove `export * from "./lookup"`
   - Add `export * from "./observation-code-resolver"`
   - Ensure service.ts exports are included
   - Remove DESIGN PROTOTYPE comments
-- [ ] Update `src/code-mapping/index.ts`:
+- [x] Update `src/code-mapping/index.ts`:
   - Remove dead function exports: `getOrCreateConceptMap`, `addMapping`, `deleteMapping`, `searchMappings`
   - Add new CRUD exports: `listConceptMaps`, `getMappingsFromConceptMap`, `addConceptMapEntry`, `updateConceptMapEntry`, `deleteConceptMapEntry`
   - Add type exports: `MappingTypeFilter`, `ConceptMapSummary`, `MappingEntry`
   - Remove DESIGN PROTOTYPE comments
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
