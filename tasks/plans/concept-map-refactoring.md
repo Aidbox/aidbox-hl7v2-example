@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 reviewer-iterations: 1
 prototype-files:
   - src/api/concept-map-entries.ts
@@ -626,14 +626,14 @@ Update documentation files that reference renamed files or deleted functions.
 
 Verify all prototype markers are removed and the refactoring is complete.
 
-- [ ] Run `grep -r "DESIGN PROTOTYPE: concept-map-refactoring" src/` - should return no results
-- [ ] Run `grep -r "DESIGN PROTOTYPE: concept-map-refactoring" test/` - should return no results
-- [ ] Verify `src/code-mapping/concept-map/lookup.ts` no longer exists
-- [ ] Verify `src/code-mapping/concept-map/observation-code-resolver.ts` exists and has no prototype markers
-- [ ] Verify `test/unit/code-mapping/conceptmap-lookup.test.ts` no longer exists
-- [ ] Verify `test/unit/code-mapping/observation-code-resolver.test.ts` exists
-- [ ] Update design document status from `planned` to `implemented` in frontmatter
-- [ ] Run `bun test:all` and `bun run typecheck` - final verification
+- [x] Run `grep -r "DESIGN PROTOTYPE: concept-map-refactoring" src/` - should return no results
+- [x] Run `grep -r "DESIGN PROTOTYPE: concept-map-refactoring" test/` - should return no results
+- [x] Verify `src/code-mapping/concept-map/lookup.ts` no longer exists
+- [x] Verify `src/code-mapping/concept-map/observation-code-resolver.ts` exists and has no prototype markers
+- [x] Verify `test/unit/code-mapping/conceptmap-lookup.test.ts` no longer exists
+- [x] Verify `test/unit/code-mapping/observation-code-resolver.test.ts` exists
+- [x] Update design document status from `planned` to `implemented` in frontmatter
+- [x] Run `bun test:all` and `bun run typecheck` - final verification
 
 ---
 
