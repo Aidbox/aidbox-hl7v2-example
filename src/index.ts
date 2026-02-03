@@ -24,6 +24,8 @@ import {
 } from "./api/concept-map-entries";
 import { handleMLLPClientPage, sendMLLPTest } from "./ui/pages/mllp-client";
 import { handleTaskResolution } from "./api/mapping-tasks";
+import { searchLoincCodes, validateLoincCode } from "./code-mapping/terminology-api";
+import { processNextMessage as processNextV2ToFhirMessage } from "./v2-to-fhir/processor-service";
 
 // ============================================================================
 // Server
@@ -61,7 +63,6 @@ Bun.serve({
       if (!query || query.length < 2) {
         return Response.json({ results: [] });
       }
-      const { searchLoincCodes } = await import("./code-mapping/terminology-api");
       try {
         const results = await searchLoincCodes(query);
         return Response.json({ results });
@@ -76,7 +77,6 @@ Bun.serve({
       if (!code) {
         return Response.json({ error: "Code required" }, { status: 400 });
       }
-      const { validateLoincCode } = await import("./code-mapping/terminology-api");
       try {
         const result = await validateLoincCode(code);
         if (result) {
@@ -180,8 +180,7 @@ Bun.serve({
     "/process-incoming-messages": {
       POST: async () => {
         (async () => {
-          const { processNextMessage } = await import("./v2-to-fhir/processor-service");
-          while (await processNextMessage()) {
+          while (await processNextV2ToFhirMessage()) {
             // Process until queue empty
           }
         })().catch(console.error);
