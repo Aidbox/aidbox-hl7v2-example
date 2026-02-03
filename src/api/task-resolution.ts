@@ -167,9 +167,6 @@ export async function resolveTaskWithMapping(
   });
 }
 
-// Re-export updateAffectedMessages for backward compatibility
-export { updateAffectedMessages } from "../code-mapping/mapping-task";
-
 /**
  * Resolve a mapping task and update all affected messages.
  *

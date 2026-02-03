@@ -33,7 +33,6 @@ import { generateMappingTaskId, updateAffectedMessages } from "../mapping-task";
 import { PAGE_SIZE } from "../../ui/pagination";
 
 // SenderContext is defined here as the canonical location
-// observation-code-resolver.ts re-exports it for backward compatibility
 export interface SenderContext {
   sendingApplication: string;
   sendingFacility: string;

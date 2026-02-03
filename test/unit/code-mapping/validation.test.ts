@@ -2,10 +2,8 @@
  * Unit tests for code-mapping validation module.
  */
 import { describe, test, expect } from "bun:test";
-import {
-  validateResolvedCode,
-  getValidValues,
-} from "../../../src/code-mapping/validation";
+import { validateResolvedCode } from "../../../src/code-mapping/validation";
+import { getValidValues } from "../../../src/code-mapping/mapping-type-options";
 
 describe("validateResolvedCode", () => {
   describe("LOINC validation", () => {
@@ -168,4 +166,3 @@ describe("getValidValues", () => {
     expect(values!.length).toBe(11);
   });
 });
-

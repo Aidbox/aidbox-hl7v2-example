@@ -127,38 +127,6 @@ function createCompletedLoincTask(): Task {
   };
 }
 
-function createLegacyLoincTask(): Task {
-  return {
-    resourceType: "Task",
-    id: "task-legacy-observation-code-loinc",
-    status: "completed",
-    intent: "order",
-    code: {
-      coding: [{
-        system: "urn:aidbox-hl7v2-converter:mapping-type",
-        code: "observation-code-loinc",
-        display: "Observation code to LOINC mapping",
-      }],
-    },
-    authoredOn: "2025-02-12T14:20:00Z",
-    input: [
-      { type: { text: "Sending application" }, valueString: "ACME_LAB" },
-      { type: { text: "Sending facility" }, valueString: "ACME_HOSP" },
-      { type: { text: "Local code" }, valueString: "NA_SERUM" },
-      { type: { text: "Local system" }, valueString: "ACME-LAB-CODES" },
-    ],
-    output: [{
-      type: { text: "Resolved LOINC" },
-      valueCodeableConcept: {
-        coding: [{
-          system: "http://loinc.org",
-          code: "2951-2",
-          display: "Sodium [Moles/volume] in Serum or Plasma",
-        }],
-      },
-    }],
-  };
-}
 
 const mockNavData: NavData = {
   pendingMappingTasksCount: 10,
@@ -297,15 +265,6 @@ describe("getTaskOutputMapping", () => {
     });
   });
 
-  test("returns resolved mapping for legacy task with 'Resolved LOINC' output", () => {
-    const task = createLegacyLoincTask();
-    const output = getTaskOutputMapping(task);
-    expect(output).toEqual({
-      code: "2951-2",
-      display: "Sodium [Moles/volume] in Serum or Plasma",
-    });
-  });
-
   test("returns undefined for pending task", () => {
     const task = createLoincTask();
     expect(getTaskOutputMapping(task)).toBeUndefined();
@@ -354,7 +313,7 @@ describe("renderMappingTaskPanel", () => {
     // Check LOINC autocomplete form
     expect(html).toContain("data-loinc-autocomplete");
     expect(html).toContain("Map to LOINC Code");
-    expect(html).toContain('name="loincCode"');
+    expect(html).toContain('name="resolvedCode"');
   });
 
   test("renders pending OBR status task with dropdown select", () => {
@@ -409,15 +368,6 @@ describe("renderMappingTaskPanel", () => {
 
     // Should not have form
     expect(html).not.toContain("<form");
-  });
-
-  test("renders legacy LOINC task with resolved mapping", () => {
-    const task = createLegacyLoincTask();
-    const html = renderMappingTaskPanel(task, false);
-
-    // Check resolved mapping display
-    expect(html).toContain("Resolved to:");
-    expect(html).toContain("2951-2");
   });
 
   test("escapes HTML in local code and display", () => {

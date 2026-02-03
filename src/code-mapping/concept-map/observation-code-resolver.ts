@@ -14,9 +14,6 @@ import {
   type SenderContext,
 } from "./service";
 
-// Re-export SenderContext for backward compatibility
-export type { SenderContext } from "./service";
-
 export interface CodeResolutionResult {
   loinc: Coding;
   local?: Coding;
@@ -222,4 +219,3 @@ export function buildCodeableConcept(
     text: result.loinc.display || result.local?.display,
   };
 }
-

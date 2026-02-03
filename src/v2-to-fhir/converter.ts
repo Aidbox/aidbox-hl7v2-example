@@ -98,6 +98,3 @@ export async function convertToFHIR(
 }
 
 export default convertToFHIR;
-
-// Re-export types for backward compatibility
-export type { Bundle, BundleEntry } from "../fhir/hl7-fhir-r4-core";

@@ -21,7 +21,7 @@ import {
   submitAndProcess,
 } from "../helpers";
 import { processNextMessage } from "../../../src/v2-to-fhir/processor-service";
-import { resolveTaskAndUpdateMessages } from "../../../src/ui/mapping-tasks-queue";
+import { resolveTaskAndUpdateMessages } from "../../../src/api/task-resolution";
 import type { Specimen } from "../../../src/fhir/hl7-fhir-r4-core";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 

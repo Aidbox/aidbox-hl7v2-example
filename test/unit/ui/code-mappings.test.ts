@@ -5,7 +5,7 @@
  * - parseTypeFilter
  * - getMappingTypeFilterDisplay
  * - getMappingTypeShortLabel
- * - getValidValuesForType
+ * - getValidValuesWithDisplay
  * - renderMappingEntryPanel
  * - renderCodeMappingsPage
  *
@@ -177,36 +177,29 @@ describe("getMappingTypeShortLabel", () => {
   });
 });
 
-describe("getValidValuesForType", () => {
-  afterEach(() => {
-    mock.restore();
-  });
-
+describe("getValidValuesWithDisplay", () => {
   test("returns patient class values", async () => {
-    mock.module("../../../src/aidbox", () => createMockAidbox());
-    const { getValidValuesForType } = await import("../../../src/ui/pages/code-mappings");
+    const { getValidValuesWithDisplay } = await import("../../../src/code-mapping/mapping-type-options");
 
-    const values = getValidValuesForType("patient-class");
+    const values = getValidValuesWithDisplay("patient-class");
     expect(values.length).toBeGreaterThan(0);
     expect(values.some(v => v.code === "AMB")).toBe(true);
     expect(values.some(v => v.code === "IMP")).toBe(true);
   });
 
   test("returns OBR status values", async () => {
-    mock.module("../../../src/aidbox", () => createMockAidbox());
-    const { getValidValuesForType } = await import("../../../src/ui/pages/code-mappings");
+    const { getValidValuesWithDisplay } = await import("../../../src/code-mapping/mapping-type-options");
 
-    const values = getValidValuesForType("obr-status");
+    const values = getValidValuesWithDisplay("obr-status");
     expect(values.length).toBeGreaterThan(0);
     expect(values.some(v => v.code === "final")).toBe(true);
     expect(values.some(v => v.code === "preliminary")).toBe(true);
   });
 
   test("returns empty array for LOINC (uses autocomplete instead)", async () => {
-    mock.module("../../../src/aidbox", () => createMockAidbox());
-    const { getValidValuesForType } = await import("../../../src/ui/pages/code-mappings");
+    const { getValidValuesWithDisplay } = await import("../../../src/code-mapping/mapping-type-options");
 
-    const values = getValidValuesForType("observation-code-loinc");
+    const values = getValidValuesWithDisplay("observation-code-loinc");
     expect(values).toHaveLength(0);
   });
 });

@@ -18,5 +18,5 @@
 
 // Export service functions first (service.ts defines SenderContext)
 export * from "./service";
-// Then observation-specific exports (observation-code-resolver.ts re-exports SenderContext)
+// Then observation-specific exports
 export * from "./observation-code-resolver";

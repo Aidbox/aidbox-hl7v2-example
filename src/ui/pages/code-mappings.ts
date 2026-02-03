@@ -22,7 +22,7 @@ import {
   type MappingTypeName,
   isMappingTypeName,
 } from "../../code-mapping/mapping-types";
-import { getValidValuesWithDisplay } from "../../code-mapping/validation";
+import { getValidValuesWithDisplay } from "../../code-mapping/mapping-type-options";
 import { getMappingTypeShortLabel } from "../mapping-type-ui";
 import {
   parsePageParam,
@@ -32,11 +32,6 @@ import {
 } from "../pagination";
 import { renderNav, renderLayout, type NavData } from "../shared-layout";
 import { htmlResponse, getNavData } from "../shared";
-
-// ============================================================================
-// Types re-exported from service layer for backward compatibility
-// ============================================================================
-export type { MappingTypeFilter, ConceptMapSummary, MappingEntry };
 
 // ============================================================================
 // Helper Functions (exported for testing)
@@ -262,12 +257,6 @@ export function renderCodeMappingsPage(
     content,
   );
 }
-
-/**
- * Get valid target values for a mapping type (for non-LOINC types).
- * Re-exported from validation module for backward compatibility with tests.
- */
-export { getValidValuesWithDisplay as getValidValuesForType } from "../../code-mapping/validation";
 
 /**
  * Render the target code input field based on mapping type.

@@ -177,7 +177,9 @@ export function renderLayout(
 
             // Clear hidden display field
             const form = input.closest('form');
-            const displayInput = form?.querySelector('input[name="loincDisplay"]');
+            const displayInput =
+              form?.querySelector('input[name="resolvedDisplay"]') ||
+              form?.querySelector('input[name="targetDisplay"]');
             if (displayInput) displayInput.value = '';
 
             if (query.length < 2) return;
@@ -208,7 +210,9 @@ export function renderLayout(
           const form = input.closest('form');
           if (form) {
             form.addEventListener('submit', (e) => {
-              const displayInput = form.querySelector('input[name="loincDisplay"]');
+              const displayInput =
+                form.querySelector('input[name="resolvedDisplay"]') ||
+                form.querySelector('input[name="targetDisplay"]');
               if (!displayInput?.value) {
                 e.preventDefault();
                 errorDiv.textContent = 'Please select a LOINC code from the dropdown';
@@ -297,7 +301,9 @@ export function renderLayout(
         input.classList.add('loinc-selected');
 
         const form = input.closest('form');
-        const displayInput = form?.querySelector('input[name="loincDisplay"]');
+        const displayInput =
+          form?.querySelector('input[name="resolvedDisplay"]') ||
+          form?.querySelector('input[name="targetDisplay"]');
         if (displayInput) displayInput.value = result.display;
 
         const errorDiv = wrapper.querySelector('.loinc-error');

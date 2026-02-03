@@ -13,8 +13,8 @@ import { resolveTaskAndUpdateMessages } from "./task-resolution";
  * Handle task resolution POST request.
  *
  * Expects form data with:
- * - resolvedCode (or legacy loincCode): The resolved target code
- * - resolvedDisplay (or legacy loincDisplay): Display text for the resolved code
+ * - resolvedCode: The resolved target code
+ * - resolvedDisplay: Display text for the resolved code
  *
  * @param req - Request with params.id containing the task ID
  */
@@ -28,14 +28,8 @@ export async function handleTaskResolution(
   }
 
   const formData = await req.formData();
-  // Support both legacy "loincCode" and new "resolvedCode" parameter names
-  const resolvedCode =
-    formData.get("resolvedCode")?.toString() ||
-    formData.get("loincCode")?.toString();
-  const resolvedDisplay =
-    formData.get("resolvedDisplay")?.toString() ||
-    formData.get("loincDisplay")?.toString() ||
-    "";
+  const resolvedCode = formData.get("resolvedCode")?.toString();
+  const resolvedDisplay = formData.get("resolvedDisplay")?.toString() || "";
 
   if (!resolvedCode) {
     return new Response(null, {

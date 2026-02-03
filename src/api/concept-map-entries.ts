@@ -31,14 +31,8 @@ export async function handleAddEntry(
   const localCode = formData.get("localCode")?.toString();
   const localDisplay = formData.get("localDisplay")?.toString() || "";
   const localSystem = formData.get("localSystem")?.toString();
-  // Support both old (loincCode) and new (targetCode) field names for backward compatibility
-  const targetCode =
-    formData.get("targetCode")?.toString() ||
-    formData.get("loincCode")?.toString();
-  const targetDisplay =
-    formData.get("targetDisplay")?.toString() ||
-    formData.get("loincDisplay")?.toString() ||
-    "";
+  const targetCode = formData.get("targetCode")?.toString();
+  const targetDisplay = formData.get("targetDisplay")?.toString() || "";
 
   if (!localCode || !localSystem || !targetCode) {
     return new Response(null, {
@@ -104,14 +98,8 @@ export async function handleUpdateEntry(
 
   const formData = await req.formData();
   const localSystem = formData.get("localSystem")?.toString();
-  // Support both old (loincCode) and new (targetCode) field names for backward compatibility
-  const targetCode =
-    formData.get("targetCode")?.toString() ||
-    formData.get("loincCode")?.toString();
-  const targetDisplay =
-    formData.get("targetDisplay")?.toString() ||
-    formData.get("loincDisplay")?.toString() ||
-    "";
+  const targetCode = formData.get("targetCode")?.toString();
+  const targetDisplay = formData.get("targetDisplay")?.toString() || "";
 
   if (!localSystem || !targetCode) {
     return new Response(null, {
