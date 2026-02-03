@@ -414,16 +414,16 @@ Refactor the ConceptMap module to fix architectural issues: remove dead code fro
 
 Remove the dead LOINC-hardcoded functions that are only called by tests, not production code.
 
-- [ ] Delete `getOrCreateConceptMap()` function from `src/code-mapping/concept-map/service.ts` (lines 173-185)
-- [ ] Delete `addMapping()` function from `src/code-mapping/concept-map/service.ts` (lines 189-210)
-- [ ] Delete `deleteMapping()` function from `src/code-mapping/concept-map/service.ts` (lines 214-236)
-- [ ] Delete `searchMappings()` function from `src/code-mapping/concept-map/service.ts` (lines 240-281)
-- [ ] Delete `describe("getOrCreateConceptMap")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
-- [ ] Delete `describe("addMapping")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
-- [ ] Delete `describe("deleteMapping")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
-- [ ] Delete `describe("searchMappings")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
-- [ ] Remove DESIGN PROTOTYPE comments from `src/code-mapping/concept-map/service.ts` related to deleted functions
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Delete `getOrCreateConceptMap()` function from `src/code-mapping/concept-map/service.ts` (lines 173-185)
+- [x] Delete `addMapping()` function from `src/code-mapping/concept-map/service.ts` (lines 189-210)
+- [x] Delete `deleteMapping()` function from `src/code-mapping/concept-map/service.ts` (lines 214-236)
+- [x] Delete `searchMappings()` function from `src/code-mapping/concept-map/service.ts` (lines 240-281)
+- [x] Delete `describe("getOrCreateConceptMap")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
+- [x] Delete `describe("addMapping")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
+- [x] Delete `describe("deleteMapping")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
+- [x] Delete `describe("searchMappings")` test block from `test/unit/code-mapping/concept-map-service.test.ts`
+- [x] Remove DESIGN PROTOTYPE comments from `src/code-mapping/concept-map/service.ts` related to deleted functions
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

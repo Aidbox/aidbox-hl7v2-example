@@ -6,12 +6,6 @@
  *
  * DESIGN PROTOTYPE: concept-map-refactoring.md
  *
- * After refactoring, dead exports will be removed:
- * - getOrCreateConceptMap (dead)
- * - addMapping (dead)
- * - deleteMapping (dead)
- * - searchMappings (dead)
- *
  * New exports will be added:
  * - listConceptMaps
  * - getMappingsFromConceptMap
@@ -21,12 +15,7 @@
  * - MappingTypeFilter, ConceptMapSummary, MappingEntry types
  */
 
-// DESIGN PROTOTYPE: Remove dead function exports
 export {
-  getOrCreateConceptMap, // DESIGN PROTOTYPE: DELETE - dead
-  addMapping, // DESIGN PROTOTYPE: DELETE - dead
-  deleteMapping, // DESIGN PROTOTYPE: DELETE - dead
-  searchMappings, // DESIGN PROTOTYPE: DELETE - dead
   fetchConceptMap,
   generateConceptMapId,
   translateCode,

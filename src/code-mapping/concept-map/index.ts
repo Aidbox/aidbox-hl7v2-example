@@ -29,12 +29,6 @@
  * - CodeResolutionResult
  * - LoincResolutionError
  * - MissingLocalSystemError
- *
- * DEAD EXPORTS TO REMOVE:
- * - getOrCreateConceptMap
- * - addMapping
- * - deleteMapping
- * - searchMappings
  */
 
 export * from "./lookup"; // DESIGN PROTOTYPE: Will change to "./observation-code-resolver"

@@ -24,12 +24,6 @@
  *    - MappingTypeFilter
  *    - ConceptMapSummary
  *    - MappingEntry
- *
- * 4. Dead functions to DELETE:
- *    - getOrCreateConceptMap() - only used by addMapping(), hardcoded for LOINC
- *    - addMapping() - only called by tests, hardcoded for LOINC
- *    - deleteMapping() - only called by tests, hardcoded for LOINC
- *    - searchMappings() - only called by tests, hardcoded for LOINC
  */
 
 import type {
@@ -168,117 +162,6 @@ export function addMappingToConceptMap(
   return updated;
 }
 
-// DESIGN PROTOTYPE: DELETE - Dead function, only used by addMapping() below
-// Hardcoded for "observation-code-loinc" mapping type, doesn't support multi-type
-export async function getOrCreateConceptMap(
-  sender: SenderContext,
-): Promise<ConceptMap> {
-  const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
-  const existing = await fetchConceptMap(conceptMapId);
-
-  if (existing) {
-    return existing;
-  }
-
-  const newConceptMap = createEmptyConceptMap(sender, "observation-code-loinc");
-  return putResource("ConceptMap", conceptMapId, newConceptMap);
-}
-
-// DESIGN PROTOTYPE: DELETE - Dead function, only called by tests
-// Hardcoded for LOINC target system, doesn't support multi-type mappings
-export async function addMapping(
-  sender: SenderContext,
-  localCode: string,
-  localSystem: string,
-  localDisplay: string,
-  loincCode: string,
-  loincDisplay: string,
-): Promise<void> {
-  const conceptMap = await getOrCreateConceptMap(sender);
-
-  const updatedConceptMap = addMappingToConceptMap(
-    conceptMap,
-    localSystem,
-    localCode,
-    localDisplay,
-    loincCode,
-    loincDisplay,
-    "http://loinc.org",
-  );
-
-  await putResource("ConceptMap", updatedConceptMap.id!, updatedConceptMap);
-}
-
-// DESIGN PROTOTYPE: DELETE - Dead function, only called by tests
-// Hardcoded for "observation-code-loinc" mapping type
-export async function deleteMapping(
-  sender: SenderContext,
-  localCode: string,
-  localSystem: string,
-): Promise<void> {
-  const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
-  const conceptMap = await fetchConceptMap(conceptMapId);
-
-  if (!conceptMap) {
-    return;
-  }
-
-  // Delete from all groups with matching source system
-  // (handles cases where same local code might exist in multiple target system groups)
-  for (const group of conceptMap.group || []) {
-    if (group.source !== localSystem) continue;
-    if (group.element) {
-      group.element = group.element.filter((e) => e.code !== localCode);
-    }
-  }
-
-  await putResource("ConceptMap", conceptMapId, conceptMap);
-}
-
-// DESIGN PROTOTYPE: DELETE - Dead function, only called by tests
-// Hardcoded for "observation-code-loinc" mapping type
-export async function searchMappings(
-  sender: SenderContext,
-  query?: { localCode?: string; loincCode?: string },
-): Promise<ConceptMapGroupElement[]> {
-  const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
-  const conceptMap = await fetchConceptMap(conceptMapId);
-
-  if (!conceptMap?.group) {
-    return [];
-  }
-
-  const allElements: ConceptMapGroupElement[] = [];
-
-  for (const group of conceptMap.group) {
-    if (!group.element) continue;
-
-    for (const element of group.element) {
-      allElements.push(element);
-    }
-  }
-
-  if (!query) {
-    return allElements;
-  }
-
-  return allElements.filter((element) => {
-    if (query.localCode && element.code !== query.localCode) {
-      return false;
-    }
-
-    if (query.loincCode) {
-      const hasMatchingTarget = element.target?.some(
-        (t) => t.code === query.loincCode,
-      );
-      if (!hasMatchingTarget) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-}
 
 // DESIGN PROTOTYPE: Add CRUD functions here (moved from ui/pages/code-mappings.ts)
 //
