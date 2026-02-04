@@ -383,6 +383,11 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
       reference: patientRef,
     };
 
+    // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
+    // Apply ADT authority requirement from config.
+    // If required and missing: stop processing, set message status=error with plain string error.
+    // If allowed: generate Encounter ID using centralized utility.
+
     // Generate encounter ID
     if (pv1.$19_visitNumber?.$1_value) {
       encounter.id = pv1.$19_visitNumber.$1_value;
@@ -539,6 +544,8 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   return {
     bundle,
     messageUpdate: {
+      // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
+      // When authority required and missing, return status="error" and error text instead.
       status: "processed",
       patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
     },

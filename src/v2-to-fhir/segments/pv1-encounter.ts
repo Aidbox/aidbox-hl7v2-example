@@ -749,6 +749,8 @@ export type PV1ConversionResult = {
   encounter: Encounter;
   /** Present if patient class couldn't be mapped - caller decides whether to block or create Task */
   mappingError?: MappingError;
+  // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
+  // Add authorityValidation?: { required: boolean; authority: string | null; source: "cx4" | "cx6" | "msh" | "missing" }
 };
 
 /**
@@ -791,6 +793,9 @@ export async function convertPV1WithMappingSupport(
   }
 
   const encounter = buildEncounterFromPV1(pv1, encounterClass, status);
+
+  // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
+  // Attach encounter.identifier from PV1-19 and authority validation outcome for caller policy.
 
   return { encounter, mappingError };
 }

@@ -383,6 +383,8 @@ function renderIncomingMessagesPage(
     switch (status) {
       case "processed":
         return "bg-green-100 text-green-800";
+      // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
+      // Add warning styling and label handling.
       case "error":
         return "bg-red-100 text-red-800";
       case "mapping_error":
@@ -417,9 +419,13 @@ function renderIncomingMessagesPage(
       (msg.status === "error" || msg.status === "mapping_error") && msg.id
         ? `/mark-for-retry/${msg.id}`
         : undefined,
+    // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
+    // Allow retry for warning status.
     unmappedCodes: msg.status === "mapping_error" ? msg.unmappedCodes : undefined,
   }));
 
+  // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
+  // Include "warning" in status filters and retry action eligibility.
   const statuses = ["received", "processed", "mapping_error", "error"];
 
   const content = `

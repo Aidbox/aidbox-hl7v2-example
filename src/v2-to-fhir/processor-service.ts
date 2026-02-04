@@ -87,6 +87,9 @@ async function applyMessageUpdate(
     delete updated.error;
   }
 
+  // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
+  // Allow status="warning" updates and preserve error text for warning messages.
+
   await putResource<IncomingHL7v2Message>(
     "IncomingHL7v2Message",
     message.id!,

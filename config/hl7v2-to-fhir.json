@@ -1,0 +1,15 @@
+{
+  "_designPrototype": "2026-02-03-unified-encounter-id-generation.md",
+  "ORU-R01": {
+    "validation": {
+      "PV1": {
+        "19": { "authority": { "required": true } }
+      }
+    }
+  },
+  "ADT": {
+    "PV1": {
+      "19": { "authority": { "required": true } }
+    }
+  }
+}
