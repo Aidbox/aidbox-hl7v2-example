@@ -1,5 +1,5 @@
 ---
-status: ai-reviewed
+status: changes-requested
 reviewer-iterations: 2
 prototype-files:
   - config/hl7v2-to-fhir.json
@@ -212,6 +212,32 @@ All feedback items verified as addressed. Design is comprehensive and ready for 
 
 ## User Feedback
 
-Missing or not stated very clearly:
-- Warning status must be included in UI filters, labels, and retry action eligibility.
-- ADT hard error (on missing/invalid encounter PV1-19) should avoid submitting any bundle and only update message status/error.
+I found a few flaws in the design proposal:
+
+1. Missing CX.9 in the resolution algorithm priority. Read the doc for the algorithm: https://www.hl7.eu/HL7v2x/v282/std282/ch02a.html - gather ALL rules about "what is required when"
+2. The statement "CX.4 (Assigning Authority) should take priority over CX.6 (Assigning Facility)"
+3. There's no clarification on what should be done (in both ORU and ADT) if the PV1-19 is NOT required, but still missing
+4. Why function resolveEncounterAuthority is exported? I think it should be local for the encounter id resolution, and if the id fails to generate, the generateEncounterId or buildEncounterIdentifier should return an error with the failed policy description. EncounterAuthorityResolution shouldn't probably be exported too.
+5. Let's specify in the config the exact message: "ORU-R01" and "ADT-A01"
+6. Let's remove "validation" wrapper for both messages in the config
+7. Functions in the id-generation namespace accept SenderContext (I assume to generate id using them as the fallback for missing authority), but they don't know if the authority is required or not. So they don't know and the caller won't know if the authority was found or replaced with the fallback.
+8. I don't see any place where the preprocessor is called.
+9. Let's change the paradigm a bit: the authority IS always required FOR Encounter creation (because PV1-19 without the authority is outright invalid according to hl7v2 spec), so it should be enforced by the converter and return an error if it doesn't have the authority. BUT the encounter itself (i.e. a valid PV1) is not required for ORU-R01, but IS required for ADT-A01. So let's change the config to:
+```json
+{
+  "ORU-R01": {
+    "PV1": {
+      "required": false
+    }
+  },
+  "ADT-A01": {
+    "PV1": {
+      "required": true
+    }
+  }
+}
+
+```
+10. Please, clarify how `authority.source` will be used? I'm not sure why we need this field at all.
+11. I think `convertPV1WithMappingSupport` returning `PV1ConversionResult` with authority information is an encapsulation flaw. The caller doesn't need to know WHY PV1 is invalid, it only needs to know that it's invalid. 
+
