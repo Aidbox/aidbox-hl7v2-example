@@ -1,5 +1,5 @@
 ---
-status: ready-for-review
+status: ai-reviewed
 reviewer-iterations: 2
 prototype-files:
   - config/hl7v2-to-fhir.json
@@ -186,7 +186,12 @@ The `warning` status must be fully supported in the incoming messages UI:
 - Config location: `config/hl7v2-to-fhir.json`. Missing converter config is a hard error; missing preprocess config is allowed.
 
 ## AI Review Notes
-User feedback items have been incorporated into config shape, authority rules, and prototype markers (preprocessor + converter policy + ID generation API). Ready for re-review.
+Reviewed against current requirements and feedback. No blockers found.
+- Config is message-type keyed with optional preprocess + converter sections; sender-agnostic noted and deferred to global preprocessors doc.
+- Authority rules cover CX.4/CX.9/CX.10 conditional requirements; conflicts without profile guidance are treated as errors.
+- Preprocessor is explicitly called before handlers (prototype marker) and returns only a modified message.
+- ID generation API exports only `buildEncounterIdentifier` with internal authority resolution helpers.
+- Warning behavior for ORU and error behavior for ADT are documented, with UI and schema updates listed.
 
 ## User Feedback
 
