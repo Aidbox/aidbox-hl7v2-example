@@ -8,8 +8,10 @@
     }
   },
   "ADT": {
-    "PV1": {
-      "19": { "authority": { "required": true } }
+    "validation": {
+      "PV1": {
+        "19": { "authority": { "required": true } }
+      }
     }
   }
 }

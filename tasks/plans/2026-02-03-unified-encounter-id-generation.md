@@ -1,5 +1,5 @@
 ---
-status: changes-requested
+status: ready-for-review
 reviewer-iterations: 1
 prototype-files:
   - config/hl7v2-to-fhir.json
@@ -47,7 +47,7 @@ Introduce centralized Encounter ID generation with explicit authority resolution
 | `src/v2-to-fhir/messages/adt-a01.ts` | Modify | ADT policy: hard error |
 | `src/v2-to-fhir/processor-service.ts` | Modify | Allow `warning` updates |
 | `src/ui/pages/messages.ts` | Modify | Display `warning`, add retry action |
-| `src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message.ts` | Modify | Add `warning` to status |
+| `src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message.ts` | Regenerated | Add `warning` to status (regenerated from init-bundle.json via @atomic-ehr/codegen) |
 | `init-bundle.json` | Modify | Add `warning` status in schema |
 
 ## Technical Details
@@ -63,12 +63,25 @@ Introduce centralized Encounter ID generation with explicit authority resolution
     }
   },
   "ADT": {
-    "PV1": {
-      "19": { "authority": { "required": true } }
+    "validation": {
+      "PV1": {
+        "19": { "authority": { "required": true } }
+      }
     }
   }
 }
 ```
+
+### Config loading strategy
+- Config is loaded once at application startup and cached for the process lifetime.
+- Missing or malformed config file is a hard startup error (fail fast).
+- No runtime reload; changes require application restart.
+
+### Authority resolution priority
+When resolving the assigning authority from PV1-19 (Visit Number, CX type):
+1. **CX.4** (Assigning Authority) - primary source
+2. **CX.6** (Assigning Facility) - fallback if CX.4 is empty
+3. **MSH fallback** - if both CX.4 and CX.6 are empty, use `SenderContext.sendingApplication` / `SenderContext.sendingFacility` (from MSH-3/MSH-4)
 
 ### Utility API (new module)
 ```ts
@@ -91,8 +104,14 @@ export function generateEncounterId(
 ### Validation behavior
 - Authority present: generate Encounter ID, create Encounter.
 - ORU required + missing: skip Encounter creation, keep report/observations, set `status=warning` and a plain string error.
-- ADT required + missing: stop processing, set `status=error` and a plain string error.
+- ADT required + missing: stop processing immediately, do NOT submit any FHIR bundle (no partial resource creation), set `status=error` and a plain string error on the IncomingHL7v2Message only.
 - Config missing/invalid: stop processing with `status=error`.
+
+### UI requirements for warning status
+The `warning` status must be fully supported in the incoming messages UI:
+- **Status filter dropdown**: Include `warning` as a selectable filter option.
+- **Status label/badge**: Render `warning` messages with appropriate visual styling (e.g., yellow/amber badge).
+- **Retry action eligibility**: Warning messages can be retried via the manual retry action (same as other error statuses).
 
 ## Edge Cases and Error Handling
 - PV1 missing entirely: no authority check, no Encounter (existing behavior).
@@ -105,9 +124,13 @@ export function generateEncounterId(
 | Test Case | Type | Description |
 |-----------|------|-------------|
 | ORU missing authority → warning | Integration | Process ORU, create report/observations, skip Encounter, message `warning`. |
-| ADT missing authority → error | Integration | Processing stops, message `error`, no resources created. |
-| Config missing | Unit | Config loader fails fast with error. |
+| ADT missing authority → error | Integration | Processing stops, message `error`, no FHIR bundle submitted. |
+| Config missing | Unit | Config loader fails fast with error at startup. |
+| Config malformed JSON | Unit | Config loader fails fast with parse error at startup. |
 | Authority present → unified ID | Unit | `generateEncounterId` uses CX.4/CX.6 then MSH fallback. |
+| Authority fallback chain | Unit | CX.4 → CX.6 → MSH: verify each level is tried in order. |
+| Empty-after-sanitization | Unit | Authority value that sanitizes to empty string treated as missing. |
+| ORU clinical data preserved | Integration | When Encounter skipped due to missing authority, DiagnosticReport and Observations are still created. |
 | Warning retry action | Integration | UI action retries a warning message. |
 
 # Context
@@ -169,6 +192,19 @@ Missing or not stated very clearly:
 - Config loading strategy (startup vs per-message) should be startup with caching
 - CX.4 (Assigning Authority) should take priority over CX.6 (Assigning Facility)
 - MSH fallback uses `SenderContext.sendingApplication` / `SenderContext.sendingFacility`
+
+### Changes Made (Iteration 1 Feedback)
+
+All review notes and user feedback have been addressed:
+
+1. **Config schema normalized** - Added `validation` wrapper to ADT config to match ORU structure
+2. **Config loading clarified** - Added "Config loading strategy" section: load once at startup, cache for process lifetime
+3. **Authority priority documented** - Added "Authority resolution priority" section: CX.4 > CX.6 > MSH fallback
+4. **MSH fallback clarified** - Explicitly documented that MSH fallback uses `SenderContext.sendingApplication` / `SenderContext.sendingFacility`
+5. **Autogenerated file clarified** - Updated Affected Components table to note that `IncomingHl7v2message.ts` is regenerated from init-bundle.json via @atomic-ehr/codegen
+6. **Missing test cases added** - Test Cases table now includes: authority fallback chain, empty-after-sanitization, ORU clinical data preserved, malformed config JSON
+7. **UI warning status requirements** - Added "UI requirements for warning status" section covering filter dropdown, status badge, and retry eligibility
+8. **ADT error behavior explicit** - Updated validation behavior to state ADT hard error does NOT submit any FHIR bundle (no partial resource creation)
 
 ## User Feedback
 
