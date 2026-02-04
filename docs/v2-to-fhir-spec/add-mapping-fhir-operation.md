@@ -2,19 +2,19 @@
 
 The `$add-mapping` operation merges mappings into a ConceptMap, ignoring any that already exist.
 
-The [$add](https://hl7.org/fhir/R5/resource-operation-add.html) operation supports only Group and List resources and returns the modified resource. For large ConceptMap resources, returning the full content is not practical.
-
 The server SHALL add mappings from the input `group` elements. Two mappings match if they share the same `group.source`, `group.target`, `element.code`, and `target.code`.
 
 - If a mapping does not exist, it is added.
 - If a mapping already exists, it is ignored.
 - If a `group` with the specified `source` and `target` does not exist, it is created.
 
-All ConceptMap elements outside of `group` are ignored.
+The server SHALL ignore all ConceptMap elements outside of `group`.
+
+Clients MAY supply an `If-Match` header with an ETag reflecting the current version of the ConceptMap. Servers SHALL reject the request if a supplied ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
 
 URL: [base]/ConceptMap/[id]/$add-mapping
 
-Clients MAY supply an `If-Match` header with an ETag reflecting the current version of the ConceptMap. Servers SHALL reject the request if a supplied ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
+This is not an idempotent operation.
 
 **In Parameters:**
 
@@ -69,5 +69,48 @@ Content-Type: application/fhir+json
     "code": "informational",
     "diagnostics": "Mapping added"
   }]
+}
+```
+
+## Rationale
+
+The [$add](https://hl7.org/fhir/R6/resource-operation-add.html) operation supports only Group and List resources and returns the modified resource. For large ConceptMap resources, returning the full content is not practical.
+
+## Formal Definition
+
+```json
+{
+  "resourceType": "OperationDefinition",
+  "id": "ConceptMap-add-mapping",
+  "url": "http://hl7.org/fhir/OperationDefinition/ConceptMap-add-mapping",
+  "version": "6.0.0",
+  "name": "AddMapping",
+  "title": "Add mappings to a ConceptMap",
+  "status": "draft",
+  "kind": "operation",
+  "affectsState": true,
+  "code": "add-mapping",
+  "resource": ["ConceptMap"],
+  "system": false,
+  "type": false,
+  "instance": true,
+  "parameter": [
+    {
+      "name": "mappings",
+      "use": "in",
+      "min": 1,
+      "max": "1",
+      "documentation": "ConceptMap containing mappings to add. Only group elements are processed.",
+      "type": "ConceptMap"
+    },
+    {
+      "name": "return",
+      "use": "out",
+      "min": 1,
+      "max": "1",
+      "documentation": "Outcome of the operation",
+      "type": "OperationOutcome"
+    }
+  ]
 }
 ```
