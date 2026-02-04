@@ -1,5 +1,5 @@
 ---
-status: changes-requested
+status: explored
 reviewer-iterations: 2
 prototype-files:
   - config/hl7v2-to-fhir.json
@@ -158,6 +158,19 @@ The `warning` status must be fully supported in the incoming messages UI:
 - ORU: if authority is missing and policy blocks, still process clinical data (create DiagnosticReport/Observations) but do not create Encounter; mark message `warning`.
 - ADT: if authority is required and missing, stop processing and mark message `error` (plain string error).
 - Config location: `config/hl7v2-to-fhir.json` with the paths above. Missing config is a hard error.
+- Updated requirements after review feedback:
+  - Config schema is exactly:
+    ```json
+    {
+      "ORU-R01": { "PV1": { "required": false } },
+      "ADT-A01": { "PV1": { "required": true } }
+    }
+    ```
+  - Core converter must be HL7 v2.8.2 spec-conformant, including CX.9 and all "required when" rules for CX components, with no MSH fallback in the core algorithm.
+  - Preprocessor tooling (config-driven) runs before message handlers to normalize non-conformant messages for specific senders.
+  - If PV1 is not required and missing/invalid, skip Encounter and mark `warning`.
+  - ID generation API should be single-entrypoint, with no exported `resolveEncounterAuthority` / `EncounterAuthorityResolution`; it should return a descriptive error used in the IncomingHL7v2Message warning/error.
+  - Authority is always required for Encounter creation; PV1 presence governs whether Encounter is required per message type.
 
 ## AI Review Notes
 
@@ -240,4 +253,3 @@ I found a few flaws in the design proposal:
 ```
 10. Please, clarify how `authority.source` will be used? I'm not sure why we need this field at all.
 11. I think `convertPV1WithMappingSupport` returning `PV1ConversionResult` with authority information is an encapsulation flaw. The caller doesn't need to know WHY PV1 is invalid, it only needs to know that it's invalid. 
-
