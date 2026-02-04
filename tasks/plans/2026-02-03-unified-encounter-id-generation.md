@@ -1,10 +1,11 @@
 ---
-status: explored
+status: ready-for-review
 reviewer-iterations: 2
 prototype-files:
   - config/hl7v2-to-fhir.json
   - src/v2-to-fhir/config.ts
   - src/v2-to-fhir/id-generation.ts
+  - src/v2-to-fhir/preprocessor.ts
   - src/v2-to-fhir/segments/pv1-encounter.ts
   - src/v2-to-fhir/messages/oru-r01.ts
   - src/v2-to-fhir/messages/adt-a01.ts
@@ -16,36 +17,40 @@ prototype-files:
 # Design: Unified Encounter ID Generation
 
 ## Problem Statement
-ADT and ORU currently generate Encounter IDs using different strategies, which fragments visit data and leaves orphaned draft Encounters. Missing PV1-19 assigning authority must be enforced consistently with explicit, configurable behavior rather than ad-hoc fallbacks. We need a unified ID strategy and a validation policy that can warn or hard-fail based on message type. Warnings must be visible in the incoming queue with manual retry.
+ADT and ORU currently generate Encounter IDs using different strategies, which fragments visit data and leaves orphaned draft Encounters. The core converter must be HL7 v2.8.2 compliant for PV1-19 authority requirements, while allowing preprocessing for non-conformant messages. We need a unified ID strategy, a preprocessor stage before conversion, and message-type policy to warn or hard-fail. Warnings must be visible in the incoming queue with manual retry.
 
 ## Proposed Approach
-Introduce centralized Encounter ID generation with explicit authority resolution and a JSON validation config at `config/hl7v2-to-fhir.json`. PV1 conversion returns Encounter data plus an authority validation outcome. ORU continues processing reports/observations when authority is missing but skips Encounter creation and marks the message `warning`. ADT fails the message with `status=error` when authority is required and missing. Missing config is a hard error to avoid implicit defaults. The incoming message schema and UI queue add `warning` support and a manual retry action.
+Introduce a preprocessor stage that runs before message handlers and returns only a modified IncomingHL7v2Message (converters are unaware it ran). The preprocessor loads a JSON config at `config/hl7v2-to-fhir.json` keyed by exact message type (`ORU-R01`, `ADT-A01`); preprocessor config is optional per message type. It may fix missing PV1-19 authority using MSH sender context when enabled, but it never sets status or error. The core converter enforces HL7 v2.8.2 CX requirements for authority using CX.4 / CX.9 / CX.10 with no MSH fallback; invalid PV1-19 causes a descriptive error. Converter policy controls whether PV1 is required per message type (ORU-R01 optional, ADT-A01 required). Missing converter config is a hard error to avoid implicit defaults. The incoming message schema and UI queue add `warning` support and a manual retry action.
 
 ## Key Decisions
 
 | Decision | Options Considered | Chosen | Rationale |
 |----------|-------------------|--------|-----------|
 | Config source | A) Env vars, B) JSON file, C) Aidbox resource | B | Versionable and explicit without environment sprawl. |
-| ORU missing authority | A) Fail message, B) Warn + skip Encounter, C) Ignore | B | Preserve clinical data while flagging linkage issue. |
-| ADT missing authority | A) Warn, B) Hard error, C) Fallback ID | B | ADT is source of truth; avoid inconsistent IDs. |
+| Core authority rules | A) Spec-compliant CX.4/9/10, B) MSH fallback | A | Core converter must be HL7 v2.8.2 compliant; preprocessors handle non-conformant messages. |
+| Preprocessor location | A) Before handlers, B) Inside handlers | A | Ensures all conversion paths receive validated/normalized input. |
+| PV1 optional in ORU-R01 | A) Warn + skip Encounter, B) Silent skip | A | Preserve clinical data while surfacing data quality issues. |
+| ADT-A01 missing/invalid PV1 | A) Warn, B) Hard error | B | ADT is source of truth; avoid inconsistent IDs. |
+| Conflicting CX.4/9/10 values | A) Pick priority, B) Error without profile | B | Spec defers precedence to message profile; preprocessor can resolve. |
 | Warning handling | A) Auto-retry, B) Manual retry | B | Avoid silent reprocessing; user-controlled. |
 
 ## Trade-offs
-- **Pro**: Consistent Encounter identity and explicit validation policy per message type.
-- **Con**: Hard error when config missing can break pipelines on misconfiguration.
-- **Mitigated by**: Include standard config file in repo and clear error strings.
+- **Pro**: Strict spec compliance in core converter with explicit preprocessor policy per message type.
+- **Con**: Non-conformant messages will fail unless preprocessor rules are configured.
+- **Mitigated by**: Config-driven preprocessing to normalize or skip Encounter creation with descriptive warnings.
 
 ## Affected Components
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `config/hl7v2-to-fhir.json` | Create | Validation config for PV1-19 authority requirement |
+| `config/hl7v2-to-fhir.json` | Create | Preprocess + converter config per message type |
 | `src/v2-to-fhir/config.ts` | Create | Load and validate JSON config |
-| `src/v2-to-fhir/id-generation.ts` | Create | Centralized Encounter ID + authority resolution |
-| `src/v2-to-fhir/segments/pv1-encounter.ts` | Modify | Provide authority validation outcome and identifiers |
-| `src/v2-to-fhir/messages/oru-r01.ts` | Modify | ORU policy: warning + skip Encounter |
-| `src/v2-to-fhir/messages/adt-a01.ts` | Modify | ADT policy: hard error |
-| `src/v2-to-fhir/processor-service.ts` | Modify | Allow `warning` updates |
+| `src/v2-to-fhir/preprocessor.ts` | Create | Preprocess messages before conversion (PV1 required policy) |
+| `src/v2-to-fhir/id-generation.ts` | Create | Strict Encounter identifier builder (CX.4/9/10) |
+| `src/v2-to-fhir/segments/pv1-encounter.ts` | Modify | Use strict identifier builder; no authority metadata leakage |
+| `src/v2-to-fhir/messages/oru-r01.ts` | Modify | ORU policy: warning + skip Encounter when PV1 optional/missing |
+| `src/v2-to-fhir/messages/adt-a01.ts` | Modify | ADT policy: hard error when PV1 required and missing/invalid |
+| `src/v2-to-fhir/processor-service.ts` | Modify | Run preprocessor before message handlers; allow `warning` updates |
 | `src/ui/pages/messages.ts` | Modify | Display `warning`, add retry action |
 | `src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message.ts` | Regenerated | Add `warning` to status (regenerated from init-bundle.json via @atomic-ehr/codegen) |
 | `init-bundle.json` | Modify | Add `warning` status in schema |
@@ -56,18 +61,12 @@ Introduce centralized Encounter ID generation with explicit authority resolution
 ```json
 {
   "ORU-R01": {
-    "validation": {
-      "PV1": {
-        "19": { "authority": { "required": true } }
-      }
-    }
+    "preprocess": { "PV1": { "19": { "authorityFallback": { "source": "msh" } } } },
+    "converter": { "PV1": { "required": false } }
   },
-  "ADT": {
-    "validation": {
-      "PV1": {
-        "19": { "authority": { "required": true } }
-      }
-    }
+  "ADT-A01": {
+    "preprocess": { "PV1": { "19": { "authorityFallback": { "source": "msh" } } } },
+    "converter": { "PV1": { "required": true } }
   }
 }
 ```
@@ -77,35 +76,46 @@ Introduce centralized Encounter ID generation with explicit authority resolution
 - Missing or malformed config file is a hard startup error (fail fast).
 - No runtime reload; changes require application restart.
 
-### Authority resolution priority
-When resolving the assigning authority from PV1-19 (Visit Number, CX type):
-1. **CX.4** (Assigning Authority) - primary source
-2. **CX.6** (Assigning Facility) - fallback if CX.4 is empty
-3. **MSH fallback** - if both CX.4 and CX.6 are empty, use `SenderContext.sendingApplication` / `SenderContext.sendingFacility` (from MSH-3/MSH-4)
+### Preprocessor pipeline
+- Preprocessor runs before message handlers and returns a modified IncomingHL7v2Message only (no diagnostics object).
+- It applies config to normalize PV1 for non-conformant messages.
+- It can optionally fill missing PV1-19 authority (CX.4/9/10) using MSH sender context when `authorityFallback.source="msh"` is enabled.
+- It never sets `status` or `error` fields.
+
+### authorityFallback.source usage
+`authorityFallback.source` controls where the preprocessor derives missing PV1-19 authority from. Currently the only supported value is `"msh"`, which uses MSH sender context:
+- Populate CX.4 (Assigning Authority) with MSH-3/4 values (namespace/universal ID) when PV1-19 authority components are missing.
+- Do not override any existing CX.4/CX.9/CX.10 values.
+This keeps the fallback explicit and isolated to preprocessing; the core converter never falls back to MSH.
+
+### Authority requirements (HL7 v2.8.2 CX rules)
+For PV1-19 (CX type), authority must satisfy the conditional requirements defined for CX components:
+- At least one of **CX.4 Assigning Authority**, **CX.9 Assigning Jurisdiction**, or **CX.10 Assigning Agency/Department** must be populated.
+- **CX.4** is required if neither **CX.9** nor **CX.10** are populated.
+- **CX.9** is required if neither **CX.4** nor **CX.10** are populated.
+- **CX.10** is required if neither **CX.4** nor **CX.9** are populated.
+- All three components may be valued; if CX.4 conflicts with CX.9/CX.10, precedence is defined by the Message Profile or implementation agreement.
+- **CX.6 Assigning Facility** is not the authority; it is historical context about where the identifier was first assigned. It does not satisfy authority requirements.
 
 ### Utility API (new module)
 ```ts
-export type EncounterAuthorityResolution = {
-  authority: string | null;
-  source: "cx4" | "cx6" | "msh" | "missing";
+export type EncounterIdentifierResult = {
+  identifier?: Encounter["identifier"];
+  error?: string; // descriptive error for IncomingHL7v2Message
 };
 
-export function resolveEncounterAuthority(
+export function buildEncounterIdentifier(
   visitNumber: CX,
-  sender: SenderContext,
-): EncounterAuthorityResolution;
-
-export function generateEncounterId(
-  visitNumber: CX,
-  sender: SenderContext,
-): string | null;
+): EncounterIdentifierResult;
 ```
+The ID generation API is a single public entrypoint; any authority resolution helpers are internal to `id-generation.ts` and not exported.
 
 ### Validation behavior
-- Authority present: generate Encounter ID, create Encounter.
-- ORU required + missing: skip Encounter creation, keep report/observations, set `status=warning` and a plain string error.
-- ADT required + missing: stop processing immediately, do NOT submit any FHIR bundle (no partial resource creation), set `status=error` and a plain string error on the IncomingHL7v2Message only.
-- Config missing/invalid: stop processing with `status=error`.
+- Core converter is strict: Encounter creation requires a valid PV1-19 identifier with authority satisfying CX.4/9/10 rules; conflicts without profile guidance are treated as errors.
+- Converter policy runs in message handlers:
+  - **ORU-R01** with `converter.PV1.required=false`: if PV1 missing/invalid, skip Encounter creation, continue clinical data, set `status=warning` with descriptive error.
+  - **ADT-A01** with `converter.PV1.required=true`: if PV1 missing/invalid, stop processing immediately, set `status=error`, submit no bundle.
+- Converter config missing/invalid: stop processing with `status=error`.
 
 ### UI requirements for warning status
 The `warning` status must be fully supported in the incoming messages UI:
@@ -114,9 +124,10 @@ The `warning` status must be fully supported in the incoming messages UI:
 - **Retry action eligibility**: Warning messages can be retried via the manual retry action (same as other error statuses).
 
 ## Edge Cases and Error Handling
-- PV1 missing entirely: no authority check, no Encounter (existing behavior).
+- PV1 missing entirely: if PV1 required → error, else skip Encounter and set warning.
 - PV1-19 present but value missing: treat as missing identifier.
-- Authority present but value sanitizes to empty: treat as missing.
+- Authority components present but empty/whitespace: treat as missing.
+- Conflicting CX.4/CX.9/CX.10 values without profile guidance: treat as invalid PV1-19.
 - Warning messages are not auto-requeued; manual retry only.
 
 ## Test Cases
@@ -127,11 +138,13 @@ The `warning` status must be fully supported in the incoming messages UI:
 | ADT missing authority → error | Integration | Processing stops, message `error`, no FHIR bundle submitted. |
 | Config missing | Unit | Config loader fails fast with error at startup. |
 | Config malformed JSON | Unit | Config loader fails fast with parse error at startup. |
-| Authority present → unified ID | Unit | `generateEncounterId` uses CX.4/CX.6 then MSH fallback. |
-| Authority fallback chain | Unit | CX.4 → CX.6 → MSH: verify each level is tried in order. |
-| Empty-after-sanitization | Unit | Authority value that sanitizes to empty string treated as missing. |
+| Authority present → unified ID | Unit | `buildEncounterIdentifier` accepts CX.4 or CX.9 or CX.10 per spec rules. |
+| Missing authority components | Unit | Error when none of CX.4/CX.9/CX.10 is populated. |
+| Conflicting authority components | Unit | Error when CX.4 conflicts with CX.9/CX.10 without profile guidance. |
+| Empty-after-sanitization | Unit | Authority component that sanitizes to empty string treated as missing. |
 | ORU clinical data preserved | Integration | When Encounter skipped due to missing authority, DiagnosticReport and Observations are still created. |
 | Warning retry action | Integration | UI action retries a warning message. |
+| Preprocessor invoked before handlers | Integration | `warning/error` determined before ORU/ADT conversion runs. |
 
 # Context
 
@@ -146,82 +159,34 @@ The `warning` status must be fully supported in the incoming messages UI:
 - Adding a `warning` status will require updates in schema, TS type, processor behavior, and UI filters/labels to avoid stuck or invisible messages.
 
 ## User Requirements & Answers
-- Configurable behavior when CX.4/CX.6 are missing in PV1-19: no implicit default at runtime, but the standard/example configuration should use MSH-3/MSH-4 fallback.
-- Encounter should not be created when required identifiers are missing; this is enforced after preprocessing.
-- When preprocessing decides to fail due to missing identifier data, it should emit a `warning` status (not `error`) on the incoming message, with details stored in the message error field.
-- `warning` should be added to the custom resource definition and visible in the incoming message queue with a warning label.
-- No backward compatibility or migration work is required for existing Encounters.
-- Config is JSON-based, with paths:
-  - `ORU-R01.validation.PV1.19.authority.required` (true/false)
-  - `ADT.PV1.19.authority.required` (true/false)
-- Messages in `warning` should not be reprocessed automatically, but UI should offer a retry action.
-- ORU: if authority is missing and policy blocks, still process clinical data (create DiagnosticReport/Observations) but do not create Encounter; mark message `warning`.
-- ADT: if authority is required and missing, stop processing and mark message `error` (plain string error).
-- Config location: `config/hl7v2-to-fhir.json` with the paths above. Missing config is a hard error.
-- Updated requirements after review feedback:
-  - Config schema is exactly:
-    ```json
-    {
-      "ORU-R01": { "PV1": { "required": false } },
-      "ADT-A01": { "PV1": { "required": true } }
+- Core converter must be HL7 v2.8.2 spec-conformant, including CX.9 and all "required when" rules for CX components, with no MSH fallback in the core algorithm.
+- Preprocessor tooling (config-driven) runs before message handlers to normalize non-conformant messages.
+- Preprocessor returns only a modified message; converters are unaware it ran.
+- Preprocessor uses MSH sender context when `PV1.19.authorityFallback.source="msh"` is enabled and never sets status/error.
+- Config schema is exactly:
+  ```json
+  {
+    "ORU-R01": {
+      "preprocess": { "PV1": { "19": { "authorityFallback": { "source": "msh" } } } },
+      "converter": { "PV1": { "required": false } }
+    },
+    "ADT-A01": {
+      "preprocess": { "PV1": { "19": { "authorityFallback": { "source": "msh" } } } },
+      "converter": { "PV1": { "required": true } }
     }
-    ```
-  - Core converter must be HL7 v2.8.2 spec-conformant, including CX.9 and all "required when" rules for CX components, with no MSH fallback in the core algorithm.
-  - Preprocessor tooling (config-driven) runs before message handlers to normalize non-conformant messages for specific senders.
-  - If PV1 is not required and missing/invalid, skip Encounter and mark `warning`.
-  - ID generation API should be single-entrypoint, with no exported `resolveEncounterAuthority` / `EncounterAuthorityResolution`; it should return a descriptive error used in the IncomingHL7v2Message warning/error.
-  - Authority is always required for Encounter creation; PV1 presence governs whether Encounter is required per message type.
+  }
+  ```
+- Encounter authority is always required for Encounter creation; PV1 presence governs whether Encounter is required per message type.
+- If PV1 is not required and missing/invalid, skip Encounter and mark `warning`.
+- ADT-A01 with PV1 required and missing/invalid must fail with `status=error` and no bundle submission.
+- Warning details must be stored in the IncomingHL7v2Message error field and visible in the UI.
+- Messages in `warning` should not be reprocessed automatically, but UI should offer a retry action.
+- ID generation API should be single-entrypoint, with no exported `resolveEncounterAuthority` / `EncounterAuthorityResolution`; it should return a descriptive error used in the IncomingHL7v2Message warning/error.
+- No backward compatibility or migration work is required for existing Encounters.
+- Config location: `config/hl7v2-to-fhir.json`. Missing converter config is a hard error; missing preprocess config is allowed.
 
 ## AI Review Notes
-
-**Review Iteration 1 - APPROVED FOR USER REVIEW**
-
-### Findings
-
-**1. Completeness** ✅
-- All requirements addressed: unified ID generation, configurable policy per message type, warning status with manual retry
-- Minor inconsistency in config schema documentation (ORU has `validation` wrapper, ADT does not) - normalize during implementation
-
-**2. Consistency with Codebase** ✅
-- Follows existing patterns: `SenderContext`, result types with optional error field
-- Note: `IncomingHl7v2message.ts` is autogenerated - the codegen source or process should be updated rather than modifying the generated file directly
-
-**3. Clean Architecture** ✅
-- Clear separation: `id-generation.ts` for ID logic, `config.ts` for config loading
-- Policy decisions (warn vs error) appropriately kept at message-level converters
-
-**4. Best Practices** ✅
-- Explicit validation policy, no implicit defaults
-- Plain string errors for simplicity
-
-**5. Test Coverage** - Minor gaps to address during implementation:
-- Add test for authority fallback chain (CX.4 → CX.6 → MSH)
-- Add test for empty-after-sanitization case
-- Add test verifying ORU clinical data preserved when Encounter skipped
-- Add test for malformed config JSON
-
-### Implementation Notes
-Missing or not stated very clearly:
-- Config loading strategy (startup vs per-message) should be startup with caching
-- CX.4 (Assigning Authority) should take priority over CX.6 (Assigning Facility)
-- MSH fallback uses `SenderContext.sendingApplication` / `SenderContext.sendingFacility`
-
-### Changes Made (Iteration 1 Feedback)
-
-All review notes and user feedback have been addressed:
-
-1. **Config schema normalized** - Added `validation` wrapper to ADT config to match ORU structure
-2. **Config loading clarified** - Added "Config loading strategy" section: load once at startup, cache for process lifetime
-3. **Authority priority documented** - Added "Authority resolution priority" section: CX.4 > CX.6 > MSH fallback
-4. **MSH fallback clarified** - Explicitly documented that MSH fallback uses `SenderContext.sendingApplication` / `SenderContext.sendingFacility`
-5. **Autogenerated file clarified** - Updated Affected Components table to note that `IncomingHl7v2message.ts` is regenerated from init-bundle.json via @atomic-ehr/codegen
-6. **Missing test cases added** - Test Cases table now includes: authority fallback chain, empty-after-sanitization, ORU clinical data preserved, malformed config JSON
-7. **UI warning status requirements** - Added "UI requirements for warning status" section covering filter dropdown, status badge, and retry eligibility
-8. **ADT error behavior explicit** - Updated validation behavior to state ADT hard error does NOT submit any FHIR bundle (no partial resource creation)
-
-**Review Iteration 2 - APPROVED FOR USER REVIEW** ✅
-
-All feedback items verified as addressed. Design is comprehensive and ready for user approval.
+User feedback items have been incorporated into config shape, authority rules, and prototype markers (preprocessor + converter policy + ID generation API). Ready for re-review.
 
 ## User Feedback
 
@@ -253,3 +218,5 @@ I found a few flaws in the design proposal:
 ```
 10. Please, clarify how `authority.source` will be used? I'm not sure why we need this field at all.
 11. I think `convertPV1WithMappingSupport` returning `PV1ConversionResult` with authority information is an encapsulation flaw. The caller doesn't need to know WHY PV1 is invalid, it only needs to know that it's invalid. 
+12. Preprocessor should return only a modified message. Converters are unaware it ran; no diagnostics or pv1Required should be returned.
+13. Preprocessor should be config-driven to optionally fix missing PV1-19 authority (CX.4/9/10) per message type.

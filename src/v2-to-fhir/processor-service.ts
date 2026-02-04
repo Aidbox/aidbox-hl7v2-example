@@ -113,6 +113,13 @@ export async function processNextMessage(): Promise<boolean> {
   }
 
   try {
+    // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
+    // Run preprocessor before message handlers to enforce PV1 required policy.
+    // Preprocessor returns a modified message only; converter remains unaware.
+    // Example:
+    // const config = loadHl7v2ToFhirConfig();
+    // const preprocessed = preprocessIncomingMessage(message, config);
+    // const { bundle, messageUpdate } = await convertMessage(preprocessed);
     const { bundle, messageUpdate } = await convertMessage(message);
     await submitBundle(bundle);
     await applyMessageUpdate(message, messageUpdate, bundle);
