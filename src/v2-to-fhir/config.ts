@@ -7,19 +7,26 @@
 //
 // export type Hl7v2ToFhirConfig = {
 //   "ORU-R01"?: {
-//     validation?: {
-//       PV1?: { "19"?: { authority?: { required?: boolean } } };
-//     };
+//     preprocess?: { PV1?: { "19"?: { authorityFallback?: { source?: "msh" } } } };
+//     converter?: { PV1?: { required?: boolean } };
 //   };
-//   ADT?: {
-//     PV1?: { "19"?: { authority?: { required?: boolean } } };
+//   "ADT-A01"?: {
+//     preprocess?: { PV1?: { "19"?: { authorityFallback?: { source?: "msh" } } } };
+//     converter?: { PV1?: { required?: boolean } };
 //   };
 // };
 //
+// // Config is keyed by exact message type strings; missing converter config is a hard error.
+//
 // export function loadHl7v2ToFhirConfig(): Hl7v2ToFhirConfig;
-// export function getAuthorityRequirement(
+// export function isPv1Required(
 //   config: Hl7v2ToFhirConfig,
-//   messageType: "ORU-R01" | "ADT",
+//   messageType: "ORU-R01" | "ADT-A01",
 // ): boolean;
+//
+// export function getAuthorityFallbackSource(
+//   config: Hl7v2ToFhirConfig,
+//   messageType: "ORU-R01" | "ADT-A01",
+// ): "msh" | null;
 //
 // ═══════════════════════════════════════════════════════════════════════════

@@ -5,13 +5,15 @@
 //
 // This file will contain:
 //
-// export type EncounterIdentifierResult = {
-//   identifier?: Encounter["identifier"];
-//   error?: string; // descriptive error for IncomingHL7v2Message
-// };
+// export function preprocessIncomingMessage(
+//   message: IncomingHL7v2Message,
+//   config: Hl7v2ToFhirConfig,
+// ): IncomingHL7v2Message;
 //
-// export function buildEncounterIdentifier(
-//   visitNumber: CX,
-// ): EncounterIdentifierResult;
+// // Behavior:
+// // - Config-driven per message type (ORU-R01, ADT-A01); preprocess config is optional.
+// // - If config enables preprocess.PV1.19.authorityFallback.source="msh", attempt to populate
+// //   CX.4/9/10 using MSH sender context (no core fallback).
+// // - Never sets status or error fields; converters remain unaware.
 //
 // ═══════════════════════════════════════════════════════════════════════════

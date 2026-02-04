@@ -604,7 +604,7 @@ function extractVisitNumber(pv1: PV1): string | undefined {
  */
 function generateEncounterId(senderContext: SenderContext, visitNumber: string): string {
   // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
-  // Replace with centralized generator that accepts CX + sender context.
+  // Replace with buildEncounterIdentifier(visitNumber: CX) from id-generation.
   const parts = [
     senderContext.sendingApplication,
     senderContext.sendingFacility,
@@ -670,9 +670,9 @@ async function handleEncounter(
   }
 
   // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
-  // Apply ORU validation policy from config:
-  // - If authority required and missing: skip Encounter creation, continue clinical data,
-  //   mark message status=warning with plain string error.
+  // Preprocessor runs before handler:
+  // - If PV1 not required and missing/invalid, converter sets warning and skips Encounter.
+  // - If PV1 required and invalid, converter sets error and processing stops.
 
   const encounterId = generateEncounterId(senderContext, visitNumber);
   const encounterRef = { reference: `Encounter/${encounterId}` } as Reference<"Encounter">;
@@ -1024,7 +1024,7 @@ export async function convertORU_R01(
     bundle,
     messageUpdate: {
       // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
-      // Set status="warning" and error text when authority required and missing.
+      // If converter returned warning, preserve status="warning" + error text when updating.
       status: "processed",
       patient: patientRef,
     },

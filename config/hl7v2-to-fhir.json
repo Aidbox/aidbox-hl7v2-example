@@ -1,17 +1,11 @@
 {
   "_designPrototype": "2026-02-03-unified-encounter-id-generation.md",
   "ORU-R01": {
-    "validation": {
-      "PV1": {
-        "19": { "authority": { "required": true } }
-      }
-    }
+    "preprocess": { "PV1": { "19": { "authorityFallback": { "source": "msh" } } } },
+    "converter": { "PV1": { "required": false } }
   },
-  "ADT": {
-    "validation": {
-      "PV1": {
-        "19": { "authority": { "required": true } }
-      }
-    }
+  "ADT-A01": {
+    "preprocess": { "PV1": { "19": { "authorityFallback": { "source": "msh" } } } },
+    "converter": { "PV1": { "required": true } }
   }
 }
