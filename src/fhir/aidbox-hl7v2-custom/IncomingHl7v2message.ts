@@ -25,6 +25,8 @@ export interface IncomingHL7v2Message extends DomainResource {
   patient?: Reference<"Patient">;
   sendingApplication?: string;
   sendingFacility?: string;
+  // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
+  // Add "warning" to status union.
   status?: "received" | "processed" | "error" | "mapping_error";
   type: string;
   unmappedCodes?: UnmappedCode[];
