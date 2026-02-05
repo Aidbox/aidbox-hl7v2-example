@@ -350,25 +350,25 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 4: Implement preprocessor module
 
-- [ ] Replace prototype scaffold in `src/v2-to-fhir/preprocessor.ts` with actual implementation
-- [ ] Implement `preprocessIncomingMessage(message: IncomingHL7v2Message, config: Hl7v2ToFhirConfig): IncomingHL7v2Message`
-- [ ] Parse message type from `message.type` (e.g., "ORU^R01" → "ORU-R01" for config lookup)
-- [ ] If no preprocess config for message type, return message unchanged
-- [ ] If `authorityFallback.source === "msh"` is configured:
+- [x] Replace prototype scaffold in `src/v2-to-fhir/preprocessor.ts` with actual implementation
+- [x] Implement `preprocessIncomingMessage(message: IncomingHL7v2Message, config: Hl7v2ToFhirConfig): IncomingHL7v2Message`
+- [x] Parse message type from `message.type` (e.g., "ORU^R01" → "ORU-R01" for config lookup)
+- [x] If no preprocess config for message type, return message unchanged
+- [x] If `authorityFallback.source === "msh"` is configured:
   - Parse HL7v2 message to extract PV1-19 and MSH-3/4
   - If PV1-19 exists but CX.4/9/10 are all missing:
     - Populate CX.4 with MSH-3 (namespace) and MSH-4 (universal ID)
     - Modify the raw message string and return updated IncomingHL7v2Message
   - Never override existing CX.4/9/10 values
-- [ ] Never set `status` or `error` fields - preprocessor is transparent to converters
-- [ ] Write unit tests in `src/v2-to-fhir/preprocessor.test.ts`:
+- [x] Never set `status` or `error` fields - preprocessor is transparent to converters
+- [x] Write unit tests in `src/v2-to-fhir/preprocessor.test.ts`:
   - Message with no preprocess config → unchanged
   - ORU with missing PV1-19 authority, MSH fallback enabled → CX.4 populated from MSH-3/4
   - ORU with existing CX.4 → not overwritten
   - ADT with missing PV1-19 authority, MSH fallback enabled → CX.4 populated from MSH-3/4
   - Message with no PV1 segment → unchanged
   - Preprocessor never modifies status/error fields
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
