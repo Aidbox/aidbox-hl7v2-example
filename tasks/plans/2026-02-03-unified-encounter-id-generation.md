@@ -248,17 +248,17 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 1: Add `warning` status to schema and regenerate types
 
-- [ ] Update `init-bundle.json` to document `warning` as a valid status value for IncomingHL7v2Message (add comment or binding description)
-- [ ] Remove the DESIGN PROTOTYPE comment from `src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message.ts`
-- [ ] Update the `status` type union in `IncomingHl7v2message.ts` to include `"warning"`: `status?: "received" | "processed" | "error" | "mapping_error" | "warning"`
-- [ ] Run `bun run typecheck` - must pass before next task
+- [x] Update `init-bundle.json` to document `warning` as a valid status value for IncomingHL7v2Message (add comment or binding description)
+- [x] Remove the DESIGN PROTOTYPE comment from `src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message.ts`
+- [x] Update the `status` type union in `IncomingHl7v2message.ts` to include `"warning"`: `status?: "received" | "processed" | "error" | "mapping_error" | "warning"`
+- [x] Run `bun run typecheck` - must pass before next task
 
 ---
 
 ## Task 2: Implement config loader module
 
-- [ ] Replace prototype scaffold in `src/v2-to-fhir/config.ts` with actual implementation
-- [ ] Define typed config structure (no helper functions - navigate config directly like `config["ORU-R01"]?.converter?.PV1?.required`):
+- [x] Replace prototype scaffold in `src/v2-to-fhir/config.ts` with actual implementation
+- [x] Define typed config structure (no helper functions - navigate config directly like `config["ORU-R01"]?.converter?.PV1?.required`):
   ```ts
   export type MessageTypeConfig = {
     preprocess?: {
@@ -278,17 +278,17 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
     "ADT-A01"?: MessageTypeConfig;
   };
   ```
-- [ ] Implement `loadHl7v2ToFhirConfig()` that reads, parses, and returns typed `Hl7v2ToFhirConfig`
-- [ ] Fail fast on missing or malformed config file with descriptive error
-- [ ] Cache config for process lifetime (singleton pattern)
-- [ ] Replace the prototype JSON in `config/hl7v2-to-fhir.json` with production config (remove `_designPrototype` marker)
-- [ ] Write unit tests in `src/v2-to-fhir/config.test.ts`:
+- [x] Implement `hl7v2ToFhirConfig()` that reads, parses, and returns typed `Hl7v2ToFhirConfig`
+- [x] Fail fast on missing or malformed config file with descriptive error
+- [x] Cache config for process lifetime (singleton pattern)
+- [x] Replace the prototype JSON in `config/hl7v2-to-fhir.json` with production config (remove `_designPrototype` marker)
+- [x] Write unit tests in `src/v2-to-fhir/config.test.ts`:
   - Config file missing → startup error
   - Config file malformed JSON → startup error with parse details
   - Valid config → returns typed object with correct structure
   - Config navigation works: `config["ORU-R01"]?.converter?.PV1?.required === false`
   - Config navigation works: `config["ADT-A01"]?.preprocess?.PV1?.["19"]?.authorityFallback?.source === "msh"`
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
@@ -435,11 +435,11 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 ## Task 8: Integrate preprocessor into processor service
 
 - [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/processor-service.ts`
-- [ ] Import `loadHl7v2ToFhirConfig` and `preprocessIncomingMessage`
+- [ ] Import `hl7v2ToFhirConfig` and `preprocessIncomingMessage`
 - [ ] Load config once at service startup (fail fast on invalid config)
 - [ ] Modify `processNextMessage` to call preprocessor before `convertMessage`:
   ```ts
-  const config = loadHl7v2ToFhirConfig();
+  const config = hl7v2ToFhirConfig();
   const preprocessed = preprocessIncomingMessage(message, config);
   const { bundle, messageUpdate } = await convertMessage(preprocessed);
   ```
