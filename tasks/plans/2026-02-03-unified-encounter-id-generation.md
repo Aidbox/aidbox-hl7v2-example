@@ -389,43 +389,45 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ---
 
-## Task 6: Update ORU-R01 converter for warning policy
+## Task 6: Update ORU-R01 converter with config-driven PV1 policy
 
 - [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/messages/oru-r01.ts`
 - [ ] Import config loader and update `convertORU_R01` to accept config parameter or load singleton
-- [ ] Modify `handleEncounter` function:
-  - Check `config["ORU-R01"]?.converter?.PV1?.required` - if false/undefined, PV1 is optional
-  - If PV1 missing and not required → skip Encounter, continue processing clinical data
-  - If PV1 present but `buildEncounterIdentifier` returns error → skip Encounter, set warning
+- [ ] Modify `handleEncounter` function with unified config-driven logic:
+  - Get `pv1Required = config["ORU-R01"]?.converter?.PV1?.required ?? false`
+  - If PV1 missing OR `buildEncounterIdentifier` returns error:
+    - If `pv1Required === true` → return error result immediately, no bundle
+    - If `pv1Required === false` → skip Encounter, set `status=warning`, continue with clinical data
 - [ ] Update `ConversionResult` return:
-  - When Encounter skipped due to invalid/missing PV1, set `messageUpdate.status = "warning"` and `messageUpdate.error` to descriptive text
-  - Continue creating DiagnosticReport, Observations, Specimens
+  - When PV1 invalid and not required: `messageUpdate.status = "warning"`, `messageUpdate.error` = descriptive text, continue bundle
+  - When PV1 invalid and required: `messageUpdate.status = "error"`, `messageUpdate.error` = descriptive text, no bundle
 - [ ] Remove legacy `generateEncounterId` function that used sender context for ID generation
 - [ ] Write/update integration tests in `src/v2-to-fhir/messages/oru-r01.test.ts`:
   - ORU with valid PV1 → Encounter created with unified ID
-  - ORU with missing PV1 (not required) → DiagnosticReport created, no Encounter, status=warning
-  - ORU with invalid PV1-19 authority → DiagnosticReport created, no Encounter, status=warning with error text
+  - ORU with missing PV1 (config: required=false) → DiagnosticReport created, no Encounter, status=warning
+  - ORU with invalid PV1-19 authority (config: required=false) → DiagnosticReport created, no Encounter, status=warning
   - ORU clinical data preserved when Encounter skipped
 - [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
-## Task 7: Update ADT-A01 converter for error policy
+## Task 7: Update ADT-A01 converter with config-driven PV1 policy
 
 - [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/messages/adt-a01.ts`
 - [ ] Import config loader and update `convertADT_A01` to accept config parameter or load singleton
-- [ ] Modify PV1 handling:
-  - Check `config["ADT-A01"]?.converter?.PV1?.required` - if true, PV1 is mandatory
-  - If PV1 missing and required → return error result immediately, no bundle
-  - If PV1 present but `buildEncounterIdentifier` returns error → return error result immediately, no bundle
-- [ ] Update `ConversionResult` return for errors:
-  - Set `messageUpdate.status = "error"` and `messageUpdate.error` to descriptive text
-  - Return empty bundle or throw (per existing error handling pattern)
+- [ ] Modify PV1 handling with unified config-driven logic (same pattern as Task 6):
+  - Get `pv1Required = config["ADT-A01"]?.converter?.PV1?.required ?? true`
+  - If PV1 missing OR `buildEncounterIdentifier` returns error:
+    - If `pv1Required === true` → return error result immediately, no bundle
+    - If `pv1Required === false` → skip Encounter, set `status=warning`, continue
+- [ ] Update `ConversionResult` return:
+  - When PV1 invalid and required: `messageUpdate.status = "error"`, `messageUpdate.error` = descriptive text, no bundle
+  - When PV1 invalid and not required: `messageUpdate.status = "warning"`, continue
 - [ ] Use `buildEncounterIdentifier` result for Encounter ID (replace legacy ID generation)
 - [ ] Write/update integration tests in `src/v2-to-fhir/messages/adt-a01.test.ts`:
   - ADT with valid PV1 → Encounter created with unified ID
-  - ADT with missing PV1 (required) → status=error, no bundle submitted
-  - ADT with invalid PV1-19 authority → status=error with descriptive message, no bundle
+  - ADT with missing PV1 (config: required=true) → status=error, no bundle submitted
+  - ADT with invalid PV1-19 authority (config: required=true) → status=error with descriptive message, no bundle
 - [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
