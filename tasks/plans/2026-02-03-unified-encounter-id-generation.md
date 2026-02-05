@@ -258,19 +258,36 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 ## Task 2: Implement config loader module
 
 - [ ] Replace prototype scaffold in `src/v2-to-fhir/config.ts` with actual implementation
-- [ ] Define `Hl7v2ToFhirConfig` type as specified in Technical Details (message-type keyed with preprocess + converter sections)
-- [ ] Implement `loadHl7v2ToFhirConfig()` that reads and parses `config/hl7v2-to-fhir.json`
-- [ ] Implement `isPv1Required(config, messageType)` helper to check `converter.PV1.required`
-- [ ] Implement `getAuthorityFallbackSource(config, messageType)` to get `preprocess.PV1.19.authorityFallback.source`
+- [ ] Define typed config structure (no helper functions - navigate config directly like `config["ORU-R01"]?.converter?.PV1?.required`):
+  ```ts
+  export type MessageTypeConfig = {
+    preprocess?: {
+      PV1?: {
+        "19"?: {
+          authorityFallback?: { source?: "msh" };
+        };
+      };
+    };
+    converter?: {
+      PV1?: { required?: boolean };
+    };
+  };
+
+  export type Hl7v2ToFhirConfig = {
+    "ORU-R01"?: MessageTypeConfig;
+    "ADT-A01"?: MessageTypeConfig;
+  };
+  ```
+- [ ] Implement `loadHl7v2ToFhirConfig()` that reads, parses, and returns typed `Hl7v2ToFhirConfig`
 - [ ] Fail fast on missing or malformed config file with descriptive error
 - [ ] Cache config for process lifetime (singleton pattern)
 - [ ] Replace the prototype JSON in `config/hl7v2-to-fhir.json` with production config (remove `_designPrototype` marker)
 - [ ] Write unit tests in `src/v2-to-fhir/config.test.ts`:
   - Config file missing → startup error
   - Config file malformed JSON → startup error with parse details
-  - Valid config → returns typed object
-  - `isPv1Required` returns correct value per message type
-  - `getAuthorityFallbackSource` returns `"msh"` or `null` correctly
+  - Valid config → returns typed object with correct structure
+  - Config navigation works: `config["ORU-R01"]?.converter?.PV1?.required === false`
+  - Config navigation works: `config["ADT-A01"]?.preprocess?.PV1?.["19"]?.authorityFallback?.source === "msh"`
 - [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
@@ -278,31 +295,54 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 ## Task 3: Implement strict Encounter ID generation module
 
 - [ ] Replace prototype scaffold in `src/v2-to-fhir/id-generation.ts` with actual implementation
+- [ ] Add HL7 v2.8.2 spec guidance as a comment block at the top of the file:
+  ```ts
+  /**
+   * HL7 v2.8.2 CX Datatype Authority Rules (from Section 2.A.14):
+   *
+   * At least one of CX.4, CX.9, or CX.10 must be populated:
+   * - CX.4 (Assigning Authority) is required if neither CX.9 nor CX.10 are populated
+   * - CX.9 (Assigning Jurisdiction) is required if neither CX.4 nor CX.10 are populated
+   * - CX.10 (Assigning Agency/Department) is required if neither CX.4 nor CX.9 are populated
+   *
+   * All three may be valued. If values in CX.9 and/or CX.10 conflict with CX.4,
+   * the Message Profile defines precedence. Without a profile, conflicts are errors.
+   *
+   * These components serve different semantic purposes:
+   * - CX.4: Assigning Authority (HD type) - organization/system that assigned the ID
+   * - CX.9: Assigning Jurisdiction (CWE type) - geo-political body
+   * - CX.10: Assigning Agency/Department (CWE type) - organization unit
+   *
+   * Ref: https://www.hl7.eu/HL7v2x/v282/std282/ch02a.html#Heading158
+   */
+  ```
 - [ ] Define `EncounterIdentifierResult` type: `{ identifier?: Encounter["identifier"]; error?: string }`
 - [ ] Implement `buildEncounterIdentifier(visitNumber: CX): EncounterIdentifierResult`
-- [ ] Implement internal `hasValidAuthority(cx: CX)` helper (not exported):
+- [ ] Implement internal authority validation (not exported):
   - Check CX.4 (Assigning Authority) - treat empty/whitespace as missing
   - Check CX.9 (Assigning Jurisdiction) - treat empty/whitespace as missing
   - Check CX.10 (Assigning Agency/Department) - treat empty/whitespace as missing
-  - Return true if at least one of CX.4/9/10 is populated
-- [ ] Implement internal `hasConflictingAuthority(cx: CX)` helper (not exported):
-  - If multiple of CX.4/9/10 are populated with different namespace values, return true
-  - Spec defers precedence to message profile; treat as error without profile guidance
+  - Validate at least one of CX.4/9/10 is populated (per spec conditional rules)
+- [ ] Handle multiple authority components:
+  - If only one of CX.4/9/10 is populated → use it for identifier system
+  - If multiple are populated with consistent values → valid (use CX.4 if present, as it's the primary authority designator)
+  - If multiple are populated with conflicting values → error (spec says Message Profile defines precedence; we don't have one)
 - [ ] Return descriptive error string when:
-  - PV1-19 value is missing → `"PV1-19 (Visit Number) is required but missing"`
-  - No authority (CX.4/9/10 all missing) → `"PV1-19 authority is required: CX.4, CX.9, or CX.10 must be populated"`
-  - Conflicting authority → `"PV1-19 has conflicting authority values in CX.4/9/10"`
+  - PV1-19 value (CX.1) is missing → `"PV1-19 (Visit Number) value is required but missing"`
+  - No authority (CX.4/9/10 all missing) → `"PV1-19 authority is required: CX.4, CX.9, or CX.10 must be populated (HL7 v2.8.2)"`
+  - Conflicting authority → `"PV1-19 has conflicting authority values in CX.4/9/10; Message Profile required to resolve precedence"`
 - [ ] Generate deterministic identifier when valid:
-  - Build system from authority (prefer CX.4 namespace, then CX.9, then CX.10)
+  - Use the populated authority component for system (CX.4/9/10 - they're alternatives, not prioritized)
   - Value from CX.1
   - Return as `Encounter["identifier"]` array with type VN
 - [ ] Write unit tests in `src/v2-to-fhir/id-generation.test.ts`:
-  - CX with CX.4 populated → valid identifier
-  - CX with CX.9 populated (no CX.4) → valid identifier
-  - CX with CX.10 populated (no CX.4/9) → valid identifier
+  - CX with only CX.4 populated → valid identifier using CX.4
+  - CX with only CX.9 populated → valid identifier using CX.9
+  - CX with only CX.10 populated → valid identifier using CX.10
+  - CX with CX.4 + CX.9 same namespace → valid (use CX.4)
+  - CX with CX.4 + CX.9 different namespaces → error (conflict)
   - CX with none of CX.4/9/10 → error
-  - CX with empty/whitespace CX.4 → treated as missing
-  - CX with conflicting CX.4/CX.9 namespaces → error
+  - CX with empty/whitespace CX.4 only → treated as missing → error
   - CX.1 value missing → error
 - [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
@@ -354,7 +394,7 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 - [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/messages/oru-r01.ts`
 - [ ] Import config loader and update `convertORU_R01` to accept config parameter or load singleton
 - [ ] Modify `handleEncounter` function:
-  - Check `isPv1Required(config, "ORU-R01")` - if false, PV1 is optional
+  - Check `config["ORU-R01"]?.converter?.PV1?.required` - if false/undefined, PV1 is optional
   - If PV1 missing and not required → skip Encounter, continue processing clinical data
   - If PV1 present but `buildEncounterIdentifier` returns error → skip Encounter, set warning
 - [ ] Update `ConversionResult` return:
@@ -375,7 +415,7 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 - [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/messages/adt-a01.ts`
 - [ ] Import config loader and update `convertADT_A01` to accept config parameter or load singleton
 - [ ] Modify PV1 handling:
-  - Check `isPv1Required(config, "ADT-A01")` - if true, PV1 is mandatory
+  - Check `config["ADT-A01"]?.converter?.PV1?.required` - if true, PV1 is mandatory
   - If PV1 missing and required → return error result immediately, no bundle
   - If PV1 present but `buildEncounterIdentifier` returns error → return error result immediately, no bundle
 - [ ] Update `ConversionResult` return for errors:
@@ -430,7 +470,7 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 ## Task 10: Update documentation
 
 - [ ] Update CLAUDE.md if any new patterns or conventions were introduced (likely minimal)
-- [ ] Add inline comments for complex logic in `id-generation.ts` (CX.4/9/10 rules)
+- [ ] Verify `id-generation.ts` has the HL7 v2.8.2 spec comment block (added in Task 3)
 - [ ] Add inline comments in `preprocessor.ts` explaining MSH fallback logic
 - [ ] Review and update any relevant docs in `docs/developer-guide/` if ORU/ADT processing changed significantly
 - [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
