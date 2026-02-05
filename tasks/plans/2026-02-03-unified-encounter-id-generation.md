@@ -1,5 +1,5 @@
 ---
-status: ai-reviewed
+status: planned
 reviewer-iterations: 2
 prototype-files:
   - config/hl7v2-to-fhir.json
@@ -225,3 +225,235 @@ I found a few flaws in the design proposal:
 11. I think `convertPV1WithMappingSupport` returning `PV1ConversionResult` with authority information is an encapsulation flaw. The caller doesn't need to know WHY PV1 is invalid, it only needs to know that it's invalid. 
 12. Preprocessor should return only a modified message. Converters are unaware it ran; no diagnostics or pv1Required should be returned.
 13. Preprocessor should be config-driven to optionally fix missing PV1-19 authority (CX.4/9/10) per message type.
+
+(User feedback has been addressed ✅)
+
+# Implementation Plan
+
+## Overview
+Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authority validation (CX.4/9/10), a config-driven preprocessor for non-conformant messages, and a `warning` status for ORU messages with invalid/missing PV1.
+
+## Development Approach
+- Complete each task fully before moving to the next
+- Make small, focused changes
+- **CRITICAL: all tests must pass before starting next task**
+- **CRITICAL: update this plan when scope changes**
+
+## Validation Commands
+- `bun test:all` - Run all tests (unit + integration)
+- `bun test:unit` - Run unit tests only
+- `bun run typecheck` - Type checking
+
+---
+
+## Task 1: Add `warning` status to schema and regenerate types
+
+- [ ] Update `init-bundle.json` to document `warning` as a valid status value for IncomingHL7v2Message (add comment or binding description)
+- [ ] Remove the DESIGN PROTOTYPE comment from `src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message.ts`
+- [ ] Update the `status` type union in `IncomingHl7v2message.ts` to include `"warning"`: `status?: "received" | "processed" | "error" | "mapping_error" | "warning"`
+- [ ] Run `bun run typecheck` - must pass before next task
+
+---
+
+## Task 2: Implement config loader module
+
+- [ ] Replace prototype scaffold in `src/v2-to-fhir/config.ts` with actual implementation
+- [ ] Define `Hl7v2ToFhirConfig` type as specified in Technical Details (message-type keyed with preprocess + converter sections)
+- [ ] Implement `loadHl7v2ToFhirConfig()` that reads and parses `config/hl7v2-to-fhir.json`
+- [ ] Implement `isPv1Required(config, messageType)` helper to check `converter.PV1.required`
+- [ ] Implement `getAuthorityFallbackSource(config, messageType)` to get `preprocess.PV1.19.authorityFallback.source`
+- [ ] Fail fast on missing or malformed config file with descriptive error
+- [ ] Cache config for process lifetime (singleton pattern)
+- [ ] Replace the prototype JSON in `config/hl7v2-to-fhir.json` with production config (remove `_designPrototype` marker)
+- [ ] Write unit tests in `src/v2-to-fhir/config.test.ts`:
+  - Config file missing → startup error
+  - Config file malformed JSON → startup error with parse details
+  - Valid config → returns typed object
+  - `isPv1Required` returns correct value per message type
+  - `getAuthorityFallbackSource` returns `"msh"` or `null` correctly
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 3: Implement strict Encounter ID generation module
+
+- [ ] Replace prototype scaffold in `src/v2-to-fhir/id-generation.ts` with actual implementation
+- [ ] Define `EncounterIdentifierResult` type: `{ identifier?: Encounter["identifier"]; error?: string }`
+- [ ] Implement `buildEncounterIdentifier(visitNumber: CX): EncounterIdentifierResult`
+- [ ] Implement internal `hasValidAuthority(cx: CX)` helper (not exported):
+  - Check CX.4 (Assigning Authority) - treat empty/whitespace as missing
+  - Check CX.9 (Assigning Jurisdiction) - treat empty/whitespace as missing
+  - Check CX.10 (Assigning Agency/Department) - treat empty/whitespace as missing
+  - Return true if at least one of CX.4/9/10 is populated
+- [ ] Implement internal `hasConflictingAuthority(cx: CX)` helper (not exported):
+  - If multiple of CX.4/9/10 are populated with different namespace values, return true
+  - Spec defers precedence to message profile; treat as error without profile guidance
+- [ ] Return descriptive error string when:
+  - PV1-19 value is missing → `"PV1-19 (Visit Number) is required but missing"`
+  - No authority (CX.4/9/10 all missing) → `"PV1-19 authority is required: CX.4, CX.9, or CX.10 must be populated"`
+  - Conflicting authority → `"PV1-19 has conflicting authority values in CX.4/9/10"`
+- [ ] Generate deterministic identifier when valid:
+  - Build system from authority (prefer CX.4 namespace, then CX.9, then CX.10)
+  - Value from CX.1
+  - Return as `Encounter["identifier"]` array with type VN
+- [ ] Write unit tests in `src/v2-to-fhir/id-generation.test.ts`:
+  - CX with CX.4 populated → valid identifier
+  - CX with CX.9 populated (no CX.4) → valid identifier
+  - CX with CX.10 populated (no CX.4/9) → valid identifier
+  - CX with none of CX.4/9/10 → error
+  - CX with empty/whitespace CX.4 → treated as missing
+  - CX with conflicting CX.4/CX.9 namespaces → error
+  - CX.1 value missing → error
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 4: Implement preprocessor module
+
+- [ ] Replace prototype scaffold in `src/v2-to-fhir/preprocessor.ts` with actual implementation
+- [ ] Implement `preprocessIncomingMessage(message: IncomingHL7v2Message, config: Hl7v2ToFhirConfig): IncomingHL7v2Message`
+- [ ] Parse message type from `message.type` (e.g., "ORU^R01" → "ORU-R01" for config lookup)
+- [ ] If no preprocess config for message type, return message unchanged
+- [ ] If `authorityFallback.source === "msh"` is configured:
+  - Parse HL7v2 message to extract PV1-19 and MSH-3/4
+  - If PV1-19 exists but CX.4/9/10 are all missing:
+    - Populate CX.4 with MSH-3 (namespace) and MSH-4 (universal ID)
+    - Modify the raw message string and return updated IncomingHL7v2Message
+  - Never override existing CX.4/9/10 values
+- [ ] Never set `status` or `error` fields - preprocessor is transparent to converters
+- [ ] Write unit tests in `src/v2-to-fhir/preprocessor.test.ts`:
+  - Message with no preprocess config → unchanged
+  - ORU with missing PV1-19 authority, MSH fallback enabled → CX.4 populated from MSH-3/4
+  - ORU with existing CX.4 → not overwritten
+  - ADT with missing PV1-19 authority, MSH fallback enabled → CX.4 populated from MSH-3/4
+  - Message with no PV1 segment → unchanged
+  - Preprocessor never modifies status/error fields
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 5: Integrate ID generation into PV1 converter
+
+- [ ] Remove the DESIGN PROTOTYPE comment from `src/v2-to-fhir/segments/pv1-encounter.ts`
+- [ ] Import `buildEncounterIdentifier` from `../id-generation`
+- [ ] Modify `convertPV1WithMappingSupport` to use `buildEncounterIdentifier` for PV1-19:
+  - Call `buildEncounterIdentifier(pv1.$19_visitNumber)` when PV1-19 is present
+  - If `buildEncounterIdentifier` returns an error, propagate it
+  - If valid, attach identifier to the Encounter
+- [ ] Update `PV1ConversionResult` type if needed to include identifier error
+- [ ] Remove any legacy PV1-19 handling that used fallback IDs
+- [ ] Write/update unit tests in `src/v2-to-fhir/segments/pv1-encounter.test.ts`:
+  - PV1 with valid authority → Encounter has identifier from `buildEncounterIdentifier`
+  - PV1 with missing authority → conversion result includes error
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 6: Update ORU-R01 converter for warning policy
+
+- [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/messages/oru-r01.ts`
+- [ ] Import config loader and update `convertORU_R01` to accept config parameter or load singleton
+- [ ] Modify `handleEncounter` function:
+  - Check `isPv1Required(config, "ORU-R01")` - if false, PV1 is optional
+  - If PV1 missing and not required → skip Encounter, continue processing clinical data
+  - If PV1 present but `buildEncounterIdentifier` returns error → skip Encounter, set warning
+- [ ] Update `ConversionResult` return:
+  - When Encounter skipped due to invalid/missing PV1, set `messageUpdate.status = "warning"` and `messageUpdate.error` to descriptive text
+  - Continue creating DiagnosticReport, Observations, Specimens
+- [ ] Remove legacy `generateEncounterId` function that used sender context for ID generation
+- [ ] Write/update integration tests in `src/v2-to-fhir/messages/oru-r01.test.ts`:
+  - ORU with valid PV1 → Encounter created with unified ID
+  - ORU with missing PV1 (not required) → DiagnosticReport created, no Encounter, status=warning
+  - ORU with invalid PV1-19 authority → DiagnosticReport created, no Encounter, status=warning with error text
+  - ORU clinical data preserved when Encounter skipped
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 7: Update ADT-A01 converter for error policy
+
+- [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/messages/adt-a01.ts`
+- [ ] Import config loader and update `convertADT_A01` to accept config parameter or load singleton
+- [ ] Modify PV1 handling:
+  - Check `isPv1Required(config, "ADT-A01")` - if true, PV1 is mandatory
+  - If PV1 missing and required → return error result immediately, no bundle
+  - If PV1 present but `buildEncounterIdentifier` returns error → return error result immediately, no bundle
+- [ ] Update `ConversionResult` return for errors:
+  - Set `messageUpdate.status = "error"` and `messageUpdate.error` to descriptive text
+  - Return empty bundle or throw (per existing error handling pattern)
+- [ ] Use `buildEncounterIdentifier` result for Encounter ID (replace legacy ID generation)
+- [ ] Write/update integration tests in `src/v2-to-fhir/messages/adt-a01.test.ts`:
+  - ADT with valid PV1 → Encounter created with unified ID
+  - ADT with missing PV1 (required) → status=error, no bundle submitted
+  - ADT with invalid PV1-19 authority → status=error with descriptive message, no bundle
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 8: Integrate preprocessor into processor service
+
+- [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/processor-service.ts`
+- [ ] Import `loadHl7v2ToFhirConfig` and `preprocessIncomingMessage`
+- [ ] Load config once at service startup (fail fast on invalid config)
+- [ ] Modify `processNextMessage` to call preprocessor before `convertMessage`:
+  ```ts
+  const config = loadHl7v2ToFhirConfig();
+  const preprocessed = preprocessIncomingMessage(message, config);
+  const { bundle, messageUpdate } = await convertMessage(preprocessed);
+  ```
+- [ ] Update `applyMessageUpdate` to preserve `error` field for `warning` status (currently only preserved for errors)
+- [ ] Update service factory similarly
+- [ ] Write integration test in `src/v2-to-fhir/processor-service.test.ts`:
+  - Preprocessor is invoked before conversion
+  - Warning status is correctly persisted with error text
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 9: Update UI for warning status
+
+- [ ] Remove all DESIGN PROTOTYPE comments from `src/ui/pages/messages.ts`
+- [ ] Add `"warning"` to the `statuses` array for filter buttons
+- [ ] Update `getStatusBadgeClass` to handle `"warning"` status:
+  - Return `"bg-amber-100 text-amber-800"` for warning styling
+- [ ] Update `formatStatusLabel` to handle `"warning"` → `"Warning"`
+- [ ] Update retry action eligibility to include `warning`:
+  - Change condition from `msg.status === "error" || msg.status === "mapping_error"` to also include `msg.status === "warning"`
+- [ ] Write/update test in `src/ui/pages/messages.test.ts` (if exists):
+  - Warning status appears in filter dropdown
+  - Warning messages show amber badge
+  - Warning messages have retry button
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 10: Update documentation
+
+- [ ] Update CLAUDE.md if any new patterns or conventions were introduced (likely minimal)
+- [ ] Add inline comments for complex logic in `id-generation.ts` (CX.4/9/10 rules)
+- [ ] Add inline comments in `preprocessor.ts` explaining MSH fallback logic
+- [ ] Review and update any relevant docs in `docs/developer-guide/` if ORU/ADT processing changed significantly
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 11: Cleanup design artifacts
+
+- [ ] Remove all `DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md` comments from codebase
+- [ ] Remove `_designPrototype` field from `config/hl7v2-to-fhir.json` if not already done
+- [ ] Update design document status to `implemented`
+- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation" src/ config/`
+- [ ] Run `bun test:all` and `bun run typecheck` - final verification
+
+---
+
+## Post-Completion Verification
+
+1. **Functional test - ORU with valid PV1**: Send ORU message with valid PV1-19 authority → Encounter created with unified ID, status=processed
+2. **Functional test - ORU with invalid PV1**: Send ORU message with missing authority → DiagnosticReport created, no Encounter, status=warning with error text visible in UI
+3. **Functional test - ADT with valid PV1**: Send ADT message with valid PV1-19 → Encounter created with unified ID, status=processed
+4. **Functional test - ADT with invalid PV1**: Send ADT message with missing authority → status=error, no FHIR resources created
+5. **UI test - warning status**: Verify warning status shows in filter, has amber badge, and retry button works
+6. **Config test**: Restart server with missing config → startup error
+7. **No regressions**: All existing tests pass
+8. **Cleanup verified**: No DESIGN PROTOTYPE comments remain
