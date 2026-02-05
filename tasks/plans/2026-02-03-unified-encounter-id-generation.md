@@ -294,8 +294,8 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 3: Implement strict Encounter ID generation module
 
-- [ ] Replace prototype scaffold in `src/v2-to-fhir/id-generation.ts` with actual implementation
-- [ ] Add HL7 v2.8.2 spec guidance as a comment block at the top of the file:
+- [x] Replace prototype scaffold in `src/v2-to-fhir/id-generation.ts` with actual implementation
+- [x] Add HL7 v2.8.2 spec guidance as a comment block at the top of the file:
   ```ts
   /**
    * HL7 v2.8.2 CX Datatype Authority Rules (from Section 2.A.14):
@@ -316,26 +316,26 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
    * Ref: https://www.hl7.eu/HL7v2x/v282/std282/ch02a.html#Heading158
    */
   ```
-- [ ] Define `EncounterIdentifierResult` type: `{ identifier?: Encounter["identifier"]; error?: string }`
-- [ ] Implement `buildEncounterIdentifier(visitNumber: CX): EncounterIdentifierResult`
-- [ ] Implement internal authority validation (not exported):
+- [x] Define `EncounterIdentifierResult` type: `{ identifier?: Encounter["identifier"]; error?: string }`
+- [x] Implement `buildEncounterIdentifier(visitNumber: CX): EncounterIdentifierResult`
+- [x] Implement internal authority validation (not exported):
   - Check CX.4 (Assigning Authority) - treat empty/whitespace as missing
   - Check CX.9 (Assigning Jurisdiction) - treat empty/whitespace as missing
   - Check CX.10 (Assigning Agency/Department) - treat empty/whitespace as missing
   - Validate at least one of CX.4/9/10 is populated (per spec conditional rules)
-- [ ] Handle multiple authority components:
+- [x] Handle multiple authority components:
   - If only one of CX.4/9/10 is populated → use it for identifier system
   - If multiple are populated with consistent values → valid (use CX.4 if present, as it's the primary authority designator)
   - If multiple are populated with conflicting values → error (spec says Message Profile defines precedence; we don't have one)
-- [ ] Return descriptive error string when:
+- [x] Return descriptive error string when:
   - PV1-19 value (CX.1) is missing → `"PV1-19 (Visit Number) value is required but missing"`
   - No authority (CX.4/9/10 all missing) → `"PV1-19 authority is required: CX.4, CX.9, or CX.10 must be populated (HL7 v2.8.2)"`
   - Conflicting authority → `"PV1-19 has conflicting authority values in CX.4/9/10; Message Profile required to resolve precedence"`
-- [ ] Generate deterministic identifier when valid:
+- [x] Generate deterministic identifier when valid:
   - Use the populated authority component for system (CX.4/9/10 - they're alternatives, not prioritized)
   - Value from CX.1
   - Return as `Encounter["identifier"]` array with type VN
-- [ ] Write unit tests in `src/v2-to-fhir/id-generation.test.ts`:
+- [x] Write unit tests in `src/v2-to-fhir/id-generation.test.ts`:
   - CX with only CX.4 populated → valid identifier using CX.4
   - CX with only CX.9 populated → valid identifier using CX.9
   - CX with only CX.10 populated → valid identifier using CX.10
@@ -344,7 +344,7 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
   - CX with none of CX.4/9/10 → error
   - CX with empty/whitespace CX.4 only → treated as missing → error
   - CX.1 value missing → error
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
