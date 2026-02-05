@@ -1,4 +1,6 @@
-# Plan: Non-blocking Warning for Missing PV1.19 Visit Number in ORU
+# Draft: Non-blocking Warning for Missing PV1.19 Visit Number in ORU
+
+TODO: this is mostly implemented, but need to make a clear default config and the documentation that refers to the spec as the rationale of the chosen default config behavior.
 
 ## Overview
 
