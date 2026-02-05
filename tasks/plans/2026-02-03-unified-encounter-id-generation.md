@@ -20,7 +20,7 @@ prototype-files:
 ADT and ORU currently generate Encounter IDs using different strategies, which fragments visit data and leaves orphaned draft Encounters. The core converter must be HL7 v2.8.2 compliant for PV1-19 authority requirements, while allowing preprocessing for non-conformant messages. We need a unified ID strategy, a preprocessor stage before conversion, and message-type policy to warn or hard-fail. Warnings must be visible in the incoming queue with manual retry.
 
 ## Proposed Approach
-Introduce a preprocessor stage that runs before message handlers and returns only a modified IncomingHL7v2Message (converters are unaware it ran). The preprocessor loads a JSON config at `config/hl7v2-to-fhir.json` keyed by exact message type (`ORU-R01`, `ADT-A01`); preprocessor config is optional per message type. It may fix missing PV1-19 authority using MSH sender context when enabled, but it never sets status or error. The core converter enforces HL7 v2.8.2 CX requirements for authority using CX.4 / CX.9 / CX.10 with no MSH fallback; invalid PV1-19 causes a descriptive error. Converter policy controls whether PV1 is required per message type (ORU-R01 optional, ADT-A01 required). Missing converter config is a hard error to avoid implicit defaults. The incoming message schema and UI queue add `warning` support and a manual retry action.
+Introduce a preprocessor stage that runs before message handlers and returns only a modified IncomingHL7v2Message (converters are unaware it ran). The preprocessor loads a JSON config at `config/hl7v2-to-fhir.json` keyed by exact message type (`ORU-R01`, `ADT-A01`); preprocessor config is optional per message type. Per-segment preprocessing is configured as lists of registered preprocessor IDs (kebab-case), validated at startup. Each segment preprocessor receives the full IncomingHL7v2Message and the current segment, and must always return a (possibly unchanged) segment; preprocessors compose in the order listed. Preprocessors run for every matching segment, but only apply when the configured field (e.g., PV1-19) is present. The core converter enforces HL7 v2.8.2 CX requirements for authority using CX.4 / CX.9 / CX.10 with no MSH fallback; invalid PV1-19 causes a descriptive error. Converter policy controls whether PV1 is required per message type (ORU-R01 optional, ADT-A01 required). Missing converter config is a hard error to avoid implicit defaults. The incoming message schema and UI queue add `warning` support and a manual retry action.
 
 ## Key Decisions
 
@@ -61,11 +61,11 @@ Introduce a preprocessor stage that runs before message handlers and returns onl
 ```json
 {
   "ORU-R01": {
-    "preprocess": { "PV1": { "19": { "authorityFallback": { "source": "msh" } } } },
+    "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
     "converter": { "PV1": { "required": false } }
   },
   "ADT-A01": {
-    "preprocess": { "PV1": { "19": { "authorityFallback": { "source": "msh" } } } },
+    "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
     "converter": { "PV1": { "required": true } }
   }
 }
@@ -79,14 +79,14 @@ Introduce a preprocessor stage that runs before message handlers and returns onl
 ### Preprocessor pipeline
 - Preprocessor runs before message handlers and returns a modified IncomingHL7v2Message only (no diagnostics object).
 - It applies config to normalize PV1 for non-conformant messages.
-- It can optionally fill missing PV1-19 authority (CX.4/9/10) using MSH sender context when `authorityFallback.source="msh"` is enabled.
+- It applies per-segment preprocessors by ID in list order; each preprocessor returns an updated segment.
+- Preprocessors run for every matching segment, but only when the configured field (PV1-19) is present.
 - It never sets `status` or `error` fields.
 
-### authorityFallback.source usage
-`authorityFallback.source` controls where the preprocessor derives missing PV1-19 authority from. Currently the only supported value is `"msh"`, which uses MSH sender context:
-- Populate CX.4 (Assigning Authority) with MSH-3/4 values (namespace/universal ID) when PV1-19 authority components are missing.
-- Do not override any existing CX.4/CX.9/CX.10 values.
-This keeps the fallback explicit and isolated to preprocessing; the core converter never falls back to MSH.
+### Preprocessor registry
+Segment preprocessors are registered by ID (kebab-case) and validated at startup. Unknown IDs cause startup failure. The initial preprocessor set:
+- `fix-authority-with-msh`: If PV1-19 is present but missing authority components (CX.4/9/10), populate CX.4 from MSH-3/4. Never overrides existing authority.
+This keeps preprocessing explicit and isolated; the core converter never falls back to MSH.
 
 ### Authority requirements (HL7 v2.8.2 CX rules)
 For PV1-19 (CX type), authority must satisfy the conditional requirements defined for CX components:
@@ -162,16 +162,16 @@ The `warning` status must be fully supported in the incoming messages UI:
 - Core converter must be HL7 v2.8.2 spec-conformant, including CX.9 and all "required when" rules for CX components, with no MSH fallback in the core algorithm.
 - Preprocessor tooling (config-driven) runs before message handlers to normalize non-conformant messages.
 - Preprocessor returns only a modified message; converters are unaware it ran.
-- Preprocessor uses MSH sender context when `PV1.19.authorityFallback.source="msh"` is enabled and never sets status/error.
+- Preprocessor uses MSH sender context via `fix-authority-with-msh` when configured and never sets status/error.
 - Config schema is exactly:
   ```json
   {
     "ORU-R01": {
-      "preprocess": { "PV1": { "19": { "authorityFallback": { "source": "msh" } } } },
+      "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
       "converter": { "PV1": { "required": false } }
     },
     "ADT-A01": {
-      "preprocess": { "PV1": { "19": { "authorityFallback": { "source": "msh" } } } },
+      "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
       "converter": { "PV1": { "required": true } }
     }
   }
@@ -184,6 +184,7 @@ The `warning` status must be fully supported in the incoming messages UI:
 - ID generation API should be single-entrypoint, with no exported `resolveEncounterAuthority` / `EncounterAuthorityResolution`; it should return a descriptive error used in the IncomingHL7v2Message warning/error.
 - No backward compatibility or migration work is required for existing Encounters.
 - Config location: `config/hl7v2-to-fhir.json`. Missing converter config is a hard error; missing preprocess config is allowed.
+ - Segment preprocessors are configured by kebab-case IDs and validated at startup; preprocessors always return a segment and run on every matching segment when the configured field is present.
 
 ## AI Review Notes
 Reviewed against current requirements and feedback. No blockers found.
@@ -263,9 +264,7 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
   export type MessageTypeConfig = {
     preprocess?: {
       PV1?: {
-        "19"?: {
-          authorityFallback?: { source?: "msh" };
-        };
+        "19"?: SegmentPreprocessorId[];
       };
     };
     converter?: {
@@ -287,7 +286,7 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
   - Config file malformed JSON → startup error with parse details
   - Valid config → returns typed object with correct structure
   - Config navigation works: `config["ORU-R01"]?.converter?.PV1?.required === false`
-  - Config navigation works: `config["ADT-A01"]?.preprocess?.PV1?.["19"]?.authorityFallback?.source === "msh"`
+  - Config navigation works: `config["ADT-A01"]?.preprocess?.PV1?.["19"]?.[0] === "fix-authority-with-msh"`
 - [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
@@ -354,7 +353,7 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 - [x] Implement `preprocessIncomingMessage(message: IncomingHL7v2Message, config: Hl7v2ToFhirConfig): IncomingHL7v2Message`
 - [x] Parse message type from `message.type` (e.g., "ORU^R01" → "ORU-R01" for config lookup)
 - [x] If no preprocess config for message type, return message unchanged
-- [x] If `authorityFallback.source === "msh"` is configured:
+- [x] If `fix-authority-with-msh` is configured for PV1-19:
   - Parse HL7v2 message to extract PV1-19 and MSH-3/4
   - If PV1-19 exists but CX.4/9/10 are all missing:
     - Populate CX.4 with MSH-3 (namespace) and MSH-4 (universal ID)
@@ -371,6 +370,19 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 - [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
+
+## Task 4.1: Refactor preprocessor to registry-based segment pipeline
+
+- [ ] Add a segment preprocessor registry with kebab-case IDs and a startup validator
+- [ ] Update config types to use `SegmentPreprocessorId[]` for `preprocess.PV1.19`
+- [ ] Update config loader to validate preprocessors at startup (fail fast on unknown IDs)
+- [ ] Update config tests to expect list-based preprocessors
+- [ ] Refactor preprocessor to iterate segments and apply configured preprocessors in order
+- [ ] Ensure segment preprocessors always return a segment (no null/undefined)
+- [ ] Run preprocessors for every matching segment only when the configured field (PV1-19) is present
+- [ ] Update preprocessor tests to cover registry validation, composition order, and multi-segment behavior
+- [ ] Add draft task document for "preprocess when PV1-19 is missing entirely"
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ## Task 5: Integrate ID generation into PV1 converter
 
