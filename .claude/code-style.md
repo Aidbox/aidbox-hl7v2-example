@@ -31,6 +31,10 @@ if (!mapsToLoinc || !matchingSystem) {
 }
 ```
 
+Don't add comments that restate what names and types already convey. 
+Comments should explain WHY or document non-obvious contracts/requirements, not describe WHAT the code does.
+If the name is descriptive, a comment is redundant. Delete it.
+
 ### Prefer functions over big commented blocks
 
 ```typescript
@@ -62,6 +66,8 @@ function parseSPM() {
 const obx = parseOBX();
 const spm = parseSPM();
 ```
+
+IMPORTANT: if a function is bigger than 100 lines, critically review it – probably, it will be more readable if you extract some of the work to functions.
 
 ## Separation of Concerns
 

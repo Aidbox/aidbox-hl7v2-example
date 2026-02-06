@@ -373,16 +373,16 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 4.1: Refactor preprocessor to registry-based segment pipeline
 
-- [ ] Add a segment preprocessor registry with kebab-case IDs and a startup validator
-- [ ] Update config types to use `SegmentPreprocessorId[]` for `preprocess.PV1.19`
-- [ ] Update config loader to validate preprocessors at startup (fail fast on unknown IDs)
-- [ ] Update config tests to expect list-based preprocessors
-- [ ] Refactor preprocessor to iterate segments and apply configured preprocessors in order
-- [ ] Ensure segment preprocessors always return a segment (no null/undefined)
-- [ ] Run preprocessors for every matching segment only when the configured field (PV1-19) is present
-- [ ] Update preprocessor tests to cover registry validation, composition order, and multi-segment behavior
-- [ ] Add draft task document for "preprocess when PV1-19 is missing entirely"
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Add a segment preprocessor registry with kebab-case IDs and a startup validator
+- [x] Update config types to use `SegmentPreprocessorId[]` for `preprocess.PV1.19`
+- [x] Update config loader to validate preprocessors at startup (fail fast on unknown IDs)
+- [x] Update config tests to expect list-based preprocessors
+- [x] Refactor preprocessor to iterate segments and apply configured preprocessors in order
+- [x] Ensure segment preprocessors always return a segment (no null/undefined)
+- [x] Run preprocessors for every matching segment only when the configured field (PV1-19) is present
+- [x] Update preprocessor tests to cover registry validation, composition order, and multi-segment behavior
+- [x] Add draft task document for "preprocess when PV1-19 is missing entirely"
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ## Task 5: Integrate ID generation into PV1 converter
 
