@@ -89,10 +89,12 @@ export async function createTestConceptMapForType(
     targetCode: string;
     targetDisplay: string;
   }>,
+  options?: { title?: string },
 ): Promise<void> {
   const typeConfig = MAPPING_TYPES[mappingType];
   const baseId = `hl7v2-${toKebabCase(sendingApp)}-${toKebabCase(sendingFacility)}`;
   const id = `${baseId}-${mappingType}`;
+  const title = options?.title ?? `${sendingApp}|${sendingFacility}`;
 
   const groups: Record<string, NonNullable<ConceptMap["group"]>[0]> = {};
   for (const m of mappings) {
@@ -118,7 +120,9 @@ export async function createTestConceptMapForType(
   const conceptMap: ConceptMap = {
     resourceType: "ConceptMap",
     id,
+    name: `HL7v2 ${title} to ${typeConfig.targetFieldLabel}`,
     status: "active",
+    title,
     sourceUri: `http://example.org/fhir/CodeSystem/${baseId}`,
     targetUri: typeConfig.targetSystem,
     group: Object.values(groups),

@@ -103,6 +103,11 @@ To avoid cycles:
 - Keep dependencies flowing in one direction (e.g., services -> utilities)
 - If two modules need each other's functionality, extract the shared part into a third module
 
+## Testing
+
+- Never mock Aidbox behavior — if a test depends on Aidbox, make it an integration test against the real test instance
+- Use shared helpers from `test/integration/helpers.ts` for creating test resources; local helpers are OK only when there's a single integration test file for that domain
+
 ## General Principles
 
 - Don't add error handling, fallbacks, or validation for scenarios that can't happen
