@@ -1,3 +1,70 @@
+---
+status: explored
+reviewer-iterations: 0
+prototype-files: []
+---
+
+# Design: Mapping Labels in Code Mapping Registry
+
+## Problem Statement
+The mapping system stores `sourceFieldLabel` and `targetFieldLabel` in three places, which creates duplication, inconsistency risk, and unclear ownership. The labels are effectively fixed by mapping type, yet are redundantly hardcoded in converters and persisted in Task input. We need a single source of truth for labels without sacrificing maintainability.
+
+## Proposed Approach
+Make the mapping registry authoritative for labels and remove per-instance labels from `MappingError` and Task input. Converters will only specify `mappingType`, and UI surfaces will derive labels from `MAPPING_TYPES`. Document a future improvement to replace string labels with structured metadata (segment/field and resource/field) for safer formatting and consistency.
+
+## Key Decisions
+
+| Decision | Options Considered | Chosen | Rationale |
+|----------|-------------------|--------|-----------|
+| Label source of truth | A) Registry only, B) Task only, C) Registry + Task override | A | Mapping type already defines source/target; registry prevents drift and removes duplication. |
+| Keep labels in Task input | Keep vs remove | Remove | No backward compatibility requirement; Task should not duplicate canonical labels. |
+| Structured metadata | Add now vs defer | Defer | Keep change minimal; note as future enhancement if label formatting needs grow. |
+
+Rejected options (why):
+- Option B (Task only): Keeps duplication and inconsistency risk; registry becomes less meaningful.
+- Option C (dual source): Adds complexity and precedence rules without a real need (YAGNI).
+
+## Trade-offs
+- **Pro**: Single source of truth reduces drift and simplifies converters and UI.
+- **Con**: Tasks are no longer self-describing if registry changes later.
+- **Mitigated by**: Labels are derived from mapping type; changes are intentional and tracked in registry.
+
+## Affected Components
+
+| File | Change Type | Description |
+|------|-------------|-------------|
+| `src/code-mapping/mapping-types.ts` | Modify | Ensure labels are defined here as canonical. |
+| `src/code-mapping/mapping-errors.ts` | Modify | Remove `sourceFieldLabel`/`targetFieldLabel` from `MappingError`. |
+| `src/code-mapping/mapping-task-service.ts` | Modify | Stop persisting labels to Task input; rely on mapping type. |
+| `src/ui/code-mappings.ts` | Modify | Derive labels from registry instead of Task input. |
+| `src/ui/mapping-tasks.ts` | Modify | Derive labels from registry instead of Task input. |
+
+## Technical Details
+- `MappingError` should include only `mappingType` for label derivation.
+- Task input should not include `sourceFieldLabel`/`targetFieldLabel`; UI will look up labels from `MAPPING_TYPES[mappingType]`.
+- Add a small helper (if needed) to resolve labels from mapping type and provide display defaults.
+- Future option: replace string labels with structured metadata in `MAPPING_TYPES`, such as:
+  - `sourceSegment: "PV1"`, `sourceField: "2"`
+  - `targetResource: "Encounter"`, `targetField: "class"`
+  This would allow consistent formatting (`PV1-2`, `Encounter.class`) without hand-maintained strings.
+
+## Edge Cases and Error Handling
+- Existing Task data that still includes labels will be ignored; UI should prioritize registry labels.
+- If a mapping type is missing from registry, UI should display a safe fallback (e.g., `Unknown mapping type`) rather than crashing.
+
+## Test Cases
+
+| Test Case | Type | Description |
+|-----------|------|-------------|
+| Resolve labels from mapping type | Unit | Registry lookup returns expected source/target labels for known types. |
+| Task UI label rendering | Unit | Task list renders labels from registry when Task input lacks labels. |
+| Mapping error creation | Unit | Converters emit mapping errors without label fields. |
+| End-to-end mapping task creation | Integration | New Task is created without labels and UI still shows correct labels. |
+
+# Context
+
+## Exploration Findings
+
 # Design Analysis: sourceFieldLabel and targetFieldLabel in Mapping Registry
 
 ## Problem Statement
@@ -117,7 +184,9 @@ Meanwhile, Task display reads labels from Task.input (which came from MappingErr
 - Should UI read from Task (preserves context) or registry (single source)?
 - What's the purpose of registry labels if Tasks store their own?
 
-## Proposed Solutions
+## Possible Solutions
+
+Consider these solutions, but don't exclude other alternative.
 
 ### Option A: Registry as Single Source of Truth
 
@@ -173,15 +242,6 @@ Meanwhile, Task display reads labels from Task.input (which came from MappingErr
 - Unclear when to use which
 - Likely YAGNI
 
-## Recommendation
-
-**Option A (Registry as Single Source of Truth)** is preferred because:
-
-1. The mapping type semantically DEFINES which fields are involved
-2. Per-instance variation is not a real use case
-3. Simplification outweighs hypothetical future flexibility
-4. Consistency is more valuable than flexibility for human-readable labels
-
 ## Open Questions
 
 1. **Is there ANY scenario where the same mapping type would genuinely need different labels?**
@@ -203,3 +263,15 @@ Meanwhile, Task display reads labels from Task.input (which came from MappingErr
 - [PV1 Segment Definition](http://v2plus.hl7.org/2021Jan/segment-definition/PV1.html)
 - [HL7 PV1 Segment - Rhapsody](https://rhapsody.health/resources/hl7-pv1-patient-visit-information-segment/)
 - Project spec: `docs/v2-to-fhir-spec/spec.md`
+
+## User Requirements & Answers
+- User wants a recommendation on whether labels belong in registry or Task input.
+- Backward compatibility is not required; migration instructions are optional if needed.
+- User agreed to document Option A (registry as source of truth) and mark other options rejected with reasons.
+- User requested a mention of structured metadata as a future consideration.
+
+## AI Review Notes
+[TBD]
+
+## User Feedback
+[TBD]
