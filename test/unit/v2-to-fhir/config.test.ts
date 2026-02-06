@@ -41,11 +41,11 @@ describe("hl7v2ToFhirConfig", () => {
   test("valid config returns typed object with correct structure", () => {
     const validConfig: Hl7v2ToFhirConfig = {
       "ORU-R01": {
-        preprocess: { PV1: { "19": { authorityFallback: { source: "msh" } } } },
+        preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
         converter: { PV1: { required: false } },
       },
       "ADT-A01": {
-        preprocess: { PV1: { "19": { authorityFallback: { source: "msh" } } } },
+        preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
         converter: { PV1: { required: true } },
       },
     };
@@ -77,10 +77,10 @@ describe("hl7v2ToFhirConfig", () => {
     expect(config["ORU-R01"]?.converter?.PV1?.required).toBe(false);
   });
 
-  test("config navigation works: ADT-A01 preprocess authorityFallback source is msh", () => {
+  test("config navigation works: ADT-A01 preprocess PV1.19 has fix-authority-with-msh", () => {
     const validConfig = {
       "ADT-A01": {
-        preprocess: { PV1: { "19": { authorityFallback: { source: "msh" } } } },
+        preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
       },
     };
 
@@ -90,8 +90,8 @@ describe("hl7v2ToFhirConfig", () => {
 
     const config = hl7v2ToFhirConfig();
 
-    expect(config["ADT-A01"]?.preprocess?.PV1?.["19"]?.authorityFallback?.source).toBe(
-      "msh",
+    expect(config["ADT-A01"]?.preprocess?.PV1?.["19"]?.[0]).toBe(
+      "fix-authority-with-msh",
     );
   });
 
@@ -153,5 +153,127 @@ describe("hl7v2ToFhirConfig", () => {
     // ADT-A01 is not in config, should return undefined
     expect(config["ADT-A01"]).toBeUndefined();
     expect(config["ADT-A01"]?.converter?.PV1?.required).toBeUndefined();
+  });
+
+  describe("preprocessor ID validation", () => {
+    test("unknown preprocessor ID throws startup error", () => {
+      const invalidConfig = {
+        "ORU-R01": {
+          preprocess: { PV1: { "19": ["unknown-preprocessor"] } },
+        },
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /Unknown preprocessor ID "unknown-preprocessor".*Valid IDs: fix-authority-with-msh/,
+      );
+    });
+
+    test("valid preprocessor ID passes validation", () => {
+      const validConfig = {
+        "ORU-R01": {
+          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+        },
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(validConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).not.toThrow();
+    });
+
+    test("multiple preprocessor IDs are all validated", () => {
+      const invalidConfig = {
+        "ORU-R01": {
+          preprocess: { PV1: { "19": ["fix-authority-with-msh", "bad-one"] } },
+        },
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /Unknown preprocessor ID "bad-one"/,
+      );
+    });
+
+    test("empty preprocessor list passes validation", () => {
+      const validConfig = {
+        "ORU-R01": {
+          preprocess: { PV1: { "19": [] } },
+        },
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(validConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).not.toThrow();
+    });
+
+    test("config without preprocess section passes validation", () => {
+      const validConfig = {
+        "ORU-R01": {
+          converter: { PV1: { required: false } },
+        },
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(validConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).not.toThrow();
+    });
+
+    test("non-array preprocessorIds throws startup error", () => {
+      const invalidConfig = {
+        "ORU-R01": {
+          preprocess: { PV1: { "19": "fix-authority-with-msh" } },
+        },
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /Invalid preprocessor config.*expected array of preprocessor IDs, got string/,
+      );
+    });
+
+    test("numeric preprocessorIds throws startup error", () => {
+      const invalidConfig = {
+        "ORU-R01": {
+          preprocess: { PV1: { "19": 123 } },
+        },
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /Invalid preprocessor config.*expected array of preprocessor IDs, got number/,
+      );
+    });
+
+    test("null preprocessorIds is allowed (optional field)", () => {
+      const validConfig = {
+        "ORU-R01": {
+          preprocess: { PV1: { "19": null } },
+        },
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(validConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).not.toThrow();
+    });
   });
 });

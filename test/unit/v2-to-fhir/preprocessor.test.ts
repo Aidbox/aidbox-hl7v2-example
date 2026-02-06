@@ -1,30 +1,17 @@
 import { describe, test, expect } from "bun:test";
-import { preprocessIncomingMessage } from "../../../src/v2-to-fhir/preprocessor";
-import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
+import { parseMessage } from "@atomic-ehr/hl7v2";
+import { preprocessMessage } from "../../../src/v2-to-fhir/preprocessor";
 import type { Hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
+import { fromPV1 } from "../../../src/hl7v2/generated/fields";
 
-// Helper to create a minimal IncomingHL7v2Message
-function createMessage(
-  rawMessage: string,
-  type: string,
-  overrides: Partial<IncomingHL7v2Message> = {},
-): IncomingHL7v2Message {
-  return {
-    resourceType: "IncomingHL7v2Message",
-    message: rawMessage,
-    type,
-    ...overrides,
-  };
-}
-
-// Config with MSH fallback enabled for both message types
+// Config with fix-authority-with-msh preprocessor enabled for both message types
 const configWithMshFallback: Hl7v2ToFhirConfig = {
   "ORU-R01": {
-    preprocess: { PV1: { "19": { authorityFallback: { source: "msh" } } } },
+    preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
     converter: { PV1: { required: false } },
   },
   "ADT-A01": {
-    preprocess: { PV1: { "19": { authorityFallback: { source: "msh" } } } },
+    preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
     converter: { PV1: { required: true } },
   },
 };
@@ -39,7 +26,18 @@ const configWithoutPreprocess: Hl7v2ToFhirConfig = {
   },
 };
 
-describe("preprocessIncomingMessage", () => {
+function findPv1Segment(parsed: ReturnType<typeof parseMessage>) {
+  return parsed.find((s) => s.segment === "PV1");
+}
+
+function getPv1_19Authority(parsed: ReturnType<typeof parseMessage>): string | undefined {
+  const pv1Segment = findPv1Segment(parsed);
+  if (!pv1Segment) return undefined;
+  const pv1 = fromPV1(pv1Segment);
+  return pv1.$19_visitNumber?.$4_system?.$1_namespace;
+}
+
+describe("preprocessMessage", () => {
   describe("message with no preprocess config", () => {
     test("returns message unchanged when no preprocess config exists", () => {
       const rawMessage = [
@@ -48,11 +46,11 @@ describe("preprocessIncomingMessage", () => {
         "PV1|1|I|WARD1||||||||||||||||V12345",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ORU^R01");
-      const result = preprocessIncomingMessage(message, configWithoutPreprocess);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithoutPreprocess);
 
-      expect(result).toBe(message); // Same reference, unchanged
-      expect(result.message).toBe(rawMessage);
+      expect(result).toBe(parsed); // Same reference
+      expect(getPv1_19Authority(result)).toBeUndefined();
     });
 
     test("returns message unchanged for unsupported message type", () => {
@@ -61,52 +59,53 @@ describe("preprocessIncomingMessage", () => {
         "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ORM^O01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result).toBe(message);
+      expect(result).toBe(parsed);
     });
   });
 
-  describe("ORU with missing PV1-19 authority and MSH fallback enabled", () => {
-    test("populates CX.4 from MSH-3 namespace when PV1-19 has no authority", () => {
+  describe("ORU with missing PV1-19 authority and fix-authority-with-msh enabled", () => {
+    test("populates CX.4 from MSH-3 and MSH-4 namespaces when PV1-19 has no authority", () => {
       const rawMessage = [
         "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
         "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
         "PV1|1|I|WARD1||||||||||||||||V12345",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ORU^R01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result).not.toBe(message); // New object
-      expect(result.message).toContain("V12345^^^LAB");
+      expect(getPv1_19Authority(result)).toBe("LAB-HOSPITAL");
     });
 
-    test("populates CX.4 with MSH-3 system (universal ID) when available", () => {
+    test("uses only namespace even when universal ID is present in MSH", () => {
       const rawMessage = [
         "MSH|^~\\&|LAB&1.2.3.4&ISO|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
         "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
         "PV1|1|I|WARD1||||||||||||||||V12345",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ORU^R01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result.message).toContain("V12345^^^LAB&1.2.3.4&ISO");
+      // PV1-19 gets namespace only, universal ID is not copied to authority
+      expect(getPv1_19Authority(result)).toBe("LAB-HOSPITAL");
     });
 
-    test("uses MSH-4 when MSH-3 has no namespace", () => {
+    test("uses MSH-4 namespace when MSH-3 has no namespace", () => {
       const rawMessage = [
         "MSH|^~\\&||HOSPITAL&2.3.4.5&ISO||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
         "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
         "PV1|1|I|WARD1||||||||||||||||V12345",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ORU^R01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result.message).toContain("V12345^^^HOSPITAL&2.3.4.5&ISO");
+      // Only MSH-4 namespace used (MSH-3 has no namespace)
+      expect(getPv1_19Authority(result)).toBe("HOSPITAL");
     });
   });
 
@@ -118,11 +117,10 @@ describe("preprocessIncomingMessage", () => {
         "PV1|1|I|WARD1||||||||||||||||V12345^^^EXISTING&9.9.9.9&ISO",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ORU^R01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result).toBe(message); // Unchanged
-      expect(result.message).toContain("V12345^^^EXISTING&9.9.9.9&ISO");
+      expect(getPv1_19Authority(result)).toBe("EXISTING");
     });
 
     test("does not overwrite when CX.4 has only namespace", () => {
@@ -132,27 +130,25 @@ describe("preprocessIncomingMessage", () => {
         "PV1|1|I|WARD1||||||||||||||||V12345^^^ExistingNS",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ORU^R01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result).toBe(message);
-      expect(result.message).toContain("V12345^^^ExistingNS");
+      expect(getPv1_19Authority(result)).toBe("ExistingNS");
     });
   });
 
-  describe("ADT with missing PV1-19 authority and MSH fallback enabled", () => {
-    test("populates CX.4 from MSH-3 for ADT-A01", () => {
+  describe("ADT with missing PV1-19 authority and fix-authority-with-msh enabled", () => {
+    test("populates CX.4 from MSH-3 and MSH-4 for ADT-A01", () => {
       const rawMessage = [
         "MSH|^~\\&|ADMISSIONS|HOSPITAL||DEST|20260105||ADT^A01|MSG001|P|2.5.1",
         "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
         "PV1|1|I|WARD1||||||||||||||||ENC-789",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ADT^A01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result).not.toBe(message);
-      expect(result.message).toContain("ENC-789^^^ADMISSIONS");
+      expect(getPv1_19Authority(result)).toBe("ADMISSIONS-HOSPITAL");
     });
   });
 
@@ -165,53 +161,10 @@ describe("preprocessIncomingMessage", () => {
         "OBR|1|ORD001|FIL001|LAB123|||20260101",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ORU^R01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result).toBe(message);
-    });
-  });
-
-  describe("preprocessor never modifies status/error fields", () => {
-    test("preserves existing status field", () => {
-      const rawMessage = [
-        "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
-        "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
-        "PV1|1|I|WARD1||||||||||||||||V12345",
-      ].join("\r");
-
-      const message = createMessage(rawMessage, "ORU^R01", { status: "received" });
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
-
-      expect(result.status).toBe("received");
-    });
-
-    test("preserves existing error field", () => {
-      const rawMessage = [
-        "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
-        "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
-        "PV1|1|I|WARD1||||||||||||||||V12345",
-      ].join("\r");
-
-      const message = createMessage(rawMessage, "ORU^R01", { error: "previous error" });
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
-
-      expect(result.error).toBe("previous error");
-    });
-
-    test("does not add status field when message is modified", () => {
-      const rawMessage = [
-        "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
-        "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
-        "PV1|1|I|WARD1||||||||||||||||V12345",
-      ].join("\r");
-
-      const message = createMessage(rawMessage, "ORU^R01");
-      delete (message as { status?: string }).status;
-
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
-
-      expect(result.status).toBeUndefined();
+      expect(result).toBe(parsed);
     });
   });
 
@@ -223,10 +176,11 @@ describe("preprocessIncomingMessage", () => {
         "PV1|1|I|WARD1||||||||||||||||V12345",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ORU^R01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result).toBe(message); // No MSH authority, unchanged
+      // No MSH authority available
+      expect(getPv1_19Authority(result)).toBeUndefined();
     });
 
     test("handles PV1-19 with empty value", () => {
@@ -236,19 +190,75 @@ describe("preprocessIncomingMessage", () => {
         "PV1|1|I|WARD1||||||||||||||||",
       ].join("\r");
 
-      const message = createMessage(rawMessage, "ORU^R01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result).toBe(message); // No visit number value, unchanged
+      // No visit number value to attach authority to
+      expect(getPv1_19Authority(result)).toBeUndefined();
+    });
+  });
+
+  describe("preprocessor composition", () => {
+    test("empty preprocessor list returns message unchanged", () => {
+      const config: Hl7v2ToFhirConfig = {
+        "ORU-R01": {
+          preprocess: { PV1: { "19": [] } },
+        },
+      };
+
+      const rawMessage = [
+        "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
+        "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
+        "PV1|1|I|WARD1||||||||||||||||V12345",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, config);
+
+      expect(getPv1_19Authority(result)).toBeUndefined();
     });
 
-    test("handles malformed message gracefully", () => {
-      const rawMessage = "not a valid HL7v2 message";
+    test("processes only when configured field is present", () => {
+      const rawMessage = [
+        "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
+        "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
+        "PV1|1|I|WARD1", // PV1-19 not present
+      ].join("\r");
 
-      const message = createMessage(rawMessage, "ORU^R01");
-      const result = preprocessIncomingMessage(message, configWithMshFallback);
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
 
-      expect(result).toBe(message); // Returns unchanged on parse error
+      expect(getPv1_19Authority(result)).toBeUndefined();
+    });
+  });
+
+  describe("message type extraction", () => {
+    test("extracts ORU-R01 from MSH-9", () => {
+      const rawMessage = [
+        "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
+        "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
+        "PV1|1|I|WARD1||||||||||||||||V12345",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
+
+      // Should have processed (config key is "ORU-R01")
+      expect(getPv1_19Authority(result)).toBe("LAB-HOSPITAL");
+    });
+
+    test("extracts ADT-A01 from MSH-9", () => {
+      const rawMessage = [
+        "MSH|^~\\&|ADMISSIONS|HOSPITAL||DEST|20260105||ADT^A01|MSG001|P|2.5.1",
+        "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
+        "PV1|1|I|WARD1||||||||||||||||V12345",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, configWithMshFallback);
+
+      // Should have processed (config key is "ADT-A01")
+      expect(getPv1_19Authority(result)).toBe("ADMISSIONS-HOSPITAL");
     });
   });
 });

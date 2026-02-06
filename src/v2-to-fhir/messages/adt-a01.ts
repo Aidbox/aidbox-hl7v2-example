@@ -14,7 +14,7 @@
  */
 
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
-import type { ConversionResult } from "../converter";
+import { findSegment, findAllSegments, type ConversionResult } from "../converter";
 import {
   fromMSH,
   fromPID,
@@ -59,17 +59,6 @@ import type { SenderContext } from "../../code-mapping/concept-map";
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-function findSegment(
-  message: HL7v2Message,
-  name: string,
-): HL7v2Segment | undefined {
-  return message.find((s) => s.segment === name);
-}
-
-function findAllSegments(message: HL7v2Message, name: string): HL7v2Segment[] {
-  return message.filter((s) => s.segment === name);
-}
 
 /**
  * Generate a deterministic ID from segment data

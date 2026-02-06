@@ -5,7 +5,6 @@
  * Supports: ADT_A01, ADT_A08, ORU_R01
  */
 
-import { parseMessage } from "@atomic-ehr/hl7v2";
 import type { HL7v2Message, HL7v2Segment } from "../hl7v2/generated/types";
 import { fromMSH } from "../hl7v2/generated/fields";
 import type { Bundle } from "../fhir/hl7-fhir-r4-core";
@@ -27,11 +26,18 @@ export interface ConversionResult {
 // Helper Functions
 // ============================================================================
 
-function findSegment(
+export function findSegment(
   message: HL7v2Message,
   name: string,
 ): HL7v2Segment | undefined {
   return message.find((s) => s.segment === name);
+}
+
+export function findAllSegments(
+  message: HL7v2Message,
+  name: string,
+): HL7v2Segment[] {
+  return message.filter((s) => s.segment === name);
 }
 
 /**
@@ -67,19 +73,18 @@ function extractMessageType(parsed: HL7v2Message): string {
 /**
  * Convert HL7v2 message to FHIR Bundle with message update
  *
- * Parses the message, reads message type from MSH-9, and routes to appropriate converter:
+ * Reads message type from MSH-9 and routes to appropriate converter:
  * - ADT_A01 -> convertADT_A01
  * - ADT_A08 -> convertADT_A08
  * - ORU_R01 -> convertORU_R01
  *
- * @param message - Raw HL7v2 message string
+ * @param parsed - Already-parsed HL7v2 message
  * @returns ConversionResult with FHIR Bundle and message update fields
  * @throws Error if message type is unsupported
  */
 export async function convertToFHIR(
-  message: string,
+  parsed: HL7v2Message,
 ): Promise<ConversionResult> {
-  const parsed = parseMessage(message);
   const messageType = extractMessageType(parsed);
 
   switch (messageType) {
