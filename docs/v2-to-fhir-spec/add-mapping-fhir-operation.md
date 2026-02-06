@@ -10,7 +10,7 @@ The [$add](https://hl7.org/fhir/R6/resource-operation-add.html) operation suppor
 
 The `$add-mapping` operation merges mappings into a ConceptMap, ignoring any that already exist.
 
-The server SHALL add mappings from the input `group` elements. Two mappings match if they share the same `group.source`, `group.target`, `element.code`, and `target.code`.
+The server SHALL add mappings from the input `group` elements. Two mappings match if they share the same `ConceptMap.group.source`, `ConceptMap.group.target`, `ConceptMap.group.element.code`, and `ConceptMap.group.element.target.code`.
 
 - If a mapping does not exist, it is added.
 - If a mapping already exists, it is ignored.
@@ -125,7 +125,7 @@ The `$remove-mapping` operation removes mappings from a ConceptMap.
 
 The server SHALL remove mappings from the input `group` elements that match entries in the target ConceptMap.
 
-Two mappings match if they share the same `group.source`, `group.target`, `element.code`, and `target.code`.
+Two mappings match if they share the same `ConceptMap.group.source`, `ConceptMap.group.target`, `ConceptMap.group.element.code`, and `ConceptMap.group.element.target.code`.
 
 The server SHALL ignore all ConceptMap elements outside of `group`.
 
