@@ -386,18 +386,18 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 5: Integrate ID generation into PV1 converter
 
-- [ ] Remove the DESIGN PROTOTYPE comment from `src/v2-to-fhir/segments/pv1-encounter.ts`
-- [ ] Import `buildEncounterIdentifier` from `../id-generation`
-- [ ] Modify `convertPV1WithMappingSupport` to use `buildEncounterIdentifier` for PV1-19:
+- [x] Remove the DESIGN PROTOTYPE comment from `src/v2-to-fhir/segments/pv1-encounter.ts`
+- [x] Import `buildEncounterIdentifier` from `../id-generation`
+- [x] Modify `convertPV1WithMappingSupport` to use `buildEncounterIdentifier` for PV1-19:
   - Call `buildEncounterIdentifier(pv1.$19_visitNumber)` when PV1-19 is present
   - If `buildEncounterIdentifier` returns an error, propagate it
   - If valid, attach identifier to the Encounter
-- [ ] Update `PV1ConversionResult` type if needed to include identifier error
-- [ ] Remove any legacy PV1-19 handling that used fallback IDs
-- [ ] Write/update unit tests in `src/v2-to-fhir/segments/pv1-encounter.test.ts`:
+- [x] Update `PV1ConversionResult` type if needed to include identifier error
+- [x] Remove any legacy PV1-19 handling that used fallback IDs
+- [x] Write/update unit tests in `src/v2-to-fhir/segments/pv1-encounter.test.ts`:
   - PV1 with valid authority → Encounter has identifier from `buildEncounterIdentifier`
   - PV1 with missing authority → conversion result includes error
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
