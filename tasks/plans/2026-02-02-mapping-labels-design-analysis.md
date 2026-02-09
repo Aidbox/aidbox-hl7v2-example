@@ -1,7 +1,14 @@
 ---
-status: explored
+status: ai-reviewed
 reviewer-iterations: 0
-prototype-files: []
+prototype-files:
+  - src/code-mapping/mapping-errors.ts
+  - src/code-mapping/mapping-task/compose.ts
+  - src/ui/pages/mapping-tasks.ts
+  - src/v2-to-fhir/messages/oru-r01.ts
+  - src/v2-to-fhir/segments/obx-observation.ts
+  - src/v2-to-fhir/segments/obr-diagnosticreport.ts
+  - src/v2-to-fhir/segments/pv1-encounter.ts
 ---
 
 # Design: Mapping Labels in Code Mapping Registry
@@ -35,9 +42,12 @@ Rejected options (why):
 |------|-------------|-------------|
 | `src/code-mapping/mapping-types.ts` | Modify | Ensure labels are defined here as canonical. |
 | `src/code-mapping/mapping-errors.ts` | Modify | Remove `sourceFieldLabel`/`targetFieldLabel` from `MappingError`. |
-| `src/code-mapping/mapping-task-service.ts` | Modify | Stop persisting labels to Task input; rely on mapping type. |
-| `src/ui/code-mappings.ts` | Modify | Derive labels from registry instead of Task input. |
-| `src/ui/mapping-tasks.ts` | Modify | Derive labels from registry instead of Task input. |
+| `src/code-mapping/mapping-task/compose.ts` | Modify | Stop persisting labels to Task input and compose text from registry labels. |
+| `src/ui/pages/mapping-tasks.ts` | Modify | Derive labels from registry instead of Task input. |
+| `src/v2-to-fhir/messages/oru-r01.ts` | Modify | Emit mapping errors with `mappingType` only. |
+| `src/v2-to-fhir/segments/obx-observation.ts` | Modify | Emit mapping errors with `mappingType` only. |
+| `src/v2-to-fhir/segments/obr-diagnosticreport.ts` | Modify | Emit mapping errors with `mappingType` only. |
+| `src/v2-to-fhir/segments/pv1-encounter.ts` | Modify | Emit mapping errors with `mappingType` only. |
 
 ## Technical Details
 - `MappingError` should include only `mappingType` for label derivation.
@@ -271,7 +281,18 @@ Consider these solutions, but don't exclude other alternative.
 - User requested a mention of structured metadata as a future consideration.
 
 ## AI Review Notes
-[TBD]
+Review outcome: approved for user review.
+
+Checks performed:
+- Completeness: the design addresses label ownership, Task payload changes, converter changes, and UI derivation.
+- Codebase consistency: aligns with existing `MAPPING_TYPES` registry pattern and `mappingType` fail-fast usage.
+- Architecture: reduces duplication by moving canonical labels to one source and removing repeated Task/input fields.
+- Feasibility: implementation scope is moderate and localized to mapping error creation, task composition, and task UI rendering.
+- Simpler alternatives: option A remains the simplest coherent path; options B/C were correctly rejected as higher complexity or weaker consistency.
+- Test plan: unit and integration cases cover core behavior and regression risk.
+
+Noted non-blocking follow-up:
+- Structured metadata (`sourceSegment`, `sourceField`, `targetResource`, `targetField`) is documented for future iteration and intentionally deferred.
 
 ## User Feedback
 [TBD]

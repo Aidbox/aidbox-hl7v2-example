@@ -295,6 +295,8 @@ export function renderMappingTaskPanel(task: Task, isPending: boolean): string {
   const localCode = getTaskInputValue(task, "Local code") || "-";
   const localDisplay = getTaskInputValue(task, "Local display") || "";
   const localSystem = getTaskInputValue(task, "Local system") || "-";
+  // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
+  // Replace Task.input label reads with lookup from `MAPPING_TYPES[mappingType]`.
   const sourceField = getTaskInputValue(task, "Source field");
   const targetField = getTaskInputValue(task, "Target field");
   const sampleValue = getTaskInputValue(task, "Sample value");
