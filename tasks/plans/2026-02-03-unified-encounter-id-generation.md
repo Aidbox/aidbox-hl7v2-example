@@ -466,18 +466,16 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 9: Update UI for warning status
 
-- [ ] Remove all DESIGN PROTOTYPE comments from `src/ui/pages/messages.ts`
-- [ ] Add `"warning"` to the `statuses` array for filter buttons
-- [ ] Update `getStatusBadgeClass` to handle `"warning"` status:
+- [x] Remove all DESIGN PROTOTYPE comments from `src/ui/pages/messages.ts`
+- [x] Add `"warning"` to the `statuses` array for filter buttons
+- [x] Update `getStatusBadgeClass` to handle `"warning"` status:
   - Return `"bg-amber-100 text-amber-800"` for warning styling
-- [ ] Update `formatStatusLabel` to handle `"warning"` → `"Warning"`
-- [ ] Update retry action eligibility to include `warning`:
+- [x] Update `formatStatusLabel` to handle `"warning"` → `"Warning"`
+- [x] Update retry action eligibility to include `warning`:
   - Change condition from `msg.status === "error" || msg.status === "mapping_error"` to also include `msg.status === "warning"`
-- [ ] Write/update test in `src/ui/pages/messages.test.ts` (if exists):
-  - Warning status appears in filter dropdown
-  - Warning messages show amber badge
-  - Warning messages have retry button
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Write/update test in `src/ui/pages/messages.test.ts` (if exists):
+  - No test file exists; rendering functions are internal; changes are trivial switch/ternary additions
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
