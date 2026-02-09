@@ -2,7 +2,7 @@
 # Run TypeScript type checking, only failing on src/ and test/ errors (not node_modules)
 
 OUTPUT=$(tsc --noEmit 2>&1)
-SRC_ERRORS=$(echo "$OUTPUT" | grep -E "^(src|test)/")
+SRC_ERRORS=$(echo "$OUTPUT" | grep -E "^(src|test|scripts)/")
 
 if [ -n "$SRC_ERRORS" ]; then
   echo "TypeScript errors:"

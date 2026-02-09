@@ -2,7 +2,8 @@
   "name": "aidbox-hl7",
   "module": "index.ts",
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "fast-xml-parser": "^5.3.5"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -17,6 +18,7 @@
     "test-mllp": "bun scripts/test-mllp-client.ts",
     "regenerate-hl7v2": "scripts/regenerate-hl7v2.sh",
     "regenerate-fhir": "bun scripts/regenerate-fhir.ts",
+    "generate-hl7v2-reference": "bun scripts/generate-hl7v2-reference.ts",
     "migrate": "bun src/migrate.ts",
     "test:all": "bun test && bun test:integration",
     "test:unit": "bun test",

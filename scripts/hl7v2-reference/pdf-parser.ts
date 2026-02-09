@@ -1,0 +1,450 @@
+import { join } from "node:path";
+import { readdir } from "node:fs/promises";
+import type { PdfFieldDescription, PdfSegmentDescription, PdfTable, PdfTableValue } from "./types";
+
+function shellEscape(s: string): string {
+  return "'" + s.replace(/'/g, "'\\''") + "'";
+}
+
+async function findPdfToText(): Promise<string[]> {
+  // Check if pdftotext is directly available
+  const direct = Bun.spawnSync(["which", "pdftotext"]);
+  if (direct.exitCode === 0) return ["pdftotext"];
+
+  // NixOS: use nix-shell wrapper
+  const nixShell = Bun.spawnSync(["which", "nix-shell"]);
+  if (nixShell.exitCode === 0) return ["nix-shell", "-p", "poppler-utils", "--run"];
+
+  throw new Error(
+    "pdftotext not found. Install poppler-utils (e.g., apt install poppler-utils) " +
+    "or on NixOS ensure nix-shell is available."
+  );
+}
+
+async function extractPdfText(pdfPath: string, cmd: string[], layout: boolean = false): Promise<string> {
+  let proc;
+  if (cmd[0] === "nix-shell") {
+    const pdfCmd = `pdftotext ${layout ? "-layout " : ""}${shellEscape(pdfPath)} -`;
+    proc = Bun.spawn([...cmd, pdfCmd], { stdout: "pipe", stderr: "pipe" });
+  } else {
+    const args = layout ? ["-layout", pdfPath, "-"] : [pdfPath, "-"];
+    proc = Bun.spawn(["pdftotext", ...args], { stdout: "pipe", stderr: "pipe" });
+  }
+
+  const output = await new Response(proc.stdout).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    const stderr = await new Response(proc.stderr).text();
+    throw new Error(`pdftotext failed on ${pdfPath}: ${stderr}`);
+  }
+
+  return output;
+}
+
+const PAGE_NOISE_PATTERNS = [
+  /^Page\s+[A-Z]?-?\d/,              // "Page 4-1" (v2.5), "Page 1" / "Page A-25" (v2.8.2)
+  /^Health Level Seven/,              // Both versions
+  /©.*Health Level Seven/,            // v2.8.2: "©Health Level Seven..." and reversed even-page format
+  /^Final Standard\./,               // v2.5
+  /^\w+\s+\d{4}\.\s*$/,             // "July 2003." (v2.5), "September 2015." (v2.8.2)
+  /^Chapter \d+:/,                    // Both versions
+  /^Appendix [A-Z]:/,                // Both versions
+];
+
+function stripPageNoise(text: string): string {
+  return text
+    .split("\n")
+    .filter(line => !PAGE_NOISE_PATTERNS.some(p => p.test(line.trim())))
+    .join("\n");
+}
+
+// Matches field definition headers in two formats:
+// 1. "4.5.3.1 OBR-1 Set ID – OBR (SI) 00237" (section number on same line)
+// 2. "OBX-1 Set ID - OBX (SI) 00569" (section number was on previous line)
+// Captures: segment, position, field name, dataType, item number
+const FIELD_HEADER_RE = /^(?:\d+[\.\d]*\s+)?(\w{2,3})-(\d+)\s+(.+?)\s+\((\w{2,7})\)\s+(\d{5})\s*$/;
+
+// Matches "Definition:" marker at start of line
+const DEFINITION_RE = /^Definition:\s*/;
+
+// Matches Components/Subcomponents blocks to skip
+const COMPONENTS_RE = /^(?:Components:|Subcomponents\s)/;
+
+function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> {
+  const lines = text.split("\n");
+  const fields = new Map<string, PdfFieldDescription>();
+
+  // First pass: find all field header positions
+  const headers: { index: number; segment: string; position: number; item: string; dataType: string; longName: string }[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i]!.match(FIELD_HEADER_RE);
+    if (match) {
+      headers.push({
+        index: i,
+        segment: match[1]!,
+        position: parseInt(match[2]!, 10),
+        item: match[5]!.padStart(5, "0"),
+        dataType: match[4]!,
+        longName: match[3]!.trim().replace(/\s*[-\u2013]\s*\w{2,3}\s*$/, ""), // strip trailing "– SEG"
+      });
+    }
+  }
+
+  // Second pass: extract descriptions
+  for (let h = 0; h < headers.length; h++) {
+    const header = headers[h]!;
+    const startLine = header.index + 1;
+    const endLine = h + 1 < headers.length ? headers[h + 1]!.index : Math.min(startLine + 50, lines.length);
+    const section = lines.slice(startLine, endLine);
+
+    const description = extractDescription(section);
+    if (description) {
+      const key = `${header.segment}.${header.position}`;
+      fields.set(key, {
+        segment: header.segment,
+        position: header.position,
+        item: header.item,
+        dataType: header.dataType,
+        longName: header.longName,
+        description,
+      });
+    }
+  }
+
+  return fields;
+}
+
+const MAX_DESCRIPTION_LENGTH = 3000;
+const SECTION_HEADING_RE = /^\d+\.\d+(?:\.\d+)*\s+[A-Z]/;
+
+export function extractDescription(sectionLines: string[]): string | null {
+  let inComponents = false;
+  let definitionFound = false;
+  const descriptionParts: string[] = [];
+
+  for (const line of sectionLines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (definitionFound && descriptionParts.length > 0) {
+        descriptionParts.push("");
+      }
+      inComponents = false;
+      continue;
+    }
+
+    // Stop at section headings, attribute tables, or segment headings
+    if (definitionFound) {
+      if (SECTION_HEADING_RE.test(trimmed)) break;
+      if (ATTRIBUTE_TABLE_RE.test(trimmed)) break;
+      if (SEGMENT_HEADING_RE.test(trimmed) && !trimmed.includes("....")) break;
+    }
+
+    // Skip component listings
+    if (COMPONENTS_RE.test(trimmed) || trimmed.startsWith("<") || trimmed.startsWith("&")) {
+      inComponents = true;
+      continue;
+    }
+    if (inComponents && (trimmed.startsWith("<") || trimmed.startsWith("&") || trimmed.startsWith("("))) {
+      continue;
+    }
+    inComponents = false;
+
+    // Check for Definition: marker
+    const defMatch = trimmed.match(DEFINITION_RE);
+    if (defMatch) {
+      definitionFound = true;
+      const afterDef = trimmed.slice(defMatch[0].length).trim();
+      if (afterDef) descriptionParts.push(afterDef);
+      continue;
+    }
+
+    // If we already found Definition:, collect text
+    if (definitionFound) {
+      descriptionParts.push(trimmed);
+      continue;
+    }
+
+    // Fallback for fields without "Definition:" marker:
+    // After Components block, collect paragraph text that looks like a description
+    if (!inComponents && descriptionParts.length === 0) {
+      const looksLikeDescription = trimmed.startsWith("This field") ||
+        trimmed.startsWith("This is ") ||
+        trimmed.startsWith("The ") ||
+        trimmed.startsWith("A ") ||
+        trimmed.startsWith("An ") ||
+        trimmed.startsWith("Contains ") ||
+        trimmed.startsWith("Specifies ") ||
+        trimmed.startsWith("Indicates ") ||
+        trimmed.startsWith("From V") ||
+        trimmed.startsWith("In ");
+      if (looksLikeDescription) {
+        definitionFound = true;
+        descriptionParts.push(trimmed);
+      }
+    }
+  }
+
+  if (descriptionParts.length === 0) return null;
+
+  let description = descriptionParts
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+\d+[\.\d]+\s*$/, "")
+    .trim();
+
+  if (!description) return null;
+
+  // Safety net: truncate at sentence boundary if too long
+  if (description.length > MAX_DESCRIPTION_LENGTH) {
+    const truncated = description.slice(0, MAX_DESCRIPTION_LENGTH);
+    const lastPeriod = truncated.lastIndexOf(". ");
+    description = lastPeriod > MAX_DESCRIPTION_LENGTH * 0.5
+      ? truncated.slice(0, lastPeriod + 1)
+      : truncated;
+  }
+
+  return description;
+}
+
+// Segment heading format in the actual definition sections (not TOC):
+// "PID - Patient Identification Segment"
+// "3.4.2 PID – Patient Identification Segment"
+// Must contain a word that looks like a segment name followed by actual description text.
+// TOC lines contain "...." dots — we exclude those.
+const SEGMENT_HEADING_RE = /^(?:\d+[\.\d]*\s+)?([A-Z][A-Z0-9]{1,2}\d?)\s*[-\u2013]\s+(.+)/;
+
+// "HL7 Attribute Table" marks the end of segment description
+const ATTRIBUTE_TABLE_RE = /^HL7 Attribute Table/;
+
+function parseSegmentDescriptions(text: string): Map<string, PdfSegmentDescription> {
+  const lines = text.split("\n");
+  const segments = new Map<string, PdfSegmentDescription>();
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmedLine = lines[i]!.trim();
+    const match = trimmedLine.match(SEGMENT_HEADING_RE);
+    if (!match) continue;
+
+    const segName = match[1]!;
+    let longName = match[2]!.trim();
+
+    // Skip TOC lines (contain "...." dots)
+    if (longName.includes("....")) continue;
+
+    // Only match actual segment codes (2-3 uppercase letters/digits)
+    if (!/^[A-Z][A-Z0-9]{1,2}$/.test(segName)) continue;
+
+    // Filter out false positives: table references, message names, numbers
+    if (/^\d/.test(longName)) continue;
+    const longNameLower = longName.toLowerCase();
+    if (longNameLower.includes("event ") && !longNameLower.includes("segment")) continue;
+
+    // Must look like a segment definition — longName should contain a recognizable word
+    // (not just a short abbreviation or code). Segment names are like "Patient Identification Segment"
+    if (!/[a-z]/.test(longName)) continue; // All-caps abbreviations are likely not segment headings
+
+    // Clean up long name: strip "Segment" / "Segment Definition" suffix
+    longName = longName
+      .replace(/\s*[Ss]egment\s*[Dd]efinition\s*$/i, "")
+      .replace(/\s*[Ss]egment\s*$/i, "")
+      .trim();
+
+    // Extract description: text between heading and "HL7 Attribute Table" or field definitions
+    const descParts: string[] = [];
+    for (let j = i + 1; j < lines.length && j < i + 100; j++) {
+      const line = lines[j]!.trim();
+      if (!line) continue;
+      if (ATTRIBUTE_TABLE_RE.test(line)) break;
+      if (FIELD_HEADER_RE.test(line)) break;
+      // Stop at next segment heading (that also passes our filters)
+      const nextMatch = line.match(SEGMENT_HEADING_RE);
+      if (nextMatch && /^[A-Z]{2,3}$/.test(nextMatch[1]!) && !nextMatch[2]!.includes("....") && /[a-z]/.test(nextMatch[2]!)) break;
+      // Stop at "field definitions" marker
+      if (/field definitions/i.test(line)) break;
+      // Skip table column headers (single short words like "Status", "Chapter", "SEQ", "LEN")
+      if (/^\w+$/.test(line) && line.length <= 10) continue;
+
+      descParts.push(line);
+    }
+
+    const description = descParts.join(" ").replace(/\s+/g, " ").trim();
+
+    // Use last-match-wins: actual definitions appear after TOC/contents entries in each chapter
+    if (description.length > 20) {
+      segments.set(segName, { name: segName, longName, description });
+    }
+  }
+
+  return segments;
+}
+
+function parseAppendixTables(text: string): Map<string, PdfTable> {
+  const lines = text.split("\n");
+  const tables = new Map<string, PdfTable>();
+
+  // Parse A.5 (alphabetic list) for table metadata: Type, Number, Name, Chapter
+  // Format: "   HL7      0357        Message error condition codes                   2.15.5.3"
+  //   or:   "   User     0181        MFN record-level error return                  8.5.3.4"
+  const tableMeta = new Map<string, { name: string; type: string }>();
+  let inA5 = false;
+
+  for (const line of lines) {
+    // Match actual section headings, not TOC entries (TOC entries contain "....")
+    if (/HL7 AND USER.DEFINED TABLES.*ALPHABETIC/i.test(line) && !line.includes("....")) {
+      inA5 = true;
+      continue;
+    }
+    if (/HL7 AND USER.DEFINED TABLES.*NUMERIC/i.test(line) && !line.includes("....")) {
+      inA5 = false;
+    }
+    if (!inA5) continue;
+
+    // A.5 layout: Type (indented) + Table number + Name + Chapter ref
+    // v2.5:   "   HL7      0357        Message error condition codes                   2.15.5.3"
+    // v2.8.2: "HL7           0155          Accept/Application Acknowledgment...        2.C.2.103"
+    // v2.8.2 names may start with "- " prefix (e.g., "- Insurance Company Contact Reason")
+    const m = line.match(/^\s*(HL7|User)\s+(\d{4})\s+[-\u2013]?\s*(.+?)(?:\s{2,}[\d.A-Z]+[\.\d]*\s*$|\s*$)/);
+    if (m) {
+      const name = m[3]!.trim();
+      if (name && !/^Type\s+Table/.test(name)) { // skip header row
+        tableMeta.set(m[2]!, { type: m[1]!, name });
+      }
+    }
+  }
+
+  // Parse A.6 (numeric sort) for table values
+  // Actual layout format (from pdftotext -layout):
+  //   Header line: "Type                 Table Name"
+  //     e.g.: "User                 Administrative Sex"
+  //     e.g.: "HL7               Event type"
+  //   Value lines: "          NNNN                                           CODE                Description"
+  //     e.g.: "          0001                                           A                Ambiguous"
+  // The key pattern: table number (4 digits) is indented, followed by large gap, then code, then description
+  let currentTableName: string | null = null;
+  let currentTableType: string | null = null;
+  let lastTableNum: string | null = null;
+  let inA6 = false;
+
+  for (const line of lines) {
+    // Match actual section heading, not TOC entry (TOC entries contain "....")
+    if (/HL7 AND USER.DEFINED TABLES.*NUMERIC/i.test(line) && !line.includes("....")) {
+      inA6 = true;
+      continue;
+    }
+    // Stop at A.7 section (actual heading, not TOC)
+    if (inA6 && /DATA ELEMENT NAMES/.test(line) && !line.includes("....")) break;
+    if (inA6 && /^A\.7\b/.test(line.trim()) && !line.includes("....")) break;
+    if (!inA6) continue;
+
+    // Skip page noise lines and column headers
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (/^Type\s+Table\s+Name/.test(trimmed)) continue;
+    if (/^Page\s/.test(trimmed)) continue;
+
+    // Table header: "Type                 Table Name"
+    // Starts at column 0 with "HL7" or "User"
+    const headerMatch = line.match(/^(HL7|User)\s{2,}(.+\S)/);
+    if (headerMatch) {
+      currentTableType = headerMatch[1]!;
+      currentTableName = headerMatch[2]!.trim();
+      continue;
+    }
+
+    // Value line: indented, starts with 4-digit table number, then code + description
+    // "          0001                                           A                Ambiguous"
+    const valueMatch = line.match(/^\s+(\d{4})\s{2,}(\S+)\s{2,}(.+\S)/);
+    if (valueMatch) {
+      const tableNum = valueMatch[1]!;
+      const code = valueMatch[2]!;
+      const display = valueMatch[3]!.trim();
+
+      if (!tables.has(tableNum)) {
+        const meta = tableMeta.get(tableNum);
+        tables.set(tableNum, {
+          tableNumber: tableNum,
+          name: meta?.name || currentTableName || "",
+          type: meta?.type || currentTableType || "",
+          values: [],
+        });
+      }
+      tables.get(tableNum)!.values.push({ code, display });
+      lastTableNum = tableNum;
+      continue;
+    }
+
+    // Continuation line for multi-line descriptions (indented text without table number)
+    // e.g.: "                                                                inpatient"
+    // These follow a value line and should append to the last value's display
+    if (/^\s{20,}\S/.test(line) && lastTableNum) {
+      const table = tables.get(lastTableNum);
+      if (table && table.values.length > 0) {
+        table.values[table.values.length - 1]!.display += " " + trimmed;
+      }
+    }
+  }
+
+  return tables;
+}
+
+export async function parsePdfDescriptions(pdfDir: string): Promise<{
+  fields: Map<string, PdfFieldDescription>;
+  segments: Map<string, PdfSegmentDescription>;
+}> {
+  const cmd = await findPdfToText();
+  const files = await readdir(pdfDir);
+  const chapterFiles = files.filter(f => /CH\d+/i.test(f) && f.endsWith(".pdf")).sort();
+
+  const allFields = new Map<string, PdfFieldDescription>();
+  const allSegments = new Map<string, PdfSegmentDescription>();
+
+  for (const file of chapterFiles) {
+    const pdfPath = join(pdfDir, file);
+    const text = stripPageNoise(await extractPdfText(pdfPath, cmd));
+
+    const fieldDescs = parseFieldDescriptions(text);
+    for (const [key, value] of fieldDescs) {
+      if (!allFields.has(key)) allFields.set(key, value);
+    }
+
+    const segDescs = parseSegmentDescriptions(text);
+    for (const [key, value] of segDescs) {
+      const existing = allSegments.get(key);
+      if (!existing) {
+        allSegments.set(key, value);
+      } else {
+        // Prefer descriptions that look like actual prose over TOC listings.
+        // TOC descriptions typically start with section numbers like "5.3 PID..."
+        const existingIsToc = /^\d+[\.\d]*\s/.test(existing.description);
+        const newIsToc = /^\d+[\.\d]*\s/.test(value.description);
+        if (existingIsToc && !newIsToc) {
+          allSegments.set(key, value);
+        } else if (!existingIsToc && newIsToc) {
+          // Keep existing (it's better)
+        } else {
+          // Both are same quality — prefer the one from the defining chapter (later file)
+          allSegments.set(key, value);
+        }
+      }
+    }
+  }
+
+  return { fields: allFields, segments: allSegments };
+}
+
+export async function parsePdfTables(pdfDir: string): Promise<Map<string, PdfTable>> {
+  const cmd = await findPdfToText();
+  const files = await readdir(pdfDir);
+  const appendixA = files.find(f => /Appendix[_\s]?A/i.test(f) && f.endsWith(".pdf"));
+
+  if (!appendixA) {
+    console.warn("Warning: AppendixA.pdf not found, tables will be empty");
+    return new Map();
+  }
+
+  const pdfPath = join(pdfDir, appendixA);
+  const text = stripPageNoise(await extractPdfText(pdfPath, cmd, true));
+  return parseAppendixTables(text);
+}
