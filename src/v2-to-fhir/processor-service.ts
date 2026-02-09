@@ -120,7 +120,9 @@ export async function processNextMessage(): Promise<boolean> {
 
   try {
     const { bundle, messageUpdate } = await convertMessage(message);
-    await submitBundle(bundle);
+    if (bundle) {
+      await submitBundle(bundle);
+    }
     await applyMessageUpdate(message, messageUpdate, bundle);
     return true;
   } catch (error) {
@@ -172,7 +174,9 @@ export function createIncomingHL7v2MessageProcessorService(
       }
 
       const { bundle, messageUpdate } = await convertMessage(currentMessage);
-      await submitBundle(bundle);
+      if (bundle) {
+        await submitBundle(bundle);
+      }
       await applyMessageUpdate(currentMessage, messageUpdate, bundle);
 
       options.onProcessed?.(currentMessage);

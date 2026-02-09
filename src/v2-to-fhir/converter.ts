@@ -18,7 +18,8 @@ import { convertORU_R01 } from "./messages/oru-r01";
 // ============================================================================
 
 export interface ConversionResult {
-  bundle: Bundle;
+  /** FHIR Transaction Bundle. Absent when conversion fails (e.g., required PV1 invalid). */
+  bundle?: Bundle;
   messageUpdate: Partial<IncomingHL7v2Message>;
 }
 

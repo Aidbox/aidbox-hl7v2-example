@@ -403,23 +403,23 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 6: Update ORU-R01 converter with config-driven PV1 policy
 
-- [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/messages/oru-r01.ts`
-- [ ] Import config loader and update `convertORU_R01` to accept config parameter or load singleton
-- [ ] Modify `handleEncounter` function with unified config-driven logic:
+- [x] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/messages/oru-r01.ts`
+- [x] Import config loader and update `convertORU_R01` to accept config parameter or load singleton
+- [x] Modify `handleEncounter` function with unified config-driven logic:
   - Get `pv1Required = config["ORU-R01"]?.converter?.PV1?.required ?? false`
   - If PV1 missing OR `buildEncounterIdentifier` returns error:
     - If `pv1Required === true` → return error result immediately, no bundle
     - If `pv1Required === false` → skip Encounter, set `status=warning`, continue with clinical data
-- [ ] Update `ConversionResult` return:
+- [x] Update `ConversionResult` return:
   - When PV1 invalid and not required: `messageUpdate.status = "warning"`, `messageUpdate.error` = descriptive text, continue bundle
   - When PV1 invalid and required: `messageUpdate.status = "error"`, `messageUpdate.error` = descriptive text, no bundle
-- [ ] Remove legacy `generateEncounterId` function that used sender context for ID generation
-- [ ] Write/update integration tests in `src/v2-to-fhir/messages/oru-r01.test.ts`:
+- [x] Remove legacy `generateEncounterId` function that used sender context for ID generation
+- [x] Write/update integration tests in `src/v2-to-fhir/messages/oru-r01.test.ts`:
   - ORU with valid PV1 → Encounter created with unified ID
   - ORU with missing PV1 (config: required=false) → DiagnosticReport created, no Encounter, status=warning
   - ORU with invalid PV1-19 authority (config: required=false) → DiagnosticReport created, no Encounter, status=warning
   - ORU clinical data preserved when Encounter skipped
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

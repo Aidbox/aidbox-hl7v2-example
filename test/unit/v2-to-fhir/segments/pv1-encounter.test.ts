@@ -700,15 +700,15 @@ describe("convertPV1WithMappingSupport - identifier handling", () => {
     expect(result.identifierError).toContain("CX.10");
   });
 
-  test("PV1 without PV1-19 returns no identifier and no identifierError", async () => {
+  test("PV1 without PV1-19 returns identifierError", async () => {
     const pv1: PV1 = {
       $2_class: "I",
     };
 
     const result = await convertPV1WithMappingSupport(pv1, TEST_SENDER);
 
-    expect(result.identifierError).toBeUndefined();
-    expect(result.encounter.identifier).toBeUndefined();
+    expect(result.identifierError).toBeDefined();
+    expect(result.identifierError).toContain("PV1-19");
   });
 
   test("PV1-19 identifier preserved alongside PV1-50 alternate ID", async () => {
