@@ -446,21 +446,21 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 8: Integrate preprocessor into processor service
 
-- [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/processor-service.ts`
-- [ ] Import `hl7v2ToFhirConfig` and `preprocessIncomingMessage`
-- [ ] Load config once at service startup (fail fast on invalid config)
-- [ ] Modify `processNextMessage` to call preprocessor before `convertMessage`:
+- [x] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/processor-service.ts`
+- [x] Import `hl7v2ToFhirConfig` and `preprocessIncomingMessage`
+- [x] Load config once at service startup (fail fast on invalid config)
+- [x] Modify `processNextMessage` to call preprocessor before `convertMessage`:
   ```ts
   const config = hl7v2ToFhirConfig();
   const preprocessed = preprocessIncomingMessage(message, config);
   const { bundle, messageUpdate } = await convertMessage(preprocessed);
   ```
-- [ ] Update `applyMessageUpdate` to preserve `error` field for `warning` status (currently only preserved for errors)
-- [ ] Update service factory similarly
-- [ ] Write integration test in `src/v2-to-fhir/processor-service.test.ts`:
+- [x] Update `applyMessageUpdate` to preserve `error` field for `warning` status (currently only preserved for errors)
+- [x] Update service factory similarly
+- [x] Write integration test in `src/v2-to-fhir/processor-service.test.ts`:
   - Preprocessor is invoked before conversion
   - Warning status is correctly persisted with error text
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

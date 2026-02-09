@@ -641,15 +641,17 @@ describe("ORU_R01 E2E Integration", () => {
       expect(diagnosticReports[0]!.encounter).toBeUndefined();
     });
 
-    test("does not create Encounter when PV1-19 is empty", async () => {
+    test("sets warning when PV1 present but PV1-19 is empty", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/no-visit-number.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("processed");
+      expect(message.status).toBe("warning");
+      expect(message.error).toBeDefined();
+      expect(message.error).toContain("PV1-19");
 
       const patientRef = message.patient!.reference!;
       const diagnosticReports = await getDiagnosticReports(patientRef);
-
+      expect(diagnosticReports.length).toBeGreaterThan(0);
       expect(diagnosticReports[0]!.encounter).toBeUndefined();
     });
 
@@ -694,6 +696,33 @@ describe("ORU_R01 E2E Integration", () => {
       // Patient reference is not set when there's a mapping error
       // (Patient/Encounter will be created on successful reprocessing)
       expect(message.patient).toBeUndefined();
+    });
+
+    test("preprocessor fixes missing authority from MSH before conversion", async () => {
+      // with-visit.hl7 has PV1-19=ENC-12345 without authority; MSH-3=LAB, MSH-4=HOSPITAL
+      // preprocessor fix-authority-with-msh populates CX.4 from MSH → Encounter created
+      const hl7Message = await loadFixture("oru-r01/encounter/with-visit.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+
+      expect(message.status).toBe("processed");
+
+      const patientRef = message.patient!.reference!;
+      const encounters = await getEncounters(patientRef);
+      expect(encounters.length).toBe(1);
+      expect(encounters[0]!.identifier).toBeDefined();
+    });
+
+    test("warning persisted with error text when authority conflicts", async () => {
+      const hl7Message = await loadFixture("oru-r01/encounter/conflicting-authority.hl7");
+      const message = await submitAndProcessOruR01(hl7Message);
+
+      expect(message.status).toBe("warning");
+      expect(message.error).toContain("conflicting authority");
+
+      // Clinical data still created despite warning
+      const patientRef = message.patient!.reference!;
+      const diagnosticReports = await getDiagnosticReports(patientRef);
+      expect(diagnosticReports.length).toBeGreaterThan(0);
     });
   });
 
