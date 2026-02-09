@@ -425,22 +425,22 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 7: Update ADT-A01 converter with config-driven PV1 policy
 
-- [ ] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/messages/adt-a01.ts`
-- [ ] Import config loader and update `convertADT_A01` to accept config parameter or load singleton
-- [ ] Modify PV1 handling with unified config-driven logic (same pattern as Task 6):
+- [x] Remove all DESIGN PROTOTYPE comments from `src/v2-to-fhir/messages/adt-a01.ts`
+- [x] Import config loader and update `convertADT_A01` to accept config parameter or load singleton
+- [x] Modify PV1 handling with unified config-driven logic (same pattern as Task 6):
   - Get `pv1Required = config["ADT-A01"]?.converter?.PV1?.required ?? true`
   - If PV1 missing OR `buildEncounterIdentifier` returns error:
     - If `pv1Required === true` → return error result immediately, no bundle
     - If `pv1Required === false` → skip Encounter, set `status=warning`, continue
-- [ ] Update `ConversionResult` return:
+- [x] Update `ConversionResult` return:
   - When PV1 invalid and required: `messageUpdate.status = "error"`, `messageUpdate.error` = descriptive text, no bundle
   - When PV1 invalid and not required: `messageUpdate.status = "warning"`, continue
-- [ ] Use `buildEncounterIdentifier` result for Encounter ID (replace legacy ID generation)
-- [ ] Write/update integration tests in `src/v2-to-fhir/messages/adt-a01.test.ts`:
+- [x] Use `buildEncounterIdentifier` result for Encounter ID (replace legacy ID generation)
+- [x] Write/update integration tests in `src/v2-to-fhir/messages/adt-a01.test.ts`:
   - ADT with valid PV1 → Encounter created with unified ID
   - ADT with missing PV1 (config: required=true) → status=error, no bundle submitted
   - ADT with invalid PV1-19 authority (config: required=true) → status=error with descriptive message, no bundle
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

@@ -458,7 +458,6 @@ function createEncounterLocation(
  */
 export type PV1ConversionResult = {
   encounter: Encounter;
-  encounterId?: string;
   /** Present if patient class couldn't be mapped - caller decides whether to block or create Task */
   mappingError?: MappingError;
   /** Present if PV1-19 authority validation failed (HL7 v2.8.2 CX rules) */
@@ -518,7 +517,6 @@ export function buildEncounterFromPV1(
 
   const identifiers: Identifier[] = [];
   let identifierError: string | undefined;
-  let encounterId: string | undefined;
 
   // PV1-19: Visit Number -> identifier with type=VN (strict HL7 v2.8.2 authority validation)
   const identifierResult = buildEncounterIdentifier(pv1.$19_visitNumber);
@@ -527,7 +525,7 @@ export function buildEncounterFromPV1(
   } else if (identifierResult.identifier) {
     identifiers.push(...identifierResult.identifier);
     const vnValue = pv1.$19_visitNumber!.$1_value!;
-    encounterId = vnValue.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    encounter.id = vnValue.toLowerCase().replace(/[^a-z0-9-]/g, "-");
   }
 
   // PV1-50: Alternate Visit ID -> identifier
@@ -744,7 +742,7 @@ export function buildEncounterFromPV1(
     encounter.hospitalization = hospitalization;
   }
 
-  return { encounter, encounterId, identifierError };
+  return { encounter, identifierError };
 }
 
 // ============================================================================
@@ -790,9 +788,9 @@ export async function convertPV1WithMappingSupport(
     status = classResult.status;
   }
 
-  const { encounter, encounterId, identifierError } = buildEncounterFromPV1(pv1, encounterClass, status);
+  const { encounter, identifierError } = buildEncounterFromPV1(pv1, encounterClass, status);
 
-  return { encounter, encounterId, mappingError, identifierError };
+  return { encounter, mappingError, identifierError };
 }
 
 /**

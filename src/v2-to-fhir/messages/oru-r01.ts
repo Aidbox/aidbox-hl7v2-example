@@ -653,7 +653,8 @@ async function handleEncounter(
     return { encounterRef: null, encounterEntry: null, warning: result.identifierError };
   }
 
-  const encounterId = result.encounterId!;
+  const encounter = result.encounter;
+  const encounterId = encounter.id!;
   const encounterRef = { reference: `Encounter/${encounterId}` } as Reference<"Encounter">;
 
   const existingEncounter = await lookupEncounter(encounterId);
@@ -661,9 +662,7 @@ async function handleEncounter(
     return { encounterRef, encounterEntry: null };
   }
 
-  const encounter = result.encounter;
   encounter.status = "unknown";
-  encounter.id = encounterId;
   encounter.subject = patientRef;
   encounter.meta = { ...encounter.meta, ...baseMeta };
 

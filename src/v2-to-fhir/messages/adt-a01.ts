@@ -55,6 +55,7 @@ import {
   type MappingError,
 } from "../../code-mapping/mapping-errors";
 import type { SenderContext } from "../../code-mapping/concept-map";
+import { hl7v2ToFhirConfig } from "../config";
 
 // ============================================================================
 // Helper Functions
@@ -353,35 +354,49 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   const patientRef = patient.id ? `Patient/${patient.id}` : "Patient/unknown";
 
   // =========================================================================
-  // Extract PV1 -> Encounter (with mapping error support)
+  // Extract PV1 -> Encounter (config-driven PV1 policy)
   // =========================================================================
+  const config = hl7v2ToFhirConfig();
+  const pv1Required = config["ADT-A01"]?.converter?.PV1?.required ?? true;
+
   let encounter: Encounter | undefined;
+  let encounterWarning: string | undefined;
   const pv1Segment = findSegment(parsed, "PV1");
-  if (pv1Segment) {
+
+  if (!pv1Segment) {
+    if (pv1Required) {
+      return {
+        messageUpdate: {
+          status: "error",
+          error: "PV1 segment is required for ADT-A01 but missing",
+          patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
+        },
+      };
+    }
+    // PV1 not required and missing: skip Encounter, warn
+    encounterWarning = "PV1 segment is missing; Encounter creation skipped";
+  } else {
     const pv1 = fromPV1(pv1Segment);
     const pv1Result = await convertPV1WithMappingSupport(pv1, senderContext);
 
     if (pv1Result.mappingError) {
-      // Patient class mapping error - ADT policy: block until resolved
       mappingErrors.push(pv1Result.mappingError);
     }
 
-    // Always use the encounter (may have fallback class if mapping failed)
-    encounter = pv1Result.encounter;
-    (encounter as { subject: { reference?: string } }).subject = {
-      reference: patientRef,
-    };
-
-    // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
-    // Preprocessor runs before handler:
-    // - If PV1 required and missing/invalid, converter returns status=error and processing stops.
-    // - If PV1 present and valid, use buildEncounterIdentifier for deterministic ID.
-
-    // Generate encounter ID
-    if (pv1.$19_visitNumber?.$1_value) {
-      encounter.id = pv1.$19_visitNumber.$1_value;
+    if (pv1Result.identifierError) {
+      if (pv1Required) {
+        return {
+          messageUpdate: {
+            status: "error",
+            error: pv1Result.identifierError,
+            patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
+          },
+        };
+      }
+      encounterWarning = pv1Result.identifierError;
     } else {
-      encounter.id = generateId("encounter", 1, messageControlId);
+      encounter = pv1Result.encounter;
+      encounter.subject = { reference: patientRef } as Encounter["subject"];
     }
   }
 
@@ -530,11 +545,20 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
     entry: entries,
   };
 
+  if (encounterWarning) {
+    return {
+      bundle,
+      messageUpdate: {
+        status: "warning",
+        error: encounterWarning,
+        patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
+      },
+    };
+  }
+
   return {
     bundle,
     messageUpdate: {
-      // DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md
-      // If converter returned error, preserve status="error" + error text when updating.
       status: "processed",
       patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
     },
