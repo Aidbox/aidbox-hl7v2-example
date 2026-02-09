@@ -1,0 +1,3331 @@
+{
+  "AD": {
+    "components": [
+      {
+        "component": "AD.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Street Address",
+        "maxLength": 120
+      },
+      {
+        "component": "AD.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Other Designation",
+        "maxLength": 120
+      },
+      {
+        "component": "AD.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "City",
+        "maxLength": 50
+      },
+      {
+        "component": "AD.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "State or Province",
+        "maxLength": 50
+      },
+      {
+        "component": "AD.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Zip or Postal Code",
+        "maxLength": 12
+      },
+      {
+        "component": "AD.6",
+        "position": 6,
+        "dataType": "ID",
+        "longName": "Country",
+        "maxLength": 3
+      },
+      {
+        "component": "AD.7",
+        "position": 7,
+        "dataType": "ID",
+        "longName": "Address Type",
+        "maxLength": 3
+      },
+      {
+        "component": "AD.8",
+        "position": 8,
+        "dataType": "ST",
+        "longName": "Other Geographic Designation",
+        "maxLength": 50
+      }
+    ]
+  },
+  "AUI": {
+    "components": [
+      {
+        "component": "AUI.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Authorization Number",
+        "maxLength": 30
+      },
+      {
+        "component": "AUI.2",
+        "position": 2,
+        "dataType": "DT",
+        "longName": "Date",
+        "maxLength": 8
+      },
+      {
+        "component": "AUI.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Source",
+        "maxLength": 199
+      }
+    ]
+  },
+  "CCD": {
+    "components": [
+      {
+        "component": "CCD.1",
+        "position": 1,
+        "dataType": "ID",
+        "longName": "Invocation Event",
+        "maxLength": 1
+      },
+      {
+        "component": "CCD.2",
+        "position": 2,
+        "dataType": "TS",
+        "longName": "Date/time",
+        "maxLength": 26
+      }
+    ]
+  },
+  "CCP": {
+    "components": [
+      {
+        "component": "CCP.1",
+        "position": 1,
+        "dataType": "NM",
+        "longName": "Channel Calibration Sensitivity Correction Factor",
+        "maxLength": 6
+      },
+      {
+        "component": "CCP.2",
+        "position": 2,
+        "dataType": "NM",
+        "longName": "Channel Calibration Baseline",
+        "maxLength": 6
+      },
+      {
+        "component": "CCP.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "Channel Calibration Time Skew",
+        "maxLength": 6
+      }
+    ]
+  },
+  "CD": {
+    "components": [
+      {
+        "component": "CD.1",
+        "position": 1,
+        "dataType": "WVI",
+        "longName": "Channel Identifier",
+        "maxLength": 22
+      },
+      {
+        "component": "CD.2",
+        "position": 2,
+        "dataType": "WVS",
+        "longName": "Waveform Source",
+        "maxLength": 17
+      },
+      {
+        "component": "CD.3",
+        "position": 3,
+        "dataType": "CSU",
+        "longName": "Channel Sensitivity/Units",
+        "maxLength": 478
+      },
+      {
+        "component": "CD.4",
+        "position": 4,
+        "dataType": "CCP",
+        "longName": "Channel Calibration Parameters",
+        "maxLength": 20
+      },
+      {
+        "component": "CD.5",
+        "position": 5,
+        "dataType": "NM",
+        "longName": "Channel Sampling Frequency",
+        "maxLength": 6
+      },
+      {
+        "component": "CD.6",
+        "position": 6,
+        "dataType": "NR",
+        "longName": "Minimum/Maximum Data Values",
+        "maxLength": 33
+      }
+    ]
+  },
+  "CE": {
+    "components": [
+      {
+        "component": "CE.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "CE.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Text",
+        "maxLength": 199
+      },
+      {
+        "component": "CE.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Name of Coding System",
+        "maxLength": 20
+      },
+      {
+        "component": "CE.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Alternate Identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "CE.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Alternate Text",
+        "maxLength": 199
+      },
+      {
+        "component": "CE.6",
+        "position": 6,
+        "dataType": "ID",
+        "longName": "Name of Alternate Coding System",
+        "maxLength": 20
+      }
+    ]
+  },
+  "CF": {
+    "components": [
+      {
+        "component": "CF.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "CF.2",
+        "position": 2,
+        "dataType": "FT",
+        "longName": "Formatted Text",
+        "maxLength": 65536
+      },
+      {
+        "component": "CF.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Name of Coding System",
+        "maxLength": 20
+      },
+      {
+        "component": "CF.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Alternate Identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "CF.5",
+        "position": 5,
+        "dataType": "FT",
+        "longName": "Alternate Formatted Text",
+        "maxLength": 65536
+      },
+      {
+        "component": "CF.6",
+        "position": 6,
+        "dataType": "ID",
+        "longName": "Name of Alternate Coding System",
+        "maxLength": 20
+      }
+    ]
+  },
+  "CNE": {
+    "components": [
+      {
+        "component": "CNE.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "CNE.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Text",
+        "maxLength": 199
+      },
+      {
+        "component": "CNE.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Name of Coding System",
+        "maxLength": 20
+      },
+      {
+        "component": "CNE.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Alternate Identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "CNE.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Alternate Text",
+        "maxLength": 199
+      },
+      {
+        "component": "CNE.6",
+        "position": 6,
+        "dataType": "ID",
+        "longName": "Name of Alternate Coding System",
+        "maxLength": 20
+      },
+      {
+        "component": "CNE.7",
+        "position": 7,
+        "dataType": "ST",
+        "longName": "Coding System Version ID",
+        "maxLength": 10
+      },
+      {
+        "component": "CNE.8",
+        "position": 8,
+        "dataType": "ST",
+        "longName": "Alternate Coding System Version ID",
+        "maxLength": 10
+      },
+      {
+        "component": "CNE.9",
+        "position": 9,
+        "dataType": "ST",
+        "longName": "Original Text",
+        "maxLength": 199
+      }
+    ]
+  },
+  "CNN": {
+    "components": [
+      {
+        "component": "CNN.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "ID Number",
+        "maxLength": 15
+      },
+      {
+        "component": "CNN.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Family Name",
+        "maxLength": 50
+      },
+      {
+        "component": "CNN.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Given Name",
+        "maxLength": 30
+      },
+      {
+        "component": "CNN.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Second and Further Given Names or Initials Thereof",
+        "maxLength": 30
+      },
+      {
+        "component": "CNN.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Suffix (e.g., JR or III)",
+        "maxLength": 20
+      },
+      {
+        "component": "CNN.6",
+        "position": 6,
+        "dataType": "ST",
+        "longName": "Prefix (e.g., DR)",
+        "maxLength": 20
+      },
+      {
+        "component": "CNN.7",
+        "position": 7,
+        "dataType": "IS",
+        "longName": "Degree (e.g., MD",
+        "maxLength": 5
+      },
+      {
+        "component": "CNN.8",
+        "position": 8,
+        "dataType": "IS",
+        "longName": "Source Table",
+        "maxLength": 4
+      },
+      {
+        "component": "CNN.9",
+        "position": 9,
+        "dataType": "IS",
+        "longName": "Assigning Authority   - Namespace ID",
+        "maxLength": 20
+      },
+      {
+        "component": "CNN.10",
+        "position": 10,
+        "dataType": "ST",
+        "longName": "Assigning Authority  - Universal ID",
+        "maxLength": 199
+      },
+      {
+        "component": "CNN.11",
+        "position": 11,
+        "dataType": "ID",
+        "longName": "Assigning Authority  - Universal ID Type",
+        "maxLength": 6
+      }
+    ]
+  },
+  "CP": {
+    "components": [
+      {
+        "component": "CP.1",
+        "position": 1,
+        "dataType": "MO",
+        "longName": "Price",
+        "maxLength": 20
+      },
+      {
+        "component": "CP.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Price Type",
+        "maxLength": 2
+      },
+      {
+        "component": "CP.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "From Value",
+        "maxLength": 16
+      },
+      {
+        "component": "CP.4",
+        "position": 4,
+        "dataType": "NM",
+        "longName": "To Value",
+        "maxLength": 16
+      },
+      {
+        "component": "CP.5",
+        "position": 5,
+        "dataType": "CE",
+        "longName": "Range Units",
+        "maxLength": 483
+      },
+      {
+        "component": "CP.6",
+        "position": 6,
+        "dataType": "ID",
+        "longName": "Range Type",
+        "maxLength": 1
+      }
+    ]
+  },
+  "CQ": {
+    "components": [
+      {
+        "component": "CQ.1",
+        "position": 1,
+        "dataType": "NM",
+        "longName": "Quantity",
+        "maxLength": 16
+      },
+      {
+        "component": "CQ.2",
+        "position": 2,
+        "dataType": "CE",
+        "longName": "Units",
+        "maxLength": 483
+      }
+    ]
+  },
+  "CSU": {
+    "components": [
+      {
+        "component": "CSU.1",
+        "position": 1,
+        "dataType": "NM",
+        "longName": "Channel Sensitivity",
+        "maxLength": 60
+      },
+      {
+        "component": "CSU.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Unit of Measure Identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "CSU.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Unit of Measure Description",
+        "maxLength": 199
+      },
+      {
+        "component": "CSU.4",
+        "position": 4,
+        "dataType": "ID",
+        "longName": "Unit of Measure Coding System",
+        "maxLength": 20
+      },
+      {
+        "component": "CSU.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Alternate Unit of Measure Identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "CSU.6",
+        "position": 6,
+        "dataType": "ST",
+        "longName": "Alternate Unit of Measure Description",
+        "maxLength": 199
+      },
+      {
+        "component": "CSU.7",
+        "position": 7,
+        "dataType": "ID",
+        "longName": "Alternate Unit of Measure Coding System",
+        "maxLength": 20
+      }
+    ]
+  },
+  "CWE": {
+    "components": [
+      {
+        "component": "CWE.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "CWE.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Text",
+        "maxLength": 199
+      },
+      {
+        "component": "CWE.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Name of Coding System",
+        "maxLength": 20
+      },
+      {
+        "component": "CWE.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Alternate Identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "CWE.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Alternate Text",
+        "maxLength": 199
+      },
+      {
+        "component": "CWE.6",
+        "position": 6,
+        "dataType": "ID",
+        "longName": "Name of Alternate Coding System",
+        "maxLength": 20
+      },
+      {
+        "component": "CWE.7",
+        "position": 7,
+        "dataType": "ST",
+        "longName": "Coding System Version ID",
+        "maxLength": 10
+      },
+      {
+        "component": "CWE.8",
+        "position": 8,
+        "dataType": "ST",
+        "longName": "Alternate Coding System Version ID",
+        "maxLength": 10
+      },
+      {
+        "component": "CWE.9",
+        "position": 9,
+        "dataType": "ST",
+        "longName": "Original Text",
+        "maxLength": 199
+      }
+    ]
+  },
+  "CX": {
+    "components": [
+      {
+        "component": "CX.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "ID Number",
+        "maxLength": 15
+      },
+      {
+        "component": "CX.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Check Digit",
+        "maxLength": 1
+      },
+      {
+        "component": "CX.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Check Digit Scheme",
+        "maxLength": 3
+      },
+      {
+        "component": "CX.4",
+        "position": 4,
+        "dataType": "HD",
+        "longName": "Assigning Authority",
+        "maxLength": 227
+      },
+      {
+        "component": "CX.5",
+        "position": 5,
+        "dataType": "ID",
+        "longName": "Identifier Type Code",
+        "maxLength": 5
+      },
+      {
+        "component": "CX.6",
+        "position": 6,
+        "dataType": "HD",
+        "longName": "Assigning Facility",
+        "maxLength": 227
+      },
+      {
+        "component": "CX.7",
+        "position": 7,
+        "dataType": "DT",
+        "longName": "Effective Date",
+        "maxLength": 8
+      },
+      {
+        "component": "CX.8",
+        "position": 8,
+        "dataType": "DT",
+        "longName": "Expiration Date",
+        "maxLength": 8
+      },
+      {
+        "component": "CX.9",
+        "position": 9,
+        "dataType": "CWE",
+        "longName": "Assigning Jurisdiction",
+        "maxLength": 705
+      },
+      {
+        "component": "CX.10",
+        "position": 10,
+        "dataType": "CWE",
+        "longName": "Assigning Agency or Department",
+        "maxLength": 705
+      }
+    ]
+  },
+  "DDI": {
+    "components": [
+      {
+        "component": "DDI.1",
+        "position": 1,
+        "dataType": "NM",
+        "longName": "Delay Days",
+        "maxLength": 3
+      },
+      {
+        "component": "DDI.2",
+        "position": 2,
+        "dataType": "MO",
+        "longName": "Monetary Amount",
+        "maxLength": 16
+      },
+      {
+        "component": "DDI.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "Number of Days",
+        "maxLength": 4
+      }
+    ]
+  },
+  "DIN": {
+    "components": [
+      {
+        "component": "DIN.1",
+        "position": 1,
+        "dataType": "TS",
+        "longName": "Date",
+        "maxLength": 26
+      },
+      {
+        "component": "DIN.2",
+        "position": 2,
+        "dataType": "CE",
+        "longName": "Institution Name",
+        "maxLength": 483
+      }
+    ]
+  },
+  "DLD": {
+    "components": [
+      {
+        "component": "DLD.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Discharge Location",
+        "maxLength": 20
+      },
+      {
+        "component": "DLD.2",
+        "position": 2,
+        "dataType": "TS",
+        "longName": "Effective Date",
+        "maxLength": 26
+      }
+    ]
+  },
+  "DLN": {
+    "components": [
+      {
+        "component": "DLN.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "License Number",
+        "maxLength": 20
+      },
+      {
+        "component": "DLN.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Issuing State, Province, Country",
+        "maxLength": 20
+      },
+      {
+        "component": "DLN.3",
+        "position": 3,
+        "dataType": "DT",
+        "longName": "Expiration Date",
+        "maxLength": 24
+      }
+    ]
+  },
+  "DLT": {
+    "components": [
+      {
+        "component": "DLT.1",
+        "position": 1,
+        "dataType": "NR",
+        "longName": "Normal Range",
+        "maxLength": 33
+      },
+      {
+        "component": "DLT.2",
+        "position": 2,
+        "dataType": "NM",
+        "longName": "Numeric Threshold",
+        "maxLength": 4
+      },
+      {
+        "component": "DLT.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Change Computation",
+        "maxLength": 1
+      },
+      {
+        "component": "DLT.4",
+        "position": 4,
+        "dataType": "NM",
+        "longName": "Days Retained",
+        "maxLength": 4
+      }
+    ]
+  },
+  "DR": {
+    "components": [
+      {
+        "component": "DR.1",
+        "position": 1,
+        "dataType": "TS",
+        "longName": "Range Start Date/Time",
+        "maxLength": 26
+      },
+      {
+        "component": "DR.2",
+        "position": 2,
+        "dataType": "TS",
+        "longName": "Range End Date/Time",
+        "maxLength": 26
+      }
+    ]
+  },
+  "DTN": {
+    "components": [
+      {
+        "component": "DTN.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Day Type",
+        "maxLength": 2
+      },
+      {
+        "component": "DTN.2",
+        "position": 2,
+        "dataType": "NM",
+        "longName": "Number of Days",
+        "maxLength": 3
+      }
+    ]
+  },
+  "ED": {
+    "components": [
+      {
+        "component": "ED.1",
+        "position": 1,
+        "dataType": "HD",
+        "longName": "Source Application",
+        "maxLength": 227
+      },
+      {
+        "component": "ED.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Type of Data",
+        "maxLength": 9
+      },
+      {
+        "component": "ED.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Data Subtype",
+        "maxLength": 18
+      },
+      {
+        "component": "ED.4",
+        "position": 4,
+        "dataType": "ID",
+        "longName": "Encoding",
+        "maxLength": 6
+      },
+      {
+        "component": "ED.5",
+        "position": 5,
+        "dataType": "TX",
+        "longName": "Data",
+        "maxLength": 65536
+      }
+    ]
+  },
+  "EI": {
+    "components": [
+      {
+        "component": "EI.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Entity Identifier",
+        "maxLength": 199
+      },
+      {
+        "component": "EI.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Namespace ID",
+        "maxLength": 20
+      },
+      {
+        "component": "EI.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Universal ID",
+        "maxLength": 199
+      },
+      {
+        "component": "EI.4",
+        "position": 4,
+        "dataType": "ID",
+        "longName": "Universal ID Type",
+        "maxLength": 6
+      }
+    ]
+  },
+  "EIP": {
+    "components": [
+      {
+        "component": "EIP.1",
+        "position": 1,
+        "dataType": "EI",
+        "longName": "Placer Assigned Identifier",
+        "maxLength": 427
+      },
+      {
+        "component": "EIP.2",
+        "position": 2,
+        "dataType": "EI",
+        "longName": "Filler Assigned Identifier",
+        "maxLength": 427
+      }
+    ]
+  },
+  "ELD": {
+    "components": [
+      {
+        "component": "ELD.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Segment ID",
+        "maxLength": 3
+      },
+      {
+        "component": "ELD.2",
+        "position": 2,
+        "dataType": "NM",
+        "longName": "Segment Sequence",
+        "maxLength": 2
+      },
+      {
+        "component": "ELD.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "Field Position",
+        "maxLength": 2
+      },
+      {
+        "component": "ELD.4",
+        "position": 4,
+        "dataType": "CE",
+        "longName": "Code Identifying Error",
+        "maxLength": 483
+      }
+    ]
+  },
+  "ERL": {
+    "components": [
+      {
+        "component": "ERL.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Segment ID",
+        "maxLength": 3
+      },
+      {
+        "component": "ERL.2",
+        "position": 2,
+        "dataType": "NM",
+        "longName": "Segment Sequence",
+        "maxLength": 2
+      },
+      {
+        "component": "ERL.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "Field Position",
+        "maxLength": 2
+      },
+      {
+        "component": "ERL.4",
+        "position": 4,
+        "dataType": "NM",
+        "longName": "Field Repetition",
+        "maxLength": 2
+      },
+      {
+        "component": "ERL.5",
+        "position": 5,
+        "dataType": "NM",
+        "longName": "Component Number",
+        "maxLength": 2
+      },
+      {
+        "component": "ERL.6",
+        "position": 6,
+        "dataType": "NM",
+        "longName": "Sub-Component Number",
+        "maxLength": 2
+      }
+    ]
+  },
+  "FC": {
+    "components": [
+      {
+        "component": "FC.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Financial Class Code",
+        "maxLength": 20
+      },
+      {
+        "component": "FC.2",
+        "position": 2,
+        "dataType": "TS",
+        "longName": "Effective Date",
+        "maxLength": 26
+      }
+    ]
+  },
+  "FN": {
+    "components": [
+      {
+        "component": "FN.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Surname",
+        "maxLength": 50
+      },
+      {
+        "component": "FN.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Own Surname Prefix",
+        "maxLength": 20
+      },
+      {
+        "component": "FN.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Own Surname",
+        "maxLength": 50
+      },
+      {
+        "component": "FN.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Surname Prefix From Partner/Spouse",
+        "maxLength": 20
+      },
+      {
+        "component": "FN.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Surname From Partner/Spouse",
+        "maxLength": 50
+      }
+    ]
+  },
+  "HD": {
+    "components": [
+      {
+        "component": "HD.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Namespace ID",
+        "maxLength": 20
+      },
+      {
+        "component": "HD.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Universal ID",
+        "maxLength": 199
+      },
+      {
+        "component": "HD.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Universal ID Type",
+        "maxLength": 6
+      }
+    ]
+  },
+  "ICD": {
+    "components": [
+      {
+        "component": "ICD.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Certification Patient Type",
+        "maxLength": 11
+      },
+      {
+        "component": "ICD.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Certification Required",
+        "maxLength": 1
+      },
+      {
+        "component": "ICD.3",
+        "position": 3,
+        "dataType": "TS",
+        "longName": "Date/Time Certification Required",
+        "maxLength": 26
+      }
+    ]
+  },
+  "JCC": {
+    "components": [
+      {
+        "component": "JCC.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Job Code",
+        "maxLength": 20
+      },
+      {
+        "component": "JCC.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Job Class",
+        "maxLength": 20
+      },
+      {
+        "component": "JCC.3",
+        "position": 3,
+        "dataType": "TX",
+        "longName": "Job Description Text",
+        "maxLength": 250
+      }
+    ]
+  },
+  "LA1": {
+    "components": [
+      {
+        "component": "LA1.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Point of Care",
+        "maxLength": 20
+      },
+      {
+        "component": "LA1.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Room",
+        "maxLength": 20
+      },
+      {
+        "component": "LA1.3",
+        "position": 3,
+        "dataType": "IS",
+        "longName": "Bed",
+        "maxLength": 20
+      },
+      {
+        "component": "LA1.4",
+        "position": 4,
+        "dataType": "HD",
+        "longName": "Facility",
+        "maxLength": 227
+      },
+      {
+        "component": "LA1.5",
+        "position": 5,
+        "dataType": "IS",
+        "longName": "Location Status",
+        "maxLength": 20
+      },
+      {
+        "component": "LA1.6",
+        "position": 6,
+        "dataType": "IS",
+        "longName": "Patient Location Type",
+        "maxLength": 20
+      },
+      {
+        "component": "LA1.7",
+        "position": 7,
+        "dataType": "IS",
+        "longName": "Building",
+        "maxLength": 20
+      },
+      {
+        "component": "LA1.8",
+        "position": 8,
+        "dataType": "IS",
+        "longName": "Floor",
+        "maxLength": 20
+      },
+      {
+        "component": "LA1.9",
+        "position": 9,
+        "dataType": "AD",
+        "longName": "Address",
+        "maxLength": 415
+      }
+    ]
+  },
+  "LA2": {
+    "components": [
+      {
+        "component": "LA2.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Point of Care",
+        "maxLength": 20
+      },
+      {
+        "component": "LA2.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Room",
+        "maxLength": 20
+      },
+      {
+        "component": "LA2.3",
+        "position": 3,
+        "dataType": "IS",
+        "longName": "Bed",
+        "maxLength": 20
+      },
+      {
+        "component": "LA2.4",
+        "position": 4,
+        "dataType": "HD",
+        "longName": "Facility",
+        "maxLength": 227
+      },
+      {
+        "component": "LA2.5",
+        "position": 5,
+        "dataType": "IS",
+        "longName": "Location Status",
+        "maxLength": 20
+      },
+      {
+        "component": "LA2.6",
+        "position": 6,
+        "dataType": "IS",
+        "longName": "Patient Location Type",
+        "maxLength": 20
+      },
+      {
+        "component": "LA2.7",
+        "position": 7,
+        "dataType": "IS",
+        "longName": "Building",
+        "maxLength": 20
+      },
+      {
+        "component": "LA2.8",
+        "position": 8,
+        "dataType": "IS",
+        "longName": "Floor",
+        "maxLength": 20
+      },
+      {
+        "component": "LA2.9",
+        "position": 9,
+        "dataType": "ST",
+        "longName": "Street Address",
+        "maxLength": 120
+      },
+      {
+        "component": "LA2.10",
+        "position": 10,
+        "dataType": "ST",
+        "longName": "Other Designation",
+        "maxLength": 120
+      },
+      {
+        "component": "LA2.11",
+        "position": 11,
+        "dataType": "ST",
+        "longName": "City",
+        "maxLength": 50
+      },
+      {
+        "component": "LA2.12",
+        "position": 12,
+        "dataType": "ST",
+        "longName": "State or Province",
+        "maxLength": 50
+      },
+      {
+        "component": "LA2.13",
+        "position": 13,
+        "dataType": "ST",
+        "longName": "Zip or Postal Code",
+        "maxLength": 12
+      },
+      {
+        "component": "LA2.14",
+        "position": 14,
+        "dataType": "ID",
+        "longName": "Country",
+        "maxLength": 3
+      },
+      {
+        "component": "LA2.15",
+        "position": 15,
+        "dataType": "ID",
+        "longName": "Address Type",
+        "maxLength": 3
+      },
+      {
+        "component": "LA2.16",
+        "position": 16,
+        "dataType": "ST",
+        "longName": "Other Geographic Designation",
+        "maxLength": 50
+      }
+    ]
+  },
+  "MA": {
+    "components": [
+      {
+        "component": "MA.1",
+        "position": 1,
+        "dataType": "NM",
+        "longName": "Sample 1 From Channel 1",
+        "maxLength": 16
+      },
+      {
+        "component": "MA.2",
+        "position": 2,
+        "dataType": "NM",
+        "longName": "Sample 1 From Channel 2",
+        "maxLength": 16
+      },
+      {
+        "component": "MA.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "Sample 1 From Channel N",
+        "maxLength": 16
+      },
+      {
+        "component": "MA.4",
+        "position": 4,
+        "dataType": "NM",
+        "longName": "Sample 2 From Channel 1",
+        "maxLength": 16
+      },
+      {
+        "component": "MA.5",
+        "position": 5,
+        "dataType": "NM",
+        "longName": "Sample 2 From Channel N",
+        "maxLength": 16
+      },
+      {
+        "component": "MA.6",
+        "position": 6,
+        "dataType": "NM",
+        "longName": "Sample N From Channel N",
+        "maxLength": 16
+      }
+    ]
+  },
+  "MO": {
+    "components": [
+      {
+        "component": "MO.1",
+        "position": 1,
+        "dataType": "NM",
+        "longName": "Quantity",
+        "maxLength": 16
+      },
+      {
+        "component": "MO.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Denomination",
+        "maxLength": 3
+      }
+    ]
+  },
+  "MOC": {
+    "components": [
+      {
+        "component": "MOC.1",
+        "position": 1,
+        "dataType": "MO",
+        "longName": "Monetary Amount",
+        "maxLength": 20
+      },
+      {
+        "component": "MOC.2",
+        "position": 2,
+        "dataType": "CE",
+        "longName": "Charge Code",
+        "maxLength": 483
+      }
+    ]
+  },
+  "MOP": {
+    "components": [
+      {
+        "component": "MOP.1",
+        "position": 1,
+        "dataType": "ID",
+        "longName": "Money or Percentage Indicator",
+        "maxLength": 2
+      },
+      {
+        "component": "MOP.2",
+        "position": 2,
+        "dataType": "NM",
+        "longName": "Money or Percentage Quantity",
+        "maxLength": 16
+      },
+      {
+        "component": "MOP.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Currency Denomination",
+        "maxLength": 3
+      }
+    ]
+  },
+  "MSG": {
+    "components": [
+      {
+        "component": "MSG.1",
+        "position": 1,
+        "dataType": "ID",
+        "longName": "Message Code",
+        "maxLength": 3
+      },
+      {
+        "component": "MSG.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Trigger Event",
+        "maxLength": 3
+      },
+      {
+        "component": "MSG.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Message Structure",
+        "maxLength": 7
+      }
+    ]
+  },
+  "NA": {
+    "components": [
+      {
+        "component": "NA.1",
+        "position": 1,
+        "dataType": "NM",
+        "longName": "Value1",
+        "maxLength": 16
+      },
+      {
+        "component": "NA.2",
+        "position": 2,
+        "dataType": "NM",
+        "longName": "Value2",
+        "maxLength": 16
+      },
+      {
+        "component": "NA.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "Value3",
+        "maxLength": 16
+      },
+      {
+        "component": "NA.4",
+        "position": 4,
+        "dataType": "NM",
+        "longName": "Value4",
+        "maxLength": 16
+      }
+    ]
+  },
+  "NDL": {
+    "components": [
+      {
+        "component": "NDL.1",
+        "position": 1,
+        "dataType": "CNN",
+        "longName": "Name",
+        "maxLength": 406
+      },
+      {
+        "component": "NDL.2",
+        "position": 2,
+        "dataType": "TS",
+        "longName": "Start Date/time",
+        "maxLength": 26
+      },
+      {
+        "component": "NDL.3",
+        "position": 3,
+        "dataType": "TS",
+        "longName": "End Date/time",
+        "maxLength": 26
+      },
+      {
+        "component": "NDL.4",
+        "position": 4,
+        "dataType": "IS",
+        "longName": "Point of Care",
+        "maxLength": 20
+      },
+      {
+        "component": "NDL.5",
+        "position": 5,
+        "dataType": "IS",
+        "longName": "Room",
+        "maxLength": 20
+      },
+      {
+        "component": "NDL.6",
+        "position": 6,
+        "dataType": "IS",
+        "longName": "Bed",
+        "maxLength": 20
+      },
+      {
+        "component": "NDL.7",
+        "position": 7,
+        "dataType": "HD",
+        "longName": "Facility",
+        "maxLength": 227
+      },
+      {
+        "component": "NDL.8",
+        "position": 8,
+        "dataType": "IS",
+        "longName": "Location Status",
+        "maxLength": 20
+      },
+      {
+        "component": "NDL.9",
+        "position": 9,
+        "dataType": "IS",
+        "longName": "Patient Location Type",
+        "maxLength": 20
+      },
+      {
+        "component": "NDL.10",
+        "position": 10,
+        "dataType": "IS",
+        "longName": "Building",
+        "maxLength": 20
+      },
+      {
+        "component": "NDL.11",
+        "position": 11,
+        "dataType": "IS",
+        "longName": "Floor",
+        "maxLength": 20
+      }
+    ]
+  },
+  "NR": {
+    "components": [
+      {
+        "component": "NR.1",
+        "position": 1,
+        "dataType": "NM",
+        "longName": "Low Value",
+        "maxLength": 16
+      },
+      {
+        "component": "NR.2",
+        "position": 2,
+        "dataType": "NM",
+        "longName": "High Value",
+        "maxLength": 16
+      }
+    ]
+  },
+  "OCD": {
+    "components": [
+      {
+        "component": "OCD.1",
+        "position": 1,
+        "dataType": "CNE",
+        "longName": "Occurrence Code",
+        "maxLength": 705
+      },
+      {
+        "component": "OCD.2",
+        "position": 2,
+        "dataType": "DT",
+        "longName": "Occurrence Date",
+        "maxLength": 8
+      }
+    ]
+  },
+  "OSD": {
+    "components": [
+      {
+        "component": "OSD.1",
+        "position": 1,
+        "dataType": "ID",
+        "longName": "Sequence/Results Flag",
+        "maxLength": 1
+      },
+      {
+        "component": "OSD.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Placer Order Number: Entity Identifier",
+        "maxLength": 15
+      },
+      {
+        "component": "OSD.3",
+        "position": 3,
+        "dataType": "IS",
+        "longName": "Placer Order Number: Namespace ID",
+        "maxLength": 6
+      },
+      {
+        "component": "OSD.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Filler Order Number: Entity Identifier",
+        "maxLength": 15
+      },
+      {
+        "component": "OSD.5",
+        "position": 5,
+        "dataType": "IS",
+        "longName": "Filler Order Number: Namespace ID",
+        "maxLength": 6
+      },
+      {
+        "component": "OSD.6",
+        "position": 6,
+        "dataType": "ST",
+        "longName": "Sequence Condition Value",
+        "maxLength": 12
+      },
+      {
+        "component": "OSD.7",
+        "position": 7,
+        "dataType": "NM",
+        "longName": "Maximum Number of Repeats",
+        "maxLength": 3
+      },
+      {
+        "component": "OSD.8",
+        "position": 8,
+        "dataType": "ST",
+        "longName": "Placer Order Number: Universal ID",
+        "maxLength": 15
+      },
+      {
+        "component": "OSD.9",
+        "position": 9,
+        "dataType": "ID",
+        "longName": "Placer Order Number: Universal ID Type",
+        "maxLength": 6
+      },
+      {
+        "component": "OSD.10",
+        "position": 10,
+        "dataType": "ST",
+        "longName": "Filler Order Number: Universal ID",
+        "maxLength": 15
+      },
+      {
+        "component": "OSD.11",
+        "position": 11,
+        "dataType": "ID",
+        "longName": "Filler Order Number: Universal ID Type",
+        "maxLength": 6
+      }
+    ]
+  },
+  "OSP": {
+    "components": [
+      {
+        "component": "OSP.1",
+        "position": 1,
+        "dataType": "CNE",
+        "longName": "Occurrence Span Code",
+        "maxLength": 705
+      },
+      {
+        "component": "OSP.2",
+        "position": 2,
+        "dataType": "DT",
+        "longName": "Occurrence Span Start Date",
+        "maxLength": 8
+      },
+      {
+        "component": "OSP.3",
+        "position": 3,
+        "dataType": "DT",
+        "longName": "Occurrence Span Stop Date",
+        "maxLength": 8
+      }
+    ]
+  },
+  "PIP": {
+    "components": [
+      {
+        "component": "PIP.1",
+        "position": 1,
+        "dataType": "CE",
+        "longName": "Privilege",
+        "maxLength": 483
+      },
+      {
+        "component": "PIP.2",
+        "position": 2,
+        "dataType": "CE",
+        "longName": "Privilege Class",
+        "maxLength": 483
+      },
+      {
+        "component": "PIP.3",
+        "position": 3,
+        "dataType": "DT",
+        "longName": "Expiration Date",
+        "maxLength": 8
+      },
+      {
+        "component": "PIP.4",
+        "position": 4,
+        "dataType": "DT",
+        "longName": "Activation Date",
+        "maxLength": 8
+      },
+      {
+        "component": "PIP.5",
+        "position": 5,
+        "dataType": "EI",
+        "longName": "Facility",
+        "maxLength": 427
+      }
+    ]
+  },
+  "PL": {
+    "components": [
+      {
+        "component": "PL.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Point of Care",
+        "maxLength": 20
+      },
+      {
+        "component": "PL.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Room",
+        "maxLength": 20
+      },
+      {
+        "component": "PL.3",
+        "position": 3,
+        "dataType": "IS",
+        "longName": "Bed",
+        "maxLength": 20
+      },
+      {
+        "component": "PL.4",
+        "position": 4,
+        "dataType": "HD",
+        "longName": "Facility",
+        "maxLength": 227
+      },
+      {
+        "component": "PL.5",
+        "position": 5,
+        "dataType": "IS",
+        "longName": "Location Status",
+        "maxLength": 20
+      },
+      {
+        "component": "PL.6",
+        "position": 6,
+        "dataType": "IS",
+        "longName": "Person Location Type",
+        "maxLength": 20
+      },
+      {
+        "component": "PL.7",
+        "position": 7,
+        "dataType": "IS",
+        "longName": "Building",
+        "maxLength": 20
+      },
+      {
+        "component": "PL.8",
+        "position": 8,
+        "dataType": "IS",
+        "longName": "Floor",
+        "maxLength": 20
+      },
+      {
+        "component": "PL.9",
+        "position": 9,
+        "dataType": "ST",
+        "longName": "Location Description",
+        "maxLength": 199
+      },
+      {
+        "component": "PL.10",
+        "position": 10,
+        "dataType": "EI",
+        "longName": "Comprehensive Location Identifier",
+        "maxLength": 427
+      },
+      {
+        "component": "PL.11",
+        "position": 11,
+        "dataType": "HD",
+        "longName": "Assigning Authority for Location",
+        "maxLength": 227
+      }
+    ]
+  },
+  "PLN": {
+    "components": [
+      {
+        "component": "PLN.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "ID Number",
+        "maxLength": 20
+      },
+      {
+        "component": "PLN.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Type of ID Number",
+        "maxLength": 8
+      },
+      {
+        "component": "PLN.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "State/other Qualifying Information",
+        "maxLength": 62
+      },
+      {
+        "component": "PLN.4",
+        "position": 4,
+        "dataType": "DT",
+        "longName": "Expiration Date",
+        "maxLength": 8
+      }
+    ]
+  },
+  "PPN": {
+    "components": [
+      {
+        "component": "PPN.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "ID Number",
+        "maxLength": 15
+      },
+      {
+        "component": "PPN.2",
+        "position": 2,
+        "dataType": "FN",
+        "longName": "Family Name",
+        "maxLength": 194
+      },
+      {
+        "component": "PPN.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Given Name",
+        "maxLength": 30
+      },
+      {
+        "component": "PPN.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Second and Further Given Names or Initials Thereof",
+        "maxLength": 30
+      },
+      {
+        "component": "PPN.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Suffix (e.g., JR or III)",
+        "maxLength": 20
+      },
+      {
+        "component": "PPN.6",
+        "position": 6,
+        "dataType": "ST",
+        "longName": "Prefix (e.g., DR)",
+        "maxLength": 20
+      },
+      {
+        "component": "PPN.7",
+        "position": 7,
+        "dataType": "IS",
+        "longName": "Degree (e.g., MD)",
+        "maxLength": 5
+      },
+      {
+        "component": "PPN.8",
+        "position": 8,
+        "dataType": "IS",
+        "longName": "Source Table",
+        "maxLength": 4
+      },
+      {
+        "component": "PPN.9",
+        "position": 9,
+        "dataType": "HD",
+        "longName": "Assigning Authority",
+        "maxLength": 227
+      },
+      {
+        "component": "PPN.10",
+        "position": 10,
+        "dataType": "ID",
+        "longName": "Name Type Code",
+        "maxLength": 1
+      },
+      {
+        "component": "PPN.11",
+        "position": 11,
+        "dataType": "ST",
+        "longName": "Identifier Check Digit",
+        "maxLength": 1
+      },
+      {
+        "component": "PPN.12",
+        "position": 12,
+        "dataType": "ID",
+        "longName": "Check Digit Scheme",
+        "maxLength": 3
+      },
+      {
+        "component": "PPN.13",
+        "position": 13,
+        "dataType": "ID",
+        "longName": "Identifier Type Code",
+        "maxLength": 5
+      },
+      {
+        "component": "PPN.14",
+        "position": 14,
+        "dataType": "HD",
+        "longName": "Assigning Facility",
+        "maxLength": 227
+      },
+      {
+        "component": "PPN.15",
+        "position": 15,
+        "dataType": "TS",
+        "longName": "Date/Time Action Performed",
+        "maxLength": 26
+      },
+      {
+        "component": "PPN.16",
+        "position": 16,
+        "dataType": "ID",
+        "longName": "Name Representation Code",
+        "maxLength": 1
+      },
+      {
+        "component": "PPN.17",
+        "position": 17,
+        "dataType": "CE",
+        "longName": "Name Context",
+        "maxLength": 483
+      },
+      {
+        "component": "PPN.18",
+        "position": 18,
+        "dataType": "DR",
+        "longName": "Name Validity Range",
+        "maxLength": 17
+      },
+      {
+        "component": "PPN.19",
+        "position": 19,
+        "dataType": "ID",
+        "longName": "Name Assembly Order",
+        "maxLength": 1
+      },
+      {
+        "component": "PPN.20",
+        "position": 20,
+        "dataType": "TS",
+        "longName": "Effective Date",
+        "maxLength": 26
+      },
+      {
+        "component": "PPN.21",
+        "position": 21,
+        "dataType": "TS",
+        "longName": "Expiration Date",
+        "maxLength": 26
+      },
+      {
+        "component": "PPN.22",
+        "position": 22,
+        "dataType": "ST",
+        "longName": "Professional Suffix",
+        "maxLength": 199
+      },
+      {
+        "component": "PPN.23",
+        "position": 23,
+        "dataType": "CWE",
+        "longName": "Assigning Jurisdiction",
+        "maxLength": 705
+      },
+      {
+        "component": "PPN.24",
+        "position": 24,
+        "dataType": "CWE",
+        "longName": "Assigning Agency or Department",
+        "maxLength": 705
+      }
+    ]
+  },
+  "PRL": {
+    "components": [
+      {
+        "component": "PRL.1",
+        "position": 1,
+        "dataType": "CE",
+        "longName": "Parent Observation Identifier",
+        "maxLength": 483
+      },
+      {
+        "component": "PRL.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Parent Observation Sub-identifier",
+        "maxLength": 20
+      },
+      {
+        "component": "PRL.3",
+        "position": 3,
+        "dataType": "TX",
+        "longName": "Parent Observation Value Descriptor",
+        "maxLength": 250
+      }
+    ]
+  },
+  "PT": {
+    "components": [
+      {
+        "component": "PT.1",
+        "position": 1,
+        "dataType": "ID",
+        "longName": "Processing ID",
+        "maxLength": 1
+      },
+      {
+        "component": "PT.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Processing Mode",
+        "maxLength": 1
+      }
+    ]
+  },
+  "PTA": {
+    "components": [
+      {
+        "component": "PTA.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Policy Type",
+        "maxLength": 5
+      },
+      {
+        "component": "PTA.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Amount Class",
+        "maxLength": 9
+      },
+      {
+        "component": "PTA.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "Money or Percentage Quantity",
+        "maxLength": 16
+      },
+      {
+        "component": "PTA.4",
+        "position": 4,
+        "dataType": "MOP",
+        "longName": "Money or Percentage",
+        "maxLength": 23
+      }
+    ]
+  },
+  "QIP": {
+    "components": [
+      {
+        "component": "QIP.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Segment Field Name",
+        "maxLength": 12
+      },
+      {
+        "component": "QIP.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Values",
+        "maxLength": 199
+      }
+    ]
+  },
+  "QSC": {
+    "components": [
+      {
+        "component": "QSC.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Segment Field Name",
+        "maxLength": 12
+      },
+      {
+        "component": "QSC.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Relational Operator",
+        "maxLength": 2
+      },
+      {
+        "component": "QSC.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Value",
+        "maxLength": 199
+      },
+      {
+        "component": "QSC.4",
+        "position": 4,
+        "dataType": "ID",
+        "longName": "Relational Conjunction",
+        "maxLength": 3
+      }
+    ]
+  },
+  "RCD": {
+    "components": [
+      {
+        "component": "RCD.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Segment Field Name",
+        "maxLength": 12
+      },
+      {
+        "component": "RCD.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "HL7 Data Type",
+        "maxLength": 3
+      },
+      {
+        "component": "RCD.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "Maximum Column Width",
+        "maxLength": 2
+      }
+    ]
+  },
+  "RFR": {
+    "components": [
+      {
+        "component": "RFR.1",
+        "position": 1,
+        "dataType": "NR",
+        "longName": "Numeric Range",
+        "maxLength": 33
+      },
+      {
+        "component": "RFR.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Administrative Sex",
+        "maxLength": 8
+      },
+      {
+        "component": "RFR.3",
+        "position": 3,
+        "dataType": "NR",
+        "longName": "Age Range",
+        "maxLength": 33
+      },
+      {
+        "component": "RFR.4",
+        "position": 4,
+        "dataType": "NR",
+        "longName": "Gestational Age Range",
+        "maxLength": 33
+      },
+      {
+        "component": "RFR.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Species",
+        "maxLength": 20
+      },
+      {
+        "component": "RFR.6",
+        "position": 6,
+        "dataType": "ST",
+        "longName": "Race/subspecies",
+        "maxLength": 20
+      },
+      {
+        "component": "RFR.7",
+        "position": 7,
+        "dataType": "TX",
+        "longName": "Conditions",
+        "maxLength": 199
+      }
+    ]
+  },
+  "RI": {
+    "components": [
+      {
+        "component": "RI.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Repeat Pattern",
+        "maxLength": 6
+      },
+      {
+        "component": "RI.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Explicit Time Interval",
+        "maxLength": 199
+      }
+    ]
+  },
+  "RMC": {
+    "components": [
+      {
+        "component": "RMC.1",
+        "position": 1,
+        "dataType": "IS",
+        "longName": "Room Type",
+        "maxLength": 20
+      },
+      {
+        "component": "RMC.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Amount Type",
+        "maxLength": 20
+      },
+      {
+        "component": "RMC.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "Coverage Amount",
+        "maxLength": 16
+      },
+      {
+        "component": "RMC.4",
+        "position": 4,
+        "dataType": "MOP",
+        "longName": "Money or Percentage",
+        "maxLength": 23
+      }
+    ]
+  },
+  "RP": {
+    "components": [
+      {
+        "component": "RP.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Pointer",
+        "maxLength": 15
+      },
+      {
+        "component": "RP.2",
+        "position": 2,
+        "dataType": "HD",
+        "longName": "Application ID",
+        "maxLength": 227
+      },
+      {
+        "component": "RP.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Type of Data",
+        "maxLength": 9
+      },
+      {
+        "component": "RP.4",
+        "position": 4,
+        "dataType": "ID",
+        "longName": "Subtype",
+        "maxLength": 19
+      }
+    ]
+  },
+  "RPT": {
+    "components": [
+      {
+        "component": "RPT.1",
+        "position": 1,
+        "dataType": "CWE",
+        "longName": "Repeat Pattern Code",
+        "maxLength": 705
+      },
+      {
+        "component": "RPT.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Calendar Alignment",
+        "maxLength": 2
+      },
+      {
+        "component": "RPT.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "Phase Range Begin Value",
+        "maxLength": 10
+      },
+      {
+        "component": "RPT.4",
+        "position": 4,
+        "dataType": "NM",
+        "longName": "Phase Range End Value",
+        "maxLength": 10
+      },
+      {
+        "component": "RPT.5",
+        "position": 5,
+        "dataType": "NM",
+        "longName": "Period Quantity",
+        "maxLength": 10
+      },
+      {
+        "component": "RPT.6",
+        "position": 6,
+        "dataType": "IS",
+        "longName": "Period Units",
+        "maxLength": 10
+      },
+      {
+        "component": "RPT.7",
+        "position": 7,
+        "dataType": "ID",
+        "longName": "Institution Specified Time",
+        "maxLength": 1
+      },
+      {
+        "component": "RPT.8",
+        "position": 8,
+        "dataType": "ID",
+        "longName": "Event",
+        "maxLength": 6
+      },
+      {
+        "component": "RPT.9",
+        "position": 9,
+        "dataType": "NM",
+        "longName": "Event Offset Quantity",
+        "maxLength": 10
+      },
+      {
+        "component": "RPT.10",
+        "position": 10,
+        "dataType": "IS",
+        "longName": "Event Offset Units",
+        "maxLength": 10
+      },
+      {
+        "component": "RPT.11",
+        "position": 11,
+        "dataType": "GTS",
+        "longName": "General Timing Specification",
+        "maxLength": 200
+      }
+    ]
+  },
+  "SAD": {
+    "components": [
+      {
+        "component": "SAD.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Street or Mailing Address",
+        "maxLength": 120
+      },
+      {
+        "component": "SAD.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Street Name",
+        "maxLength": 50
+      },
+      {
+        "component": "SAD.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Dwelling Number",
+        "maxLength": 12
+      }
+    ]
+  },
+  "SCV": {
+    "components": [
+      {
+        "component": "SCV.1",
+        "position": 1,
+        "dataType": "CWE",
+        "longName": "Parameter Class",
+        "maxLength": 20
+      },
+      {
+        "component": "SCV.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Parameter Value",
+        "maxLength": 20
+      }
+    ]
+  },
+  "SN": {
+    "components": [
+      {
+        "component": "SN.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Comparator",
+        "maxLength": 2
+      },
+      {
+        "component": "SN.2",
+        "position": 2,
+        "dataType": "NM",
+        "longName": "Num1",
+        "maxLength": 15
+      },
+      {
+        "component": "SN.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Separator/Suffix",
+        "maxLength": 1
+      },
+      {
+        "component": "SN.4",
+        "position": 4,
+        "dataType": "NM",
+        "longName": "Num2",
+        "maxLength": 15
+      }
+    ]
+  },
+  "SPD": {
+    "components": [
+      {
+        "component": "SPD.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Specialty Name",
+        "maxLength": 50
+      },
+      {
+        "component": "SPD.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Governing Board",
+        "maxLength": 50
+      },
+      {
+        "component": "SPD.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Eligible or Certified",
+        "maxLength": 1
+      },
+      {
+        "component": "SPD.4",
+        "position": 4,
+        "dataType": "DT",
+        "longName": "Date of Certification",
+        "maxLength": 8
+      }
+    ]
+  },
+  "SPS": {
+    "components": [
+      {
+        "component": "SPS.1",
+        "position": 1,
+        "dataType": "CWE",
+        "longName": "Specimen Source Name or Code",
+        "maxLength": 705
+      },
+      {
+        "component": "SPS.2",
+        "position": 2,
+        "dataType": "CWE",
+        "longName": "Additives",
+        "maxLength": 705
+      },
+      {
+        "component": "SPS.3",
+        "position": 3,
+        "dataType": "TX",
+        "longName": "Specimen Collection Method",
+        "maxLength": 200
+      },
+      {
+        "component": "SPS.4",
+        "position": 4,
+        "dataType": "CWE",
+        "longName": "Body Site",
+        "maxLength": 705
+      },
+      {
+        "component": "SPS.5",
+        "position": 5,
+        "dataType": "CWE",
+        "longName": "Site Modifier",
+        "maxLength": 705
+      },
+      {
+        "component": "SPS.6",
+        "position": 6,
+        "dataType": "CWE",
+        "longName": "Collection Method Modifier Code",
+        "maxLength": 705
+      },
+      {
+        "component": "SPS.7",
+        "position": 7,
+        "dataType": "CWE",
+        "longName": "Specimen Role",
+        "maxLength": 705
+      }
+    ]
+  },
+  "SRT": {
+    "components": [
+      {
+        "component": "SRT.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Sort-by Field",
+        "maxLength": 12
+      },
+      {
+        "component": "SRT.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Sequencing",
+        "maxLength": 2
+      }
+    ]
+  },
+  "TQ": {
+    "components": [
+      {
+        "component": "TQ.1",
+        "position": 1,
+        "dataType": "CQ",
+        "longName": "Quantity",
+        "maxLength": 267
+      },
+      {
+        "component": "TQ.2",
+        "position": 2,
+        "dataType": "RI",
+        "longName": "Interval",
+        "maxLength": 206
+      },
+      {
+        "component": "TQ.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Duration",
+        "maxLength": 6
+      },
+      {
+        "component": "TQ.4",
+        "position": 4,
+        "dataType": "TS",
+        "longName": "Start Date/Time",
+        "maxLength": 26
+      },
+      {
+        "component": "TQ.5",
+        "position": 5,
+        "dataType": "TS",
+        "longName": "End Date/Time",
+        "maxLength": 26
+      },
+      {
+        "component": "TQ.6",
+        "position": 6,
+        "dataType": "ST",
+        "longName": "Priority",
+        "maxLength": 6
+      },
+      {
+        "component": "TQ.7",
+        "position": 7,
+        "dataType": "ST",
+        "longName": "Condition",
+        "maxLength": 199
+      },
+      {
+        "component": "TQ.8",
+        "position": 8,
+        "dataType": "TX",
+        "longName": "Text",
+        "maxLength": 200
+      },
+      {
+        "component": "TQ.9",
+        "position": 9,
+        "dataType": "ID",
+        "longName": "Conjunction",
+        "maxLength": 1
+      },
+      {
+        "component": "TQ.10",
+        "position": 10,
+        "dataType": "OSD",
+        "longName": "Order Sequencing",
+        "maxLength": 110
+      },
+      {
+        "component": "TQ.11",
+        "position": 11,
+        "dataType": "CE",
+        "longName": "Occurrence Duration",
+        "maxLength": 483
+      },
+      {
+        "component": "TQ.12",
+        "position": 12,
+        "dataType": "NM",
+        "longName": "Total Occurrences",
+        "maxLength": 4
+      }
+    ]
+  },
+  "TS": {
+    "components": [
+      {
+        "component": "TS.1",
+        "position": 1,
+        "dataType": "DTM",
+        "longName": "Time",
+        "maxLength": 24
+      },
+      {
+        "component": "TS.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Degree of Precision",
+        "maxLength": 1
+      }
+    ]
+  },
+  "UVC": {
+    "components": [
+      {
+        "component": "UVC.1",
+        "position": 1,
+        "dataType": "CNE",
+        "longName": "Value Code",
+        "maxLength": 20
+      },
+      {
+        "component": "UVC.2",
+        "position": 2,
+        "dataType": "MO",
+        "longName": "Value Amount",
+        "maxLength": 20
+      }
+    ]
+  },
+  "VH": {
+    "components": [
+      {
+        "component": "VH.1",
+        "position": 1,
+        "dataType": "ID",
+        "longName": "Start Day Range",
+        "maxLength": 3
+      },
+      {
+        "component": "VH.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "End Day Range",
+        "maxLength": 3
+      },
+      {
+        "component": "VH.3",
+        "position": 3,
+        "dataType": "TM",
+        "longName": "Start Hour Range",
+        "maxLength": 16
+      },
+      {
+        "component": "VH.4",
+        "position": 4,
+        "dataType": "TM",
+        "longName": "End Hour Range",
+        "maxLength": 16
+      }
+    ]
+  },
+  "VID": {
+    "components": [
+      {
+        "component": "VID.1",
+        "position": 1,
+        "dataType": "ID",
+        "longName": "Version ID",
+        "maxLength": 5
+      },
+      {
+        "component": "VID.2",
+        "position": 2,
+        "dataType": "CE",
+        "longName": "Internationalization Code",
+        "maxLength": 483
+      },
+      {
+        "component": "VID.3",
+        "position": 3,
+        "dataType": "CE",
+        "longName": "International Version ID",
+        "maxLength": 483
+      }
+    ]
+  },
+  "VR": {
+    "components": [
+      {
+        "component": "VR.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "First Data Code Value",
+        "maxLength": 6
+      },
+      {
+        "component": "VR.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Last Data Code Value",
+        "maxLength": 6
+      }
+    ]
+  },
+  "WVI": {
+    "components": [
+      {
+        "component": "WVI.1",
+        "position": 1,
+        "dataType": "NM",
+        "longName": "Channel Number",
+        "maxLength": 4
+      },
+      {
+        "component": "WVI.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Channel Name",
+        "maxLength": 17
+      }
+    ]
+  },
+  "WVS": {
+    "components": [
+      {
+        "component": "WVS.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Source One Name",
+        "maxLength": 8
+      },
+      {
+        "component": "WVS.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Source Two Name",
+        "maxLength": 8
+      }
+    ]
+  },
+  "XAD": {
+    "components": [
+      {
+        "component": "XAD.1",
+        "position": 1,
+        "dataType": "SAD",
+        "longName": "Street Address",
+        "maxLength": 184
+      },
+      {
+        "component": "XAD.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Other Designation",
+        "maxLength": 120
+      },
+      {
+        "component": "XAD.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "City",
+        "maxLength": 50
+      },
+      {
+        "component": "XAD.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "State or Province",
+        "maxLength": 50
+      },
+      {
+        "component": "XAD.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Zip or Postal Code",
+        "maxLength": 12
+      },
+      {
+        "component": "XAD.6",
+        "position": 6,
+        "dataType": "ID",
+        "longName": "Country",
+        "maxLength": 3
+      },
+      {
+        "component": "XAD.7",
+        "position": 7,
+        "dataType": "ID",
+        "longName": "Address Type",
+        "maxLength": 3
+      },
+      {
+        "component": "XAD.8",
+        "position": 8,
+        "dataType": "ST",
+        "longName": "Other Geographic Designation",
+        "maxLength": 50
+      },
+      {
+        "component": "XAD.9",
+        "position": 9,
+        "dataType": "IS",
+        "longName": "County/Parish Code",
+        "maxLength": 20
+      },
+      {
+        "component": "XAD.10",
+        "position": 10,
+        "dataType": "IS",
+        "longName": "Census Tract",
+        "maxLength": 20
+      },
+      {
+        "component": "XAD.11",
+        "position": 11,
+        "dataType": "ID",
+        "longName": "Address Representation Code",
+        "maxLength": 1
+      },
+      {
+        "component": "XAD.12",
+        "position": 12,
+        "dataType": "DR",
+        "longName": "Address Validity Range",
+        "maxLength": 53
+      },
+      {
+        "component": "XAD.13",
+        "position": 13,
+        "dataType": "TS",
+        "longName": "Effective Date",
+        "maxLength": 26
+      },
+      {
+        "component": "XAD.14",
+        "position": 14,
+        "dataType": "TS",
+        "longName": "Expiration Date",
+        "maxLength": 26
+      }
+    ]
+  },
+  "XCN": {
+    "components": [
+      {
+        "component": "XCN.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "ID Number",
+        "maxLength": 15
+      },
+      {
+        "component": "XCN.2",
+        "position": 2,
+        "dataType": "FN",
+        "longName": "Family Name",
+        "maxLength": 194
+      },
+      {
+        "component": "XCN.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Given Name",
+        "maxLength": 30
+      },
+      {
+        "component": "XCN.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Second and Further Given Names or Initials Thereof",
+        "maxLength": 30
+      },
+      {
+        "component": "XCN.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Suffix (e.g., JR or III)",
+        "maxLength": 20
+      },
+      {
+        "component": "XCN.6",
+        "position": 6,
+        "dataType": "ST",
+        "longName": "Prefix (e.g., DR)",
+        "maxLength": 20
+      },
+      {
+        "component": "XCN.7",
+        "position": 7,
+        "dataType": "IS",
+        "longName": "Degree (e.g., MD)",
+        "maxLength": 5
+      },
+      {
+        "component": "XCN.8",
+        "position": 8,
+        "dataType": "IS",
+        "longName": "Source Table",
+        "maxLength": 4
+      },
+      {
+        "component": "XCN.9",
+        "position": 9,
+        "dataType": "HD",
+        "longName": "Assigning Authority",
+        "maxLength": 227
+      },
+      {
+        "component": "XCN.10",
+        "position": 10,
+        "dataType": "ID",
+        "longName": "Name Type Code",
+        "maxLength": 1
+      },
+      {
+        "component": "XCN.11",
+        "position": 11,
+        "dataType": "ST",
+        "longName": "Identifier Check Digit",
+        "maxLength": 1
+      },
+      {
+        "component": "XCN.12",
+        "position": 12,
+        "dataType": "ID",
+        "longName": "Check Digit Scheme",
+        "maxLength": 3
+      },
+      {
+        "component": "XCN.13",
+        "position": 13,
+        "dataType": "ID",
+        "longName": "Identifier Type Code",
+        "maxLength": 5
+      },
+      {
+        "component": "XCN.14",
+        "position": 14,
+        "dataType": "HD",
+        "longName": "Assigning Facility",
+        "maxLength": 227
+      },
+      {
+        "component": "XCN.15",
+        "position": 15,
+        "dataType": "ID",
+        "longName": "Name Representation Code",
+        "maxLength": 1
+      },
+      {
+        "component": "XCN.16",
+        "position": 16,
+        "dataType": "CE",
+        "longName": "Name Context",
+        "maxLength": 483
+      },
+      {
+        "component": "XCN.17",
+        "position": 17,
+        "dataType": "DR",
+        "longName": "Name Validity Range",
+        "maxLength": 53
+      },
+      {
+        "component": "XCN.18",
+        "position": 18,
+        "dataType": "ID",
+        "longName": "Name Assembly Order",
+        "maxLength": 1
+      },
+      {
+        "component": "XCN.19",
+        "position": 19,
+        "dataType": "TS",
+        "longName": "Effective Date",
+        "maxLength": 26
+      },
+      {
+        "component": "XCN.20",
+        "position": 20,
+        "dataType": "TS",
+        "longName": "Expiration Date",
+        "maxLength": 26
+      },
+      {
+        "component": "XCN.21",
+        "position": 21,
+        "dataType": "ST",
+        "longName": "Professional Suffix",
+        "maxLength": 199
+      },
+      {
+        "component": "XCN.22",
+        "position": 22,
+        "dataType": "CWE",
+        "longName": "Assigning Jurisdiction",
+        "maxLength": 705
+      },
+      {
+        "component": "XCN.23",
+        "position": 23,
+        "dataType": "CWE",
+        "longName": "Assigning Agency or Department",
+        "maxLength": 705
+      }
+    ]
+  },
+  "XON": {
+    "components": [
+      {
+        "component": "XON.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Organization Name",
+        "maxLength": 50
+      },
+      {
+        "component": "XON.2",
+        "position": 2,
+        "dataType": "IS",
+        "longName": "Organization Name Type Code",
+        "maxLength": 20
+      },
+      {
+        "component": "XON.3",
+        "position": 3,
+        "dataType": "NM",
+        "longName": "ID Number",
+        "maxLength": 4
+      },
+      {
+        "component": "XON.4",
+        "position": 4,
+        "dataType": "NM",
+        "longName": "Check Digit",
+        "maxLength": 1
+      },
+      {
+        "component": "XON.5",
+        "position": 5,
+        "dataType": "ID",
+        "longName": "Check Digit Scheme",
+        "maxLength": 3
+      },
+      {
+        "component": "XON.6",
+        "position": 6,
+        "dataType": "HD",
+        "longName": "Assigning Authority",
+        "maxLength": 227
+      },
+      {
+        "component": "XON.7",
+        "position": 7,
+        "dataType": "ID",
+        "longName": "Identifier Type Code",
+        "maxLength": 5
+      },
+      {
+        "component": "XON.8",
+        "position": 8,
+        "dataType": "HD",
+        "longName": "Assigning Facility",
+        "maxLength": 227
+      },
+      {
+        "component": "XON.9",
+        "position": 9,
+        "dataType": "ID",
+        "longName": "Name Representation Code",
+        "maxLength": 1
+      },
+      {
+        "component": "XON.10",
+        "position": 10,
+        "dataType": "ST",
+        "longName": "Organization Identifier",
+        "maxLength": 20
+      }
+    ]
+  },
+  "XPN": {
+    "components": [
+      {
+        "component": "XPN.1",
+        "position": 1,
+        "dataType": "FN",
+        "longName": "Family Name",
+        "maxLength": 194
+      },
+      {
+        "component": "XPN.2",
+        "position": 2,
+        "dataType": "ST",
+        "longName": "Given Name",
+        "maxLength": 30
+      },
+      {
+        "component": "XPN.3",
+        "position": 3,
+        "dataType": "ST",
+        "longName": "Second and Further Given Names or Initials Thereof",
+        "maxLength": 30
+      },
+      {
+        "component": "XPN.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Suffix (e.g., JR or III)",
+        "maxLength": 20
+      },
+      {
+        "component": "XPN.5",
+        "position": 5,
+        "dataType": "ST",
+        "longName": "Prefix (e.g., DR)",
+        "maxLength": 20
+      },
+      {
+        "component": "XPN.6",
+        "position": 6,
+        "dataType": "IS",
+        "longName": "Degree (e.g., MD)",
+        "maxLength": 6
+      },
+      {
+        "component": "XPN.7",
+        "position": 7,
+        "dataType": "ID",
+        "longName": "Name Type Code",
+        "maxLength": 1
+      },
+      {
+        "component": "XPN.8",
+        "position": 8,
+        "dataType": "ID",
+        "longName": "Name Representation Code",
+        "maxLength": 1
+      },
+      {
+        "component": "XPN.9",
+        "position": 9,
+        "dataType": "CE",
+        "longName": "Name Context",
+        "maxLength": 483
+      },
+      {
+        "component": "XPN.10",
+        "position": 10,
+        "dataType": "DR",
+        "longName": "Name Validity Range",
+        "maxLength": 53
+      },
+      {
+        "component": "XPN.11",
+        "position": 11,
+        "dataType": "ID",
+        "longName": "Name Assembly Order",
+        "maxLength": 1
+      },
+      {
+        "component": "XPN.12",
+        "position": 12,
+        "dataType": "TS",
+        "longName": "Effective Date",
+        "maxLength": 26
+      },
+      {
+        "component": "XPN.13",
+        "position": 13,
+        "dataType": "TS",
+        "longName": "Expiration Date",
+        "maxLength": 26
+      },
+      {
+        "component": "XPN.14",
+        "position": 14,
+        "dataType": "ST",
+        "longName": "Professional Suffix",
+        "maxLength": 199
+      }
+    ]
+  },
+  "XTN": {
+    "components": [
+      {
+        "component": "XTN.1",
+        "position": 1,
+        "dataType": "ST",
+        "longName": "Telephone Number",
+        "maxLength": 199
+      },
+      {
+        "component": "XTN.2",
+        "position": 2,
+        "dataType": "ID",
+        "longName": "Telecommunication Use Code",
+        "maxLength": 3
+      },
+      {
+        "component": "XTN.3",
+        "position": 3,
+        "dataType": "ID",
+        "longName": "Telecommunication Equipment Type",
+        "maxLength": 8
+      },
+      {
+        "component": "XTN.4",
+        "position": 4,
+        "dataType": "ST",
+        "longName": "Email Address",
+        "maxLength": 199
+      },
+      {
+        "component": "XTN.5",
+        "position": 5,
+        "dataType": "NM",
+        "longName": "Country Code",
+        "maxLength": 3
+      },
+      {
+        "component": "XTN.6",
+        "position": 6,
+        "dataType": "NM",
+        "longName": "Area/City Code",
+        "maxLength": 5
+      },
+      {
+        "component": "XTN.7",
+        "position": 7,
+        "dataType": "NM",
+        "longName": "Local Number",
+        "maxLength": 9
+      },
+      {
+        "component": "XTN.8",
+        "position": 8,
+        "dataType": "NM",
+        "longName": "Extension",
+        "maxLength": 5
+      },
+      {
+        "component": "XTN.9",
+        "position": 9,
+        "dataType": "ST",
+        "longName": "Any Text",
+        "maxLength": 199
+      },
+      {
+        "component": "XTN.10",
+        "position": 10,
+        "dataType": "ST",
+        "longName": "Extension Prefix",
+        "maxLength": 4
+      },
+      {
+        "component": "XTN.11",
+        "position": 11,
+        "dataType": "ST",
+        "longName": "Speed Dial Code",
+        "maxLength": 6
+      },
+      {
+        "component": "XTN.12",
+        "position": 12,
+        "dataType": "ST",
+        "longName": "Unformatted Telephone number",
+        "maxLength": 199
+      }
+    ]
+  }
+}

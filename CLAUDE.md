@@ -45,6 +45,7 @@ bun test:integration              # Run integration tests only
 bun reset-integration-aidbox      # Destroy and recreate test Aidbox from scratch (if test data in the db creates problems)
 bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
 bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
+bun run generate-hl7v2-reference  # Generate data/hl7v2-reference/ from XSD+PDF (see docs)
 ```
 
 **Integration tests** use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
@@ -194,6 +195,11 @@ src/
 │   └── mapping-task-service.ts  # Task creation/resolution
 ├── mllp/                 # MLLP TCP server
 └── ui/                   # Server-rendered HTML pages
+scripts/
+├── hl7v2-reference/      # HL7v2 reference data generator (XSD + PDF → JSON)
+└── generate-hl7v2-reference.ts
+data/
+└── hl7v2-reference/v2.5/ # Generated reference JSON (fields, segments, datatypes, messages, tables)
 ```
 
 ## Documentation
