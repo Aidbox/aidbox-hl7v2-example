@@ -10,7 +10,7 @@
  */
 
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
-import type { ConversionResult } from "../converter";
+import { findSegment, findAllSegments, type ConversionResult } from "../converter";
 import {
   fromMSH,
   fromPID,
@@ -60,6 +60,7 @@ import {
   composeMappingTask,
   composeTaskBundleEntry,
 } from "../../code-mapping/mapping-task";
+import { hl7v2ToFhirConfig } from "../config";
 
 /**
  * Function type for looking up a Patient by ID.
@@ -185,6 +186,8 @@ export async function convertOBXToObservationResolving(
         localCode: error.localCode || "",
         localDisplay: error.localDisplay,
         localSystem: error.localSystem,
+        // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
+        // Keep only `mappingType`; labels should come from the mapping registry.
         mappingType: "observation-code-loinc",
         sourceFieldLabel: "OBX-3",
         targetFieldLabel: "Observation.code",
@@ -219,17 +222,6 @@ interface ParsedMSH {
   msh: MSH;
   senderContext: SenderContext;
   baseMeta: Meta;
-}
-
-function findSegment(
-  message: HL7v2Message,
-  name: string,
-): HL7v2Segment | undefined {
-  return message.find((s) => s.segment === name);
-}
-
-function findAllSegments(message: HL7v2Message, name: string): HL7v2Segment[] {
-  return message.filter((s) => s.segment === name);
 }
 
 /**
@@ -589,32 +581,13 @@ function parsePV1(message: HL7v2Message): PV1 | undefined {
   return fromPV1(pv1Segment);
 }
 
-/**
- * Extract visit number from PV1 segment.
- * Uses PV1-19 (Visit Number) as the source.
- * Returns undefined if PV1-19 is not valued.
- */
-function extractVisitNumber(pv1: PV1): string | undefined {
-  return pv1.$19_visitNumber?.$1_value;
-}
-
-/**
- * Generate deterministic Encounter ID from sender context and visit number.
- * Format: {sendingApp}-{sendingFacility}-{visitNumber} (lowercased, sanitized)
- */
-function generateEncounterId(senderContext: SenderContext, visitNumber: string): string {
-  const parts = [
-    senderContext.sendingApplication,
-    senderContext.sendingFacility,
-    visitNumber,
-  ];
-  return parts.join("-").toLowerCase().replace(/[^a-z0-9-]/g, "-");
-}
 
 interface EncounterHandlingResult {
   encounterRef: Reference<"Encounter"> | null;
   encounterEntry: BundleEntry | null;
   patientClassTaskEntry?: BundleEntry;
+  warning?: string;
+  error?: string;
 }
 
 /**
@@ -637,15 +610,14 @@ function createConditionalEncounterEntry(encounter: Encounter): BundleEntry {
 /**
  * Handle encounter lookup and draft creation for ORU_R01.
  *
- * - PV1 segment is optional - returns null refs if missing
- * - Extracts visit number from PV1-19, generates deterministic ID with sender context
- * - Looks up existing encounter (does NOT update - ADT is source of truth)
- * - Creates draft encounter with status=unknown if not found
+ * Config-driven PV1 policy:
+ * - If PV1 required (config) and missing/invalid → error, processing stops
+ * - If PV1 not required and missing/invalid → warning, skip Encounter, continue clinical data
+ * - If PV1 present and valid → create/lookup Encounter with strict identifier
  *
  * Patient class mapping errors:
  * - Do NOT block the message (ORU clinical data is prioritized)
  * - Create Task for tracking, use fallback class (AMB)
- * - Message status stays "processed", so won't be requeued when Task is resolved
  *
  * Race condition handling: Uses POST with If-None-Exist to ensure only one
  * draft encounter is created even if multiple ORU messages for the same
@@ -658,35 +630,44 @@ async function handleEncounter(
   senderContext: SenderContext,
   lookupEncounter: EncounterLookupFn,
 ): Promise<EncounterHandlingResult> {
+  const config = hl7v2ToFhirConfig();
+  const pv1Required = config["ORU-R01"]?.converter?.PV1?.required ?? false;
+
   if (!pv1) {
+    if (pv1Required) {
+      return {
+        encounterRef: null,
+        encounterEntry: null,
+        error: "PV1 segment is required for ORU-R01 but missing",
+      };
+    }
     return { encounterRef: null, encounterEntry: null };
   }
 
-  const visitNumber = extractVisitNumber(pv1);
-  if (!visitNumber) {
-    return { encounterRef: null, encounterEntry: null };
+  const result = await convertPV1WithMappingSupport(pv1, senderContext);
+
+  if (result.identifierError) {
+    if (pv1Required) {
+      return { encounterRef: null, encounterEntry: null, error: result.identifierError };
+    }
+    return { encounterRef: null, encounterEntry: null, warning: result.identifierError };
   }
 
-  const encounterId = generateEncounterId(senderContext, visitNumber);
+  const encounter = result.encounter;
+  const encounterId = encounter.id!;
   const encounterRef = { reference: `Encounter/${encounterId}` } as Reference<"Encounter">;
 
   const existingEncounter = await lookupEncounter(encounterId);
-
   if (existingEncounter) {
     return { encounterRef, encounterEntry: null };
   }
 
-  // Create draft encounter from PV1 with status=unknown (ADT is source of truth)
-  const result = await convertPV1WithMappingSupport(pv1, senderContext);
-  const encounter = result.encounter;
   encounter.status = "unknown";
-  encounter.id = encounterId;
   encounter.subject = patientRef;
   encounter.meta = { ...encounter.meta, ...baseMeta };
 
   const encounterEntry = createConditionalEncounterEntry(encounter);
 
-  // ORU policy: create Task for tracking patient class mapping errors, don't block
   let patientClassTaskEntry: BundleEntry | undefined;
   if (result.mappingError) {
     const task = composeMappingTask(senderContext, result.mappingError);
@@ -935,12 +916,12 @@ async function processOBRGroup(
  * - Creates draft Patient with active=false if not found
  * - Links all resources to Patient
  *
- * Encounter Handling:
- * - PV1 segment is optional - proceed without encounter if missing
- * - Extracts encounter ID from PV1-19 (Visit Number)
- * - Looks up existing Encounter by ID (does NOT update - ADT is source of truth)
- * - Creates draft Encounter with status=unknown if not found
- * - Links DiagnosticReport and Observation to Encounter
+ * Encounter Handling (config-driven PV1 policy):
+ * - PV1 required/optional determined by config["ORU-R01"].converter.PV1.required
+ * - If PV1 valid: creates/looks up Encounter with strict HL7 v2.8.2 authority validation
+ * - If PV1 not required and missing/invalid: skip Encounter, set status=warning
+ * - If PV1 required and missing/invalid: set status=error, no bundle submitted
+ * - Links DiagnosticReport and Observation to Encounter when present
  */
 export async function convertORU_R01(
   parsed: HL7v2Message,
@@ -963,13 +944,26 @@ export async function convertORU_R01(
   );
 
   const pv1 = parsePV1(parsed);
-  const { encounterRef, encounterEntry, patientClassTaskEntry } = await handleEncounter(
+  const encounterResult = await handleEncounter(
     pv1,
     patientRef,
     baseMeta,
     senderContext,
     lookupEncounter,
   );
+
+  // PV1 required and invalid → hard error, no bundle
+  if (encounterResult.error) {
+    return {
+      messageUpdate: {
+        status: "error",
+        error: encounterResult.error,
+        patient: patientRef,
+      },
+    };
+  }
+
+  const { encounterRef, encounterEntry, patientClassTaskEntry } = encounterResult;
 
   const obrGroups = groupSegmentsByOBR(parsed);
 
@@ -1012,6 +1006,18 @@ export async function convertORU_R01(
     type: "transaction",
     entry: entries,
   };
+
+  // PV1 not required but invalid → warning, submit clinical data without Encounter
+  if (encounterResult.warning) {
+    return {
+      bundle,
+      messageUpdate: {
+        status: "warning",
+        error: encounterResult.warning,
+        patient: patientRef,
+      },
+    };
+  }
 
   return {
     bundle,

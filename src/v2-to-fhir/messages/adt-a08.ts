@@ -7,8 +7,8 @@
  * - Patient from PID
  */
 
-import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
-import type { ConversionResult } from "../converter";
+import type { HL7v2Message } from "../../hl7v2/generated/types";
+import { findSegment, type ConversionResult } from "../converter";
 import {
   fromMSH,
   fromPID,
@@ -31,13 +31,6 @@ import { convertPIDToPatient } from "../segments/pid-patient";
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-function findSegment(
-  message: HL7v2Message,
-  name: string,
-): HL7v2Segment | undefined {
-  return message.find((s) => s.segment === name);
-}
 
 /**
  * Extract meta tags from MSH segment

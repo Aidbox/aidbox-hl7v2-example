@@ -5,6 +5,7 @@
  * converts them to FHIR resources, submits to Aidbox, and updates status.
  */
 
+import { parseMessage } from "@atomic-ehr/hl7v2";
 import {
   aidboxFetch,
   putResource,
@@ -13,6 +14,8 @@ import {
 import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import type { Bundle } from "../fhir/hl7-fhir-r4-core/Bundle";
 import { convertToFHIR, type ConversionResult } from "./converter";
+import { preprocessMessage } from "./preprocessor";
+import { hl7v2ToFhirConfig } from "./config";
 
 // ============================================================================
 // Constants
@@ -40,13 +43,16 @@ export async function pollReceivedMessage(): Promise<IncomingHL7v2Message | null
 // ============================================================================
 
 /**
- * Convert HL7v2 message to FHIR Bundle with message update
- * Uses converter router to automatically detect message type
+ * Convert HL7v2 message to FHIR Bundle with message update.
+ * Parses once, preprocesses, then converts.
  */
 async function convertMessage(
   message: IncomingHL7v2Message,
 ): Promise<ConversionResult> {
-  return await convertToFHIR(message.message);
+  const parsed = parseMessage(message.message);
+  const config = hl7v2ToFhirConfig();
+  const preprocessed = preprocessMessage(parsed, config);
+  return await convertToFHIR(preprocessed);
 }
 
 // ============================================================================
@@ -111,7 +117,9 @@ export async function processNextMessage(): Promise<boolean> {
 
   try {
     const { bundle, messageUpdate } = await convertMessage(message);
-    await submitBundle(bundle);
+    if (bundle) {
+      await submitBundle(bundle);
+    }
     await applyMessageUpdate(message, messageUpdate, bundle);
     return true;
   } catch (error) {
@@ -163,7 +171,9 @@ export function createIncomingHL7v2MessageProcessorService(
       }
 
       const { bundle, messageUpdate } = await convertMessage(currentMessage);
-      await submitBundle(bundle);
+      if (bundle) {
+        await submitBundle(bundle);
+      }
       await applyMessageUpdate(currentMessage, messageUpdate, bundle);
 
       options.onProcessed?.(currentMessage);

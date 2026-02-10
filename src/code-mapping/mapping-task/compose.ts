@@ -82,6 +82,9 @@ export function composeMappingTask(
     inputs.push({ type: { text: "Local system" }, valueString: error.localSystem });
   }
 
+  // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
+  // Stop persisting source/target labels in Task.input.
+  // Resolve labels from `MAPPING_TYPES[error.mappingType]` in UI rendering.
   // Source and target field labels for human-readable context
   inputs.push({ type: { text: "Source field" }, valueString: error.sourceFieldLabel });
   inputs.push({ type: { text: "Target field" }, valueString: error.targetFieldLabel });
@@ -101,6 +104,8 @@ export function composeMappingTask(
           display: typeConfig.taskDisplay,
         },
       ],
+      // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
+      // Build task text from registry labels after removing label fields from MappingError.
       text: `Map ${error.sourceFieldLabel} to ${error.targetFieldLabel}`,
     },
     authoredOn: now,

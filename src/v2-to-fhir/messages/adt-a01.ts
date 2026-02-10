@@ -14,7 +14,7 @@
  */
 
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
-import type { ConversionResult } from "../converter";
+import { findSegment, findAllSegments, type ConversionResult } from "../converter";
 import {
   fromMSH,
   fromPID,
@@ -55,21 +55,11 @@ import {
   type MappingError,
 } from "../../code-mapping/mapping-errors";
 import type { SenderContext } from "../../code-mapping/concept-map";
+import { hl7v2ToFhirConfig } from "../config";
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-function findSegment(
-  message: HL7v2Message,
-  name: string,
-): HL7v2Segment | undefined {
-  return message.find((s) => s.segment === name);
-}
-
-function findAllSegments(message: HL7v2Message, name: string): HL7v2Segment[] {
-  return message.filter((s) => s.segment === name);
-}
 
 /**
  * Generate a deterministic ID from segment data
@@ -364,30 +354,49 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   const patientRef = patient.id ? `Patient/${patient.id}` : "Patient/unknown";
 
   // =========================================================================
-  // Extract PV1 -> Encounter (with mapping error support)
+  // Extract PV1 -> Encounter (config-driven PV1 policy)
   // =========================================================================
+  const config = hl7v2ToFhirConfig();
+  const pv1Required = config["ADT-A01"]?.converter?.PV1?.required ?? true;
+
   let encounter: Encounter | undefined;
+  let encounterWarning: string | undefined;
   const pv1Segment = findSegment(parsed, "PV1");
-  if (pv1Segment) {
+
+  if (!pv1Segment) {
+    if (pv1Required) {
+      return {
+        messageUpdate: {
+          status: "error",
+          error: "PV1 segment is required for ADT-A01 but missing",
+          patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
+        },
+      };
+    }
+    // PV1 not required and missing: skip Encounter, warn
+    encounterWarning = "PV1 segment is missing; Encounter creation skipped";
+  } else {
     const pv1 = fromPV1(pv1Segment);
     const pv1Result = await convertPV1WithMappingSupport(pv1, senderContext);
 
     if (pv1Result.mappingError) {
-      // Patient class mapping error - ADT policy: block until resolved
       mappingErrors.push(pv1Result.mappingError);
     }
 
-    // Always use the encounter (may have fallback class if mapping failed)
-    encounter = pv1Result.encounter;
-    (encounter as { subject: { reference?: string } }).subject = {
-      reference: patientRef,
-    };
-
-    // Generate encounter ID
-    if (pv1.$19_visitNumber?.$1_value) {
-      encounter.id = pv1.$19_visitNumber.$1_value;
+    if (pv1Result.identifierError) {
+      if (pv1Required) {
+        return {
+          messageUpdate: {
+            status: "error",
+            error: pv1Result.identifierError,
+            patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
+          },
+        };
+      }
+      encounterWarning = pv1Result.identifierError;
     } else {
-      encounter.id = generateId("encounter", 1, messageControlId);
+      encounter = pv1Result.encounter;
+      encounter.subject = { reference: patientRef } as Encounter["subject"];
     }
   }
 
@@ -535,6 +544,17 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
     type: "transaction",
     entry: entries,
   };
+
+  if (encounterWarning) {
+    return {
+      bundle,
+      messageUpdate: {
+        status: "warning",
+        error: encounterWarning,
+        patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
+      },
+    };
+  }
 
   return {
     bundle,

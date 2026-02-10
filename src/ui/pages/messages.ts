@@ -383,6 +383,8 @@ function renderIncomingMessagesPage(
     switch (status) {
       case "processed":
         return "bg-green-100 text-green-800";
+      case "warning":
+        return "bg-amber-100 text-amber-800";
       case "error":
         return "bg-red-100 text-red-800";
       case "mapping_error":
@@ -414,13 +416,13 @@ function renderIncomingMessagesPage(
     error: msg.error,
     bundle: msg.bundle,
     retryUrl:
-      (msg.status === "error" || msg.status === "mapping_error") && msg.id
+      (msg.status === "error" || msg.status === "mapping_error" || msg.status === "warning") && msg.id
         ? `/mark-for-retry/${msg.id}`
         : undefined,
     unmappedCodes: msg.status === "mapping_error" ? msg.unmappedCodes : undefined,
   }));
 
-  const statuses = ["received", "processed", "mapping_error", "error"];
+  const statuses = ["received", "processed", "warning", "mapping_error", "error"];
 
   const content = `
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Incoming Messages</h1>

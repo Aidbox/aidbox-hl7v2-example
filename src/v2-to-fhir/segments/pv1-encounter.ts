@@ -16,6 +16,7 @@ import type {
   Extension,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertCXToIdentifier } from "../datatypes/cx-identifier";
+import { buildEncounterIdentifier } from "../id-generation";
 import { convertCWEToCodeableConcept, convertCWEToCoding } from "../datatypes/cwe-codeableconcept";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { convertXCNToPractitioner } from "../datatypes/xcn-practitioner";
@@ -33,7 +34,6 @@ import {
 // ============================================================================
 
 const PARTICIPATION_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ParticipationType";
-const IDENTIFIER_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0203";
 const ENCOUNTER_CLASS_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ActCode";
 
 // ============================================================================
@@ -99,6 +99,8 @@ export function mapPatientClassToFHIRWithResult(
         localCode: classCode,
         localDisplay: `PV1-2 Patient Class: ${patientClass ?? "missing"}`,
         localSystem: PATIENT_CLASS_V2_SYSTEM,
+        // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
+        // Keep only `mappingType`; labels should come from the mapping registry.
         mappingType: "patient-class",
         sourceFieldLabel: "PV1.2",
         targetFieldLabel: "Encounter.class",
@@ -450,6 +452,19 @@ function createEncounterLocation(
 // ============================================================================
 
 /**
+ * Result type for PV1 conversion.
+ * Always returns an encounter (using fallback class if mapping fails).
+ * Caller decides policy for handling errors.
+ */
+export type PV1ConversionResult = {
+  encounter: Encounter;
+  /** Present if patient class couldn't be mapped - caller decides whether to block or create Task */
+  mappingError?: MappingError;
+  /** Present if PV1-19 authority validation failed (HL7 v2.8.2 CX rules) */
+  identifierError?: string;
+};
+
+/**
  * Build FHIR Encounter from PV1 segment with pre-resolved class and status.
  *
  * Field Mappings:
@@ -484,7 +499,7 @@ export function buildEncounterFromPV1(
   pv1: PV1,
   encounterClass: Coding,
   status: Encounter["status"],
-): Encounter {
+): PV1ConversionResult {
   const encounter: Encounter = {
     resourceType: "Encounter",
     class: encounterClass,
@@ -501,22 +516,16 @@ export function buildEncounterFromPV1(
   // =========================================================================
 
   const identifiers: Identifier[] = [];
+  let identifierError: string | undefined;
 
-  // PV1-19: Visit Number -> identifier with type=VN
-  if (pv1.$19_visitNumber) {
-    const visitId = convertCXToIdentifier(pv1.$19_visitNumber);
-    if (visitId) {
-      visitId.type = {
-        coding: [
-          {
-            system: IDENTIFIER_TYPE_SYSTEM,
-            code: "VN",
-          },
-        ],
-        text: "visit number",
-      };
-      identifiers.push(visitId);
-    }
+  // PV1-19: Visit Number -> identifier with type=VN (strict HL7 v2.8.2 authority validation)
+  const identifierResult = buildEncounterIdentifier(pv1.$19_visitNumber);
+  if (identifierResult.error) {
+    identifierError = identifierResult.error;
+  } else if (identifierResult.identifier) {
+    identifiers.push(...identifierResult.identifier);
+    const vnValue = pv1.$19_visitNumber!.$1_value!;
+    encounter.id = vnValue.toLowerCase().replace(/[^a-z0-9-]/g, "-");
   }
 
   // PV1-50: Alternate Visit ID -> identifier
@@ -733,23 +742,12 @@ export function buildEncounterFromPV1(
     encounter.hospitalization = hospitalization;
   }
 
-  return encounter;
+  return { encounter, identifierError };
 }
 
 // ============================================================================
 // PV1 Conversion with Mapping Support
 // ============================================================================
-
-/**
- * Result type for PV1 conversion.
- * Always returns an encounter (using fallback class if mapping fails).
- * Caller decides policy for handling mapping errors.
- */
-export type PV1ConversionResult = {
-  encounter: Encounter;
-  /** Present if patient class couldn't be mapped - caller decides whether to block or create Task */
-  mappingError?: MappingError;
-};
 
 /**
  * Convert PV1 segment to FHIR Encounter with mapping support.
@@ -790,9 +788,9 @@ export async function convertPV1WithMappingSupport(
     status = classResult.status;
   }
 
-  const encounter = buildEncounterFromPV1(pv1, encounterClass, status);
+  const { encounter, identifierError } = buildEncounterFromPV1(pv1, encounterClass, status);
 
-  return { encounter, mappingError };
+  return { encounter, mappingError, identifierError };
 }
 
 /**

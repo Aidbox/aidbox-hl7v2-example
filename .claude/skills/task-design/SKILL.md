@@ -285,7 +285,7 @@ After Phase 3 completes:
 #### Create Design prompt (status: explored)
 
 ```
-Create a design document and prototype placeholders for [feature name].
+Create a design document and prototype placeholders for [feature name]. Think hard.
 
 ## Design Document
 Read: tasks/plans/YYYY-MM-DD-feature-name.md
@@ -383,7 +383,7 @@ The document contains feedback to address:
 
 **Review agent prompt:**
 ```
-You are reviewing a software design for [feature name].
+You are reviewing a software design for [feature name]. Think very hard.
 
 ## Design Document
 Read: tasks/plans/YYYY-MM-DD-feature-name.md
