@@ -17,7 +17,7 @@ prototype-files:
 The mapping system stores `sourceFieldLabel` and `targetFieldLabel` in three places, which creates duplication, inconsistency risk, and unclear ownership. The labels are effectively fixed by mapping type, yet are redundantly hardcoded in converters and persisted in Task input. We need a single source of truth for labels without sacrificing maintainability.
 
 ## Proposed Approach
-Make the mapping registry authoritative for labels and remove per-instance labels from `MappingError` and Task input. Converters will only specify `mappingType`, and UI surfaces will derive labels from `MAPPING_TYPES`. Document a future improvement to replace string labels with structured metadata (segment/field and resource/field) for safer formatting and consistency.
+Replace string labels in the mapping registry with structured metadata (`source: { segment, field }`, `target: { resource, field }`). Remove per-instance labels from `MappingError` and Task input. All display strings — source labels, target labels, task display text — are derived from structured data via helper functions in `mapping-types.ts`. Converters only specify `mappingType`; UI and task composition use derivation helpers.
 
 ## Key Decisions
 
@@ -25,7 +25,8 @@ Make the mapping registry authoritative for labels and remove per-instance label
 |----------|-------------------|--------|-----------|
 | Label source of truth | A) Registry only, B) Task only, C) Registry + Task override | A | Mapping type already defines source/target; registry prevents drift and removes duplication. |
 | Keep labels in Task input | Keep vs remove | Remove | No backward compatibility requirement; Task should not duplicate canonical labels. |
-| Structured metadata | Add now vs defer | Defer | Keep change minimal; note as future enhancement if label formatting needs grow. |
+| Structured metadata | Add now vs defer | Now | Project is a public foundation; avoid every adopter having to refactor from strings to structured data at scale. Eliminates notation drift (dash vs dot) by construction. |
+| `taskDisplay` field | Explicit string vs derived | Derived | Current hand-written values are inconsistent in style. Derivation from `targetLabel` guarantees consistency. No scenario where custom display would differ from derived. |
 
 Rejected options (why):
 - Option B (Task only): Keeps duplication and inconsistency risk; registry becomes less meaningful.
@@ -40,23 +41,94 @@ Rejected options (why):
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `src/code-mapping/mapping-types.ts` | Modify | Ensure labels are defined here as canonical. |
+| `src/code-mapping/mapping-types.ts` | Rewrite | Replace string labels with structured metadata (`source`, `target`). Remove `taskDisplay`, `sourceFieldLabel`, `targetFieldLabel`. Add derivation helpers (`sourceLabel`, `targetLabel`, `taskDisplay`). |
 | `src/code-mapping/mapping-errors.ts` | Modify | Remove `sourceFieldLabel`/`targetFieldLabel` from `MappingError`. |
-| `src/code-mapping/mapping-task/compose.ts` | Modify | Stop persisting labels to Task input and compose text from registry labels. |
-| `src/ui/pages/mapping-tasks.ts` | Modify | Derive labels from registry instead of Task input. |
+| `src/code-mapping/mapping-task/compose.ts` | Modify | Stop persisting labels to Task.input. Build `Task.code.text` and `Task.code.coding[0].display` using derivation helpers. |
+| `src/code-mapping/concept-map/service.ts` | Modify | Replace `type.targetFieldLabel` with `targetLabel(type)` for ConceptMap naming. |
+| `src/ui/pages/mapping-tasks.ts` | Modify | Replace Task.input label reads with derivation helpers via `getTaskMappingType()`. Replace `typeConfig.targetFieldLabel` with `targetLabel(typeConfig)`. Replace `taskDisplay` usage in `getMappingTypeFilterDisplay()`. |
+| `src/ui/pages/code-mappings.ts` | Modify | Replace `MAPPING_TYPES[mappingType].targetFieldLabel` with `targetLabel(...)` in form labels. |
 | `src/v2-to-fhir/messages/oru-r01.ts` | Modify | Emit mapping errors with `mappingType` only. |
 | `src/v2-to-fhir/segments/obx-observation.ts` | Modify | Emit mapping errors with `mappingType` only. |
 | `src/v2-to-fhir/segments/obr-diagnosticreport.ts` | Modify | Emit mapping errors with `mappingType` only. |
 | `src/v2-to-fhir/segments/pv1-encounter.ts` | Modify | Emit mapping errors with `mappingType` only. |
+| `docs/developer-guide/how-to/adding-mapping-type.md` | Modify | Document new structured metadata format. |
+
+**Test files requiring updates** (remove `sourceFieldLabel`/`targetFieldLabel` from `MappingError` construction, update Task.input assertions, update registry shape assertions):
+- `test/unit/code-mapping/mapping-errors.test.ts`
+- `test/unit/code-mapping/mapping-task-service.test.ts`
+- `test/unit/code-mapping/mapping-types.test.ts`
+- `test/integration/helpers.ts`
+- `test/integration/api/mapping-tasks-resolution.integration.test.ts`
+- `test/integration/ui/mapping-tasks-queue.integration.test.ts`
 
 ## Technical Details
-- `MappingError` should include only `mappingType` for label derivation.
-- Task input should not include `sourceFieldLabel`/`targetFieldLabel`; UI will look up labels from `MAPPING_TYPES[mappingType]`.
-- Add a small helper (if needed) to resolve labels from mapping type and provide display defaults.
-- Future option: replace string labels with structured metadata in `MAPPING_TYPES`, such as:
-  - `sourceSegment: "PV1"`, `sourceField: "2"`
-  - `targetResource: "Encounter"`, `targetField: "class"`
-  This would allow consistent formatting (`PV1-2`, `Encounter.class`) without hand-maintained strings.
+
+### Registry Shape
+
+Replace string labels with structured metadata. Remove `taskDisplay`, `sourceFieldLabel`, `targetFieldLabel`:
+
+```typescript
+export const MAPPING_TYPES = {
+  "observation-code-loinc": {
+    source: { segment: "OBX", field: 3 },
+    target: { resource: "Observation", field: "code" },
+    targetSystem: "http://loinc.org",
+  },
+  "patient-class": {
+    source: { segment: "PV1", field: 2 },
+    target: { resource: "Encounter", field: "class" },
+    targetSystem: "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+  },
+  "obr-status": {
+    source: { segment: "OBR", field: 25 },
+    target: { resource: "DiagnosticReport", field: "status" },
+    targetSystem: "http://hl7.org/fhir/diagnostic-report-status",
+  },
+  "obx-status": {
+    source: { segment: "OBX", field: 11 },
+    target: { resource: "Observation", field: "status" },
+    targetSystem: "http://hl7.org/fhir/observation-status",
+  },
+} as const;
+```
+
+### Derivation Helpers
+
+Exported from `mapping-types.ts`. All display strings are computed, never stored:
+
+```typescript
+/** "OBX-3", "PV1-2" — HL7v2 dash convention */
+export function sourceLabel(config: MappingTypeConfig): string {
+  return `${config.source.segment}-${config.source.field}`;
+}
+
+/** "Observation.code", "Encounter.hospitalization.admitSource" */
+export function targetLabel(config: MappingTypeConfig): string {
+  return `${config.target.resource}.${config.target.field}`;
+}
+
+/** "Observation.code mapping" */
+export function taskDisplay(config: MappingTypeConfig): string {
+  return `${targetLabel(config)} mapping`;
+}
+```
+
+### Target Field Path
+
+`target.field` is a dotted FHIR element path from the resource root. For current mapping types it is a single element (`"code"`, `"status"`, `"class"`). For future nested targets it supports dotted paths (`"hospitalization.admitSource"`). This covers all real HL7v2-to-FHIR cases — FHIR element names are the natural granularity for code mapping labels; the nesting into `.coding[0].code` is implementation detail.
+
+### Source Field
+
+`source.field` is always a number (HL7v2 field position). All code mapping sources are field-level (OBX-3, PV1-2, etc.). Component-level references (e.g., PID-11.7) are not needed for code mapping — the mapping always operates on the whole coded field.
+
+### Other Changes
+
+- `MappingError` retains only `mappingType` (plus `localCode`, `localDisplay`, `localSystem`).
+- Task.input no longer includes "Source field" / "Target field" entries.
+- `compose.ts` uses `sourceLabel()` and `targetLabel()` for `Task.code.text`.
+- `compose.ts` uses `taskDisplay()` for `Task.code.coding[0].display`.
+- `getMappingTypeOrFail()` continues to work unchanged — returns the config, callers use derivation helpers on the result.
+- All consumers that previously accessed `.sourceFieldLabel` / `.targetFieldLabel` / `.taskDisplay` switch to calling the corresponding helper function.
 
 ## Edge Cases and Error Handling
 - Existing Task data that still includes labels will be ignored; UI should prioritize registry labels.
@@ -66,9 +138,10 @@ Rejected options (why):
 
 | Test Case | Type | Description |
 |-----------|------|-------------|
-| Resolve labels from mapping type | Unit | Registry lookup returns expected source/target labels for known types. |
-| Task UI label rendering | Unit | Task list renders labels from registry when Task input lacks labels. |
-| Mapping error creation | Unit | Converters emit mapping errors without label fields. |
+| Derivation helpers produce correct labels | Unit | `sourceLabel()` → `"OBX-3"`, `targetLabel()` → `"Observation.code"`, `taskDisplay()` → `"Observation.code mapping"` for each mapping type. |
+| Structured metadata shape | Unit | Each mapping type has `source.segment`, `source.field`, `target.resource`, `target.field`, `targetSystem`. |
+| Mapping error has no label fields | Unit | `MappingError` only contains `mappingType`, `localCode`, `localDisplay`, `localSystem`. |
+| Task composition uses derived labels | Unit | `composeMappingTask()` produces Task with `code.text` from `sourceLabel`/`targetLabel` and no "Source field"/"Target field" in `input`. |
 | End-to-end mapping task creation | Integration | New Task is created without labels and UI still shows correct labels. |
 
 # Context
@@ -278,21 +351,56 @@ Consider these solutions, but don't exclude other alternative.
 - User wants a recommendation on whether labels belong in registry or Task input.
 - Backward compatibility is not required; migration instructions are optional if needed.
 - User agreed to document Option A (registry as source of truth) and mark other options rejected with reasons.
-- User requested a mention of structured metadata as a future consideration.
+- User decided structured metadata should be part of this change (not deferred). Rationale: project is a public foundation; avoid every adopter refactoring from strings to structured data later.
+- User decided `taskDisplay` should be derived always, not an explicit field. Hand-written values are inconsistently styled; derivation guarantees consistency.
+- Source notation: normalize to dash (`PV1-2`) — enforced by construction via `sourceLabel()` helper.
 
 ## AI Review Notes
-Review outcome: approved for user review.
 
-Checks performed:
-- Completeness: the design addresses label ownership, Task payload changes, converter changes, and UI derivation.
-- Codebase consistency: aligns with existing `MAPPING_TYPES` registry pattern and `mappingType` fail-fast usage.
-- Architecture: reduces duplication by moving canonical labels to one source and removing repeated Task/input fields.
-- Feasibility: implementation scope is moderate and localized to mapping error creation, task composition, and task UI rendering.
-- Simpler alternatives: option A remains the simplest coherent path; options B/C were correctly rejected as higher complexity or weaker consistency.
-- Test plan: unit and integration cases cover core behavior and regression risk.
+**Review outcome: approved with minor issues.**
 
-Noted non-blocking follow-up:
-- Structured metadata (`sourceSegment`, `sourceField`, `targetResource`, `targetField`) is documented for future iteration and intentionally deferred.
+### Design Review
+
+The core analysis is thorough and well-reasoned. The research correctly establishes that `sourceFieldLabel`/`targetFieldLabel` are always fixed per mapping type — within a single mapping type the source→target relationship is invariant by definition. The decision to choose Option A (registry as single source of truth) over Options B and C is well-justified: it eliminates duplication without adding complexity, and the YAGNI argument against per-instance label overrides holds because different targets would constitute different mapping types.
+
+The DESIGN PROTOTYPE comments placed throughout the codebase (`mapping-errors.ts`, `compose.ts`, `mapping-tasks.ts`, and all four converters) correctly mark every change point, showing the author traced the full data flow.
+
+The existing `getMappingTypeOrFail()` function already provides the exact lookup mechanism needed — no new helper is required. The proposed design integrates cleanly with the existing fail-fast pattern.
+
+### Issues (sorted by severity)
+
+**1. Medium — Affected components table is incomplete**
+
+The table lists 8 files but misses:
+- `src/code-mapping/concept-map/service.ts:225` — uses `type.targetFieldLabel` for ConceptMap naming. Already reads from registry (no change needed), but should be documented to give implementers the full picture of label consumers.
+- `src/ui/pages/code-mappings.ts:294,346` — uses `MAPPING_TYPES[mappingType].targetFieldLabel` for form labels. Also already reads from registry, but omitting it makes the affected components list look incomplete.
+- `docs/developer-guide/how-to/adding-mapping-type.md:24-25` — documents `sourceFieldLabel`/`targetFieldLabel` as fields to add when creating a new mapping type. Needs updating.
+
+These files already use the registry pattern (which is the design's goal), so they don't need code changes — but listing them confirms the audit is exhaustive.
+
+**2. Medium — Test impact not quantified**
+
+The design proposes 4 test cases but doesn't acknowledge the ~70+ existing test references to `sourceFieldLabel`/`targetFieldLabel` across 6 test files:
+- `test/unit/code-mapping/mapping-errors.test.ts` (~30 occurrences)
+- `test/unit/code-mapping/mapping-task-service.test.ts` (~20 occurrences)
+- `test/unit/code-mapping/mapping-types.test.ts`
+- `test/integration/api/mapping-tasks-resolution.integration.test.ts`
+- `test/integration/ui/mapping-tasks-queue.integration.test.ts`
+- `test/integration/helpers.ts`
+
+All of these construct `MappingError` objects with explicit label fields or assert on Task.input containing "Source field"/"Target field" entries. Removing labels from `MappingError` and Task.input will require updating all of them. This is mechanical work but should be called out so the implementer doesn't discover it mid-implementation.
+
+**3. Low — Notation inconsistency deferred but could be fixed now**
+
+The design correctly identifies the notation inconsistency (`"OBX-3"` dash vs `"PV1.2"` dot) in the research section but doesn't propose fixing it. Since the registry becomes the sole source of truth and all converter-level duplicates are removed, this is the ideal moment to normalize notation at minimal cost. Suggest either: normalize to dash (`PV1-2`) matching HL7v2 convention, or leave as-is and add a brief note explaining why (e.g., the dot notation follows FHIR's segment.field convention). Either way, make the decision explicit.
+
+**4. Low — Task.code.text derivation deserves explicit mention**
+
+`compose.ts:109` builds `text: \`Map ${error.sourceFieldLabel} to ${error.targetFieldLabel}\``. After removing labels from `MappingError`, this must read from the registry instead. The prototype comment at line 107 notes this, but the Affected Components table description for `compose.ts` says "compose text from registry labels" — it would be clearer to explicitly state that `Task.code.text` will change from using `error.*` to `MAPPING_TYPES[error.mappingType].*`.
+
+### Recommendation
+
+Approve for implementation. The core decision and scope are correct. Before implementation planning, update the affected components table to include the missing files and test files, and decide on notation normalization (dash vs dot).
 
 ## User Feedback
 [TBD]
