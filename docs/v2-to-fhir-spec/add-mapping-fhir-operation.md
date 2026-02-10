@@ -24,7 +24,11 @@ URL: [base]/ConceptMap/[id]/$add-mapping
 
 The server SHALL add each input mapping that does not already exist. Existing mappings (same match key) are skipped; the server SHOULD report skipped entries in the OperationOutcome. If no `group` exists for the given `source` and `target`, one is created.
 
-It is an error to add a mapping with `target` for a source code that already has `noMap=true`, or to add `noMap=true` for a code that already has target mappings. The server SHALL return an OperationOutcome with `severity=error` and `code=business-rule`.
+It is an error to add a mapping with `target` for a source code that already has `noMap=true`, or to add `noMap=true` for a code that already has target mappings.
+
+It is also an error if the ConceptMap contains more than one group with the same `source` and `target` as an input mapping, since the target group is ambiguous.
+
+In either case the server SHALL return an OperationOutcome with `severity=error` and `code=business-rule`.
 
 Clients MAY supply an `If-Match` header; servers SHALL reject the request if the ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
 
