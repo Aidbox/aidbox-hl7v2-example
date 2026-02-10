@@ -1,44 +1,50 @@
 # ConceptMap Mapping Operations
 
-This specification defines two operations for managing mappings in large ConceptMap resources: `$add-mapping` and `$remove-mapping`.
+This page defines two operations for managing individual mappings within large [ConceptMap](https://hl7.org/fhir/conceptmap.html) resources: `$add-mapping` and `$remove-mapping`.
 
-## Rationale
+## Background
 
-The [$add](https://hl7.org/fhir/R6/resource-operation-add.html) operation supports only Group and List resources and returns the modified resource. For large ConceptMap resources, returning the full content is not practical.
+The existing [$add](https://fhir.hl7.org/fhir/resource-operation-add.html) and [$remove](https://fhir.hl7.org/fhir/resource-operation-remove.html) operations (see [Operations for Large Resources](https://www.hl7.org/fhir/operations-for-large-resources.html)) return the modified resource and use structural matching on array entries. ConceptMap resources may contain thousands of mappings and require matching on a domain-specific composite key, so these operations return an OperationOutcome instead.
 
-## $add-mapping operation
+For both operations, only `group` elements in the input are processed; all other elements are ignored.
 
-The `$add-mapping` operation merges mappings into a ConceptMap, ignoring any that already exist.
+## Matching Algorithm
 
-The server SHALL add mappings from the input `group` elements. Two mappings match if they share the same `ConceptMap.group.source`, `ConceptMap.group.target`, `ConceptMap.group.element.code`, and `ConceptMap.group.element.target.code`.
+Both operations use the same matching algorithm. Two mappings match when they have identical values for `group.source`, `group.target`, `element.code`, and `element.target.code`.
 
-- If a mapping does not exist, it is added.
-- If a mapping already exists, it is ignored.
-- If a `group` with the specified `source` and `target` does not exist, it is created.
+For `noMap` entries (no `element.target`), matching uses `group.source`, `group.target`, and `element.code` only.
 
-The server SHALL ignore all ConceptMap elements outside of `group`.
+Only these fields are compared; other element properties such as `display` or `relationship` are not considered. To update an existing mapping, remove it first and add the replacement.
+
+## $add-mapping Operation
+
+The `$add-mapping` operation merges mappings into a ConceptMap, skipping any that already exist.
 
 URL: [base]/ConceptMap/[id]/$add-mapping
 
+The server SHALL add each input mapping that does not already exist. Existing mappings (same match key) are skipped; the server SHOULD report skipped entries in the OperationOutcome. If no `group` exists for the given `source` and `target`, one is created.
+
+It is an error to add a mapping with `target` for a source code that already has `noMap=true`, or to add `noMap=true` for a code that already has target mappings. The server SHALL return an OperationOutcome with `severity=error` and `code=business-rule`.
+
 This is not an idempotent operation.
 
-Clients MAY supply an `If-Match` header with an ETag reflecting the current version of the ConceptMap. Servers SHALL reject the request if a supplied ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
+Clients MAY supply an `If-Match` header; servers SHALL reject the request if the ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
 
-**In Parameters:**
+**In Parameters**
 
 | Name | Cardinality | Type | Documentation |
 |------|-------------|------|---------------|
-| mappings | 1..1 | ConceptMap | ConceptMap containing mappings to add. Only `group` elements are processed. |
+| mappings | 1..1 | ConceptMap | Only `group` elements are processed |
 
-**Out Parameters:**
+**Out Parameters**
 
 | Name | Cardinality | Type | Documentation |
 |------|-------------|------|---------------|
 | return | 1..1 | OperationOutcome | Outcome of the operation |
 
-### Examples
+### Example
 
-Request: Add a GLUC to LOINC mapping.
+Request: add a local code GLUC → LOINC mapping.
 
 ```http
 POST /ConceptMap/lab-codes-to-loinc/$add-mapping HTTP/1.1
@@ -62,9 +68,7 @@ Content-Type: application/fhir+json
 }
 ```
 
----
-
-Response: Mapping added successfully.
+Response: mapping added.
 
 ```http
 HTTP/1.1 200 OK
@@ -75,7 +79,23 @@ Content-Type: application/fhir+json
   "issue": [{
     "severity": "information",
     "code": "informational",
-    "diagnostics": "Mapping added"
+    "diagnostics": "1 mapping added"
+  }]
+}
+```
+
+Error response: addition conflicts with an existing `noMap` declaration.
+
+```http
+HTTP/1.1 422 Unprocessable Entity
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "OperationOutcome",
+  "issue": [{
+    "severity": "error",
+    "code": "business-rule",
+    "diagnostics": "Cannot add mapping for code 'A': noMap already declared in group (source=http://example.org/local, target=http://loinc.org)"
   }]
 }
 ```
@@ -119,37 +139,33 @@ Content-Type: application/fhir+json
 }
 ```
 
-## $remove-mapping operation
+## $remove-mapping Operation
 
 The `$remove-mapping` operation removes mappings from a ConceptMap.
 
-The server SHALL remove mappings from the input `group` elements that match entries in the target ConceptMap.
-
-Two mappings match if they share the same `ConceptMap.group.source`, `ConceptMap.group.target`, `ConceptMap.group.element.code`, and `ConceptMap.group.element.target.code`.
-
-The server SHALL ignore all ConceptMap elements outside of `group`.
-
 URL: [base]/ConceptMap/[id]/$remove-mapping
+
+The server SHALL remove all mappings that match the input entries, across all groups in the ConceptMap. If no matching mapping exists for an input entry, the server SHALL ignore it.
 
 This is not an idempotent operation.
 
-Clients MAY supply an `If-Match` header with an ETag reflecting the current version of the ConceptMap. Servers SHALL reject the request if a supplied ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
+Clients MAY supply an `If-Match` header; servers SHALL reject the request if the ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
 
-**In Parameters:**
+**In Parameters**
 
 | Name | Cardinality | Type | Documentation |
 |------|-------------|------|---------------|
-| mappings | 1..1 | ConceptMap | ConceptMap containing mappings to remove. Only `group` elements are processed. |
+| mappings | 1..1 | ConceptMap | Only `group` elements are processed |
 
-**Out Parameters:**
+**Out Parameters**
 
 | Name | Cardinality | Type | Documentation |
 |------|-------------|------|---------------|
 | return | 1..1 | OperationOutcome | Outcome of the operation |
 
-### Examples
+### Example
 
-Request: Remove the GLUC to LOINC mapping.
+Request: remove the GLUC → LOINC mapping.
 
 ```http
 POST /ConceptMap/lab-codes-to-loinc/$remove-mapping HTTP/1.1
@@ -170,9 +186,7 @@ Content-Type: application/fhir+json
 }
 ```
 
----
-
-Response: Mapping removed successfully.
+Response: mapping removed.
 
 ```http
 HTTP/1.1 200 OK
@@ -183,7 +197,7 @@ Content-Type: application/fhir+json
   "issue": [{
     "severity": "information",
     "code": "informational",
-    "diagnostics": "Mapping removed"
+    "diagnostics": "1 mapping removed"
   }]
 }
 ```
@@ -226,3 +240,7 @@ Content-Type: application/fhir+json
   ]
 }
 ```
+
+## Notes
+
+Multiple groups with the same `source` and `target` within a single ConceptMap are permitted but discouraged. When different mapping subsets require different `unmapped` handling, they SHOULD be modeled as separate ConceptMap resources — subsets are a concept map-level concern.
