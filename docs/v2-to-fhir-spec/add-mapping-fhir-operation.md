@@ -26,8 +26,6 @@ The server SHALL add each input mapping that does not already exist. Existing ma
 
 It is an error to add a mapping with `target` for a source code that already has `noMap=true`, or to add `noMap=true` for a code that already has target mappings. The server SHALL return an OperationOutcome with `severity=error` and `code=business-rule`.
 
-This is not an idempotent operation.
-
 Clients MAY supply an `If-Match` header; servers SHALL reject the request if the ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
 
 **In Parameters**
@@ -146,8 +144,6 @@ The `$remove-mapping` operation removes mappings from a ConceptMap.
 URL: [base]/ConceptMap/[id]/$remove-mapping
 
 The server SHALL remove all mappings that match the input entries, across all groups in the ConceptMap. If no matching mapping exists for an input entry, the server SHALL ignore it.
-
-This is not an idempotent operation.
 
 Clients MAY supply an `If-Match` header; servers SHALL reject the request if the ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
 
