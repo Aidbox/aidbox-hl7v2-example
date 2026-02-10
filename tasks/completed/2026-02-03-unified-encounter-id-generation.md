@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 reviewer-iterations: 2
 prototype-files:
   - config/hl7v2-to-fhir.json
@@ -77,7 +77,7 @@ Introduce a preprocessor stage that runs before message handlers and returns onl
 - No runtime reload; changes require application restart.
 
 ### Preprocessor pipeline
-- Preprocessor runs before message handlers and returns a modified IncomingHL7v2Message only (no diagnostics object).
+- Preprocessor runs before message handlers on the already-parsed `HL7v2Message` and returns a modified `HL7v2Message` only (no diagnostics object). The processor service handles the parse→preprocess→convert pipeline.
 - It applies config to normalize PV1 for non-conformant messages.
 - It applies per-segment preprocessors by ID in list order; each preprocessor returns an updated segment.
 - Preprocessors run for every matching segment, but only when the configured field (PV1-19) is present.
@@ -113,7 +113,7 @@ The ID generation API is a single public entrypoint; any authority resolution he
 ### Validation behavior
 - Core converter is strict: Encounter creation requires a valid PV1-19 identifier with authority satisfying CX.4/9/10 rules; conflicts without profile guidance are treated as errors.
 - Converter policy runs in message handlers:
-  - **ORU-R01** with `converter.PV1.required=false`: if PV1 missing/invalid, skip Encounter creation, continue clinical data, set `status=warning` with descriptive error.
+  - **ORU-R01** with `converter.PV1.required=false`: if PV1 missing, skip Encounter creation, continue clinical data, set `status=processed` (PV1 absence is normal for ORU). If PV1 present but PV1-19 authority invalid, skip Encounter, continue clinical data, set `status=warning` with descriptive error.
   - **ADT-A01** with `converter.PV1.required=true`: if PV1 missing/invalid, stop processing immediately, set `status=error`, submit no bundle.
 - Converter config missing/invalid: stop processing with `status=error`.
 
@@ -124,7 +124,8 @@ The `warning` status must be fully supported in the incoming messages UI:
 - **Retry action eligibility**: Warning messages can be retried via the manual retry action (same as other error statuses).
 
 ## Edge Cases and Error Handling
-- PV1 missing entirely: if PV1 required → error, else skip Encounter and set warning.
+- PV1 missing entirely: if PV1 required → error, else skip Encounter and set `status=processed` (PV1 absence is normal, not a warning).
+- PV1 present but PV1-19 authority invalid: if PV1 required → error, else skip Encounter and set `status=warning`.
 - PV1-19 present but value missing: treat as missing identifier.
 - Authority components present but empty/whitespace: treat as missing.
 - Conflicting CX.4/CX.9/CX.10 values without profile guidance: treat as invalid PV1-19.
@@ -187,14 +188,64 @@ The `warning` status must be fully supported in the incoming messages UI:
  - Segment preprocessors are configured by kebab-case IDs and validated at startup; preprocessors always return a segment and run on every matching segment when the configured field is present.
 
 ## AI Review Notes
-Reviewed against current requirements and feedback. No blockers found.
-- Config is message-type keyed with optional preprocess + converter sections; sender-agnostic noted and deferred to global preprocessors doc.
-- Authority rules cover CX.4/CX.9/CX.10 conditional requirements; conflicts without profile guidance are treated as errors.
-- Preprocessor is explicitly called before handlers (prototype marker) and returns only a modified message.
-- ID generation API exports only `buildEncounterIdentifier` with internal authority resolution helpers.
-- Warning behavior for ORU and error behavior for ADT are documented, with UI and schema updates listed.
 
-## User Feedback
+### Implementation Review (post-implementation)
+
+Reviewed all 10 affected source files, 6 test files, and verified all 1307 unit tests pass with clean typecheck. No DESIGN PROTOTYPE markers from this task remain.
+
+**Overall assessment**: The implementation is solid, well-structured, and follows codebase conventions. The HL7 v2.8.2 CX authority validation is correctly implemented per spec. The preprocessor/config/id-generation separation of concerns is clean. Test coverage is thorough for the new modules. Two bugs found (one crash, one data loss), both latent behind config values that differ from current defaults.
+
+### Issues
+
+**1. [Bug] ADT-A01 crash when PV1 is optional and Encounter is undefined** — `adt-a01.ts:449`
+```ts
+condition.id = generateConditionId(dg1, encounter!.id!);
+```
+If the config is changed to `ADT-A01.converter.PV1.required = false` and PV1 is missing or invalid, `encounter` is `undefined`. The non-null assertion `encounter!.id!` will crash at runtime when DG1 segments are present. Currently masked because the default config has `required: true`, but the code explicitly supports the `false` path (lines 376-377). Same issue applies to any code below that references `encounter` or `encounterRef` when encounter is undefined — the `encounterRef` at line 407 handles this correctly with `encounter?.id`, but `generateConditionId` does not.
+**Fix**: Guard DG1/AL1 processing against undefined encounter, or skip condition ID generation when no encounter exists.
+
+**User feedback**: No, condition should be created even if encounter is optional. I think condition id generation should be changed. A ticket was created for that.
+
+**2. [Bug] Warning lost when mapping errors co-exist with identifier errors** — `adt-a01.ts:382-405`, `oru-r01.ts:985-987`
+In both converters, if PV1 has both a patient-class mapping error AND an identifier error (with `required=false`), the mapping error path takes precedence (returns `mapping_error` status) and the identifier warning is silently discarded. On reprocessing after mapping resolution, the identifier warning would surface, so this is self-healing, but the user never sees both issues at once.
+**Severity**: Low. Only manifests with `required=false` config AND concurrent mapping + identifier failures.
+
+**User feedback**: please, create a ticket in tasks/plans/ to make this improvement. It would be good if warning is visible alongside the mapping_error, but it's not critical. Prepend the ticket name with IMPR- prefix.  
+
+**3. [Design deviation] Missing PV1 in ORU returns `processed`, not `warning`** — `oru-r01.ts:636-644`
+The design spec says "if PV1 missing/invalid, skip Encounter creation, continue clinical data, set `status=warning`" (design line 116). The implementation distinguishes between PV1 absent (returns `processed`) and PV1 present-but-invalid (returns `warning`). The test explicitly documents this: "No warning for missing PV1 when not required (PV1 absence is normal for ORU)". This is a reasonable semantic distinction — missing PV1 is normal for many ORU senders, while a malformed PV1 indicates a data quality issue. The design document should be updated to reflect this clarification.
+
+**User feedback**: yes, update the design doc AND the project documentation, please.
+
+**4. [Minor] Preprocessor silently swallows errors** — `preprocessor.ts:93-102`
+Individual segment preprocessors are wrapped in try-catch that logs to `console.error` and continues. A failing preprocessor produces no visible signal — the message processes as if no preprocessing occurred, potentially leading to confusing downstream errors (e.g., "missing authority" when the preprocessor should have added it). Consider propagating preprocessor failures as warnings or logging to a structured error channel.
+
+**User feedback**: Actually, preprocessors need to apply "when possible", and the converter will fail if the message is invalid. Do you have strong objections against this design? 
+
+**5. [Minor] Design deviation: preprocessor signature** — `preprocessor.ts:28-31`
+The design specified `preprocessIncomingMessage(message: IncomingHL7v2Message, config): IncomingHL7v2Message`. The implementation uses `preprocessMessage(parsed: HL7v2Message, config): HL7v2Message`, operating on already-parsed data. This is a cleaner approach — the preprocessor modifies parsed segments in place rather than raw strings, and doesn't need access to `IncomingHL7v2Message` wrapper fields. The processor service handles the parse-then-preprocess-then-convert pipeline (`processor-service.ts:52-55`). No action needed, but the design document's Technical Details section should be updated to match.
+
+**User feedback**: yes, update the design doc (AND project docs if necessary)
+
+**6. [Observation] Config type allows arbitrary message type keys** — `config.ts:24`
+`Hl7v2ToFhirConfig` is typed as `Record<string, MessageTypeConfig | undefined>` rather than restricting keys to `"ORU-R01" | "ADT-A01"`. This is appropriate for extensibility (e.g., adding ADT-A08 support), and the design document's Hl7v2ToFhirConfig type definition (with optional named keys) was the original spec. The implementation choice trades strictness for flexibility, which is acceptable given the config is validated at startup.
+
+**User feedback**: yes
+
+### What's done well
+- **id-generation.ts**: Clean single-entrypoint API with internal helpers, thorough HL7 v2.8.2 spec comment, all edge cases (whitespace, empty objects, CX.6 ignored). 28 test cases.
+- **Config loader**: Proper fail-fast with descriptive errors, singleton caching, startup validation of preprocessor IDs. Config cache clearing for tests is clean.
+- **Preprocessor registry**: Extensible pattern with kebab-case IDs, startup validation, composition order. The `fix-authority-with-msh` implementation correctly handles sub-component parsing and never overrides existing authority.
+- **pv1-encounter.ts**: Returns `PV1ConversionResult` with separate `identifierError` field — callers decide policy without knowing authority internals (addresses user feedback #11).
+- **UI warning support**: Status filter, amber badge, retry eligibility — complete and consistent with existing patterns.
+- **Processor service**: Parse → preprocess → convert pipeline is clean, config loaded via singleton.
+
+### Recommendations
+1. Fix the `encounter!.id!` crash in ADT-A01 before the config becomes user-facing.
+2. Update the design document to reflect the "missing PV1 = processed" vs "invalid PV1 = warning" distinction in ORU.
+3. Consider adding a structured log or metric for preprocessor failures instead of silent console.error.
+
+## User Feedback (Old)
 
 I found a few flaws in the design proposal:
 
@@ -350,8 +401,8 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 ## Task 4: Implement preprocessor module
 
 - [x] Replace prototype scaffold in `src/v2-to-fhir/preprocessor.ts` with actual implementation
-- [x] Implement `preprocessIncomingMessage(message: IncomingHL7v2Message, config: Hl7v2ToFhirConfig): IncomingHL7v2Message`
-- [x] Parse message type from `message.type` (e.g., "ORU^R01" → "ORU-R01" for config lookup)
+- [x] Implement `preprocessMessage(parsed: HL7v2Message, config: Hl7v2ToFhirConfig): HL7v2Message` (operates on parsed data, not raw IncomingHL7v2Message)
+- [x] Determine message type from parsed MSH segment (e.g., "ORU-R01" for config lookup)
 - [x] If no preprocess config for message type, return message unchanged
 - [x] If `fix-authority-with-msh` is configured for PV1-19:
   - Parse HL7v2 message to extract PV1-19 and MSH-3/4
@@ -416,7 +467,7 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 - [x] Remove legacy `generateEncounterId` function that used sender context for ID generation
 - [x] Write/update integration tests in `src/v2-to-fhir/messages/oru-r01.test.ts`:
   - ORU with valid PV1 → Encounter created with unified ID
-  - ORU with missing PV1 (config: required=false) → DiagnosticReport created, no Encounter, status=warning
+  - ORU with missing PV1 (config: required=false) → DiagnosticReport created, no Encounter, status=processed (PV1 absence is normal)
   - ORU with invalid PV1-19 authority (config: required=false) → DiagnosticReport created, no Encounter, status=warning
   - ORU clinical data preserved when Encounter skipped
 - [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
@@ -491,11 +542,11 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 11: Cleanup design artifacts
 
-- [ ] Remove all `DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md` comments from codebase
-- [ ] Remove `_designPrototype` field from `config/hl7v2-to-fhir.json` if not already done
-- [ ] Update design document status to `implemented`
-- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation" src/ config/`
-- [ ] Run `bun test:all` and `bun run typecheck` - final verification
+- [x] Remove all `DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation.md` comments from codebase
+- [x] Remove `_designPrototype` field from `config/hl7v2-to-fhir.json` if not already done
+- [x] Update design document status to `implemented`
+- [x] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-03-unified-encounter-id-generation" src/ config/`
+- [x] Run `bun test:all` and `bun run typecheck` - final verification
 
 ---
 
