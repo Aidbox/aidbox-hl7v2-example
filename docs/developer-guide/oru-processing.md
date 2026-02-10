@@ -25,6 +25,10 @@ src/v2-to-fhir/
 ├── code-mapping/
 │   ├── index.ts          # Re-exports LOINC resolution functions
 │   └── coding-systems.ts # System URI normalization
+├── config.ts             # Config loader for config/hl7v2-to-fhir.json
+├── preprocessor.ts       # Config-driven preprocessing before conversion
+├── preprocessor-registry.ts  # Registered preprocessors (e.g., fix-authority-with-msh)
+├── id-generation.ts      # Encounter ID from PV1-19 (HL7 v2.8.2 CX rules)
 ├── converter.ts          # Message routing and ConversionResult type
 └── processor-service.ts  # Polling service for IncomingHL7v2Message
 ```
@@ -47,13 +51,15 @@ processNextMessage()
     │
     ├─► parseMessage(raw)          // Parse HL7v2 wire format
     │
+    ├─► preprocessMessage(parsed)  // Config-driven fixes (e.g., PV1-19 authority from MSH)
+    │
     ├─► routeMessage(parsed)       // Dispatch to convertORU_R01, convertADT_A01, etc.
     │       │
     │       └─► convertORU_R01()   // Returns ConversionResult
     │
     ├─► Submit bundle to Aidbox    // POST /fhir (transaction)
     │
-    └─► Update message status      // processed | error | mapping_error
+    └─► Update message status      // processed | warning | error | mapping_error
 ```
 
 ### ORU_R01 Conversion Detail
@@ -204,12 +210,13 @@ OBR (Order)
 ### Processing Flow Summary
 
 1. **Receive**: MLLP server stores `IncomingHL7v2Message` with `status=received`
-2. **Validate**: Parse message, verify MSH, OBR, PID presence
-3. **Resolve Codes**: For each OBX-3, attempt LOINC resolution
-4. **Handle Patient**: Lookup or create draft (`active=false`)
-5. **Handle Encounter**: Lookup or create draft (`status=unknown`)
-6. **Convert**: OBR→DiagnosticReport, OBX→Observation, SPM→Specimen
-7. **Submit**: Transaction bundle, update message to `status=processed`
+2. **Preprocess**: Config-driven fixes (e.g., PV1-19 authority from MSH-3/4)
+3. **Validate**: Parse message, verify MSH, OBR, PID presence
+4. **Resolve Codes**: For each OBX-3, attempt LOINC resolution
+5. **Handle Patient**: Lookup or create draft (`active=false`)
+6. **Handle Encounter**: Lookup or create draft (`status=unknown`); if PV1-19 authority invalid, skip (ORU→`warning`) or reject (ADT→`error`)
+7. **Convert**: OBR→DiagnosticReport, OBX→Observation, SPM→Specimen
+8. **Submit**: Transaction bundle, update message to `status=processed`
 
 ### Status Mappings
 
@@ -268,7 +275,10 @@ OBR (Order)
 | PID segment missing | Reject message |
 | PID without usable ID | Reject message |
 | Patient not found | Create draft Patient (`active=false`) |
-| PV1 missing | Proceed without encounter |
+| PV1 missing (ORU) | Proceed without Encounter (`status=processed`) |
+| PV1 missing (ADT) | Reject message (`status=error`) |
+| PV1-19 invalid authority (ORU) | Skip Encounter, continue clinical data (`status=warning`) |
+| PV1-19 invalid authority (ADT) | Reject message (`status=error`) |
 | Encounter not found | Create draft Encounter (`status=unknown`) |
 | OBX-3 has no LOINC | Set `mapping_error`, create Task |
 | Invalid OBR-25 or OBX-11 | Reject message |
@@ -296,7 +306,7 @@ When a message is rejected during processing, the system:
 
 **Recovery:** Users can fix the source system and resend the message, or use "Mark for Retry" in the UI to reset status to `received` and reprocess (useful if the issue was transient or the code was fixed).
 
-**Distinguishing rejection from mapping errors:** Rejected messages have `status=error`. Messages with unmapped LOINC codes have `status=mapping_error` and can be resolved via the Mapping Tasks UI without resending.
+**Distinguishing rejection from mapping errors:** Rejected messages have `status=error`. Messages with unmapped LOINC codes have `status=mapping_error` and can be resolved via the Mapping Tasks UI without resending. Messages with invalid PV1-19 authority (ORU only) have `status=warning` — clinical data is created but Encounter is skipped. Warning messages can be retried via "Mark for Retry" in the UI.
 
 ## See Also
 

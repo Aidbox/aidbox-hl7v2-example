@@ -481,11 +481,11 @@ Unify ADT and ORU Encounter ID generation with HL7 v2.8.2 spec-compliant authori
 
 ## Task 10: Update documentation
 
-- [ ] Update CLAUDE.md if any new patterns or conventions were introduced (likely minimal)
-- [ ] Verify `id-generation.ts` has the HL7 v2.8.2 spec comment block (added in Task 3)
-- [ ] Add inline comments in `preprocessor.ts` explaining MSH fallback logic
-- [ ] Review and update any relevant docs in `docs/developer-guide/` if ORU/ADT processing changed significantly
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Update CLAUDE.md if any new patterns or conventions were introduced (likely minimal)
+- [x] Verify `id-generation.ts` has the HL7 v2.8.2 spec comment block (added in Task 3)
+- [x] Add inline comments in `preprocessor.ts` explaining MSH fallback logic
+- [x] Review and update any relevant docs in `docs/developer-guide/` if ORU/ADT processing changed significantly
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

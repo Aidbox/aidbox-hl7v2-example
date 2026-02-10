@@ -90,7 +90,7 @@ MLLP receives → IncomingHL7v2Message (received) → Processor → FHIR resourc
 **IncomingHL7v2Message** - Received HL7v2 messages
 - `message` (string) - raw HL7v2 content
 - `type` (string) - from MSH-9 (e.g., "ADT^A01", "ORU^R01")
-- `status`: `received` → `processed` | `error` | `mapping_error`
+- `status`: `received` → `processed` | `warning` | `error` | `mapping_error`
 - `sendingApplication`, `sendingFacility` - from MSH-3, MSH-4
 - `unmappedCodes[]` - unresolved OBX codes (when `mapping_error`)
 
@@ -114,10 +114,12 @@ Invoice BAR Builder polls pending Invoices and:
 ### ORU Processing (HL7v2 → FHIR)
 
 V2-to-FHIR Processor polls received IncomingHL7v2Message and:
-1. Parses message, routes by type (ADT_A01, ORU_R01, etc.)
-2. For each OBX-3, resolves to LOINC (checks inline codes first, then sender's ConceptMap; on failure → `mapping_error`, creates Task)
-3. Creates FHIR resources: DiagnosticReport (from OBR), Observation (from OBX), Specimen (from SPM)
-4. If Patient/Encounter not found → creates drafts (`active=false`, `status=unknown`)
+1. Parses message, runs config-driven preprocessor (e.g., fix PV1-19 authority from MSH)
+2. Routes by type (ADT_A01, ORU_R01, etc.)
+3. For each OBX-3, resolves to LOINC (checks inline codes first, then sender's ConceptMap; on failure → `mapping_error`, creates Task)
+4. Creates FHIR resources: DiagnosticReport (from OBR), Observation (from OBX), Specimen (from SPM)
+5. If Patient/Encounter not found → creates drafts (`active=false`, `status=unknown`)
+6. PV1 policy per message type: ADT requires valid PV1 (→ `error` if invalid); ORU skips Encounter on invalid PV1 (→ `warning`)
 
 **Deterministic IDs**: Resources get IDs from source data, enabling idempotent reprocessing.
 
@@ -186,6 +188,9 @@ src/
 ├── v2-to-fhir/           # HL7v2 → FHIR conversion
 │   ├── converter.ts      # Message type routing
 │   ├── processor-service.ts  # Polling service
+│   ├── config.ts         # Config loader for config/hl7v2-to-fhir.json
+│   ├── preprocessor.ts   # Config-driven preprocessing before conversion
+│   ├── id-generation.ts  # Encounter ID from PV1-19 (HL7 v2.8.2 CX rules)
 │   ├── messages/         # ADT_A01, ORU_R01 converters
 │   └── segments/         # PID, OBX, etc. converters
 ├── code-mapping/         # Code mapping for multiple field types
