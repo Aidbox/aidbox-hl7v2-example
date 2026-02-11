@@ -64,6 +64,21 @@ function truncate(text: string, maxLen: number): string {
   return text.slice(0, cut > maxLen * 0.5 ? cut + 1 : maxLen) + "..";
 }
 
+const OPTIONALITY_LABELS: Record<string, string> = {
+  R: "Required",
+  RE: "Required but may be empty",
+  O: "Optional",
+  C: "Conditional",
+  CE: "Conditional but may be empty",
+  X: "Not used",
+  B: "Backward compatible",
+  W: "Withdrawn",
+};
+
+function optionalityLabel(code: string): string {
+  return OPTIONALITY_LABELS[code] ?? code;
+}
+
 function showTable(query: string, data: ReferenceData) {
   const table = data.tables[query];
   if (!table) {
@@ -112,15 +127,19 @@ function showField(query: string, data: ReferenceData) {
   const segmentKey = query.split(".")[0]!;
   const seg = data.segments[segmentKey];
   const segField = seg?.fields.find((f: OutputSegmentField) => f.field === query);
-  const reqStr = segField
-    ? `${segField.minOccurs > 0 ? "required" : "optional"}${segField.maxOccurs !== 1 ? ", repeating" : ""}`
-    : "unknown";
+  const cardStr = segField
+    ? cardinality(segField.minOccurs, segField.maxOccurs)
+    : "?";
+  const optStr = segField?.optionality
+    ? `${segField.optionality} (${optionalityLabel(segField.optionality)})`
+    : "?";
 
   console.log(`Field ${query} — ${field.longName}`);
   console.log(`  Data Type: ${field.dataType}`);
   if (field.maxLength !== null) console.log(`  Max Length: ${field.maxLength}`);
   console.log(`  Table: ${field.table ?? "-"}`);
-  console.log(`  Cardinality: ${reqStr}`);
+  console.log(`  Optionality: ${optStr}`);
+  console.log(`  Cardinality: ${cardStr}`);
   if (field.description) console.log(`\n${field.description}`);
 
   const dt = data.datatypes[field.dataType];
@@ -179,7 +198,8 @@ function showSegment(query: string, data: ReferenceData): boolean {
       const maxLen = f?.maxLength !== null && f?.maxLength !== undefined ? `, maxLen: ${f.maxLength}` : "";
       const table = f?.table ? ` [table ${f.table}]` : "";
       const repeat = sf.maxOccurs !== 1 ? ", repeating" : "";
-      console.log(`  ${sf.field.padEnd(8)} ${name} (${dt}${maxLen}${repeat})${table}`);
+      const opt = sf.optionality ? ` [${sf.optionality}]` : "";
+      console.log(`  ${sf.field.padEnd(8)} ${name} (${dt}${maxLen}${repeat})${table}${opt}`);
     }
   }
   return true;

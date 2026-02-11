@@ -73,6 +73,13 @@ export interface PdfTable {
   values: PdfTableValue[];
 }
 
+export interface PdfAttributeTableField {
+  segment: string;     // e.g. "PID"
+  position: number;    // SEQ number
+  item: string;        // zero-padded 5-digit, e.g. "00106"
+  optionality: string; // OPT code: "R", "O", "C", "RE", "CE", "X", "B", "W"
+}
+
 export interface OutputField {
   segment: string;
   position: number;
@@ -89,6 +96,7 @@ export interface OutputSegmentField {
   position: number;
   minOccurs: number;
   maxOccurs: number | "unbounded";
+  optionality: string | null; // from PDF attribute table OPT column, null if unavailable
 }
 
 export interface OutputSegment {

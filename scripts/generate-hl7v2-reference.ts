@@ -15,7 +15,7 @@
 
 import { parseArgs } from "node:util";
 import { parseXsdFields, parseXsdSegments, parseXsdDatatypes, parseXsdMessages } from "./hl7v2-reference/xsd-parser";
-import { parsePdfDescriptions, parsePdfTables } from "./hl7v2-reference/pdf-parser";
+import { parsePdfDescriptions, parsePdfTables, parsePdfAttributeTables } from "./hl7v2-reference/pdf-parser";
 import { mergeAndWrite } from "./hl7v2-reference/merge";
 
 const { values } = parseArgs({
@@ -60,19 +60,21 @@ console.log();
 
 // Phase 2: Parse PDF
 console.log("Phase 2: Parsing PDF specifications...");
-const [{ fields: pdfFields, segments: pdfSegments }, pdfTables] = await Promise.all([
+const [{ fields: pdfFields, segments: pdfSegments }, pdfTables, pdfAttributeTables] = await Promise.all([
   parsePdfDescriptions(pdfDir),
   parsePdfTables(pdfDir),
+  parsePdfAttributeTables(pdfDir),
 ]);
 console.log(`  Field descriptions:   ${pdfFields.size}`);
 console.log(`  Segment descriptions: ${pdfSegments.size}`);
+console.log(`  Attribute tables:     ${pdfAttributeTables.size}`);
 console.log(`  Tables:               ${pdfTables.size}`);
 console.log();
 
 // Phase 3: Merge and write
 console.log("Phase 3: Merging data and writing JSON...");
 const report = await mergeAndWrite(
-  { xsdFields, xsdSegments, xsdDatatypes, xsdMessages, pdfFields, pdfSegments, pdfTables },
+  { xsdFields, xsdSegments, xsdDatatypes, xsdMessages, pdfFields, pdfSegments, pdfTables, pdfAttributeTables },
   outputDir,
 );
 console.log(`  Output written to: ${outputDir}`);
@@ -82,6 +84,7 @@ console.log();
 console.log("=== Validation Report ===");
 console.log(`Fields:    ${report.fieldCount} total, ${report.fieldDescriptionCount} with descriptions (${report.fieldDescriptionPercent}%)`);
 console.log(`Segments:  ${report.segmentCount} total, ${report.segmentDescriptionCount} with descriptions (${report.segmentDescriptionPercent}%)`);
+console.log(`Usage:     ${report.fieldUsageCount} of ${report.fieldCount} fields with usage codes (${report.fieldUsagePercent}%)`);
 console.log(`Datatypes: ${report.datatypeCount}`);
 console.log(`Messages:  ${report.messageCount}`);
 console.log(`Tables:    ${report.tableCount} tables, ${report.tableValueCount} values`);

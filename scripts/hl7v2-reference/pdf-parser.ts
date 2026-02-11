@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
-import type { PdfFieldDescription, PdfSegmentDescription, PdfTable, PdfTableValue } from "./types";
+import type { PdfAttributeTableField, PdfFieldDescription, PdfSegmentDescription, PdfTable, PdfTableValue } from "./types";
 
 function shellEscape(s: string): string {
   return "'" + s.replace(/'/g, "'\\''") + "'";
@@ -387,6 +387,109 @@ function parseAppendixTables(text: string): Map<string, PdfTable> {
   }
 
   return tables;
+}
+
+const VALID_USAGE_CODES = new Set(["R", "RE", "O", "C", "CE", "X", "B", "W"]);
+
+// Matches "HL7 Attribute Table - PID - Patient Identification" (hyphen or en-dash)
+const ATTR_TABLE_TITLE_RE = /HL7 Attribute Table\s*[-\u2013]\s*([A-Z][A-Z0-9]{1,2}\d?)\s*[-\u2013]/;
+
+function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[]> {
+  const lines = text.split("\n");
+  const result = new Map<string, PdfAttributeTableField[]>();
+
+  let i = 0;
+  while (i < lines.length) {
+    const titleMatch = lines[i]!.match(ATTR_TABLE_TITLE_RE);
+    if (!titleMatch) { i++; continue; }
+
+    const segName = titleMatch[1]!;
+    const isExample = /example/i.test(lines[i]!);
+    i++;
+
+    if (isExample || result.has(segName)) {
+      // Skip example tables and duplicate segment tables
+      i++;
+      continue;
+    }
+
+    // Find header row containing "SEQ" and "OPT"
+    let optColStart = -1;
+    const headerLimit = Math.min(i + 5, lines.length);
+    for (; i < headerLimit; i++) {
+      const line = lines[i]!;
+      if (/\bSEQ\b/.test(line) && /\bOPT\b/.test(line)) {
+        optColStart = line.indexOf("OPT");
+        i++;
+        break;
+      }
+    }
+
+    if (optColStart === -1) continue;
+
+    // Parse data rows
+    const fields: PdfAttributeTableField[] = [];
+    for (; i < lines.length; i++) {
+      const line = lines[i]!;
+      const trimmed = line.trim();
+
+      if (!trimmed) continue;
+
+      // Recalibrate on repeated header after page break
+      if (/^\s*SEQ\b/.test(line) && /\bOPT\b/.test(line)) {
+        optColStart = line.indexOf("OPT");
+        continue;
+      }
+
+      // Stop at next attribute table, section heading, or field definition header
+      if (ATTR_TABLE_TITLE_RE.test(trimmed)) break;
+      if (FIELD_HEADER_RE.test(trimmed)) break;
+      if (SECTION_HEADING_RE.test(trimmed)) break;
+
+      // Data row: must start with SEQ (digits) and contain a 5-digit ITEM#
+      const seqMatch = trimmed.match(/^(\d{1,2})\s/);
+      const itemMatch = trimmed.match(/\b(\d{5})\b/);
+      if (!seqMatch || !itemMatch) continue;
+
+      const position = parseInt(seqMatch[1]!, 10);
+      const item = itemMatch[1]!;
+
+      // Extract OPT by column position from the header
+      const optSlice = line.slice(optColStart - 2, optColStart + 5).trim();
+      // The slice may contain adjacent column data; find the valid usage code
+      const usageToken = optSlice.split(/\s+/).find(t => VALID_USAGE_CODES.has(t));
+      if (!usageToken) continue;
+
+      fields.push({ segment: segName, position, item, optionality: usageToken });
+    }
+
+    if (fields.length > 0) {
+      result.set(segName, fields);
+    }
+  }
+
+  return result;
+}
+
+export async function parsePdfAttributeTables(pdfDir: string): Promise<Map<string, PdfAttributeTableField[]>> {
+  const cmd = await findPdfToText();
+  const files = await readdir(pdfDir);
+  const chapterFiles = files.filter(f => /CH\d+/i.test(f) && f.endsWith(".pdf")).sort();
+
+  const allTables = new Map<string, PdfAttributeTableField[]>();
+
+  for (const file of chapterFiles) {
+    const pdfPath = join(pdfDir, file);
+    const text = stripPageNoise(await extractPdfText(pdfPath, cmd, true));
+    const tables = parseAttributeTables(text);
+    for (const [segName, fields] of tables) {
+      if (!allTables.has(segName)) {
+        allTables.set(segName, fields);
+      }
+    }
+  }
+
+  return allTables;
 }
 
 export async function parsePdfDescriptions(pdfDir: string): Promise<{
