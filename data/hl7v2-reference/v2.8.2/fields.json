@@ -97,7 +97,7 @@
     "longName": "Caesarian Section Indicator",
     "maxLength": 1,
     "table": "0136",
-    "description": "Indicates if the delivery was by Caesarian Section. Refer to HL7 Table 0136 - Yes/no Indicator in Chapter 2C, Code Tables, for valid values. Y Delivery was by Caesarian Section. N Delivery was not by Caesarian Section. September"
+    "description": "Indicates if the delivery was by Caesarian Section. Refer to HL7 Table 0136 - Yes/no Indicator in Chapter 2C, Code Tables, for valid values. Y Delivery was by Caesarian Section. N Delivery was not by Caesarian Section. September 2015"
   },
   "ABS.11": {
     "segment": "ABS",
@@ -417,7 +417,7 @@
     "longName": "Adjustment Date",
     "maxLength": null,
     "table": null,
-    "description": "Date/Time adjustment was made. May also be synonymous with Adjudication Date. September"
+    "description": "Date/Time adjustment was made. May also be synonymous with Adjudication Date. September 2015"
   },
   "ADJ.15": {
     "segment": "ADJ",
@@ -547,7 +547,7 @@
     "longName": "Resource Quantity Units",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the units of the resource requested, whose quantity is given in the preceding field. This field should be valued according to the recommendations in Chapters 2 and 7. If this field is not valued, the unit of each (code \"ea\") will be assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO+ and ANS+ unit codes. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. September 2015 Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter"
+    "description": "This field contains the units of the resource requested, whose quantity is given in the preceding field. This field should be valued according to the recommendations in Chapters 2 and 7. If this field is not valued, the unit of each (code \"ea\") will be assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO+ and ANS+ unit codes. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. September 2015 Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter 7."
   },
   "AIG.8": {
     "segment": "AIG",
@@ -577,7 +577,7 @@
     "longName": "Start Date/Time Offset Units",
     "maxLength": null,
     "table": null,
-    "description": "This field contains a code describing the units of time used for expressing AIG-9-Start Date/Time Offset. This field should be valued according to the recommendations made in Chapters 2 and 7. If this field is not valued, the ISO base unit of seconds (code \"s\") will be assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO+ and ANS+ unit codes. This field is conditionally required. If a value for AIG-9-Start Date/Time Offset is provided, then a value is required for this field. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. September 2015 Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter"
+    "description": "This field contains a code describing the units of time used for expressing AIG-9-Start Date/Time Offset. This field should be valued according to the recommendations made in Chapters 2 and 7. If this field is not valued, the ISO base unit of seconds (code \"s\") will be assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO+ and ANS+ unit codes. This field is conditionally required. If a value for AIG-9-Start Date/Time Offset is provided, then a value is required for this field. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. September 2015 Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter 7."
   },
   "AIG.11": {
     "segment": "AIG",
@@ -597,7 +597,7 @@
     "longName": "Duration Units",
     "maxLength": null,
     "table": null,
-    "description": "This field contains a code describing the units of time used for expressing the AIG-11Duration field. This field should be valued according to the recommendations in Chapters 2 and 7. If this field is not valued, the ISO base unit of seconds (code \"s\") will be assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO+ and ANS+ unit codes. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter 7. September"
+    "description": "This field contains a code describing the units of time used for expressing the AIG-11Duration field. This field should be valued according to the recommendations in Chapters 2 and 7. If this field is not valued, the ISO base unit of seconds (code \"s\") will be assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO+ and ANS+ unit codes. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter 7. September 2015"
   },
   "AIG.13": {
     "segment": "AIG",
@@ -817,7 +817,7 @@
     "longName": "Start Date/Time Offset Units",
     "maxLength": null,
     "table": null,
-    "description": "This field contains a code describing the units of time used for expressing AIP-7 Start Date/Time Offset. This field should be valued according to the recommendations made in Chapters 2 and 7. If this field is not valued, the ISO base unit of seconds (code \"s\") is assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO+ and ANS+ unit codes. This field is conditionally required. If a value for AIP-7 Start Date/Time Offset is provided, then a value is required for this field. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter"
+    "description": "This field contains a code describing the units of time used for expressing AIP-7 Start Date/Time Offset. This field should be valued according to the recommendations made in Chapters 2 and 7. If this field is not valued, the ISO base unit of seconds (code \"s\") is assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO+ and ANS+ unit codes. This field is conditionally required. If a value for AIP-7 Start Date/Time Offset is provided, then a value is required for this field. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter 7."
   },
   "AIP.9": {
     "segment": "AIP",
@@ -917,7 +917,7 @@
     "longName": "Start Date/Time Offset Units",
     "maxLength": null,
     "table": null,
-    "description": "This field contains a code describing the units of time used for expressing the start date/time offset. This field should be valued according to the recommendations in Chapters 2 and 7. If this field is not valued, the ISO base unit of seconds (code \"s\") will be assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO and ANSI+ unit codes. This field is conditionally required. If a value for AIS-5-Start Date/Time Offset is provided, then a value is required for this field. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter"
+    "description": "This field contains a code describing the units of time used for expressing the start date/time offset. This field should be valued according to the recommendations in Chapters 2 and 7. If this field is not valued, the ISO base unit of seconds (code \"s\") will be assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO and ANSI+ unit codes. This field is conditionally required. If a value for AIS-5-Start Date/Time Offset is provided, then a value is required for this field. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter 7."
   },
   "AIS.7": {
     "segment": "AIS",
@@ -957,7 +957,7 @@
     "longName": "Filler Status Code",
     "maxLength": null,
     "table": "0278",
-    "description": "This field contains a code that describes the requested/scheduled status of the resource or activity, from the point of view of the filler application. Refer to User-Defined Table 0278 Filler Status Codes in Chapter 2C, Code Tables, for suggested codes. This is a conditionally required field. Because the information contained in this field is only appropriate in transactions originating from a filler application, it is required for those messages. This includes all unsolicited transactions originating from a filler application, as well as all response messages originating from a filler application. This field is optional for all transactions originating from placer, querying and auxiliary applications. It is recommended that this field be left unvalued in transactions originating from applications other than the filler application. September"
+    "description": "This field contains a code that describes the requested/scheduled status of the resource or activity, from the point of view of the filler application. Refer to User-Defined Table 0278 Filler Status Codes in Chapter 2C, Code Tables, for suggested codes. This is a conditionally required field. Because the information contained in this field is only appropriate in transactions originating from a filler application, it is required for those messages. This includes all unsolicited transactions originating from a filler application, as well as all response messages originating from a filler application. This field is optional for all transactions originating from placer, querying and auxiliary applications. It is recommended that this field be left unvalued in transactions originating from applications other than the filler application. September 2015"
   },
   "AIS.11": {
     "segment": "AIS",
@@ -1177,7 +1177,7 @@
     "longName": "Appointment Duration Units",
     "maxLength": null,
     "table": null,
-    "description": "This field contains a code describing the units of time used in expressing the ARQ-9Appointment duration field. This field should be valued according to the recommendations in Chapters 2 and 7. If this component is not valued, the ISO base unit of seconds (code \"s\") will be assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO and ANSI+ unit codes. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter"
+    "description": "This field contains a code describing the units of time used in expressing the ARQ-9Appointment duration field. This field should be valued according to the recommendations in Chapters 2 and 7. If this component is not valued, the ISO base unit of seconds (code \"s\") will be assumed. Refer to Chapter 7, Figures 7-6 through 7-9, for a list of ISO and ANSI+ unit codes. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. Unit of Measure Coding Systems from HL7 Table 0396 Coding System Description Comment ISO+ ISO 2955.83 (units of measure) with HL7 extensions See chapter 7. ANS+ HL7 set of units of measure HL7 set of units of measure based upon ANSI X3.50 - 1986, ISO 2988-83, and US customary units / see chapter 7."
   },
   "ARQ.11": {
     "segment": "ARQ",
@@ -1257,7 +1257,7 @@
     "longName": "Placer Contact Location",
     "maxLength": null,
     "table": null,
-    "description": "This field contains a code that identifies the location of the placer contact person. September"
+    "description": "This field contains a code that identifies the location of the placer contact person. September 2015"
   },
   "ARQ.19": {
     "segment": "ARQ",
@@ -2887,7 +2887,7 @@
     "longName": "Subject Directory Attribute Extension",
     "maxLength": null,
     "table": null,
-    "description": "In individual identity certificates, this Subject Directory Attribute extension MAY contain a Healthcare Professional Role attribute and may contain a Qualified Certificate Statement attribute. In addition, Subject Directory Attributes MAY contain other attributes not specified by this technical specification. September"
+    "description": "In individual identity certificates, this Subject Directory Attribute extension MAY contain a Healthcare Professional Role attribute and may contain a Qualified Certificate Statement attribute. In addition, Subject Directory Attributes MAY contain other attributes not specified by this technical specification. September 2015"
   },
   "CER.15": {
     "segment": "CER",
@@ -2937,7 +2937,7 @@
     "longName": "Jurisdiction Country",
     "maxLength": 3,
     "table": "0399",
-    "description": "This field contains the country for which the qualification is valid. Refer to External Table 0399 – Country Code for valid values. September"
+    "description": "This field contains the country for which the qualification is valid. Refer to External Table 0399 – Country Code for valid values. September 2015"
   },
   "CER.20": {
     "segment": "CER",
@@ -3017,7 +3017,7 @@
     "longName": "Expiration Date",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the date/time when the certificate expires or will expire. September"
+    "description": "This field contains the date/time when the certificate expires or will expire. September 2015"
   },
   "CER.28": {
     "segment": "CER",
@@ -3247,7 +3247,7 @@
     "longName": "Starting Notification Reference Number",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the starting notification reference number that is to be cleared. September"
+    "description": "This field contains the starting notification reference number that is to be cleared. September 2015"
   },
   "CNS.2": {
     "segment": "CNS",
@@ -3437,7 +3437,7 @@
     "longName": "Consent Effective Date/Time",
     "maxLength": null,
     "table": null,
-    "description": "The time the consent becomes/became effective. This only needs to be specified if the time differs from the Consent Decision Date/Time September"
+    "description": "The time the consent becomes/became effective. This only needs to be specified if the time differs from the Consent Decision Date/Time September 2015"
   },
   "CON.15": {
     "segment": "CON",
@@ -3507,7 +3507,7 @@
     "longName": "Consent Disclosure Level",
     "maxLength": 1,
     "table": "0500",
-    "description": "Identifies how much information was disclosed to the subject as part of the informed consent process. Refer to table HL7 Table 0500 – Consent Disclosure Level. September"
+    "description": "Identifies how much information was disclosed to the subject as part of the informed consent process. Refer to table HL7 Table 0500 – Consent Disclosure Level. September 2015"
   },
   "CON.22": {
     "segment": "CON",
@@ -3537,7 +3537,7 @@
     "longName": "Consenter ID",
     "maxLength": null,
     "table": null,
-    "description": "Identification of the individual(s) who is (are) consenting. September"
+    "description": "Identification of the individual(s) who is (are) consenting. September 2015"
   },
   "CON.25": {
     "segment": "CON",
@@ -3587,7 +3587,7 @@
     "longName": "Study Phase Evaluability",
     "maxLength": null,
     "table": "9999",
-    "description": "This field contains the disposition of the patient's data for this phase interval for quality control and data analysis purposes. The set of codes will vary across clinical trials. An example answer set: Complete, Adverse Events Only, Outcome Only, None, Unknown. September"
+    "description": "This field contains the disposition of the patient's data for this phase interval for quality control and data analysis purposes. The set of codes will vary across clinical trials. An example answer set: Complete, Adverse Events Only, Outcome Only, None, Unknown. September 2015"
   },
   "CSR.1": {
     "segment": "CSR",
@@ -4977,7 +4977,7 @@
     "longName": "Response Required",
     "maxLength": 1,
     "table": "0136",
-    "description": "This field identifies the mode of synchronization that is to be used in relation to the execution of the command. \"Y\" (Yes) means that the response is required immediately after execution; \"N\" (No) response is not required at all. Refer to HL7 Table 0136 – Yes/no Indicator for valid values. September"
+    "description": "This field identifies the mode of synchronization that is to be used in relation to the execution of the command. \"Y\" (Yes) means that the response is required immediately after execution; \"N\" (No) response is not required at all. Refer to HL7 Table 0136 – Yes/no Indicator for valid values. September 2015"
   },
   "ECD.5": {
     "segment": "ECD",
@@ -5157,7 +5157,7 @@
     "longName": "Transaction Data",
     "maxLength": null,
     "table": null,
-    "description": "This field is the data that the log and/or service event was about and is to be logged. September"
+    "description": "This field is the data that the log and/or service event was about and is to be logged. September 2015"
   },
   "EQU.1": {
     "segment": "EQU",
@@ -5497,7 +5497,7 @@
     "longName": "Signature Authority Telecommunication",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the telecommunication information of the individual with signature authority of who is responsible for this report. September"
+    "description": "This field contains the telecommunication information of the individual with signature authority of who is responsible for this report. September 2015"
   },
   "FHS.1": {
     "segment": "FHS",
@@ -6167,7 +6167,7 @@
     "longName": "Goal Management Discipline",
     "maxLength": null,
     "table": null,
-    "description": "This field indicates the category of caregiver with responsibility for managing this specific goal (e.g., care team, nursing, medicine, respiratory therapy, occupational therapy, dietary etc.). This is a repeating field to allow identification of all disciplines that may have the responsibility for this goal. September"
+    "description": "This field indicates the category of caregiver with responsibility for managing this specific goal (e.g., care team, nursing, medicine, respiratory therapy, occupational therapy, dietary etc.). This is a repeating field to allow identification of all disciplines that may have the responsibility for this goal. September 2015"
   },
   "GOL.11": {
     "segment": "GOL",
@@ -6237,7 +6237,7 @@
     "longName": "Goal Life Cycle Status",
     "maxLength": null,
     "table": null,
-    "description": "This field contains an indication of the state of the goal (e.g., Active, Canceled, Inactive, Suspended, etc.). September"
+    "description": "This field contains an indication of the state of the goal (e.g., Active, Canceled, Inactive, Suspended, etc.). September 2015"
   },
   "GOL.19": {
     "segment": "GOL",
@@ -7477,7 +7477,7 @@
     "longName": "Inventory Received Item Cost",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the per-unit cost of the inventory item at the time of receipt. IIM-9 Inventory Received Quantity Unit specifies the per-unit basis of this field. September"
+    "description": "This field contains the per-unit cost of the inventory item at the time of receipt. IIM-9 Inventory Received Quantity Unit specifies the per-unit basis of this field. September 2015"
   },
   "IIM.11": {
     "segment": "IIM",
@@ -7517,7 +7517,7 @@
     "longName": "Procedure Code",
     "maxLength": null,
     "table": "0088",
-    "description": "This field contains a unique identifier assigned to the service item, if any, associated with the charge. In the United States this is often the HCPCS code. Refer to Externally Defined Table 0088 - Procedure Code in Chapter 2C, Code Tables, for suggested values. This field is a CNE data type for compatibility with clinical and ancillary systems. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. Procedure Code Coding Systems Coding System 1 Description Comment C4 CPT-4 American Medical Association, P.O. Box 10946, Chicago IL 60610. C5 CPT-5 (under development – same contact as above) HCPCS CMS (formerly HCFA) Common Procedure Coding System HCPCS: contains codes for medical equipment, injectable drugs, transportation services, and other services not found in CPT4. HPC CMS (formerly HCFA) Procedure Codes (HCPCS) Health Care Financing Administration (HCFA) Common Procedure Coding System (HCPCS) including modifiers.1 The HCPCS code is divided into three \"levels.\" Level I includes the entire CPT-4 code by reference. Level II includes the American Dental Association’s Current Dental Terminology (CDT-2) code by reference. Level II also includes the genuine HCPCS codes, approved and maintained jointly by the Alpha-Numeric Editorial Panel, consisting of CMS, the Health Insurance Association of America, and the Blue Cross and Blue Shield Association. Level III are codes developed locally by Medicare September"
+    "description": "This field contains a unique identifier assigned to the service item, if any, associated with the charge. In the United States this is often the HCPCS code. Refer to Externally Defined Table 0088 - Procedure Code in Chapter 2C, Code Tables, for suggested values. This field is a CNE data type for compatibility with clinical and ancillary systems. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. Procedure Code Coding Systems Coding System 1 Description Comment C4 CPT-4 American Medical Association, P.O. Box 10946, Chicago IL 60610. C5 CPT-5 (under development – same contact as above) HCPCS CMS (formerly HCFA) Common Procedure Coding System HCPCS: contains codes for medical equipment, injectable drugs, transportation services, and other services not found in CPT4. HPC CMS (formerly HCFA) Procedure Codes (HCPCS) Health Care Financing Administration (HCFA) Common Procedure Coding System (HCPCS) including modifiers.1 The HCPCS code is divided into three \"levels.\" Level I includes the entire CPT-4 code by reference. Level II includes the American Dental Association’s Current Dental Terminology (CDT-2) code by reference. Level II also includes the genuine HCPCS codes, approved and maintained jointly by the Alpha-Numeric Editorial Panel, consisting of CMS, the Health Insurance Association of America, and the Blue Cross and Blue Shield Association. Level III are codes developed locally by Medicare September 2015"
   },
   "IIM.15": {
     "segment": "IIM",
@@ -9237,7 +9237,7 @@
     "longName": "Consumption Quantity",
     "maxLength": null,
     "table": null,
-    "description": "This field is the consumption that is used each time the equipment uses this substance. September"
+    "description": "This field is the consumption that is used each time the equipment uses this substance. September 2015"
   },
   "INV.11": {
     "segment": "INV",
@@ -9287,7 +9287,7 @@
     "longName": "Manufacturer Lot Number",
     "maxLength": null,
     "table": null,
-    "description": "This field specifies the lot number assigned by the manufacturer during production of the substance. September"
+    "description": "This field specifies the lot number assigned by the manufacturer during production of the substance. September 2015"
   },
   "INV.17": {
     "segment": "INV",
@@ -9497,7 +9497,7 @@
     "longName": "IPR Checksum",
     "maxLength": null,
     "table": null,
-    "description": "Conditional, if Status = \"Accepted\", then Required, else Not Permitted. The field contains a checksum generated by the first Payer (referenced by Payer Organization in the IVC Segment) to ensure that the contents of IPR have not been altered before sending to subsequent Payers. September"
+    "description": "Conditional, if Status = \"Accepted\", then Required, else Not Permitted. The field contains a checksum generated by the first Payer (referenced by Payer Organization in the IVC Segment) to ensure that the contents of IPR have not been altered before sending to subsequent Payers. September 2015"
   },
   "ISD.1": {
     "segment": "ISD",
@@ -9607,7 +9607,7 @@
     "longName": "Manufacturer Name",
     "maxLength": null,
     "table": null,
-    "description": "This field identifies the name of the manufacturer of the manufacturer identified in ITM-7. September"
+    "description": "This field identifies the name of the manufacturer of the manufacturer identified in ITM-7. September 2015"
   },
   "ITM.9": {
     "segment": "ITM",
@@ -9707,7 +9707,7 @@
     "longName": "Ruling Act",
     "maxLength": null,
     "table": "0793",
-    "description": "This field contains a code indicating an act containing a rule that the item is legally required to be included in notification reporting. This code is often used for reporting or tracking. Refer to User-defined Table 0793 – Ruling Act in Chapter 2C, Code Tables, for suggested values. September"
+    "description": "This field contains a code indicating an act containing a rule that the item is legally required to be included in notification reporting. This code is often used for reporting or tracking. Refer to User-defined Table 0793 – Ruling Act in Chapter 2C, Code Tables, for suggested values. September 2015"
   },
   "ITM.19": {
     "segment": "ITM",
@@ -9757,7 +9757,7 @@
     "longName": "Freight Charge Indicator",
     "maxLength": null,
     "table": "0532",
-    "description": "This field contains an indicator signifying whether freight is an allowable charge to be allocated to the line of an invoice containing the item. Refer to HL7 Table 0532 - Expanded Yes/no Indicator in Chapter 2C, Code Tables, for valid values. September"
+    "description": "This field contains an indicator signifying whether freight is an allowable charge to be allocated to the line of an invoice containing the item. Refer to HL7 Table 0532 - Expanded Yes/no Indicator in Chapter 2C, Code Tables, for valid values. September 2015"
   },
   "ITM.24": {
     "segment": "ITM",
@@ -9797,7 +9797,7 @@
     "longName": "Procedure Code",
     "maxLength": null,
     "table": "0088",
-    "description": "This field contains a unique identifier assigned to the service item, if any, associated with the charge. In the United States this is often the HCPCS code. Refer to Externally defined Table 0088 - Procedure code for suggested values. This field is a CNE data type for compatibility with clinical and ancillary systems. Refer to HL7 Table 0088 – Procedure Coding Systems in Chapter 2C, Code Tables, for valid values. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. September"
+    "description": "This field contains a unique identifier assigned to the service item, if any, associated with the charge. In the United States this is often the HCPCS code. Refer to Externally defined Table 0088 - Procedure code for suggested values. This field is a CNE data type for compatibility with clinical and ancillary systems. Refer to HL7 Table 0088 – Procedure Coding Systems in Chapter 2C, Code Tables, for valid values. As of v2.6, the known applicable external coding systems include those in the table below. If the code set you are using is in this table, then you must use that designation. September 2015"
   },
   "ITM.28": {
     "segment": "ITM",
@@ -9827,7 +9827,7 @@
     "longName": "Hazardous Indicator",
     "maxLength": null,
     "table": "0532",
-    "description": "This field contains an indicator signifying whether the item contains hazardous material or not. Refer to HL7 Table 0532 - Expanded yes/no indicator table in Chapter 2, Code Tables, for valid values. September"
+    "description": "This field contains an indicator signifying whether the item contains hazardous material or not. Refer to HL7 Table 0532 - Expanded yes/no indicator table in Chapter 2, Code Tables, for valid values. September 2015"
   },
   "ITM.31": {
     "segment": "ITM",
@@ -9947,7 +9947,7 @@
     "longName": "Payment Terms",
     "maxLength": null,
     "table": null,
-    "description": "Terms for Payer payment of Invoice (e.g., 24% net 30 days). September"
+    "description": "Terms for Payer payment of Invoice (e.g., 24% net 30 days). September 2015"
   },
   "IVC.10": {
     "segment": "IVC",
@@ -9967,7 +9967,7 @@
     "longName": "Payer Organization",
     "maxLength": null,
     "table": null,
-    "description": "The business organization that is designated as Payer for this Invoice. This Payer may be the primary, secondary, tertiary Payer, depending on Insurance Information specified in the Invoice September"
+    "description": "The business organization that is designated as Payer for this Invoice. This Payer may be the primary, secondary, tertiary Payer, depending on Insurance Information specified in the Invoice September 2015"
   },
   "IVC.12": {
     "segment": "IVC",
@@ -10097,7 +10097,7 @@
     "longName": "VAT-Rates applied",
     "maxLength": 5,
     "table": null,
-    "description": "Applied VAT Rates on Invoice. Multiple VAT-rates may be applied according to the type of service September"
+    "description": "Applied VAT Rates on Invoice. Multiple VAT-rates may be applied according to the type of service September 2015"
   },
   "IVC.25": {
     "segment": "IVC",
@@ -10307,7 +10307,7 @@
     "longName": "Stocked Item Indicator",
     "maxLength": null,
     "table": "0532",
-    "description": "This field contains an indicator that identifies whether the item is regularly stocked in this inventory location. Stock items are ordered regularly as part of the healthcare organization's inventory replenishment cycle. If the item is not regularly stocked in this inventory location (nonstock item), the item is available to be ordered from this inventory location if requested by a department. Refer to HL7 Table 0532 - Expanded Yes/no Indicator Table in Chapter 2C, Code Tables, for valid values. September"
+    "description": "This field contains an indicator that identifies whether the item is regularly stocked in this inventory location. Stock items are ordered regularly as part of the healthcare organization's inventory replenishment cycle. If the item is not regularly stocked in this inventory location (nonstock item), the item is available to be ordered from this inventory location if requested by a department. Refer to HL7 Table 0532 - Expanded Yes/no Indicator Table in Chapter 2C, Code Tables, for valid values. September 2015"
   },
   "IVT.16": {
     "segment": "IVT",
@@ -10347,7 +10347,7 @@
     "longName": "Substitute Item Identifier",
     "maxLength": null,
     "table": null,
-    "description": "The substitute item is an item that is recommended as a substitute for the corresponding item in ITM-1. September"
+    "description": "The substitute item is an item that is recommended as a substitute for the corresponding item in ITM-1. September 2015"
   },
   "IVT.20": {
     "segment": "IVT",
@@ -10737,7 +10737,7 @@
     "longName": "License Number",
     "maxLength": null,
     "table": "0461",
-    "description": "This field contains the multiple license numbers for the facility. Refer to User-defined Table 0461 - License Number in Chapter 2C, Code Tables, for suggested values. 8.9.2.8 September"
+    "description": "This field contains the multiple license numbers for the facility. Refer to User-defined Table 0461 - License Number in Chapter 2C, Code Tables, for suggested values. 8.9.2.8 September 2015"
   },
   "LOC.8": {
     "segment": "LOC",
@@ -10987,7 +10987,7 @@
     "longName": "Entered Date/Time",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the date and time of the last change of the record. 8.5.2.7 September"
+    "description": "This field contains the date and time of the last change of the record. 8.5.2.7 September 2015"
   },
   "MFE.7": {
     "segment": "MFE",
@@ -11247,7 +11247,7 @@
     "longName": "Message Type",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the message type, trigger event, and the message structure ID for the message. Refer to HL7 Table 0076 - Message Type in Chapter 2C, Code Tables, for valid values for the message type code. This table contains values such as ACK, ADT, ORM, ORU etc. Refer to HL7 Table 0003 – Event Type in Chapter 2C, Code Tables, for valid values for the trigger event. This table contains values like A01, O01, R01 etc. Refer to HL7 Table 0354 - Message Structure in Chapter 2C, Code Tables, for valid values for the message structure. This table contains values such as ADT_A01, ORU_R01, SIU_S12, etc. The receiving system uses this field to recognize the data segments, and possibly, the application to which to route this message. For certain queries, which may have more than a single response event type, the second component may, in the response message, vary to indicate the response event type. See the discussion of the display query variants in chapter"
+    "description": "This field contains the message type, trigger event, and the message structure ID for the message. Refer to HL7 Table 0076 - Message Type in Chapter 2C, Code Tables, for valid values for the message type code. This table contains values such as ACK, ADT, ORM, ORU etc. Refer to HL7 Table 0003 – Event Type in Chapter 2C, Code Tables, for valid values for the trigger event. This table contains values like A01, O01, R01 etc. Refer to HL7 Table 0354 - Message Structure in Chapter 2C, Code Tables, for valid values for the message structure. This table contains values such as ADT_A01, ORU_R01, SIU_S12, etc. The receiving system uses this field to recognize the data segments, and possibly, the application to which to route this message. For certain queries, which may have more than a single response event type, the second component may, in the response message, vary to indicate the response event type. See the discussion of the display query variants in chapter 5."
   },
   "MSH.10": {
     "segment": "MSH",
@@ -11347,7 +11347,7 @@
     "longName": "Principal Language Of Message",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the principal language of the message. Codes come from ISO"
+    "description": "This field contains the principal language of the message. Codes come from ISO 639."
   },
   "MSH.20": {
     "segment": "MSH",
@@ -12067,7 +12067,7 @@
     "longName": "Messages Sent",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the number of messages sent. September"
+    "description": "This field contains the number of messages sent. September 2015"
   },
   "NST.10": {
     "segment": "NST",
@@ -12127,7 +12127,7 @@
     "longName": "Application control-level Errors",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the number of application control-level errors in response to an initiated message. 14.5 OUTSTANDING ISSUES None. September"
+    "description": "This field contains the number of application control-level errors in response to an initiated message. 14.5 OUTSTANDING ISSUES None. September 2015"
   },
   "NTE.1": {
     "segment": "NTE",
@@ -13877,7 +13877,7 @@
     "longName": "Container Units",
     "maxLength": null,
     "table": "9999",
-    "description": "This field contains the units of measure of the container volume. If the units are ISO+ units, they should be recorded as single case abbreviations. If the units are ANS+ or L (local), the units and the source code table must be recorded, except that in this case, component delimiters should be replaced by subcomponent delimiters. For example, 1 indicates liters, whereas pt&&ANS+ indicates pints (ANSI units). The default unit is milliliters (ml), which should be assumed if no units are reported. This field repeats to accommodate all the possible specimen that will be allowed. If a container is preferred, only that container units should be messaged here with the alternate containers messaged in a repeat OM4 segment 8.8.12.6 September"
+    "description": "This field contains the units of measure of the container volume. If the units are ISO+ units, they should be recorded as single case abbreviations. If the units are ANS+ or L (local), the units and the source code table must be recorded, except that in this case, component delimiters should be replaced by subcomponent delimiters. For example, 1 indicates liters, whereas pt&&ANS+ indicates pints (ANSI units). The default unit is milliliters (ml), which should be assumed if no units are reported. This field repeats to accommodate all the possible specimen that will be allowed. If a container is preferred, only that container units should be messaged here with the alternate containers messaged in a repeat OM4 segment 8.8.12.6 September 2015"
   },
   "OM4.6": {
     "segment": "OM4",
@@ -14227,7 +14227,7 @@
     "longName": "Consent Waiting Period Quantity",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the time period between the time the consent is signed and the procedure can be performed. 8.8.15.18 September"
+    "description": "This field contains the time period between the time the consent is signed and the procedure can be performed. 8.8.15.18 September 2015"
   },
   "OM7.18": {
     "segment": "OM7",
@@ -14857,7 +14857,7 @@
     "longName": "Employment Status Code",
     "maxLength": null,
     "table": "0066",
-    "description": "This field contains a code indicating the working relationship of the practitioner at this organization unit. It may be different than the work status specified in STF-20. Refer to User-defined Table 0066 - Employment Status, in Chapter 2C, Code Tables, for suggested values. September"
+    "description": "This field contains a code indicating the working relationship of the practitioner at this organization unit. It may be different than the work status specified in STF-20. Refer to User-defined Table 0066 - Employment Status, in Chapter 2C, Code Tables, for suggested values. September 2015"
   },
   "ORG.11": {
     "segment": "ORG",
@@ -15107,7 +15107,7 @@
     "longName": "Product Manufacture Date",
     "maxLength": null,
     "table": null,
-    "description": "This field indicates the date the product was manufactured. September"
+    "description": "This field indicates the date the product was manufactured. September 2015"
   },
   "PCR.6": {
     "segment": "PCR",
@@ -15177,7 +15177,7 @@
     "longName": "Product Serial/Lot Number",
     "maxLength": null,
     "table": null,
-    "description": "This field is an alphanumeric descriptor which identifies the specific item or lot of drug. This descriptor would normally be obtained from the package labeling or item itself. September"
+    "description": "This field is an alphanumeric descriptor which identifies the specific item or lot of drug. This descriptor would normally be obtained from the package labeling or item itself. September 2015"
   },
   "PCR.13": {
     "segment": "PCR",
@@ -15217,7 +15217,7 @@
     "longName": "Product Evaluation Results",
     "maxLength": null,
     "table": "9999",
-    "description": "This field contains the results of the product evaluation. September"
+    "description": "This field contains the results of the product evaluation. September 2015"
   },
   "PCR.17": {
     "segment": "PCR",
@@ -15637,7 +15637,7 @@
     "longName": "Generic Name",
     "maxLength": null,
     "table": "9999",
-    "description": "This field contains the name generically used to identify the product. September"
+    "description": "This field contains the name generically used to identify the product. September 2015"
   },
   "PDC.6": {
     "segment": "PDC",
@@ -15957,7 +15957,7 @@
     "longName": "Primary Observer's Qualification",
     "maxLength": 1,
     "table": "0242",
-    "description": "This field contains the qualification of the primary observer which may assist in assessing the validity of the observations. Refer to HL7 Table 0242 - Primary Observer's Qualification for valid values. September"
+    "description": "This field contains the qualification of the primary observer which may assist in assessing the validity of the observations. Refer to HL7 Table 0242 - Primary Observer's Qualification for valid values. September 2015"
   },
   "PEO.23": {
     "segment": "PEO",
@@ -16067,7 +16067,7 @@
     "longName": "Sender Comment",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the text commentary regarding the report being made, such as disclaimers, which is not necessarily part of the report. September"
+    "description": "This field contains the text commentary regarding the report being made, such as disclaimers, which is not necessarily part of the report. September 2015"
   },
   "PES.9": {
     "segment": "PES",
@@ -16867,7 +16867,7 @@
     "longName": "Payee Bank Account ID",
     "maxLength": null,
     "table": null,
-    "description": "Id of Payee's Bank account. September"
+    "description": "Id of Payee's Bank account. September 2015"
   },
   "PMT.11": {
     "segment": "PMT",
@@ -17307,7 +17307,7 @@
     "longName": "Problem Classification",
     "maxLength": null,
     "table": null,
-    "description": "This field indicates the kind of problem. This field can be used to categorize problems so that they may be managed and viewed independently within different applications (e.g., admission, final, postoperative, pre-operative, outpatient, discharge, etc.). September"
+    "description": "This field indicates the kind of problem. This field can be used to categorize problems so that they may be managed and viewed independently within different applications (e.g., admission, final, postoperative, pre-operative, outpatient, discharge, etc.). September 2015"
   },
   "PRB.11": {
     "segment": "PRB",
@@ -17357,7 +17357,7 @@
     "longName": "Problem Life Cycle Status Date/Time",
     "maxLength": null,
     "table": null,
-    "description": "This field indicates the effective date/time of the current problem life cycle status. September"
+    "description": "This field indicates the effective date/time of the current problem life cycle status. September 2015"
   },
   "PRB.16": {
     "segment": "PRB",
@@ -17417,7 +17417,7 @@
     "longName": "Individual Awareness of Problem",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the individual's comprehension of the problem (e.g., full, marginal, partial, etc.). September"
+    "description": "This field contains the individual's comprehension of the problem (e.g., full, marginal, partial, etc.). September 2015"
   },
   "PRB.22": {
     "segment": "PRB",
@@ -17467,7 +17467,7 @@
     "longName": "Problem Severity",
     "maxLength": null,
     "table": "0836",
-    "description": "This field indicates the severity of the Problem. Refer to User-defined Table 0836- Problem Severity in Chapter 2C, Code Tables, for suggested values. September"
+    "description": "This field indicates the severity of the Problem. Refer to User-defined Table 0836- Problem Severity in Chapter 2C, Code Tables, for suggested values. September 2015"
   },
   "PRB.27": {
     "segment": "PRB",
@@ -17757,7 +17757,7 @@
     "longName": "Effective End Date of Provider Role",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the date that the role of the provider effectively ended. For example, this date may represent the date that a physician was removed as a patient's primary care provider. Note: The PRD-8-Effective Start Date of Role and PRD-9-Effective End Date of Role fields should not be used as trigger events. For example, they should not be used to trigger a change in role. These two dates are for informational purposes only. September"
+    "description": "This field contains the date that the role of the provider effectively ended. For example, this date may represent the date that a physician was removed as a patient's primary care provider. Note: The PRD-8-Effective Start Date of Role and PRD-9-Effective End Date of Role fields should not be used as trigger events. For example, they should not be used to trigger a change in role. These two dates are for informational purposes only. September 2015"
   },
   "PRD.10": {
     "segment": "PRD",
@@ -18167,7 +18167,7 @@
     "longName": "Quantity Distributed Method",
     "maxLength": 1,
     "table": "0329",
-    "description": "This field is used for measuring the quantity distributed. An explanation of the method used for estimation can be included in PSH-9 Quantity Distributed Comment. Refer to HL7 Table 0329 Quantity Method for valid values. September"
+    "description": "This field is used for measuring the quantity distributed. An explanation of the method used for estimation can be included in PSH-9 Quantity Distributed Comment. Refer to HL7 Table 0329 Quantity Method for valid values. September 2015"
   },
   "PSH.9": {
     "segment": "PSH",
@@ -18327,7 +18327,7 @@
     "longName": "Product/Service Effective Date",
     "maxLength": null,
     "table": null,
-    "description": "[ Start ] Date/Time product/service was delivered/received. September"
+    "description": "[ Start ] Date/Time product/service was delivered/received. September 2015"
   },
   "PSL.11": {
     "segment": "PSL",
@@ -18367,7 +18367,7 @@
     "longName": "Number of Items per Unit",
     "maxLength": null,
     "table": null,
-    "description": "Number of items in each unit – for Services, this should be set to"
+    "description": "Number of items in each unit – for Services, this should be set to 1."
   },
   "PSL.15": {
     "segment": "PSL",
@@ -18407,7 +18407,7 @@
     "longName": "Product/Service Clarification Code Value",
     "maxLength": null,
     "table": null,
-    "description": "Actual value for Product/Service Clarification Code Type (40) – examples are \"Y\", \"N\" for Northern Allowance, an actual number for a Data Center Number; repeats with Product/Service Clarification Code Type. Repeats with Product/Service Clarification Code Type. September"
+    "description": "Actual value for Product/Service Clarification Code Type (40) – examples are \"Y\", \"N\" for Northern Allowance, an actual number for a Data Center Number; repeats with Product/Service Clarification Code Type. Repeats with Product/Service Clarification Code Type. September 2015"
   },
   "PSL.19": {
     "segment": "PSL",
@@ -18487,7 +18487,7 @@
     "longName": "Billing Period",
     "maxLength": null,
     "table": null,
-    "description": "Begin and end of billing period. September"
+    "description": "Begin and end of billing period. September 2015"
   },
   "PSL.27": {
     "segment": "PSL",
@@ -18547,7 +18547,7 @@
     "longName": "Medical Role Executing Physician",
     "maxLength": null,
     "table": "0882",
-    "description": "The role of the Physician (\"self-employed\" or \"employed\"). Refer to User-defined Table 0882 – Medical Role Executing Physician in Chapter 2C, Code Tables, for suggested values. September"
+    "description": "The role of the Physician (\"self-employed\" or \"employed\"). Refer to User-defined Table 0882 – Medical Role Executing Physician in Chapter 2C, Code Tables, for suggested values. September 2015"
   },
   "PSL.33": {
     "segment": "PSL",
@@ -18607,7 +18607,7 @@
     "longName": "Amount PP",
     "maxLength": null,
     "table": null,
-    "description": "Total Amount for the professional part of this service. September"
+    "description": "Total Amount for the professional part of this service. September 2015"
   },
   "PSL.39": {
     "segment": "PSL",
@@ -18787,7 +18787,7 @@
     "longName": "Pathway Instance ID",
     "maxLength": null,
     "table": null,
-    "description": "This field contains a value generated by the originating application that represents an associated order placer group number, or other unique identifier assigned to the grouping of pathway directives. Note: It is required that this value remain unique over time. This instance ID identifies a specific instance for a specific patient and is unique across all patients. See entity ID data type description in Chapter"
+    "description": "This field contains a value generated by the originating application that represents an associated order placer group number, or other unique identifier assigned to the grouping of pathway directives. Note: It is required that this value remain unique over time. This instance ID identifies a specific instance for a specific patient and is unique across all patients. See entity ID data type description in Chapter 2."
   },
   "PTH.4": {
     "segment": "PTH",
@@ -19797,7 +19797,7 @@
     "longName": "Advance Directive Code",
     "maxLength": null,
     "table": "0435",
-    "description": "This field indicates the patient's instructions to the healthcare facility. Refer to User-defined Table 0435 - Advance Directive Code in Chapter 2C, Code Tables, for suggested values. See also PD1-15 Advance Directive Code. This field is required if PV2-50 - Advance Directive Last Verified Date is valued. Note: for details about specific consent refer to the Consent (CON) segment in chapter"
+    "description": "This field indicates the patient's instructions to the healthcare facility. Refer to User-defined Table 0435 - Advance Directive Code in Chapter 2C, Code Tables, for suggested values. See also PD1-15 Advance Directive Code. This field is required if PV2-50 - Advance Directive Last Verified Date is valued. Note: for details about specific consent refer to the Consent (CON) segment in chapter 9."
   },
   "PV2.46": {
     "segment": "PV2",
@@ -23197,7 +23197,7 @@
     "longName": "Tray Identifier",
     "maxLength": null,
     "table": null,
-    "description": "This field identifies the tray identifier (e.g., a number of a tray or a bar code on the tray) where the container carrier is located. September"
+    "description": "This field identifies the tray identifier (e.g., a number of a tray or a bar code on the tray) where the container carrier is located. September 2015"
   },
   "SAC.14": {
     "segment": "SAC",
@@ -23267,7 +23267,7 @@
     "longName": "Container Height/Diameter/Delta Units",
     "maxLength": null,
     "table": "9999",
-    "description": "This field is the unit identifier that is being used to describe the diameter, height and deltas of the container. If the units are ISO+ units, they should be recorded as single case abbreviations. If the units are ANS+ or L (local), the units and the source code table must be recorded, except that in this case, component delimiters should be replaced by subcomponent delimiters. The default unit is millimeters (mm), which should be assumed if no units are reported. September"
+    "description": "This field is the unit identifier that is being used to describe the diameter, height and deltas of the container. If the units are ISO+ units, they should be recorded as single case abbreviations. If the units are ANS+ or L (local), the units and the source code table must be recorded, except that in this case, component delimiters should be replaced by subcomponent delimiters. The default unit is millimeters (mm), which should be assumed if no units are reported. September 2015"
   },
   "SAC.21": {
     "segment": "SAC",
@@ -23327,7 +23327,7 @@
     "longName": "Cap Type",
     "maxLength": null,
     "table": "0381",
-    "description": "This field indicates the type of cap that is to be used with this container for decapping, piercing or other mechanisms. Refer to User-defined Table 0381 – Cap Type in Chapter 2C, Code Tables, for suggested values. September"
+    "description": "This field indicates the type of cap that is to be used with this container for decapping, piercing or other mechanisms. Refer to User-defined Table 0381 – Cap Type in Chapter 2C, Code Tables, for suggested values. September 2015"
   },
   "SAC.27": {
     "segment": "SAC",
@@ -23467,7 +23467,7 @@
     "longName": "System Induced Contaminants",
     "maxLength": null,
     "table": "0374",
-    "description": "This field describes the specimen contaminant identifier that is associated with the specimen in this container. Refer to User-defined Table 0374 – System Induced Contaminants in Chapter 2C, Code Tables, for valid values. This table's values are taken from NCCLS AUTO4. The value set can be extended with user specific values. September"
+    "description": "This field describes the specimen contaminant identifier that is associated with the specimen in this container. Refer to User-defined Table 0374 – System Induced Contaminants in Chapter 2C, Code Tables, for valid values. This table's values are taken from NCCLS AUTO4. The value set can be extended with user specific values. September 2015"
   },
   "SAC.41": {
     "segment": "SAC",
@@ -23507,7 +23507,7 @@
     "longName": "Other Environmental Factors",
     "maxLength": null,
     "table": "0377",
-    "description": "This field describes other environmental factors that are associated with the specimen in a specific container, e.g., atmospheric exposure. Refer to User-defined Table 0377 – Other Environmental September 2015 Factors in Chapter 2C, Code Tables, for valid values. This table's values are taken from NCCLS AUTO4. The value set can be extended with user specific values. September"
+    "description": "This field describes other environmental factors that are associated with the specimen in a specific container, e.g., atmospheric exposure. Refer to User-defined Table 0377 – Other Environmental September 2015 Factors in Chapter 2C, Code Tables, for valid values. This table's values are taken from NCCLS AUTO4. The value set can be extended with user specific values. September 2015"
   },
   "SCD.1": {
     "segment": "SCD",
@@ -23597,7 +23597,7 @@
     "longName": "Total Cycle Time",
     "maxLength": null,
     "table": null,
-    "description": "The sum of time spent in all phases of a cycle. September"
+    "description": "The sum of time spent in all phases of a cycle. September 2015"
   },
   "SCD.10": {
     "segment": "SCD",
@@ -23717,7 +23717,7 @@
     "longName": "Long in Charge Phase",
     "maxLength": null,
     "table": "0532",
-    "description": "A notification that the charge phase in the cycle has exceeded the maximum time allowed. Refer to HL7 Table 0532 - Expanded Yes/no Indicator in Chapter 2C, Code Tables, for valid values. September"
+    "description": "A notification that the charge phase in the cycle has exceeded the maximum time allowed. Refer to HL7 Table 0532 - Expanded Yes/no Indicator in Chapter 2C, Code Tables, for valid values. September 2015"
   },
   "SCD.22": {
     "segment": "SCD",
@@ -23757,7 +23757,7 @@
     "longName": "Operator - Unload",
     "maxLength": null,
     "table": null,
-    "description": "The name of the operator that unloaded the anti-microbial device. September"
+    "description": "The name of the operator that unloaded the anti-microbial device. September 2015"
   },
   "SCD.26": {
     "segment": "SCD",
@@ -23987,7 +23987,7 @@
     "longName": "Placer Contact Phone Number",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the phone number used to contact the SCH-12-Placer Contact Person. September"
+    "description": "This field contains the phone number used to contact the SCH-12-Placer Contact Person. September 2015"
   },
   "SCH.14": {
     "segment": "SCH",
@@ -24067,7 +24067,7 @@
     "longName": "Entered By Phone Number",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the phone number used to contact the ARQ-19-Entered by Person. September"
+    "description": "This field contains the phone number used to contact the ARQ-19-Entered by Person. September 2015"
   },
   "SCH.22": {
     "segment": "SCH",
@@ -24097,7 +24097,7 @@
     "longName": "Parent Filler Appointment ID",
     "maxLength": null,
     "table": null,
-    "description": "This field relates a child to its parent, when a parent-child relationship exists. It contains the filler application's permanent identifier for the parent of the appointment request. This is a composite field. The first component is a string that identifies the parent appointment request. It is assigned by the filler application, and it identifies an appointment request uniquely among all such requests on a particular processing application. This is a conditionally required field. On initial messages where a filler has not yet assigned a filler appointment ID, this field should not contain a value. In all other subsequent messages, where a filler application has assigned a filler appointment ID, this field is required. September"
+    "description": "This field relates a child to its parent, when a parent-child relationship exists. It contains the filler application's permanent identifier for the parent of the appointment request. This is a composite field. The first component is a string that identifies the parent appointment request. It is assigned by the filler application, and it identifies an appointment request uniquely among all such requests on a particular processing application. This is a conditionally required field. On initial messages where a filler has not yet assigned a filler appointment ID, this field should not contain a value. In all other subsequent messages, where a filler application has assigned a filler appointment ID, this field is required. September 2015"
   },
   "SCH.25": {
     "segment": "SCH",
@@ -24207,7 +24207,7 @@
     "longName": "Lot Control",
     "maxLength": null,
     "table": "0659",
-    "description": "A code assigned to a device to indicate if the sterilization load is built in the sub-sterile area adjacent to an Operating Room or the Central Processing Department (Central Supply). Refer to User-defined Table 0659 – Lot Control in Chapter 2C, Code Tables, for suggested values. September"
+    "description": "A code assigned to a device to indicate if the sterilization load is built in the sub-sterile area adjacent to an Operating Room or the Central Processing Department (Central Supply). Refer to User-defined Table 0659 – Lot Control in Chapter 2C, Code Tables, for suggested values. September 2015"
   },
   "SDD.1": {
     "segment": "SDD",
@@ -24517,7 +24517,7 @@
     "longName": "Substance Container Identifier",
     "maxLength": null,
     "table": null,
-    "description": "This field specifies the container assigned by the manufacturer during production of the substance. This identifier should be unique within specific lot of specific application / method. September"
+    "description": "This field specifies the container assigned by the manufacturer during production of the substance. This identifier should be unique within specific lot of specific application / method. September 2015"
   },
   "SID.4": {
     "segment": "SID",
@@ -25057,7 +25057,7 @@
     "longName": "Preferred Method of Contact",
     "maxLength": null,
     "table": "0185",
-    "description": "This field indicates which of a group of multiple phone numbers is the preferred method of contact for this person. Note that all values of this code refer to this segment's phone field, except for the value \"E,\" which refers to the E-mail address field. If more than one phone number of the preferred type exists in STF-10-phone, this field refers to the first such instance. Refer to HL7 Table 0185 - Preferred Method of Contact in Chapter 2C, Code Tables, for valid values. This table contains values for beeper, cell phone etc. September"
+    "description": "This field indicates which of a group of multiple phone numbers is the preferred method of contact for this person. Note that all values of this code refer to this segment's phone field, except for the value \"E,\" which refers to the E-mail address field. If more than one phone number of the preferred type exists in STF-10-phone, this field refers to the first such instance. Refer to HL7 Table 0185 - Preferred Method of Contact in Chapter 2C, Code Tables, for valid values. This table contains values for beeper, cell phone etc. September 2015"
   },
   "STF.17": {
     "segment": "STF",
@@ -25157,7 +25157,7 @@
     "longName": "Date Next DMV Review",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the date of the staff member's next Department of Motor Vehicles review, especially for use when staff is a driver for the institution. September"
+    "description": "This field contains the date of the staff member's next Department of Motor Vehicles review, especially for use when staff is a driver for the institution. September 2015"
   },
   "STF.27": {
     "segment": "STF",
@@ -25207,7 +25207,7 @@
     "longName": "Date/Time of Death",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the date and time at which the staff person death occurred. September"
+    "description": "This field contains the date and time at which the staff person death occurred. September 2015"
   },
   "STF.32": {
     "segment": "STF",
@@ -25267,7 +25267,7 @@
     "longName": "Generic Classification Indicator",
     "maxLength": 1,
     "table": "0136",
-    "description": "This field describes whether or not this STF record represents an identifiable (i.e., real) human being or is a \"placeholder\" for one whose identity is not yet known. For example, work schedules may need to be created before the actual staff member has been hired, or appointments may be made with a floating resource who is not specifically known until the actual appointment date/time. Because these functions require a Staff Member ID code, it is important to distinguish whether or not the Staff Member is a real human resource or not. Refer to HL7 Table 0136 - Yes/no Indicator for valid values. Y indicates that the staff member is an identifiable human being N indicates that the staff member is not an identifiable human being September"
+    "description": "This field describes whether or not this STF record represents an identifiable (i.e., real) human being or is a \"placeholder\" for one whose identity is not yet known. For example, work schedules may need to be created before the actual staff member has been hired, or appointments may be made with a floating resource who is not specifically known until the actual appointment date/time. Because these functions require a Staff Member ID code, it is important to distinguish whether or not the Staff Member is a real human resource or not. Refer to HL7 Table 0136 - Yes/no Indicator for valid values. Y indicates that the staff member is an identifiable human being N indicates that the staff member is not an identifiable human being September 2015"
   },
   "STF.38": {
     "segment": "STF",
@@ -25307,7 +25307,7 @@
     "longName": "Signature",
     "maxLength": null,
     "table": null,
-    "description": "Digital Signature of the staff member. The Digital Signature includes a seal concept and is verifiable. 15.5 EXAMPLE TRANSACTIONS 15.5.1 Add Personnel Record - Event B01 MSH|^~\\&|HL7REG|UH|HL7LAB|CH|199902280700||PMU^B01^PMU_B01|MSGID002|P|2.8|<cr< EVN|B01|199902280700|<cr> STF||U2246^^^PLW~111223333^^^USSSA^SS|HIPPOCRATES^HAROLD^H^JR^DR^M.D.|P|M|19511004|A|^ICU| ^MED|(555)555-1003X345CO~(555)555-3334CH(555)555-1345X789CB|1003 HEALTHCARE DRIVE^SUITE 200^ANNARBOR^MI^98199^U.S.A.^H~3029 HEALTHCARE DRIVE^^ANN ARBOR, MI^98198^U.S.A.^O |19890125^DOCTORSAREUS MEDICAL SCHOOL&L01||PMF88123453334|74160.2326@COMPUSERV.COM|B PRA||^HIPPOCRATES FAMILY PRACTICE|ST|I|OB/GYN^STATE BOARD OF OBSTETRICS AND GYNECOLOGY^C^19790123|1234887609^UPIN~1234987^CTY^MECOSTA~223987654^TAX~1234987757 ^DEA~12394433879^MDD^CA|ADMIT&&ADT^MED&&L2^19941231~DISCH&&ADT^MED&&L2^1994123 1| AFF|1|AMERICAN MEDICAL ASSOCIATION|123 MAIN STREET^^OUR TOWN^CA^98765^U.S.A.^M |19900101| LAN|1|ESL^SPANISH^ISO639|1^READ^HL70403|1^EXCELLENT^HL70404| LAN|2|ESL^SPANISH^ISO639|2^WRITE^HL70403|2^GOOD^HL70404| LAN|3|FRE^FRENCH^ISO639|3^SPEAK^HL70403|3^FAIR^HL70404| EDU|1|BA^BACHELOR OF ARTS^HL70360|19810901^19850601|19810901^19850601|19850701|YALE UNIVERSITY^L|U^HL70402|456 CONNECTICUT AVENUE^^NEW HAVEN^CO^87654^U.S.A.^M| EDU|2|MD^DOCTOR OF MEDICINE^HL70360|19850901^19890601|19850901^19890601|19850701|HARVARD MEDICAL SCHOOL^L |M^HL70402|123 MASSACHUSETTS AVENUE^^CAMBRIDGE^MA^76543^U.S.A.^M| 15.6 OUTSTANDING ISSUES Proposals for the specification of additional events and messages should be submitted to the Personnel Management WG. September"
+    "description": "Digital Signature of the staff member. The Digital Signature includes a seal concept and is verifiable. 15.5 EXAMPLE TRANSACTIONS 15.5.1 Add Personnel Record - Event B01 MSH|^~\\&|HL7REG|UH|HL7LAB|CH|199902280700||PMU^B01^PMU_B01|MSGID002|P|2.8|<cr< EVN|B01|199902280700|<cr> STF||U2246^^^PLW~111223333^^^USSSA^SS|HIPPOCRATES^HAROLD^H^JR^DR^M.D.|P|M|19511004|A|^ICU| ^MED|(555)555-1003X345CO~(555)555-3334CH(555)555-1345X789CB|1003 HEALTHCARE DRIVE^SUITE 200^ANNARBOR^MI^98199^U.S.A.^H~3029 HEALTHCARE DRIVE^^ANN ARBOR, MI^98198^U.S.A.^O |19890125^DOCTORSAREUS MEDICAL SCHOOL&L01||PMF88123453334|74160.2326@COMPUSERV.COM|B PRA||^HIPPOCRATES FAMILY PRACTICE|ST|I|OB/GYN^STATE BOARD OF OBSTETRICS AND GYNECOLOGY^C^19790123|1234887609^UPIN~1234987^CTY^MECOSTA~223987654^TAX~1234987757 ^DEA~12394433879^MDD^CA|ADMIT&&ADT^MED&&L2^19941231~DISCH&&ADT^MED&&L2^1994123 1| AFF|1|AMERICAN MEDICAL ASSOCIATION|123 MAIN STREET^^OUR TOWN^CA^98765^U.S.A.^M |19900101| LAN|1|ESL^SPANISH^ISO639|1^READ^HL70403|1^EXCELLENT^HL70404| LAN|2|ESL^SPANISH^ISO639|2^WRITE^HL70403|2^GOOD^HL70404| LAN|3|FRE^FRENCH^ISO639|3^SPEAK^HL70403|3^FAIR^HL70404| EDU|1|BA^BACHELOR OF ARTS^HL70360|19810901^19850601|19810901^19850601|19850701|YALE UNIVERSITY^L|U^HL70402|456 CONNECTICUT AVENUE^^NEW HAVEN^CO^87654^U.S.A.^M| EDU|2|MD^DOCTOR OF MEDICINE^HL70360|19850901^19890601|19850901^19890601|19850701|HARVARD MEDICAL SCHOOL^L |M^HL70402|123 MASSACHUSETTS AVENUE^^CAMBRIDGE^MA^76543^U.S.A.^M| 15.6 OUTSTANDING ISSUES Proposals for the specification of additional events and messages should be submitted to the Personnel Management WG. September 2015"
   },
   "STZ.1": {
     "segment": "STZ",
@@ -25467,7 +25467,7 @@
     "longName": "Units",
     "maxLength": null,
     "table": "9999",
-    "description": "This field is the units that have a data type of CWE. The default coding system for the units codes consists of the ISO+ abbreviation for a single case unit (ISO 2955-83) plus extensions, that do not collide with ISO abbreviations (see Chapter 7, section 7.4.2.6). We designate this coding system as ISO+. Both the ISO unit's abbreviations and the extensions are defined in Chapter 7, section 7.4.2.6.2 and listed in Figure 7-9. The ISO+ abbreviations are the codes for the default coding system. Consequently, when ISO+ units are being used, only ISO+ abbreviations need be sent, and the contents of the units field will be backward compatible to HL7 Version 2.1. For more information on this field see reference Chapter 7, section 7.4.2.6. These units apply to fields \"Endogenous content of pre-dilution diluent\" and \"Equipment dynamic range\". September"
+    "description": "This field is the units that have a data type of CWE. The default coding system for the units codes consists of the ISO+ abbreviation for a single case unit (ISO 2955-83) plus extensions, that do not collide with ISO abbreviations (see Chapter 7, section 7.4.2.6). We designate this coding system as ISO+. Both the ISO unit's abbreviations and the extensions are defined in Chapter 7, section 7.4.2.6.2 and listed in Figure 7-9. The ISO+ abbreviations are the codes for the default coding system. Consequently, when ISO+ units are being used, only ISO+ abbreviations need be sent, and the contents of the units field will be backward compatible to HL7 Version 2.1. For more information on this field see reference Chapter 7, section 7.4.2.6. These units apply to fields \"Endogenous content of pre-dilution diluent\" and \"Equipment dynamic range\". September 2015"
   },
   "TCC.14": {
     "segment": "TCC",
@@ -25907,7 +25907,7 @@
     "longName": "Assigned Document Authenticator",
     "maxLength": null,
     "table": null,
-    "description": "This field identifies the person(s) responsible for authenticating the document, who may differ from the originator. Multiple persons may be responsible for authentication, especially in teaching facilities. This field is allowed to repeat an undefined number of times. September"
+    "description": "This field identifies the person(s) responsible for authenticating the document, who may differ from the originator. Multiple persons may be responsible for authentication, especially in teaching facilities. This field is allowed to repeat an undefined number of times. September 2015"
   },
   "TXA.11": {
     "segment": "TXA",
@@ -26017,7 +26017,7 @@
     "longName": "Document Change Reason",
     "maxLength": null,
     "table": null,
-    "description": "This free text field (limited to 30 characters) contains the reason for document status change. September"
+    "description": "This free text field (limited to 30 characters) contains the reason for document status change. September 2015"
   },
   "TXA.22": {
     "segment": "TXA",
@@ -26207,7 +26207,7 @@
     "longName": "Document Control Number",
     "maxLength": 23,
     "table": null,
-    "description": "This field contains the number assigned by payor that is used for rebilling/adjustment purposes. It may repeat up to three times. Refer Uniform Billing field"
+    "description": "This field contains the number assigned by payor that is used for rebilling/adjustment purposes. It may repeat up to three times. Refer Uniform Billing field 37."
   },
   "UB2.13": {
     "segment": "UB2",

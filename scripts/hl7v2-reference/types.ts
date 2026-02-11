@@ -80,6 +80,25 @@ export interface PdfAttributeTableField {
   optionality: string; // OPT code: "R", "O", "C", "RE", "CE", "X", "B", "W"
 }
 
+export interface PdfDatatypeDescription {
+  name: string;          // e.g. "CNE"
+  longName: string;      // e.g. "Coded with No Exceptions"
+  description: string;   // intro text
+}
+
+export interface PdfComponentDescription {
+  datatype: string;      // e.g. "CNE"
+  position: number;      // e.g. 3
+  description: string;
+}
+
+export interface PdfComponentTableField {
+  datatype: string;      // e.g. "CNE"
+  position: number;      // SEQ number
+  optionality: string;   // OPT code: "R", "O", "C", "RE", "CE", "X", "B", "W"
+  table: string | null;  // TBL# e.g. "0396", null if absent
+}
+
 export interface OutputField {
   segment: string;
   position: number;
@@ -111,9 +130,14 @@ export interface OutputDatatypeComponent {
   dataType: string;
   longName: string;
   maxLength: number | null;
+  optionality: string | null;
+  table: string | null;
+  description: string | null;
 }
 
 export interface OutputDatatype {
+  longName: string | null;
+  description: string | null;
   components: OutputDatatypeComponent[];
 }
 

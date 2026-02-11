@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type {
   XsdField, XsdSegment, XsdDatatype, XsdMessage,
-  PdfAttributeTableField, PdfFieldDescription, PdfSegmentDescription, PdfTable,
+  PdfAttributeTableField, PdfComponentDescription, PdfComponentTableField, PdfDatatypeDescription, PdfFieldDescription, PdfSegmentDescription, PdfTable,
   OutputField, OutputSegment, OutputDatatype, OutputTable,
 } from "./types";
 
@@ -15,6 +15,9 @@ export interface MergeInput {
   pdfSegments: Map<string, PdfSegmentDescription>;
   pdfTables: Map<string, PdfTable>;
   pdfAttributeTables: Map<string, PdfAttributeTableField[]>;
+  pdfDatatypeDescs: Map<string, PdfDatatypeDescription>;
+  pdfComponentDescs: Map<string, PdfComponentDescription>;
+  pdfComponentTables: Map<string, PdfComponentTableField[]>;
 }
 
 export interface ValidationReport {
@@ -27,6 +30,12 @@ export interface ValidationReport {
   fieldUsageCount: number;
   fieldUsagePercent: number;
   datatypeCount: number;
+  datatypeDescriptionCount: number;
+  datatypeDescriptionPercent: number;
+  componentDescriptionCount: number;
+  componentDescriptionPercent: number;
+  componentOptionalityCount: number;
+  componentOptionalityPercent: number;
   messageCount: number;
   tableCount: number;
   tableValueCount: number;
@@ -106,18 +115,48 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
     };
   }
 
-  // 3. Build datatypes.json
+  // 3. Build datatypes.json (with descriptions, optionality, and table refs from PDF)
+  const componentOptLookup = new Map<string, string>();
+  const componentTableLookup = new Map<string, string>();
+  for (const [, fields] of input.pdfComponentTables) {
+    for (const f of fields) {
+      const key = `${f.datatype}.${f.position}`;
+      componentOptLookup.set(key, f.optionality);
+      if (f.table) componentTableLookup.set(key, f.table);
+    }
+  }
+
   const datatypesOutput: Record<string, OutputDatatype> = {};
+  let datatypeDescriptionCount = 0;
+  let componentDescriptionCount = 0;
+  let componentOptionalityCount = 0;
+  let totalComponentCount = 0;
 
   for (const [name, xsd] of input.xsdDatatypes) {
+    const pdfDt = input.pdfDatatypeDescs.get(name);
+    if (pdfDt) datatypeDescriptionCount++;
+
     datatypesOutput[name] = {
-      components: xsd.components.map(c => ({
-        component: c.component,
-        position: c.position,
-        dataType: c.dataType,
-        longName: c.longName,
-        maxLength: c.maxLength,
-      })),
+      longName: pdfDt?.longName ?? null,
+      description: pdfDt?.description ?? null,
+      components: xsd.components.map(c => {
+        totalComponentCount++;
+        const compDesc = input.pdfComponentDescs.get(c.component);
+        const optionality = componentOptLookup.get(c.component) ?? null;
+        const table = componentTableLookup.get(c.component) ?? null;
+        if (compDesc) componentDescriptionCount++;
+        if (optionality) componentOptionalityCount++;
+        return {
+          component: c.component,
+          position: c.position,
+          dataType: c.dataType,
+          longName: c.longName,
+          maxLength: c.maxLength,
+          optionality,
+          table,
+          description: compDesc?.description ?? null,
+        };
+      }),
     };
   }
 
@@ -164,6 +203,15 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
     fieldUsageCount,
     fieldUsagePercent: Math.round((fieldUsageCount / input.xsdFields.size) * 1000) / 10,
     datatypeCount: input.xsdDatatypes.size,
+    datatypeDescriptionCount,
+    datatypeDescriptionPercent: input.xsdDatatypes.size > 0
+      ? Math.round((datatypeDescriptionCount / input.xsdDatatypes.size) * 1000) / 10 : 0,
+    componentDescriptionCount,
+    componentDescriptionPercent: totalComponentCount > 0
+      ? Math.round((componentDescriptionCount / totalComponentCount) * 1000) / 10 : 0,
+    componentOptionalityCount,
+    componentOptionalityPercent: totalComponentCount > 0
+      ? Math.round((componentOptionalityCount / totalComponentCount) * 1000) / 10 : 0,
     messageCount: input.xsdMessages.size,
     tableCount: input.pdfTables.size,
     tableValueCount,

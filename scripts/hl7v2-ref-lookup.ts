@@ -117,9 +117,34 @@ function printElements(elements: XsdMessageElement[], depth: number) {
   }
 }
 
+function showDatatypeComponent(query: string, data: ReferenceData): boolean {
+  const [dtName, posStr] = query.split(".");
+  const dt = data.datatypes[dtName!];
+  if (!dt) return false;
+
+  const pos = parseInt(posStr!, 10);
+  const comp = dt.components.find(c => c.position === pos);
+  if (!comp) return false;
+
+  const optStr = comp.optionality
+    ? `${comp.optionality} (${optionalityLabel(comp.optionality)})`
+    : "?";
+
+  console.log(`Datatype Component ${query} — ${comp.longName}`);
+  console.log(`  Datatype: ${dtName}${dt.longName ? ` (${dt.longName})` : ""}`);
+  console.log(`  Data Type: ${comp.dataType}`);
+  if (comp.maxLength !== null) console.log(`  Max Length: ${comp.maxLength}`);
+  console.log(`  Optionality: ${optStr}`);
+  if (comp.table) console.log(`  Table: ${comp.table}`);
+  if (comp.description) console.log(`\n${comp.description}`);
+  return true;
+}
+
 function showField(query: string, data: ReferenceData) {
   const field = data.fields[query];
   if (!field) {
+    // Fall back to datatype component lookup (e.g., CNE.3 instead of PID.3)
+    if (showDatatypeComponent(query, data)) return;
     console.error(`Field ${query} not found`);
     process.exit(1);
   }
@@ -175,11 +200,18 @@ function showComponent(query: string, data: ReferenceData) {
     process.exit(1);
   }
 
+  const optStr = comp.optionality
+    ? `${comp.optionality} (${optionalityLabel(comp.optionality)})`
+    : "?";
+
   console.log(`Component ${query} — ${comp.longName}`);
   console.log(`  Field: ${fieldKey} ${field.longName} (${field.dataType})`);
   console.log(`  Component: ${comp.component} ${comp.longName}`);
   console.log(`  Data Type: ${comp.dataType}`);
   if (comp.maxLength !== null) console.log(`  Max Length: ${comp.maxLength}`);
+  console.log(`  Optionality: ${optStr}`);
+  if (comp.table) console.log(`  Table: ${comp.table}`);
+  if (comp.description) console.log(`\n${comp.description}`);
 }
 
 function showSegment(query: string, data: ReferenceData): boolean {
@@ -209,11 +241,17 @@ function showDatatype(query: string, data: ReferenceData): boolean {
   const dt = data.datatypes[query];
   if (!dt) return false;
 
-  console.log(`Datatype ${query}\n`);
-  console.log("Components:");
-  for (const c of dt.components) {
-    const maxLen = c.maxLength !== null ? `, maxLen: ${c.maxLength}` : "";
-    console.log(`  ${c.component.padEnd(8)} ${c.longName} (${c.dataType}${maxLen})`);
+  console.log(`Datatype ${query}${dt.longName ? ` — ${dt.longName}` : ""}`);
+  if (dt.description) console.log(`\n${truncate(dt.description, 500)}`);
+
+  if (dt.components.length > 0) {
+    console.log("\nComponents:");
+    for (const c of dt.components) {
+      const maxLen = c.maxLength !== null ? `, maxLen: ${c.maxLength}` : "";
+      const opt = c.optionality ? ` [${c.optionality}]` : "";
+      const tbl = c.table ? ` [table ${c.table}]` : "";
+      console.log(`  ${c.component.padEnd(8)} ${c.longName} (${c.dataType}${maxLen})${opt}${tbl}`);
+    }
   }
   return true;
 }

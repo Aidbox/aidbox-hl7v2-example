@@ -1437,7 +1437,7 @@
     "longName": "Account ID",
     "maxLength": 100,
     "table": null,
-    "description": "This field identifies the account to be billed. It is used in conjunction with BLG-2-charge type. Refer to HL7 table 0061 - Check digit scheme in Chapter"
+    "description": "This field identifies the account to be billed. It is used in conjunction with BLG-2-charge type. Refer to HL7 table 0061 - Check digit scheme in Chapter 2."
   },
   "BLG.4": {
     "segment": "BLG",
@@ -1587,7 +1587,7 @@
     "longName": "BP Informed Consent Indicator",
     "maxLength": 1,
     "table": "0136",
-    "description": "This field indicates whether consent for the transfusion has been obtained. Refer to HL7 table 0136 -Yes/no indicator as defined in Chapter"
+    "description": "This field indicates whether consent for the transfusion has been obtained. Refer to HL7 table 0136 -Yes/no indicator as defined in Chapter 2."
   },
   "BPX.1": {
     "segment": "BPX",
@@ -2947,7 +2947,7 @@
     "longName": "Relationship to Subject Table",
     "maxLength": 100,
     "table": "0548",
-    "description": "Identification of the relationship of the consenter to the subject. User-Defined Table 0548 – Signatory’s Relationship to Subject Value 1 2 3 4 5 6 7 Description Comment Self Parent Next of Kin Durable Power of Attorney in Healthcare Affairs Conservator Emergent Practitioner (practitioner judging case as emergency requiring care without a consent) Non-Emergent Practitioner (i.e. medical ethics committee) July 2003 9.10 OUTSTANDING ISSUES There are no messages that use the consent segment. The intention of the committee is to add messages regarding consent management in version 2.6. This version of the standard clarifies the use of MDM message as opposed to ORU messages. Refer to Chapter"
+    "description": "Identification of the relationship of the consenter to the subject. User-Defined Table 0548 – Signatory’s Relationship to Subject Value 1 2 3 4 5 6 7 Description Comment Self Parent Next of Kin Durable Power of Attorney in Healthcare Affairs Conservator Emergent Practitioner (practitioner judging case as emergency requiring care without a consent) Non-Emergent Practitioner (i.e. medical ethics committee) July 2003 9.10 OUTSTANDING ISSUES There are no messages that use the consent segment. The intention of the committee is to add messages regarding consent management in version 2.6. This version of the standard clarifies the use of MDM message as opposed to ORU messages. Refer to Chapter 7."
   },
   "CSP.1": {
     "segment": "CSP",
@@ -8767,7 +8767,7 @@
     "longName": "Message Type",
     "maxLength": 15,
     "table": null,
-    "description": "This field contains the message type, trigger event, and the message structure ID for the message. Refer to HL7 Table 0076 - Message type for valid values for the message type code. This table contains values such as ACK, ADT, ORM, ORU etc. Refer to HL7 Table 0003 - Event type for valid values for the trigger event. This table contains values like A01, O01, R01 etc. Refer to HL7 Table 0354 - Message structure for valid values for the message structure. This table contains values such as ADT_A01, ORU_R01, SIU_S12, etc. . The receiving system uses this field to recognize the data segments, and possibly, the application to which to route this message. For certain queries, which may have more than a single response event type, the second component may, in the response message, vary to indicate the response event type. See the discussion of the display query variants in chapter"
+    "description": "This field contains the message type, trigger event, and the message structure ID for the message. Refer to HL7 Table 0076 - Message type for valid values for the message type code. This table contains values such as ACK, ADT, ORM, ORU etc. Refer to HL7 Table 0003 - Event type for valid values for the trigger event. This table contains values like A01, O01, R01 etc. Refer to HL7 Table 0354 - Message structure for valid values for the message structure. This table contains values such as ADT_A01, ORU_R01, SIU_S12, etc. . The receiving system uses this field to recognize the data segments, and possibly, the application to which to route this message. For certain queries, which may have more than a single response event type, the second component may, in the response message, vary to indicate the response event type. See the discussion of the display query variants in chapter 5."
   },
   "MSH.10": {
     "segment": "MSH",
@@ -8797,7 +8797,7 @@
     "longName": "Version ID",
     "maxLength": 60,
     "table": null,
-    "description": "This field is matched by the receiving system to its own version to be sure the message will be interpreted correctly. Beginning with Version 2.3.1, it has two additional “internationalization” components, for use by HL7 international affiliates. The <internationalization code> is CE data type (using the ISO country codes where appropriate) which represents the HL7 affiliate. The <internal version ID> is used if the HL7 Affiliate has more than a single ‘local’ version associated with a single US version. The HL7 Table 0104 - Version ID Value 2.0 2.0D 2.1 2.2 2.3 2.3.1 2.4 2.5 Description Release 2.0 Demo 2.0 Release 2. 1 Release 2.2 Release 2.3 Release 2.3.1 Release 2.4 Release 2.5 Comment (Date) September 1988 October 1988 March 1990 December 1994 March 1997 May 1999 November 2000 May"
+    "description": "This field is matched by the receiving system to its own version to be sure the message will be interpreted correctly. Beginning with Version 2.3.1, it has two additional “internationalization” components, for use by HL7 international affiliates. The <internationalization code> is CE data type (using the ISO country codes where appropriate) which represents the HL7 affiliate. The <internal version ID> is used if the HL7 Affiliate has more than a single ‘local’ version associated with a single US version. The HL7 Table 0104 - Version ID Value 2.0 2.0D 2.1 2.2 2.3 2.3.1 2.4 2.5 Description Release 2.0 Demo 2.0 Release 2. 1 Release 2.2 Release 2.3 Release 2.3.1 Release 2.4 Release 2.5 Comment (Date) September 1988 October 1988 March 1990 December 1994 March 1997 May 1999 November 2000 May 2003"
   },
   "MSH.13": {
     "segment": "MSH",
@@ -8867,7 +8867,7 @@
     "longName": "Principal Language Of Message",
     "maxLength": 250,
     "table": null,
-    "description": "This field contains the principal language of the message. Codes come from ISO"
+    "description": "This field contains the principal language of the message. Codes come from ISO 639."
   },
   "MSH.20": {
     "segment": "MSH",
@@ -17367,7 +17367,7 @@
     "longName": "Controlled Substance Schedule",
     "maxLength": 60,
     "table": "0477",
-    "description": "This field specifies the class of the drug or other substance if its usage is controlled by legislation. In the USA, such legislation includes the federal Controlled Substance Act (CSA) or a State Uniform Controlled Substance Act. Refer to user-defined table 0477 – Controlled Substance Schedule for valid values for USA usage. Other countries should create their own versions of this table. Because some jurisdictions may extend the list of drugs in a particular class and may create an additional schedule, table 0477 is user-defined. User-defined Table 0477 – Controlled Substance Schedule* Value Description Comment I Schedule I II Schedule II Includes drugs that have a high potential for abuse, no currently accepted medical use in the United States and a lack of accepted safety for use under medical supervision. Includes drugs having currently accepted medical use in the United States and a high abuse Value Description III Schedule III IV Schedule IV V Schedule V VI Schedule VI Comment potential, with severe psychological or physical dependence liability. Includes drugs having an abuse potential less than that of drugs listed in Schedules I and II. All CS III drugs have a currently accepted medical use in the United States. Includes drugs having a lesser potential for abuse than those listed in Schedule III. CS IV drugs have a currently accepted medical use in the United States. Includes drugs having low abuse potential and limited physical or psychological dependence relative to those listed in IV and have an accepted medical use in the United States. State defined *Pharmacy Law Digest July"
+    "description": "This field specifies the class of the drug or other substance if its usage is controlled by legislation. In the USA, such legislation includes the federal Controlled Substance Act (CSA) or a State Uniform Controlled Substance Act. Refer to user-defined table 0477 – Controlled Substance Schedule for valid values for USA usage. Other countries should create their own versions of this table. Because some jurisdictions may extend the list of drugs in a particular class and may create an additional schedule, table 0477 is user-defined. User-defined Table 0477 – Controlled Substance Schedule* Value Description Comment I Schedule I II Schedule II Includes drugs that have a high potential for abuse, no currently accepted medical use in the United States and a lack of accepted safety for use under medical supervision. Includes drugs having currently accepted medical use in the United States and a high abuse Value Description III Schedule III IV Schedule IV V Schedule V VI Schedule VI Comment potential, with severe psychological or physical dependence liability. Includes drugs having an abuse potential less than that of drugs listed in Schedules I and II. All CS III drugs have a currently accepted medical use in the United States. Includes drugs having a lesser potential for abuse than those listed in Schedule III. CS IV drugs have a currently accepted medical use in the United States. Includes drugs having low abuse potential and limited physical or psychological dependence relative to those listed in IV and have an accepted medical use in the United States. State defined *Pharmacy Law Digest July 1988"
   },
   "RXE.36": {
     "segment": "RXE",

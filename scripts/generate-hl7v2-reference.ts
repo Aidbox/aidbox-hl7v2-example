@@ -15,7 +15,7 @@
 
 import { parseArgs } from "node:util";
 import { parseXsdFields, parseXsdSegments, parseXsdDatatypes, parseXsdMessages } from "./hl7v2-reference/xsd-parser";
-import { parsePdfDescriptions, parsePdfTables, parsePdfAttributeTables } from "./hl7v2-reference/pdf-parser";
+import { parsePdfDescriptions, parsePdfTables, parsePdfAttributeTables, parsePdfDatatypeDescriptions, parsePdfComponentTables } from "./hl7v2-reference/pdf-parser";
 import { mergeAndWrite } from "./hl7v2-reference/merge";
 
 const { values } = parseArgs({
@@ -60,21 +60,32 @@ console.log();
 
 // Phase 2: Parse PDF
 console.log("Phase 2: Parsing PDF specifications...");
-const [{ fields: pdfFields, segments: pdfSegments }, pdfTables, pdfAttributeTables] = await Promise.all([
+const [
+  { fields: pdfFields, segments: pdfSegments },
+  pdfTables,
+  pdfAttributeTables,
+  { datatypes: pdfDatatypeDescs, components: pdfComponentDescs },
+  pdfComponentTables,
+] = await Promise.all([
   parsePdfDescriptions(pdfDir),
   parsePdfTables(pdfDir),
   parsePdfAttributeTables(pdfDir),
+  parsePdfDatatypeDescriptions(pdfDir),
+  parsePdfComponentTables(pdfDir),
 ]);
-console.log(`  Field descriptions:   ${pdfFields.size}`);
-console.log(`  Segment descriptions: ${pdfSegments.size}`);
-console.log(`  Attribute tables:     ${pdfAttributeTables.size}`);
-console.log(`  Tables:               ${pdfTables.size}`);
+console.log(`  Field descriptions:     ${pdfFields.size}`);
+console.log(`  Segment descriptions:   ${pdfSegments.size}`);
+console.log(`  Attribute tables:       ${pdfAttributeTables.size}`);
+console.log(`  Datatype descriptions:  ${pdfDatatypeDescs.size}`);
+console.log(`  Component descriptions: ${pdfComponentDescs.size}`);
+console.log(`  Component tables:       ${pdfComponentTables.size}`);
+console.log(`  Tables:                 ${pdfTables.size}`);
 console.log();
 
 // Phase 3: Merge and write
 console.log("Phase 3: Merging data and writing JSON...");
 const report = await mergeAndWrite(
-  { xsdFields, xsdSegments, xsdDatatypes, xsdMessages, pdfFields, pdfSegments, pdfTables, pdfAttributeTables },
+  { xsdFields, xsdSegments, xsdDatatypes, xsdMessages, pdfFields, pdfSegments, pdfTables, pdfAttributeTables, pdfDatatypeDescs, pdfComponentDescs, pdfComponentTables },
   outputDir,
 );
 console.log(`  Output written to: ${outputDir}`);
@@ -85,7 +96,9 @@ console.log("=== Validation Report ===");
 console.log(`Fields:    ${report.fieldCount} total, ${report.fieldDescriptionCount} with descriptions (${report.fieldDescriptionPercent}%)`);
 console.log(`Segments:  ${report.segmentCount} total, ${report.segmentDescriptionCount} with descriptions (${report.segmentDescriptionPercent}%)`);
 console.log(`Usage:     ${report.fieldUsageCount} of ${report.fieldCount} fields with usage codes (${report.fieldUsagePercent}%)`);
-console.log(`Datatypes: ${report.datatypeCount}`);
+console.log(`Datatypes: ${report.datatypeCount} total, ${report.datatypeDescriptionCount} with descriptions (${report.datatypeDescriptionPercent}%)`);
+console.log(`Comp.Desc: ${report.componentDescriptionCount} components with descriptions (${report.componentDescriptionPercent}%)`);
+console.log(`Comp.Opt:  ${report.componentOptionalityCount} components with optionality (${report.componentOptionalityPercent}%)`);
 console.log(`Messages:  ${report.messageCount}`);
 console.log(`Tables:    ${report.tableCount} tables, ${report.tableValueCount} values`);
 

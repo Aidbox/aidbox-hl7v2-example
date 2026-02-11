@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
-import type { PdfAttributeTableField, PdfFieldDescription, PdfSegmentDescription, PdfTable, PdfTableValue } from "./types";
+import type { PdfAttributeTableField, PdfComponentDescription, PdfComponentTableField, PdfDatatypeDescription, PdfFieldDescription, PdfSegmentDescription, PdfTable, PdfTableValue } from "./types";
 
 function shellEscape(s: string): string {
   return "'" + s.replace(/'/g, "'\\''") + "'";
@@ -191,7 +191,7 @@ export function extractDescription(sectionLines: string[]): string | null {
   let description = descriptionParts
     .join(" ")
     .replace(/\s+/g, " ")
-    .replace(/\s+\d+[\.\d]+\s*$/, "")
+    .replace(/\s+\d+(?:\.\w+){2,}\s*$|\s+\d+\.[A-Za-z]\w*(?:\.\w+)*\s*$/, "")
     .trim();
 
   if (!description) return null;
@@ -490,6 +490,233 @@ export async function parsePdfAttributeTables(pdfDir: string): Promise<Map<strin
   }
 
   return allTables;
+}
+
+// Matches datatype heading: "2.A.8 CNE – coded with no exceptions"
+const DATATYPE_HEADING_RE = /^(?:2\.A\.\d+\s+)?([A-Z][A-Z0-9]{0,4})\s*[-\u2013]\s+(.+)/;
+
+// Matches component heading: "2.A.8.3 Name of Coding System (ID)"
+const COMPONENT_HEADING_RE = /^(?:2\.A\.[\d.]+\s+)?(.+?)\s+\(([A-Z][A-Z0-9]{0,4})\)\s*$/;
+
+// Matches HL7 Component Table title
+const COMP_TABLE_TITLE_RE = /HL7 Component Table\s*[-\u2013]\s*([A-Z][A-Z0-9]{0,4})\s*[-\u2013]/;
+
+function parseDatatypeDescriptions(text: string): {
+  datatypes: Map<string, PdfDatatypeDescription>;
+  components: Map<string, PdfComponentDescription>;
+} {
+  const lines = text.split("\n");
+  const datatypes = new Map<string, PdfDatatypeDescription>();
+  const components = new Map<string, PdfComponentDescription>();
+
+  // First pass: find all datatype and component heading positions
+  const dtHeaders: { index: number; name: string; longName: string }[] = [];
+  const compHeaders: { index: number; datatype: string; position: number }[] = [];
+
+  let currentDt: string | null = null;
+  let currentCompPos = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i]!.trim();
+
+    // Check for datatype heading
+    const dtMatch = trimmed.match(DATATYPE_HEADING_RE);
+    if (dtMatch) {
+      const name = dtMatch[1]!;
+      const longName = dtMatch[2]!.trim();
+
+      // Skip TOC lines
+      if (longName.includes("....")) continue;
+      // Must have lowercase (not all-caps abbreviation)
+      if (!/[a-z]/.test(longName)) continue;
+      // Must look like a datatype code (2-5 uppercase alphanumeric)
+      if (!/^[A-Z][A-Z0-9]{0,4}$/.test(name)) continue;
+
+      dtHeaders.push({ index: i, name, longName });
+      currentDt = name;
+      currentCompPos = 0;
+      continue;
+    }
+
+    // Check for component heading (only within a datatype context)
+    if (currentDt) {
+      const compMatch = trimmed.match(COMPONENT_HEADING_RE);
+      if (compMatch) {
+        currentCompPos++;
+        compHeaders.push({ index: i, datatype: currentDt, position: currentCompPos });
+      }
+    }
+  }
+
+  // Second pass: extract datatype descriptions
+  // In both v2.5 and v2.8.2, the "Definition:" block appears AFTER the component table,
+  // before the first component heading. Use extractDescription() which handles Definition: markers.
+  for (let d = 0; d < dtHeaders.length; d++) {
+    const header = dtHeaders[d]!;
+    const startLine = header.index + 1;
+    const nextDtLine = d + 1 < dtHeaders.length ? dtHeaders[d + 1]!.index : lines.length;
+
+    // Search from heading to first component heading (spanning over the component table)
+    const firstCompLine = compHeaders.find(c => c.datatype === header.name)?.index ?? nextDtLine;
+    const endLine = Math.min(firstCompLine, nextDtLine);
+
+    const section = lines.slice(startLine, endLine);
+    const description = extractDescription(section);
+    if (description) {
+      // Last-match-wins: actual definition appears after TOC entry
+      datatypes.set(header.name, {
+        name: header.name,
+        longName: header.longName.replace(/\s*\(.*\)\s*$/, "").trim(),
+        description,
+      });
+    }
+  }
+
+  // Third pass: extract component descriptions using extractDescription()
+  for (let c = 0; c < compHeaders.length; c++) {
+    const header = compHeaders[c]!;
+    const startLine = header.index + 1;
+
+    // End at next component, next datatype, or 50 lines max
+    let endLine = Math.min(startLine + 50, lines.length);
+    if (c + 1 < compHeaders.length) {
+      endLine = Math.min(endLine, compHeaders[c + 1]!.index);
+    }
+    // Also end at next datatype heading
+    const nextDt = dtHeaders.find(d => d.index > header.index);
+    if (nextDt) endLine = Math.min(endLine, nextDt.index);
+
+    const section = lines.slice(startLine, endLine);
+    const description = extractDescription(section);
+    if (description) {
+      const key = `${header.datatype}.${header.position}`;
+      components.set(key, {
+        datatype: header.datatype,
+        position: header.position,
+        description,
+      });
+    }
+  }
+
+  return { datatypes, components };
+}
+
+function parseComponentTables(text: string): Map<string, PdfComponentTableField[]> {
+  const lines = text.split("\n");
+  const result = new Map<string, PdfComponentTableField[]>();
+
+  let i = 0;
+  while (i < lines.length) {
+    const titleMatch = lines[i]!.match(COMP_TABLE_TITLE_RE);
+    if (!titleMatch) { i++; continue; }
+
+    const dtName = titleMatch[1]!;
+    const isExample = /example/i.test(lines[i]!);
+    i++;
+
+    if (isExample || result.has(dtName)) {
+      i++;
+      continue;
+    }
+
+    // Find header row containing "SEQ" and "OPT"
+    let optColStart = -1;
+    let tblColStart = -1;
+    const headerLimit = Math.min(i + 5, lines.length);
+    for (; i < headerLimit; i++) {
+      const line = lines[i]!;
+      if (/\bSEQ\b/.test(line) && /\bOPT\b/.test(line)) {
+        optColStart = line.indexOf("OPT");
+        tblColStart = line.indexOf("TBL#");
+        i++;
+        break;
+      }
+    }
+
+    if (optColStart === -1) continue;
+
+    // Parse data rows
+    const fields: PdfComponentTableField[] = [];
+    for (; i < lines.length; i++) {
+      const line = lines[i]!;
+      const trimmed = line.trim();
+
+      if (!trimmed) continue;
+
+      // Recalibrate on repeated header after page break
+      if (/^\s*SEQ\b/.test(line) && /\bOPT\b/.test(line)) {
+        optColStart = line.indexOf("OPT");
+        tblColStart = line.indexOf("TBL#");
+        continue;
+      }
+
+      // Stop at next table title, section heading, or datatype heading
+      if (COMP_TABLE_TITLE_RE.test(trimmed)) break;
+      if (ATTR_TABLE_TITLE_RE.test(trimmed)) break;
+      if (DATATYPE_HEADING_RE.test(trimmed) && !trimmed.includes("....") && /[a-z]/.test(trimmed)) break;
+      if (COMPONENT_HEADING_RE.test(trimmed)) break;
+
+      // Data row: must start with SEQ digits and contain a component name
+      const seqMatch = trimmed.match(/^(\d{1,2})\s/);
+      if (!seqMatch) continue;
+
+      const position = parseInt(seqMatch[1]!, 10);
+
+      // Extract OPT by column position
+      const optSlice = line.slice(optColStart - 2, optColStart + 5).trim();
+      const usageToken = optSlice.split(/\s+/).find(t => VALID_USAGE_CODES.has(t));
+      if (!usageToken) continue;
+
+      // Extract TBL# by column position (if TBL# column exists in header)
+      let table: string | null = null;
+      if (tblColStart >= 0) {
+        const tblSlice = line.slice(tblColStart - 2, tblColStart + 8).trim();
+        const tblMatch = tblSlice.match(/\b(\d{4})\b/);
+        if (tblMatch) table = tblMatch[1]!;
+      }
+
+      fields.push({ datatype: dtName, position, optionality: usageToken, table });
+    }
+
+    if (fields.length > 0) {
+      result.set(dtName, fields);
+    }
+  }
+
+  return result;
+}
+
+async function findCh02aFile(pdfDir: string): Promise<string | null> {
+  const files = await readdir(pdfDir);
+  const ch02a = files.find(f => /CH0?2A/i.test(f) && f.endsWith(".pdf"));
+  return ch02a ? join(pdfDir, ch02a) : null;
+}
+
+export async function parsePdfDatatypeDescriptions(pdfDir: string): Promise<{
+  datatypes: Map<string, PdfDatatypeDescription>;
+  components: Map<string, PdfComponentDescription>;
+}> {
+  const pdfPath = await findCh02aFile(pdfDir);
+  if (!pdfPath) {
+    console.warn("Warning: CH02A PDF not found, datatype descriptions will be empty");
+    return { datatypes: new Map(), components: new Map() };
+  }
+
+  const cmd = await findPdfToText();
+  const text = stripPageNoise(await extractPdfText(pdfPath, cmd));
+  return parseDatatypeDescriptions(text);
+}
+
+export async function parsePdfComponentTables(pdfDir: string): Promise<Map<string, PdfComponentTableField[]>> {
+  const pdfPath = await findCh02aFile(pdfDir);
+  if (!pdfPath) {
+    console.warn("Warning: CH02A PDF not found, component tables will be empty");
+    return new Map();
+  }
+
+  const cmd = await findPdfToText();
+  const text = stripPageNoise(await extractPdfText(pdfPath, cmd, true));
+  return parseComponentTables(text);
 }
 
 export async function parsePdfDescriptions(pdfDir: string): Promise<{
