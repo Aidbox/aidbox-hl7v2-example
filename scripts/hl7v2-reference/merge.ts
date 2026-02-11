@@ -61,7 +61,7 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
       if (pdf.item && pdf.item !== xsd.item) {
         warnings.push(`${key}: item mismatch — XSD="${xsd.item}" PDF="${pdf.item}"`);
       }
-      if (pdf.dataType !== xsd.dataType) {
+      if (pdf.dataType && pdf.dataType !== xsd.dataType) {
         warnings.push(`${key}: dataType mismatch — XSD="${xsd.dataType}" PDF="${pdf.dataType}"`);
       }
     }

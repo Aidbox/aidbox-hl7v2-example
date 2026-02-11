@@ -2141,7 +2141,7 @@
         "maxLength": null,
         "optionality": "O",
         "table": null,
-        "description": "Internationalization usage for Germanic languages. This component is optional. An example of a <surname prefix> is the \"van\" in \"Ludwig van Beethoven\". Since the <surname prefix> doesn't sort completely alphabetically, it is reasonable to specify it as a separate subcomponent of the PN and extended PN data types (XPN and XCN). Note: and <surname from partner/spouse> decompose complex Germanic names such as “Martha de Mum-van Beethoven”. If these subcomponents are valued, the <surname> subcomponent should still be fully valued for backward compatibility, i.e., ^de Mum-van Beethoven&de&Mum&van&Beethoven^. Also, for clarity, the <last name prefix> has been renamed to <own surname prefix>.",
+        "description": "Internationalization usage for Germanic languages. This component is optional. An example of a <surname prefix> is the \"van\" in \"Ludwig van Beethoven\". Since the <surname prefix> doesn't sort completely alphabetically, it is reasonable to specify it as a separate subcomponent of the PN and extended PN data types (XPN and XCN). Note:",
         "deprecated": false
       },
       {
@@ -2163,7 +2163,7 @@
         "maxLength": null,
         "optionality": "O",
         "table": null,
-        "description": "Internationalization usage for Germanic languages. This component is optional. An example of a <surname prefix> is the “van” in \"Ludwig van Beethoven\". Since the <surname prefix> doesn't sort completely alphabetically, it is reasonable to specify it as a separate subcomponent of the PN and extended PN data types (XPN and XCN). Note: and <surname from partner/spouse> decompose complex Germanic names such as “Martha de Mum-van Beethoven”. If these subcomponents are valued, the <surname> subcomponent should still be fully valued for backward compatibility, i.e., ^de Mum-van Beethoven&de&Mum&van&Beethoven^.” Also, for clarity, the <last name prefix> has been renamed to <own surname prefix>.",
+        "description": "Internationalization usage for Germanic languages. This component is optional. An example of a <surname prefix> is the “van” in \"Ludwig van Beethoven\". Since the <surname prefix> doesn't sort completely alphabetically, it is reasonable to specify it as a separate subcomponent of the PN and extended PN data types (XPN and XCN). Note:",
         "deprecated": false
       },
       {
@@ -3962,7 +3962,7 @@
   },
   "SN": {
     "longName": "structured numeric",
-    "description": "The structured numeric data type is used to unambiguously express numeric clinical results along with qualifications. This enables receiving systems to store the components separately, and facilitates the use of numeric database queries. The corresponding sets of values indicated with the <comparator> and <separator/suffix> components are intended to be the authoritative and complete set of values. If additional values are needed for the <comparator> and If <num1> and <num2> are both non-null, then the separator/suffix must be non-null. If the separator is \"-\", the data range is inclusive; e.g., <num1> - <num2> defines a range of numbers x, such that: <num1> <=x<= <num2>.",
+    "description": "The structured numeric data type is used to unambiguously express numeric clinical results along with qualifications. This enables receiving systems to store the components separately, and facilitates the use of numeric database queries. The corresponding sets of values indicated with the <comparator> and <separator/suffix> components are intended to be the authoritative and complete set of values. If additional values are needed for the <comparator> and",
     "components": [
       {
         "component": "SN.1",
@@ -4411,7 +4411,7 @@
         "maxLength": null,
         "optionality": "O",
         "table": "0289",
-        "description": "A code that represents the county in which the specified address resides. User-defined Table 0289 - County/parish is used as the HL7 identifier for the user-defined table of values for this component. When this component is used to represent the county (or parish), component 8 designation> to represent the county is allowed only for the purpose of backward compatibility, and should be discouraged in this and future versions of HL7). Allowable values: codes defined by government.",
+        "description": "A code that represents the county in which the specified address resides. User-defined Table 0289 - County/parish is used as the HL7 identifier for the user-defined table of values for this component. When this component is used to represent the county (or parish), component 8 and should be discouraged in this and future versions of HL7). Allowable values: codes defined by government.",
         "deprecated": false
       },
       {

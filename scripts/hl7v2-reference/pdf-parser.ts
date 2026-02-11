@@ -59,15 +59,25 @@ function stripPageNoise(text: string): string {
     .join("\n");
 }
 
-// Matches field definition headers in two formats:
-// 1. "4.5.3.1 OBR-1 Set ID – OBR (SI) 00237" (section number on same line, with item number)
-// 2. "OBX-1 Set ID - OBX (SI) 00569" (section number was on previous line)
-// 3. "2.12.1.1 BHS-1 Batch Field Separator (ST)" (no item number — some v2.8.2 chapters)
+// Matches field definition headers — complete on one line:
+// 1. "4.5.3.1 OBR-1 Set ID – OBR (SI) 00237" (section number, datatype, item)
+// 2. "OBX-1 Set ID - OBX (SI) 00569" (no section number)
+// 3. "2.12.1.1 BHS-1 Batch Field Separator (ST)" (no item number)
 // Captures: segment, position, field name, dataType, item number (optional)
-const FIELD_HEADER_RE = /^(?:\d+[\.\d]*\s+)?(\w{2,3})-(\d+)\s+(.+?)\s+\((\w{2,7})\)(?:\s+(\d{5}))?\s*$/;
+const FIELD_HEADER_RE = /^(?:\d+[A-Z]?[\.\d]*\s+)?(\w{2,3})-(\d+)\s+(.+?)\s+\((\w{2,7})\)(?:\s+(\d{5}))?\s*$/;
 
-// Matches "Definition:" marker at start of line
-const DEFINITION_RE = /^Definition:\s*/;
+// Matches field headers where the datatype is on a SUBSEQUENT line:
+// "RXV-1 Set ID"            ← bare header (no datatype)
+// "OM1-7 Other Service/..."  ← name may continue on next line(s)
+// Then a later line has "(SI) 03318" or "(CWE) 00592"
+// Captures: segment, position, field name start
+const BARE_FIELD_HEADER_RE = /^(?:\d+[A-Z]?[\.\d]*\s+)?(\w{2,3})-(\d+)\s+(.+?)\s*$/;
+
+// Matches a standalone "(DT) NNNNN" or "(DT)" line (datatype + optional item)
+const DEFERRED_DT_RE = /^\((\w{2,7})\)(?:\s+(\d{5}))?\s*$/;
+
+// Matches "Definition:" or "Description:" marker at start of line
+const DEFINITION_RE = /^(?:Definition|Description):\s*/;
 
 // Matches Components/Subcomponents blocks to skip
 const COMPONENTS_RE = /^(?:Components:|Subcomponents\s)/;
@@ -80,6 +90,7 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
   const headers: { index: number; segment: string; position: number; item: string; dataType: string; longName: string }[] = [];
 
   for (let i = 0; i < lines.length; i++) {
+    // Try complete single-line match first
     const match = lines[i]!.match(FIELD_HEADER_RE);
     if (match) {
       headers.push({
@@ -90,6 +101,97 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
         dataType: match[4]!,
         longName: match[3]!.trim().replace(/\s*[-\u2013]\s*\w{2,3}\s*$/, ""), // strip trailing "– SEG"
       });
+      continue;
+    }
+
+    // Try bare header (no datatype on this line)
+    const bareMatch = lines[i]!.trim().match(BARE_FIELD_HEADER_RE);
+    if (!bareMatch) continue;
+
+    const seg = bareMatch[1]!;
+    const pos = bareMatch[2]!;
+    let longNameParts = [bareMatch[3]!];
+
+    // Must look like a real segment code
+    if (!/^[A-Z][A-Z0-9]{1,2}$/.test(seg)) continue;
+    // The field name should start with an uppercase letter (not lowercase text or digits,
+    // which would indicate an inline reference like "RXE-33 and RXE-34 as:")
+    if (!/^[A-Z]/.test(bareMatch[3]!.trim())) continue;
+
+    // Look ahead up to 6 lines for (DT) or continuation of the field name ending with (DT)
+    let dataType = "";
+    let item = "";
+    let resolvedLine = i;
+    for (let j = i + 1; j <= Math.min(i + 6, lines.length - 1); j++) {
+      const ahead = lines[j]!.trim();
+      if (!ahead) continue; // skip blank lines
+
+      // Check for standalone "(DT) NNNNN"
+      const dtMatch = ahead.match(DEFERRED_DT_RE);
+      if (dtMatch) {
+        dataType = dtMatch[1]!;
+        item = dtMatch[2] ? dtMatch[2].padStart(5, "0") : "";
+        resolvedLine = j;
+        break;
+      }
+
+      // Check for continuation line that ends with "(DT) NNNNN" (multi-line field name)
+      const contMatch = ahead.match(/^(.+?)\s+\((\w{2,7})\)(?:\s+(\d{5}))?\s*$/);
+      if (contMatch) {
+        longNameParts.push(contMatch[1]!);
+        dataType = contMatch[2]!;
+        item = contMatch[3] ? contMatch[3].padStart(5, "0") : "";
+        resolvedLine = j;
+        break;
+      }
+
+      // Stop lookahead at structural elements
+      if (DEFINITION_RE.test(ahead)) break;
+      if (COMPONENTS_RE.test(ahead)) break;
+      if (/^Attention:/.test(ahead)) break;
+      if (ATTRIBUTE_TABLE_RE.test(ahead)) break;
+
+      // Could be a name continuation line (e.g., "Observation (CWE) 00592")
+      // If it doesn't match, it might be just a wrapped name part — but only
+      // if it doesn't look like a section number or another field header
+      if (/^(\w{2,3})-\d+\s/.test(ahead)) break; // another field header
+      if (/^\d+[\.\d]*\s*$/.test(ahead)) break;   // bare section number (don't consume)
+    }
+
+    const longName = longNameParts.join(" ").trim().replace(/\s*[-\u2013]\s*\w{2,3}\s*$/, "");
+
+    // Accept the header: with resolved datatype OR as a field without inline datatype
+    if (dataType) {
+      headers.push({
+        index: i,
+        segment: seg,
+        position: parseInt(pos, 10),
+        item,
+        dataType,
+        longName,
+      });
+      // Skip past the resolved DT line to avoid re-matching
+      i = resolvedLine;
+    } else {
+      // No datatype found — accept if we see a structural marker confirming this is
+      // a real field header (Definition:, Attention:, or Components:)
+      let isRealField = false;
+      for (let j = i + 1; j <= Math.min(i + 4, lines.length - 1); j++) {
+        const ahead = lines[j]!.trim();
+        if (!ahead) continue;
+        if (/^(Definition:|Attention:|Components:)/.test(ahead)) { isRealField = true; }
+        break;
+      }
+      if (isRealField) {
+        headers.push({
+          index: i,
+          segment: seg,
+          position: parseInt(pos, 10),
+          item: "",
+          dataType: "",
+          longName,
+        });
+      }
     }
   }
 
@@ -118,7 +220,7 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
 }
 
 const MAX_DESCRIPTION_LENGTH = 4000;
-const SECTION_HEADING_RE = /^\d+\.\d+(?:\.\d+)*\s+[A-Z]/;
+const SECTION_HEADING_RE = /^\d+[A-Z]?\.\d+(?:\.\d+)*\s+[A-Z]/;
 
 export function extractDescription(sectionLines: string[]): string | null {
   let inComponents = false;
@@ -145,18 +247,29 @@ export function extractDescription(sectionLines: string[]): string | null {
       if (SEGMENT_HEADING_RE.test(trimmed) && !trimmed.includes("....")) break;
       if (/^Examples?:/i.test(trimmed)) break;
       if (/^2\.A\.[\d.]+\s+/.test(trimmed)) break;
+      // Bare section number on its own line (e.g., "8.8.9.2") — stop if we already
+      // have description content, otherwise skip (it's noise between Definition: and text)
+      if (/^\d+[A-Z]?(?:\.\d+){2,}\s*$/.test(trimmed)) {
+        if (descriptionParts.length > 0) break;
+        continue;
+      }
+      // Bare 5-digit item number on its own line (e.g., "00587")
+      if (/^\d{5}\s*$/.test(trimmed)) continue;
     }
 
-    // Skip component listings
+    // Skip component listings (multi-line blocks with <Type (DT)> ^ ... patterns)
     if (COMPONENTS_RE.test(trimmed) || trimmed.startsWith("<") || trimmed.startsWith("&")) {
       inComponents = true;
       inPreamble = false;
       continue;
     }
-    if (inComponents && (trimmed.startsWith("<") || trimmed.startsWith("&") || trimmed.startsWith("("))) {
-      continue;
+    if (inComponents) {
+      // Continuation of component listing: contains angle brackets or ^ separators
+      if (/[<>]/.test(trimmed) || /\^/.test(trimmed) || trimmed.startsWith("(")) {
+        continue;
+      }
+      inComponents = false;
     }
-    inComponents = false;
 
     // Before Definition: is found, capture known preamble blocks (Attention:, Note:)
     if (!definitionFound && !inComponents) {
