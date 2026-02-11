@@ -176,6 +176,7 @@ export async function convertOBXToObservationResolving(
     errors.push(obxResult.error);
   }
 
+  // TODO refactor: probably, it should happen inside convertOBXWithMappingSupportAsync, because it already returns an object with an error field
   // Try LOINC code resolution
   let loincResolution: Awaited<ReturnType<typeof resolveToLoinc>> | undefined;
   try {

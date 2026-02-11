@@ -408,16 +408,19 @@ describe("composeMappingTask", () => {
   test("generates deterministic task ID including mapping type", () => {
     const error1: MappingError = {
       localCode: "TEST",
+      localDisplay: "Test code",
       localSystem: "LOCAL",
       mappingType: "observation-code-loinc",
     };
     const error2: MappingError = {
       localCode: "TEST",
+      localDisplay: "Test code",
       localSystem: "LOCAL",
       mappingType: "observation-code-loinc",
     };
     const error3: MappingError = {
       localCode: "TEST",
+      localDisplay: "Test code",
       localSystem: "LOCAL",
       mappingType: "obr-status",
     };
@@ -433,12 +436,11 @@ describe("composeMappingTask", () => {
     expect(task1.id).not.toBe(task3.id);
   });
 
-  test("omits optional fields when not provided", () => {
+  test("omits Local display input when localDisplay is not provided", () => {
     const error: MappingError = {
       localCode: "TEST",
       localSystem: "LOCAL",
       mappingType: "observation-code-loinc",
-      // No localDisplay
     };
     const task = composeMappingTask(sender, error);
 
@@ -453,6 +455,7 @@ describe("composeMappingTask", () => {
   test("includes authoredOn and lastModified timestamps", () => {
     const error: MappingError = {
       localCode: "TEST",
+      localDisplay: "Test code",
       localSystem: "LOCAL",
       mappingType: "observation-code-loinc",
     };
@@ -466,6 +469,7 @@ describe("composeMappingTask", () => {
   test("sets requester and owner", () => {
     const error: MappingError = {
       localCode: "TEST",
+      localDisplay: "Test code",
       localSystem: "LOCAL",
       mappingType: "observation-code-loinc",
     };

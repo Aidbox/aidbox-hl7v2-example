@@ -18,14 +18,16 @@ Edit `src/code-mapping/mapping-types.ts`:
 export const MAPPING_TYPES = {
   // ... existing types
   "new-type": {
-    taskCode: "new-type-mapping",              // Unique code for Task.code
-    taskDisplay: "Description for UI",          // Human-readable name
-    targetSystem: "http://hl7.org/fhir/...",   // FHIR code system URI
-    sourceFieldLabel: "XXX.N",                  // HL7v2 field (for display)
-    targetFieldLabel: "Resource.field",         // FHIR field (for display)
+    source: { segment: "XXX", field: N },       // HL7v2 segment and field position
+    target: { resource: "Resource", field: "field" }, // FHIR resource and field path
+    targetSystem: "http://hl7.org/fhir/...",    // FHIR code system URI
   },
 };
 ```
+
+Display labels are derived automatically from structured metadata:
+- Source label (e.g., `"XXX-N"`) via `sourceLabel(config)`
+- Target label (e.g., `"Resource.field"`) via `targetLabel(config)`
 
 The mapping type name (key) is used to generate the ConceptMap ID:
 `hl7v2-{sendingApplication}-{sendingFacility}-{mappingType}`
@@ -65,6 +67,7 @@ function convertField(value: string): string | MappingError {
   if (!mapped) {
     return {
       localCode: value,
+      localDisplay: `XXX-N: ${value}`,  // Optional — shown in mapping task UI
       localSystem: "http://terminology.hl7.org/CodeSystem/v2-xxxx",
       mappingType: "new-type",
     };
@@ -84,10 +87,9 @@ The filter tabs update automatically from the registry. However, you may need to
 
 The system uses fail-fast validation throughout the mapping pipeline:
 
-1. **Task Code Lookup**: `getMappingType(taskCode)` throws if the task code is not in the registry
-2. **Type Name Lookup**: `getMappingTypeOrFail(typeName)` throws if the type name is not valid
-3. **Mapping Task Creation**: `createMappingTask()` throws if `localSystem` is missing
-4. **Task ID Generation**: `generateMappingTaskId()` throws if `localSystem` or `localCode` is empty
+1. **Type Name Lookup**: `getMappingTypeOrFail(typeName)` throws if the type name is not in the registry
+2. **Mapping Task Creation**: `createMappingTask()` throws if `localSystem` is missing
+3. **Task ID Generation**: `generateMappingTaskId()` throws if `localSystem` or `localCode` is empty
 
 This ensures that:
 - Configuration errors are caught immediately during development
@@ -96,7 +98,7 @@ This ensures that:
 
 If you add a new mapping type but forget to add it to the registry, you'll get a clear error like:
 ```
-Unknown mapping type: new-type. Valid types: loinc, patient-class, obr-status, obx-status
+Unknown mapping type: new-type. Valid types: observation-code-loinc, patient-class, obr-status, obx-status
 ```
 
 ## See Also

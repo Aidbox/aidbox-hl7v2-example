@@ -41,9 +41,9 @@ Rejected options (why):
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `src/code-mapping/mapping-types.ts` | Rewrite | Replace string labels with structured metadata (`source`, `target`). Remove `taskDisplay`, `sourceFieldLabel`, `targetFieldLabel`. Add derivation helpers (`sourceLabel`, `targetLabel`, `taskDisplay`). |
+| `src/code-mapping/mapping-types.ts` | Rewrite | Replace string labels with structured metadata (`source`, `target`). Remove `taskDisplay`, `sourceFieldLabel`, `targetFieldLabel`. Add derivation helpers (`sourceLabel`, `targetLabel`). |
 | `src/code-mapping/mapping-errors.ts` | Modify | Remove `sourceFieldLabel`/`targetFieldLabel` from `MappingError`. |
-| `src/code-mapping/mapping-task/compose.ts` | Modify | Stop persisting labels to Task.input. Build `Task.code.text` and `Task.code.coding[0].display` using derivation helpers. |
+| `src/code-mapping/mapping-task/compose.ts` | Modify | Stop persisting labels to Task.input. Add `taskDisplay()` helper. Build `Task.code.text` and `Task.code.coding[0].display` using derivation helpers. |
 | `src/code-mapping/concept-map/service.ts` | Modify | Replace `type.targetFieldLabel` with `targetLabel(type)` for ConceptMap naming. |
 | `src/ui/pages/mapping-tasks.ts` | Modify | Replace Task.input label reads with derivation helpers via `getTaskMappingType()`. Replace `typeConfig.targetFieldLabel` with `targetLabel(typeConfig)`. Replace `taskDisplay` usage in `getMappingTypeFilterDisplay()`. |
 | `src/ui/pages/code-mappings.ts` | Modify | Replace `MAPPING_TYPES[mappingType].targetFieldLabel` with `targetLabel(...)` in form labels. |
@@ -94,20 +94,24 @@ export const MAPPING_TYPES = {
 
 ### Derivation Helpers
 
-Exported from `mapping-types.ts`. All display strings are computed, never stored:
+All display strings are computed, never stored. `sourceLabel()` and `targetLabel()` are exported from `mapping-types.ts` (general-purpose label derivation). `taskDisplay()` is exported from `mapping-task/compose.ts` (task-specific display logic):
 
 ```typescript
+// mapping-types.ts
+
 /** "OBX-3", "PV1-2" — HL7v2 dash convention */
 export function sourceLabel(config: MappingTypeConfig): string {
   return `${config.source.segment}-${config.source.field}`;
 }
 
-/** "Observation.code", "Encounter.hospitalization.admitSource" */
+/** "Observation.code", "Encounter.class" */
 export function targetLabel(config: MappingTypeConfig): string {
   return `${config.target.resource}.${config.target.field}`;
 }
 
-/** "Observation.code mapping" */
+// mapping-task/compose.ts
+
+/** "Observation.code mapping" — for Task.code.coding.display */
 export function taskDisplay(config: MappingTypeConfig): string {
   return `${targetLabel(config)} mapping`;
 }
@@ -481,11 +485,11 @@ Update all integration test files to match the new Task structure (no Source/Tar
 
 ## Task 4: Update documentation
 
-- [ ] **docs/developer-guide/how-to/adding-mapping-type.md**: Replace the MAPPING_TYPES example to show the new structured format (`source: { segment, field }`, `target: { resource, field }`, `targetSystem`)
-- [ ] **adding-mapping-type.md**: Remove references to `taskCode`, `taskDisplay`, `sourceFieldLabel`, `targetFieldLabel` as fields to add
-- [ ] **adding-mapping-type.md**: Update the converter example to show `MappingError` without label fields
-- [ ] **adding-mapping-type.md**: Mention that display labels are derived automatically from structured metadata
-- [ ] Run `bun run typecheck` — must pass before next task
+- [x] **docs/developer-guide/how-to/adding-mapping-type.md**: Replace the MAPPING_TYPES example to show the new structured format (`source: { segment, field }`, `target: { resource, field }`, `targetSystem`)
+- [x] **adding-mapping-type.md**: Remove references to `taskCode`, `taskDisplay`, `sourceFieldLabel`, `targetFieldLabel` as fields to add
+- [x] **adding-mapping-type.md**: Update the converter example to show `MappingError` without label fields
+- [x] **adding-mapping-type.md**: Mention that display labels are derived automatically from structured metadata
+- [x] Run `bun run typecheck` — must pass before next task
 
 ---
 
