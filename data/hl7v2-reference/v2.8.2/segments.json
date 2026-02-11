@@ -9448,8 +9448,8 @@
     ]
   },
   "OBX": {
-    "longName": "Observation Segment Usage",
-    "description": "The OBX segment is documented in its entirety in Chapter 7. Its usage as it applies to Medical Records/ Information Management is documented here for clarity. NOTE: The attribute table definition for the OBX Segment has been removed as of 2.8. The reader is directed to the Chapter 7. Specialized usage: Observation Identifier/Observation Sub-ID have been used as optional fields that are not required in unstructured text where the nature of the document has been identified in TXA-2-Document type, which is a required field, but is expressly allowed in the richer structured documentation. An example includes cases where anatomic reports may have separate OBXs for gross examination, microscopic examination, clinical impression, and final diagnosis. Another possible use includes imbedding non-textual observations within textual reports. 9.7.3",
+    "longName": "Observation/Result",
+    "description": "The OBX segment is used to transmit a single observation or observation fragment. It represents the smallest indivisible unit of a report. The OBX segment can also contain encapsulated data, e.g., a CDA document or a DICOM image. Its principal mission is to carry information about observations in report messages. But the OBX can also be part of an observation order (see Chapter 4, section 4.4, \"General Trigger Events & Message Definitions\"). In this case, the OBX carries clinical information needed by the filler to interpret the observation the filler makes. For example, an OBX is needed to report the inspired oxygen on an order for a blood oxygen to a blood gas lab, or to report the menstrual phase information which should be included on an order for a pap smear to a cytology lab. Appendix 7A includes codes for identifying many of pieces of information needed by observation producing services to properly interpret a test result. OBX is also found in other HL7 messages that need to include patient clinical information.",
     "fields": [
       {
         "field": "OBX.1",

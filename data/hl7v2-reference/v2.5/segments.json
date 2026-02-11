@@ -7570,8 +7570,8 @@
     ]
   },
   "OBX": {
-    "longName": "Observation Segment Usage",
-    "description": "The OBX segment is documented in its entirety in Chapter 7. Its usage as it applies to Medical Records/ Information Management is documented here for clarity.",
+    "longName": "Observation/Result",
+    "description": "The OBX segment is used to transmit a single observation or observation fragment. It represents the smallest indivisible unit of a report. The OBX segment can also contain encapsulated data, e.g., a CDA document or a DICOM image. Its principal mission is to carry information about observations in report messages. But the OBX can also be part of an observation order (see Section 4.4, “Order Message Definitions”). In this case, the OBX carries clinical information needed by the filler to interpret the observation the filler makes. For example, an OBX is needed to report the inspired oxygen on an order for a blood oxygen to a blood gas lab, or to report the menstrual phase information which should be included on an order for a pap smear to a cytology lab. Appendix 7A includes codes for identifying many of pieces of information needed by observation producing services to properly interpret a test result. OBX is also found in other HL7 messages that need to include patient clinical information.",
     "fields": [
       {
         "field": "OBX.1",

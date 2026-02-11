@@ -903,6 +903,24 @@ export async function parsePdfComponentTables(pdfDir: string, cmd: string[]): Pr
   return parseComponentTables(text);
 }
 
+/** Detect descriptions that are TOC listings, overview sections, or cross-references. */
+function isLowQualitySegmentDescription(desc: string): boolean {
+  // Starts with a section number like "5.3 ..." (TOC entry)
+  if (/^\d+[\.\d]*\s/.test(desc)) return true;
+  // Cross-reference: "documented in ... Chapter", "moved to Chapter"
+  if (/documented in .{0,30}Chapter/i.test(desc)) return true;
+  if (/moved to Chapter/i.test(desc)) return true;
+  // Overview listing: multiple segment codes (e.g., "NK1 - Next of kin ... PV1 - ...")
+  const segRefs = desc.match(/\b[A-Z][A-Z0-9]{1,2}\s*[-\u2013]\s+[A-Z]/g);
+  if (segRefs && segRefs.length > 1) return true;
+  // Repeated structural keywords from chapter intros
+  if ((desc.match(/Segment Definition/gi) || []).length > 1) return true;
+  if ((desc.match(/Static Definition/gi) || []).length > 1) return true;
+  // Table listings: multiple "Table NNNN" references
+  if ((desc.match(/\bTable\s+\d{4}\b/g) || []).length > 2) return true;
+  return false;
+}
+
 export async function parsePdfDescriptions(pdfDir: string, cmd: string[]): Promise<{
   fields: Map<string, PdfFieldDescription>;
   segments: Map<string, PdfSegmentDescription>;
@@ -928,16 +946,15 @@ export async function parsePdfDescriptions(pdfDir: string, cmd: string[]): Promi
       if (!existing) {
         allSegments.set(key, value);
       } else {
-        // Prefer descriptions that look like actual prose over TOC listings.
-        // TOC descriptions typically start with section numbers like "5.3 PID..."
-        const existingIsToc = /^\d+[\.\d]*\s/.test(existing.description);
-        const newIsToc = /^\d+[\.\d]*\s/.test(value.description);
-        if (existingIsToc && !newIsToc) {
+        const existingIsLow = isLowQualitySegmentDescription(existing.description);
+        const newIsLow = isLowQualitySegmentDescription(value.description);
+        if (existingIsLow && !newIsLow) {
           allSegments.set(key, value);
-        } else if (!existingIsToc && newIsToc) {
+        } else if (!existingIsLow && newIsLow) {
           // Keep existing (it's better)
         } else {
-          // Both are same quality — prefer the one from the defining chapter (later file)
+          // Both are same quality — last-match-wins (later chapters
+          // typically contain the actual segment definition section).
           allSegments.set(key, value);
         }
       }
