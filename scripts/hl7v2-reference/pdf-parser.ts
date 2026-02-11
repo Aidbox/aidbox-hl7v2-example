@@ -6,7 +6,7 @@ function shellEscape(s: string): string {
   return "'" + s.replace(/'/g, "'\\''") + "'";
 }
 
-async function findPdfToText(): Promise<string[]> {
+export async function findPdfToText(): Promise<string[]> {
   // Check if pdftotext is directly available
   const direct = Bun.spawnSync(["which", "pdftotext"]);
   if (direct.exitCode === 0) return ["pdftotext"];
@@ -504,8 +504,7 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
   return result;
 }
 
-export async function parsePdfAttributeTables(pdfDir: string): Promise<Map<string, PdfAttributeTableField[]>> {
-  const cmd = await findPdfToText();
+export async function parsePdfAttributeTables(pdfDir: string, cmd: string[]): Promise<Map<string, PdfAttributeTableField[]>> {
   const files = await readdir(pdfDir);
   const chapterFiles = files.filter(f => /CH\d+/i.test(f) && f.endsWith(".pdf")).sort();
 
@@ -745,7 +744,7 @@ async function findCh02aFile(pdfDir: string): Promise<string | null> {
   return ch02a ? join(pdfDir, ch02a) : null;
 }
 
-export async function parsePdfDatatypeDescriptions(pdfDir: string): Promise<{
+export async function parsePdfDatatypeDescriptions(pdfDir: string, cmd: string[]): Promise<{
   datatypes: Map<string, PdfDatatypeDescription>;
   components: Map<string, PdfComponentDescription>;
   deprecatedComponents: Map<string, PdfDeprecatedComponent>;
@@ -756,28 +755,25 @@ export async function parsePdfDatatypeDescriptions(pdfDir: string): Promise<{
     return { datatypes: new Map(), components: new Map(), deprecatedComponents: new Map() };
   }
 
-  const cmd = await findPdfToText();
   const text = stripPageNoise(await extractPdfText(pdfPath, cmd));
   return parseDatatypeDescriptions(text);
 }
 
-export async function parsePdfComponentTables(pdfDir: string): Promise<Map<string, PdfComponentTableField[]>> {
+export async function parsePdfComponentTables(pdfDir: string, cmd: string[]): Promise<Map<string, PdfComponentTableField[]>> {
   const pdfPath = await findCh02aFile(pdfDir);
   if (!pdfPath) {
     console.warn("Warning: CH02A PDF not found, component tables will be empty");
     return new Map();
   }
 
-  const cmd = await findPdfToText();
   const text = stripPageNoise(await extractPdfText(pdfPath, cmd, true));
   return parseComponentTables(text);
 }
 
-export async function parsePdfDescriptions(pdfDir: string): Promise<{
+export async function parsePdfDescriptions(pdfDir: string, cmd: string[]): Promise<{
   fields: Map<string, PdfFieldDescription>;
   segments: Map<string, PdfSegmentDescription>;
 }> {
-  const cmd = await findPdfToText();
   const files = await readdir(pdfDir);
   const chapterFiles = files.filter(f => /CH\d+/i.test(f) && f.endsWith(".pdf")).sort();
 
@@ -818,8 +814,7 @@ export async function parsePdfDescriptions(pdfDir: string): Promise<{
   return { fields: allFields, segments: allSegments };
 }
 
-export async function parsePdfTables(pdfDir: string): Promise<Map<string, PdfTable>> {
-  const cmd = await findPdfToText();
+export async function parsePdfTables(pdfDir: string, cmd: string[]): Promise<Map<string, PdfTable>> {
   const files = await readdir(pdfDir);
   const appendixA = files.find(f => /Appendix[_\s]?A/i.test(f) && f.endsWith(".pdf"));
 

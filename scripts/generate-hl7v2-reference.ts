@@ -15,7 +15,7 @@
 
 import { parseArgs } from "node:util";
 import { parseXsdFields, parseXsdSegments, parseXsdDatatypes, parseXsdMessages } from "./hl7v2-reference/xsd-parser";
-import { parsePdfDescriptions, parsePdfTables, parsePdfAttributeTables, parsePdfDatatypeDescriptions, parsePdfComponentTables } from "./hl7v2-reference/pdf-parser";
+import { findPdfToText, parsePdfDescriptions, parsePdfTables, parsePdfAttributeTables, parsePdfDatatypeDescriptions, parsePdfComponentTables } from "./hl7v2-reference/pdf-parser";
 import { mergeAndWrite } from "./hl7v2-reference/merge";
 
 const { values } = parseArgs({
@@ -60,6 +60,7 @@ console.log();
 
 // Phase 2: Parse PDF
 console.log("Phase 2: Parsing PDF specifications...");
+const pdfToTextCmd = await findPdfToText();
 const [
   { fields: pdfFields, segments: pdfSegments },
   pdfTables,
@@ -67,11 +68,11 @@ const [
   { datatypes: pdfDatatypeDescs, components: pdfComponentDescs, deprecatedComponents: pdfDeprecatedComponents },
   pdfComponentTables,
 ] = await Promise.all([
-  parsePdfDescriptions(pdfDir),
-  parsePdfTables(pdfDir),
-  parsePdfAttributeTables(pdfDir),
-  parsePdfDatatypeDescriptions(pdfDir),
-  parsePdfComponentTables(pdfDir),
+  parsePdfDescriptions(pdfDir, pdfToTextCmd),
+  parsePdfTables(pdfDir, pdfToTextCmd),
+  parsePdfAttributeTables(pdfDir, pdfToTextCmd),
+  parsePdfDatatypeDescriptions(pdfDir, pdfToTextCmd),
+  parsePdfComponentTables(pdfDir, pdfToTextCmd),
 ]);
 console.log(`  Field descriptions:     ${pdfFields.size}`);
 console.log(`  Segment descriptions:   ${pdfSegments.size}`);
