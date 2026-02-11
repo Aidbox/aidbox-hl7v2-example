@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 reviewer-iterations: 0
 prototype-files:
   - src/code-mapping/mapping-errors.ts
@@ -495,10 +495,10 @@ Update all integration test files to match the new Task structure (no Source/Tar
 
 ## Task 5: Cleanup design artifacts
 
-- [ ] Remove all `DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md` comments from codebase (files: `mapping-errors.ts`, `compose.ts`, `mapping-tasks.ts`, `oru-r01.ts`, `obx-observation.ts`, `obr-diagnosticreport.ts`, `pv1-encounter.ts`)
-- [ ] Update design document frontmatter status to `implemented`
-- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis" src/`
-- [ ] Run `bun test:all` and `bun run typecheck` — final verification
+- [x] Remove all `DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md` comments from codebase (files: `mapping-errors.ts`, `compose.ts`, `mapping-tasks.ts`, `oru-r01.ts`, `obx-observation.ts`, `obr-diagnosticreport.ts`, `pv1-encounter.ts`) — already removed during Tasks 1-4
+- [x] Update design document frontmatter status to `implemented`
+- [x] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis" src/` — confirmed zero matches
+- [x] Run `bun test:all` and `bun run typecheck` — final verification: typecheck OK, unit 1280/1280, integration 155/155
 
 ---
 
