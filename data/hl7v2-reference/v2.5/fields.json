@@ -10577,7 +10577,7 @@
     "longName": "Report Display Order",
     "maxLength": 20,
     "table": null,
-    "description": "This field contains an optional string that defines the sort order in which this observation is presented in a standard report or display that contains the many observations. 8.8.8.21 00606 OM1-21 Date/Time Stamp For Any Change In Definition For The Observation (TS) This field contains the date and time that the last of any field change was made and in the host’s record corresponding to the OM1 segment."
+    "description": "This field contains an optional string that defines the sort order in which this observation is presented in a standard report or display that contains the many observations. 8.8.8.21 00606"
   },
   "OM1.21": {
     "segment": "OM1",
@@ -10587,7 +10587,7 @@
     "longName": "Date/Time Stamp for any change in Definition for the Observation",
     "maxLength": 26,
     "table": null,
-    "description": null
+    "description": "This field contains the date and time that the last of any field change was made and in the host’s record corresponding to the OM1 segment."
   },
   "OM1.22": {
     "segment": "OM1",
@@ -10897,7 +10897,7 @@
     "longName": "SI Conversion Factor",
     "maxLength": 60,
     "table": null,
-    "description": "This field contains the continuous, numerically valued tests/observations, with a nature code of A or C (see OM1-18 - Nature of Service/Test/Observation). This is a factor for converting the customary units to SI units. In the case that the observation units are not SI units, this field provides the formula needed to convert from the reported units to SI units, this shall include the equation needed to convert from the reporting to the SI units. In the case that the relation is simply multiplicative, this field shall include only the conversion factor. For example., if (results SI units) = c * (results reporting units),then only c would be stored in this field. In the case of any other functional relationship, the entire equation would be stored as a test. 8.8.9.6 00631 OM2-6 Reference (Normal) Range For Ordinal And Continuous Observations (RFR) This field contains the reference (normal) ranges for \"numeric\" observations/tests with a nature code of A or C (see OM1-18 - Nature of Service/Test/Observation). It can identify different reference (normal) ranges for different categories of patients according to age, sex, race, and other conditions. In the first component of this field (Normal Range (NR)), the units are assumed to be identical to the reporting units given in OM2-2 - Units of Measure. When two different methods result in two different reference ranges, two different observations and corresponding OMx segments should be defined."
+    "description": "This field contains the continuous, numerically valued tests/observations, with a nature code of A or C (see OM1-18 - Nature of Service/Test/Observation). This is a factor for converting the customary units to SI units. In the case that the observation units are not SI units, this field provides the formula needed to convert from the reported units to SI units, this shall include the equation needed to convert from the reporting to the SI units. In the case that the relation is simply multiplicative, this field shall include only the conversion factor. For example., if (results SI units) = c * (results reporting units),then only c would be stored in this field. In the case of any other functional relationship, the entire equation would be stored as a test. 8.8.9.6 00631"
   },
   "OM2.6": {
     "segment": "OM2",
@@ -10907,7 +10907,7 @@
     "longName": "Reference (Normal) Range - Ordinal and Continuous Observations",
     "maxLength": 250,
     "table": null,
-    "description": null
+    "description": "This field contains the reference (normal) ranges for \"numeric\" observations/tests with a nature code of A or C (see OM1-18 - Nature of Service/Test/Observation). It can identify different reference (normal) ranges for different categories of patients according to age, sex, race, and other conditions. In the first component of this field (Normal Range (NR)), the units are assumed to be identical to the reporting units given in OM2-2 - Units of Measure. When two different methods result in two different reference ranges, two different observations and corresponding OMx segments should be defined."
   },
   "OM2.7": {
     "segment": "OM2",

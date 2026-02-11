@@ -209,7 +209,7 @@
         "position": 1,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -222,105 +222,105 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "ADJ.2",
         "position": 2,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "ADJ.3",
         "position": 3,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "ADJ.4",
         "position": 4,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "ADJ.5",
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 5,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "ADJ.6",
         "position": 6,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "ADJ.7",
         "position": 7,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "ADJ.8",
         "position": 8,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "ADJ.9",
         "position": 9,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "ADJ.10",
         "position": 10,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "ADJ.11",
         "position": 11,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "ADJ.12",
         "position": 12,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "ADJ.13",
         "position": 13,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "ADJ.14",
         "position": 14,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "ADJ.15",
         "position": 15,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -2728,14 +2728,14 @@
         "position": 4,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": "R"
+        "optionality": "X"
       },
       {
         "field": "CSR.5",
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": "O"
+        "optionality": "X"
       },
       {
         "field": "CSR.6",
@@ -6036,7 +6036,7 @@
         "position": 49,
         "minOccurs": 0,
         "maxOccurs": "unbounded",
-        "optionality": "O"
+        "optionality": "X"
       },
       {
         "field": "IN1.50",
@@ -7004,56 +7004,56 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IPR.2",
         "position": 2,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IPR.3",
         "position": 3,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IPR.4",
         "position": 4,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IPR.5",
         "position": 5,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IPR.6",
         "position": 6,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IPR.7",
         "position": 7,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IPR.8",
         "position": 8,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       }
     ]
   },
@@ -7330,210 +7330,210 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IVC.2",
         "position": 2,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.3",
         "position": 3,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.4",
         "position": 4,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IVC.5",
         "position": 5,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IVC.6",
         "position": 6,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IVC.7",
         "position": 7,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IVC.8",
         "position": 8,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IVC.9",
         "position": 9,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.10",
         "position": 10,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IVC.11",
         "position": 11,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IVC.12",
         "position": 12,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.13",
         "position": 13,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.14",
         "position": 14,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.15",
         "position": 15,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.16",
         "position": 16,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.17",
         "position": 17,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.18",
         "position": 18,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.19",
         "position": 19,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.20",
         "position": 20,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.21",
         "position": 21,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.22",
         "position": 22,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.23",
         "position": 23,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "IVC.24",
         "position": 24,
         "minOccurs": 0,
         "maxOccurs": "unbounded",
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.25",
         "position": 25,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "IVC.26",
         "position": 26,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.27",
         "position": 27,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.28",
         "position": 28,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.29",
         "position": 29,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "IVC.30",
         "position": 30,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -8505,7 +8505,7 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       }
     ]
   },
@@ -8865,63 +8865,63 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "NSC.2",
         "position": 2,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NSC.3",
         "position": 3,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NSC.4",
         "position": 4,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NSC.5",
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NSC.6",
         "position": 6,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NSC.7",
         "position": 7,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NSC.8",
         "position": 8,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NSC.9",
         "position": 9,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -8934,105 +8934,105 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "NST.2",
         "position": 2,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.3",
         "position": 3,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.4",
         "position": 4,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.5",
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.6",
         "position": 6,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.7",
         "position": 7,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.8",
         "position": 8,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.9",
         "position": 9,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.10",
         "position": 10,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.11",
         "position": 11,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.12",
         "position": 12,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.13",
         "position": 13,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.14",
         "position": 14,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "NST.15",
         "position": 15,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -9950,7 +9950,7 @@
         "position": 32,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": "O"
+        "optionality": "X"
       },
       {
         "field": "OM1.33",
@@ -9971,7 +9971,7 @@
         "position": 35,
         "minOccurs": 0,
         "maxOccurs": "unbounded",
-        "optionality": "O"
+        "optionality": "X"
       },
       {
         "field": "OM1.36",
@@ -9985,7 +9985,7 @@
         "position": 37,
         "minOccurs": 0,
         "maxOccurs": "unbounded",
-        "optionality": "O"
+        "optionality": "X"
       },
       {
         "field": "OM1.38",
@@ -9999,7 +9999,7 @@
         "position": 39,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": "O"
+        "optionality": "X"
       },
       {
         "field": "OM1.40",
@@ -10013,7 +10013,7 @@
         "position": 41,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": "O"
+        "optionality": "X"
       },
       {
         "field": "OM1.42",
@@ -10034,7 +10034,7 @@
         "position": 44,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": "O"
+        "optionality": "X"
       },
       {
         "field": "OM1.45",
@@ -12288,7 +12288,7 @@
         "position": 2,
         "minOccurs": 1,
         "maxOccurs": "unbounded",
-        "optionality": "R"
+        "optionality": "X"
       },
       {
         "field": "PM1.3",
@@ -12455,84 +12455,84 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PMT.2",
         "position": 2,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PMT.3",
         "position": 3,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PMT.4",
         "position": 4,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PMT.5",
         "position": 5,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PMT.6",
         "position": 6,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PMT.7",
         "position": 7,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PMT.8",
         "position": 8,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PMT.9",
         "position": 9,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PMT.10",
         "position": 10,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PMT.11",
         "position": 11,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PMT.12",
         "position": 12,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -13379,42 +13379,42 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSG.2",
         "position": 2,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSG.3",
         "position": 3,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSG.4",
         "position": 4,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSG.5",
         "position": 5,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSG.6",
         "position": 6,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       }
     ]
   },
@@ -13531,336 +13531,336 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSL.2",
         "position": 2,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.3",
         "position": 3,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSL.4",
         "position": 4,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.5",
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.6",
         "position": 6,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSL.7",
         "position": 7,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSL.8",
         "position": 8,
         "minOccurs": 0,
         "maxOccurs": 5,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.9",
         "position": 9,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.10",
         "position": 10,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "PSL.11",
         "position": 11,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.12",
         "position": 12,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "PSL.13",
         "position": 13,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "PSL.14",
         "position": 14,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "PSL.15",
         "position": 15,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "PSL.16",
         "position": 16,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "PSL.17",
         "position": 17,
         "minOccurs": 0,
         "maxOccurs": 20,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.18",
         "position": 18,
         "minOccurs": 0,
         "maxOccurs": 20,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.19",
         "position": 19,
         "minOccurs": 0,
         "maxOccurs": 5,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.20",
         "position": 20,
         "minOccurs": 0,
         "maxOccurs": 20,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.21",
         "position": 21,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSL.22",
         "position": 22,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.23",
         "position": 23,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.24",
         "position": 24,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.25",
         "position": 25,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.26",
         "position": 26,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.27",
         "position": 27,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.28",
         "position": 28,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.29",
         "position": 29,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.30",
         "position": 30,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.31",
         "position": 31,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.32",
         "position": 32,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.33",
         "position": 33,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.34",
         "position": 34,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.35",
         "position": 35,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.36",
         "position": 36,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.37",
         "position": 37,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.38",
         "position": 38,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.39",
         "position": 39,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.40",
         "position": 40,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.41",
         "position": 41,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.42",
         "position": 42,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.43",
         "position": 43,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.44",
         "position": 44,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.45",
         "position": 45,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.46",
         "position": 46,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.47",
         "position": 47,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSL.48",
         "position": 48,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -13873,35 +13873,35 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSS.2",
         "position": 2,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "PSS.3",
         "position": 3,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSS.4",
         "position": 4,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PSS.5",
         "position": 5,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       }
     ]
   },
@@ -14695,49 +14695,49 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PYE.2",
         "position": 2,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "PYE.3",
         "position": 3,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "PYE.4",
         "position": 4,
         "minOccurs": 0,
         "maxOccurs": 5,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "PYE.5",
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 4,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "PYE.6",
         "position": 6,
         "minOccurs": 0,
         "maxOccurs": 4,
-        "optionality": null
+        "optionality": "C"
       },
       {
         "field": "PYE.7",
         "position": 7,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -14832,7 +14832,7 @@
         "position": 3,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -14947,7 +14947,7 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       }
     ]
   },
@@ -15259,28 +15259,28 @@
         "position": 1,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "RFI.2",
         "position": 2,
         "minOccurs": 1,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "R"
       },
       {
         "field": "RFI.3",
         "position": 3,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "RFI.4",
         "position": 4,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -15548,7 +15548,7 @@
         "position": 7,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": "O"
+        "optionality": "X"
       },
       {
         "field": "RQD.8",
@@ -16879,7 +16879,7 @@
         "position": 36,
         "minOccurs": 0,
         "maxOccurs": "unbounded",
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -17407,259 +17407,259 @@
         "position": 1,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.2",
         "position": 2,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.3",
         "position": 3,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.4",
         "position": 4,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.5",
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.6",
         "position": 6,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.7",
         "position": 7,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.8",
         "position": 8,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.9",
         "position": 9,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.10",
         "position": 10,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.11",
         "position": 11,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.12",
         "position": 12,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.13",
         "position": 13,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.14",
         "position": 14,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.15",
         "position": 15,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.16",
         "position": 16,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.17",
         "position": 17,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.18",
         "position": 18,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.19",
         "position": 19,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.20",
         "position": 20,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.21",
         "position": 21,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.22",
         "position": 22,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.23",
         "position": 23,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.24",
         "position": 24,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.25",
         "position": 25,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.26",
         "position": 26,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.27",
         "position": 27,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.28",
         "position": 28,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.29",
         "position": 29,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.30",
         "position": 30,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.31",
         "position": 31,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.32",
         "position": 32,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.33",
         "position": 33,
         "minOccurs": 0,
         "maxOccurs": "unbounded",
-        "optionality": null
+        "optionality": "X"
       },
       {
         "field": "SCD.34",
         "position": 34,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.35",
         "position": 35,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.36",
         "position": 36,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCD.37",
         "position": 37,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -17853,56 +17853,56 @@
         "position": 1,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCP.2",
         "position": 2,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCP.3",
         "position": 3,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCP.4",
         "position": 4,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCP.5",
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCP.6",
         "position": 6,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCP.7",
         "position": 7,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SCP.8",
         "position": 8,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -17915,49 +17915,49 @@
         "position": 1,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SDD.2",
         "position": 2,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SDD.3",
         "position": 3,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SDD.4",
         "position": 4,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SDD.5",
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SDD.6",
         "position": 6,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SDD.7",
         "position": 7,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },
@@ -18086,7 +18086,7 @@
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": "O"
+        "optionality": "X"
       },
       {
         "field": "SHP.6",
@@ -18175,35 +18175,35 @@
         "position": 1,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SLT.2",
         "position": 2,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SLT.3",
         "position": 3,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SLT.4",
         "position": 4,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       },
       {
         "field": "SLT.5",
         "position": 5,
         "minOccurs": 0,
         "maxOccurs": 1,
-        "optionality": null
+        "optionality": "O"
       }
     ]
   },

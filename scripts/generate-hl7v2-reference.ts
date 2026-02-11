@@ -82,6 +82,22 @@ console.log(`  Component descriptions: ${pdfComponentDescs.size}`);
 console.log(`  Deprecated components:  ${pdfDeprecatedComponents.size}`);
 console.log(`  Component tables:       ${pdfComponentTables.size}`);
 console.log(`  Tables:                 ${pdfTables.size}`);
+
+// Log coverage gaps
+const segsMissingAttrTable = [...xsdSegments.keys()].filter(s => !pdfAttributeTables.has(s));
+if (segsMissingAttrTable.length > 0) {
+  console.log(`  Segments without attribute table: ${segsMissingAttrTable.join(", ")}`);
+}
+const fieldsMissingDesc = [...xsdFields.keys()].filter(k => !pdfFields.has(k));
+if (fieldsMissingDesc.length > 0) {
+  const bySegment = new Map<string, number>();
+  for (const k of fieldsMissingDesc) {
+    const seg = k.split(".")[0]!;
+    bySegment.set(seg, (bySegment.get(seg) ?? 0) + 1);
+  }
+  const summary = [...bySegment.entries()].map(([s, n]) => `${s}(${n})`).join(", ");
+  console.log(`  Fields without description (${fieldsMissingDesc.length}): ${summary}`);
+}
 console.log();
 
 // Phase 3: Merge and write

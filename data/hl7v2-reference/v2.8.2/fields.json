@@ -1377,7 +1377,7 @@
     "longName": "Special Access Restriction Instructions",
     "maxLength": null,
     "table": null,
-    "description": "Used to convey specific instructions about the protection of the patient's data (e.g., \"Always refer to the patient as Mr. Everyman\"). This field may also be used to specify instructions about the release of information to family and friends (e.g., \"Do not release information to patient's brother, Adam Everyman\"). These instructions may be in conjunction with other fields (as elected by the system). 3.3.14.6 ARV-6 Access Restriction Date Range (DR) 02148 This element defines the date from which an access restriction commences until the date it is specifically rescinded. 3.4 EXAMPLE TRANSACTIONS 3.4.1 Admit/visit notification - event A01 (admitted patient) MSH|^~\\&|ADT1|GOOD HEALTH HOSPITAL|GHH LAB, INC.|GOOD HEALTH HOSPITAL|198808181126|SECURITY|ADT^A01^ADT_A01|MSG00001|P|2.8||<cr> EVN|A01|200708181123||<cr> PID|1||PATID1234^5^M11^ADT1^MR^GOOD HEALTH HOSPITAL~123456789^^^USSSA^SS||EVERYMAN^ADAM^A^III||19610615|M||C|2222 HOME STREET^^GREENSBORO^NC^27401-1020|GL|(555) 555-2004|(555)555-2004||S|| PATID12345001^2^M10^ADT1^AN^A|444333333|987654^NC|<cr> NK1|1|NUCLEAR^NELDA^W|SPO^SPOUSE||||NK^NEXT OF KIN<cr> PV1|1|I|2000^2012^01||||004777^ATTEND^AARON^A|||SUR||||ADM|A0|<cr> Patient Adam A. Everyman, III was admitted on July 18, 2007 at 11:23 a.m. by Doctor Aaron A. Attending (#004777) for surgery (SUR). He has been assigned to room 2012, bed 01 on nursing unit 2000. The message was sent from system ADT1 at the Good Health Hospital site to system GHH Lab, also at the Good Health Hospital site, on the same date as the admission took place, but three minutes after the admit. 3.4.2 Pre-admit notification - event A05 (nonadmitted patient) MSH|^~\\&|REGADT|GOOD HEALTH HOSPITAL|GHH LAB||200701061000||ADT^A05^ADT_A05|000001|P|2.8||||<cr> EVN|A05|200701061000|200701101400|01||200701061000<cr> PID|1|| PATID1234^^^GOOD HEALTH HOSPITAL^MR^GOOD HEALTH HOSPITAL~123456789^^^USSSA^SS|253763|EVERYMAN^ADAM^A||19560129|M|||2222 HOME STREET^^ISHPEMING^MI^49849^\"\"^||(555) 555-2004|(555)555-2004||S|C|99999^^^GOOD HEALTH"
+    "description": "Used to convey specific instructions about the protection of the patient's data (e.g., \"Always refer to the patient as Mr. Everyman\"). This field may also be used to specify instructions about the release of information to family and friends (e.g., \"Do not release information to patient's brother, Adam Everyman\"). These instructions may be in conjunction with other fields (as elected by the system)."
   },
   "ARV.6": {
     "segment": "ARV",
@@ -1387,7 +1387,7 @@
     "longName": "Access Restriction Date Range",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This element defines the date from which an access restriction commences until the date it is specifically rescinded. 3.4 EXAMPLE TRANSACTIONS 3.4.1 Admit/visit notification - event A01 (admitted patient) MSH|^~\\&|ADT1|GOOD HEALTH HOSPITAL|GHH LAB, INC.|GOOD HEALTH HOSPITAL|198808181126|SECURITY|ADT^A01^ADT_A01|MSG00001|P|2.8||<cr> EVN|A01|200708181123||<cr> PID|1||PATID1234^5^M11^ADT1^MR^GOOD HEALTH HOSPITAL~123456789^^^USSSA^SS||EVERYMAN^ADAM^A^III||19610615|M||C|2222 HOME STREET^^GREENSBORO^NC^27401-1020|GL|(555) 555-2004|(555)555-2004||S|| PATID12345001^2^M10^ADT1^AN^A|444333333|987654^NC|<cr> NK1|1|NUCLEAR^NELDA^W|SPO^SPOUSE||||NK^NEXT OF KIN<cr> PV1|1|I|2000^2012^01||||004777^ATTEND^AARON^A|||SUR||||ADM|A0|<cr> Patient Adam A. Everyman, III was admitted on July 18, 2007 at 11:23 a.m. by Doctor Aaron A. Attending (#004777) for surgery (SUR). He has been assigned to room 2012, bed 01 on nursing unit 2000. The message was sent from system ADT1 at the Good Health Hospital site to system GHH Lab, also at the Good Health Hospital site, on the same date as the admission took place, but three minutes after the admit. 3.4.2 Pre-admit notification - event A05 (nonadmitted patient) MSH|^~\\&|REGADT|GOOD HEALTH HOSPITAL|GHH LAB||200701061000||ADT^A05^ADT_A05|000001|P|2.8||||<cr> EVN|A05|200701061000|200701101400|01||200701061000<cr> PID|1|| PATID1234^^^GOOD HEALTH HOSPITAL^MR^GOOD HEALTH HOSPITAL~123456789^^^USSSA^SS|253763|EVERYMAN^ADAM^A||19560129|M|||2222 HOME STREET^^ISHPEMING^MI^49849^\"\"^||(555) 555-2004|(555)555-2004||S|C|99999^^^GOOD HEALTH HOSPITAL^AN|444-33-3333||<cr> NK1|1|NUCLEAR^NELDA^W|SPO^SPOUSE|6666 HOME STREET ^^ISHPEMING^MI^49849^\"\"^|555-5555001|555-555-5001555-555-5001|EC^EMERGENCY CONTACT<cr> NK1|2|MUM^MARTHA^M|MOTHER|4444 HOME STREET ^^ISHPEMING^MI^49849^\"\"^|555-555-2006|555-5552006~555-555-2006|EC^EMERGENCY CONTACT<cr> NK1|3<cr> NK1|4|||6666 WORKER LOOP^^ISHPEMING^MI^49849|555-5553003|EM^EMPLOYER|19940605||PROGRAMMER|||WORK IS FUN, INC.<cr> PV1||O|||||0148^ATTEND^AARON^A|0148^SENDER^SAM||AMB|||||||0148^ATTEND^AARON^A|S|1400|A|||||||||| |||||||||GOOD HEALTH HOSPITAL||||||<cr>"
   },
   "AUT.1": {
     "segment": "AUT",
@@ -1867,7 +1867,7 @@
     "longName": "Account ID",
     "maxLength": null,
     "table": null,
-    "description": "This field identifies the account to be billed. It is used in conjunction with BLG-2-charge type. Refer to HL7 Table 0061 – Check digit scheme in Chapter 2C, Code Tables. 4.5.2.4 BLG-4 Charge type reason (CWE) 01645 Coding System (ID)> ^ <Coding System Version ID (ST)> ^ <Alternate Coding System Version ID (ST)> ^ <Original Text (ST)> ^ <Second Alternate Identifier (ST)> ^ <Second Alternate Text (ST)> ^ <Name of Second Alternate Coding System (ID)> ^ <Second Alternate Coding System Version ID (ST)> ^ <Coding System OID (ST)> ^ <Value Set OID (ST)> ^ <Value Set Version ID (DTM)> ^ <Alternate Coding System OID (ST)> ^ <Alternate Value Set OID (ST)> ^ <Alternate Value Set Version ID (DTM)> ^ <Second Alternate Coding System OID (ST)> ^ <Second Alternate Value Set OID (ST)> ^ <Second Alternate Value Set Version ID (DTM)> This field explains the choice of and provides the clinical rationale for the selected charge type identified in BLG-2. Refer to User-defined Table 0475 – Charge Type Reason in Chapter 2C, code Tables, for suggested values."
+    "description": "This field identifies the account to be billed. It is used in conjunction with BLG-2-charge type. Refer to HL7 Table 0061 – Check digit scheme in Chapter 2C, Code Tables."
   },
   "BLG.4": {
     "segment": "BLG",
@@ -1877,7 +1877,7 @@
     "longName": "Charge Type Reason",
     "maxLength": null,
     "table": "0475",
-    "description": null
+    "description": "This field explains the choice of and provides the clinical rationale for the selected charge type identified in BLG-2. Refer to User-defined Table 0475 – Charge Type Reason in Chapter 2C, code Tables, for suggested values."
   },
   "BPO.1": {
     "segment": "BPO",
@@ -4287,7 +4287,7 @@
     "longName": "Process Interruption",
     "maxLength": null,
     "table": "0923",
-    "description": null
+    "description": "Was the donation process interrupted after it began? Refer to HL7-Defined Table 0923 – Process Interruption in Chapter 2C, Code Tables, for valid entries."
   },
   "DON.13": {
     "segment": "DON",
@@ -4407,7 +4407,7 @@
     "longName": "Bleed End Phlebotomist",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "The Phlebotomist who ends the blood flow into the container."
   },
   "DON.25": {
     "segment": "DON",
@@ -10797,7 +10797,7 @@
     "longName": "Location Relationship ID",
     "maxLength": null,
     "table": "0325",
-    "description": "This field contains an identifier code to show WHICH relationship is being communicated with this segment. Refer to User-defined Table 0325 - Location Relationship ID for suggested values. 8.9.4.5 01301 LRL-5 Organizational Location Relationship Value (XON) Constituent> ^ <Assigning Authority (HD)> ^ <Identifier Type Code (ID)> ^ Text (ST)> & <Name of Alternate Coding System (ID)> & <Coding System Version ID (ST)> & <Alternate Coding System Version ID (ST)> & <Original Text (ST)> & <Second Alternate Identifier (ST)> & <Second Alternate Text (ST)> & <Name of Second Alternate Coding System (ID)> & <Second Alternate Coding System Version ID (ST)> & <Coding System OID (ST)> & <Value Set OID (ST)> & <Value Set Version ID (DTM)> & <Alternate Coding System OID (ST)> OID (ST)> & <Second Alternate Value Set Version ID (DTM)> This field is conditional on the value of LRL-4 - Location Relationship ID. When LRL-4 Location Relationship ID contains \"RX\"- Nearest Pharmacy, \"RX2\"- Other Pharmacy, \"LAB\"- Nearest Lab, \"LB2\"- Other Lab, or \"DTY\"- Dietary, this field holds that organization's extended name, i.e., the value of this field is conditional on the value of LRL-4 - Location Relationship ID. For example, for an inpatient location, this could be an in-house department ID code using only the third component of this data type. For an outpatient location, this could be the nearest external pharmacy. September 2015"
+    "description": "This field contains an identifier code to show WHICH relationship is being communicated with this segment. Refer to User-defined Table 0325 - Location Relationship ID for suggested values. 8.9.4.5 01301"
   },
   "LRL.5": {
     "segment": "LRL",
@@ -10807,7 +10807,7 @@
     "longName": "Organizational Location Relationship Value",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field is conditional on the value of LRL-4 - Location Relationship ID. When LRL-4 Location Relationship ID contains \"RX\"- Nearest Pharmacy, \"RX2\"- Other Pharmacy, \"LAB\"- Nearest Lab, \"LB2\"- Other Lab, or \"DTY\"- Dietary, this field holds that organization's extended name, i.e., the value of this field is conditional on the value of LRL-4 - Location Relationship ID. For example, for an inpatient location, this could be an in-house department ID code using only the third component of this data type. For an outpatient location, this could be the nearest external pharmacy. September 2015"
   },
   "LRL.6": {
     "segment": "LRL",
@@ -10827,7 +10827,7 @@
     "longName": "Set ID - MCP",
     "maxLength": 4,
     "table": null,
-    "description": "MCP-1 - set ID - MCP contains the number that identifies this transaction. For the first occurrence the sequence number shall be 1, for the second occurrence it shall be 2, etc. The Set ID in the MCP segment is used to uniquely identify the segment. There are likely multiple instances of Universal Service Identifier, Diagnosis and Procedure code. 8.8.18.2 00587 MCP-2 Producer's Service/Test/Observation ID (CWE) Coding System (ID)> ^ <Coding System Version ID (ST)> ^ <Alternate Coding System Version ID (ST)> ^ <Original Text (ST)> ^ <Second Alternate Identifier (ST)> ^ <Second Alternate Text (ST)> ^ <Name of Second Alternate Coding System (ID)> ^ <Second Alternate Coding System Version ID (ST)> ^ <Coding System OID (ST)> ^ <Value Set OID (ST)> ^ <Value Set Version ID (DTM)> ^ <Alternate Coding System OID (ST)> ^ <Alternate Value Set OID (ST)> ^ <Alternate Value Set Version ID (DTM)> ^ <Second Alternate Coding System OID (ST)> ^ <Second Alternate Value Set OID (ST)> ^ <Second Alternate Value Set Version ID (DTM)> This field contains the producer's usual or preferred identification of the test or observation. Only three components should be included: <ID code>^<service text name/description>^<source list of code>. All components should be non-null. September 2015 8.8.18.3 03469 MCP-3 Universal Service Price Range – Low Value (MO) Specifies the lowest price for the Universal Service that needs to be disclosed on the payer notification to the patient (for example Medicare ABN). If there is a single price for this Universal Service Identifier, MCP-3 is not valued."
+    "description": "MCP-1 - set ID - MCP contains the number that identifies this transaction. For the first occurrence the sequence number shall be 1, for the second occurrence it shall be 2, etc. The Set ID in the MCP segment is used to uniquely identify the segment. There are likely multiple instances of Universal Service Identifier, Diagnosis and Procedure code. 8.8.18.2 00587"
   },
   "MCP.2": {
     "segment": "MCP",
@@ -10837,7 +10837,7 @@
     "longName": "Producer's Service/Test/Observation ID",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field contains the producer's usual or preferred identification of the test or observation. Only three components should be included: <ID code>^<service text name/description>^<source list of code>. All components should be non-null. September 2015 8.8.18.3 03469"
   },
   "MCP.3": {
     "segment": "MCP",
@@ -10847,7 +10847,7 @@
     "longName": "Universal Service Price Range - Low Value",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "Specifies the lowest price for the Universal Service that needs to be disclosed on the payer notification to the patient (for example Medicare ABN). If there is a single price for this Universal Service Identifier, MCP-3 is not valued."
   },
   "MCP.4": {
     "segment": "MCP",
@@ -10857,7 +10857,7 @@
     "longName": "Universal Service Price Range - High Value",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "Specifies the highest price for the Universal Service that needs to be disclosed on the payer notification to the patient (for example Medicare ABN). If there is a single price for this Universal Service Identifier, it is valued in this field. Example of MCP-4 where price of test is $65.00 and there are no variants to the cost: MCP||||65.00^USD Example of MCP-3 and MCP-4 value when the price of test is variable and can range from $35.00 (low) to $75.00 (high) MCP||||$35.00^USD|75.00^USD 8.8.18.5 03471"
   },
   "MCP.5": {
     "segment": "MCP",
@@ -10867,7 +10867,7 @@
     "longName": "Reason for Universal Service Cost Range",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "Specifies the reason for the interval between the lowest and the highest price for the Universal Service, for example additional testing (reflex test) that is added based on values of the initial test. There maybe some instances when the value between MCP-3 and MCP-4 is not significant enough to warrant a reason as defined by health authorities. Condition: This is conditionally required when MCP-3 is valued."
   },
   "MFA.1": {
     "segment": "MFA",
@@ -13087,7 +13087,7 @@
     "longName": "Producer's Service/Test/Observation ID",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field contains the producer's usual or preferred identification of the test or observation. Only three components should be included: <ID code>^<service text name/description>^<source list of code>. All components should be non-null."
   },
   "OM1.3": {
     "segment": "OM1",
@@ -13127,7 +13127,7 @@
     "longName": "Observation Description",
     "maxLength": null,
     "table": null,
-    "description": "This field contains a text description of this observation. 8.8.9.7 OM1-7 Other Service/Test/Observation IDs for the Observation (CWE) 00592 Coding System (ID)> ^ <Coding System Version ID (ST)> ^ <Alternate Coding System Version ID (ST)> ^ <Original Text (ST)> ^ <Second Alternate Identifier (ST)> ^ <Second Alternate Text (ST)> ^ <Name of Second Alternate Coding System (ID)> ^ <Second Alternate Coding System Version ID (ST)> ^ <Coding System OID (ST)> ^ <Value Set OID (ST)> ^ <Value Set Version ID (DTM)> ^ <Alternate Coding System OID (ST)> ^ <Alternate Value Set OID (ST)> ^ <Alternate Value Set Version ID (DTM)> ^ <Second Alternate Coding System OID (ST)> ^ <Second Alternate Value Set OID (ST)> ^ <Second Alternate Value Set Version ID (DTM)> This field contains all alias codes/identifiers for this observation. If more than one alias code needs to be specified, multiple three-component, CWE-format entries (<code 1>^<name 1>^<code system 1>) may be given, separated by repeat delimiters. An observation may have as many names/codes as are applicable (e.g., ICD9, ACR-NEMA, SNOMED, and READ). We encourage the inclusion of as many different codes as may apply to assist cross-system mapping of terminology. All components of each triplet should be non-null (that is, names and coding system IDs within the CWE data type are required in addition to codes). Because the size (dose) of a treatment can also be an observation, codes that identify treatments (e.g., NDC, ICCS) may also be included in this field. September 2015 Note: In this field, the names within the CWE data type are required. 8.8.9.8 OM1-8 Other Names (recognized by the producer for the observation) (ST) 00593 Note: This field is deprecated and retained for backward compatibility as of v 2.8. See OM1-51. This field contains any test aliases or synonyms for the name in the context of the ordering service. These are alternative names, not associated with a particular coding system, by which the battery, test, or observation (e.g., measurement, test, diagnostic study, treatment, etc.) is known to users of the system. Multiple names in this list are separated by repeat delimiters. 8.8.9.9 00594 OM1-9 Preferred Report Name for the Observation (ST) This field contains the preferred name for reporting the observation or battery. The name can contain up to 30 characters (including blanks). It is the preferred name for columnar reports that require a maximum name size. 8.8.9.10 OM1-10 Preferred Short Name or Mnemonic for the Observation (ST) 00595 This field contains the name that can be used in space-limited reports (e.g., specimen labels) to identify the observation for the convenience of human readers. The name can contain up to eight characters. 8.8.9.11 00596 OM1-11 Preferred Long Name for the Observation (ST) This field contains the fully-specified name for the observation or battery. It may include the full (unabbreviated) multiple-word names and contain up to 200 characters. It should be as scientifically precise as possible."
+    "description": "This field contains a text description of this observation. 8.8.9.7 OM1-7 Other Service/Test/Observation IDs for the Observation (CWE) 00592 Coding System (ID)> ^ <Coding System Version ID (ST)> ^ <Alternate Coding System Version ID (ST)> ^ <Original Text (ST)> ^ <Second Alternate Identifier (ST)> ^ <Second Alternate Text (ST)> ^ <Name of Second Alternate Coding System (ID)> ^ <Second Alternate Coding System Version ID (ST)> ^ <Coding System OID (ST)> ^ <Value Set OID (ST)> ^ <Value Set Version ID (DTM)> ^ <Alternate Coding System OID (ST)> ^ <Alternate Value Set OID (ST)> ^ <Alternate Value Set Version ID (DTM)> ^ <Second Alternate Coding System OID (ST)> ^ <Second Alternate Value Set OID (ST)> ^ <Second Alternate Value Set Version ID (DTM)> This field contains all alias codes/identifiers for this observation. If more than one alias code needs to be specified, multiple three-component, CWE-format entries (<code 1>^<name 1>^<code system 1>) may be given, separated by repeat delimiters. An observation may have as many names/codes as are applicable (e.g., ICD9, ACR-NEMA, SNOMED, and READ). We encourage the inclusion of as many different codes as may apply to assist cross-system mapping of terminology. All components of each triplet should be non-null (that is, names and coding system IDs within the CWE data type are required in addition to codes). Because the size (dose) of a treatment can also be an observation, codes that identify treatments (e.g., NDC, ICCS) may also be included in this field. September 2015 Note: In this field, the names within the CWE data type are required. 8.8.9.8 OM1-8 Other Names (recognized by the producer for the observation) (ST) 00593 Note: This field is deprecated and retained for backward compatibility as of v 2.8. See OM1-51. This field contains any test aliases or synonyms for the name in the context of the ordering service. These are alternative names, not associated with a particular coding system, by which the battery, test, or observation (e.g., measurement, test, diagnostic study, treatment, etc.) is known to users of the system. Multiple names in this list are separated by repeat delimiters. 8.8.9.9 00594"
   },
   "OM1.7": {
     "segment": "OM1",
@@ -13157,7 +13157,7 @@
     "longName": "Preferred Report Name for the Observation",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field contains the preferred name for reporting the observation or battery. The name can contain up to 30 characters (including blanks). It is the preferred name for columnar reports that require a maximum name size. 8.8.9.10 OM1-10 Preferred Short Name or Mnemonic for the Observation (ST) 00595 This field contains the name that can be used in space-limited reports (e.g., specimen labels) to identify the observation for the convenience of human readers. The name can contain up to eight characters. 8.8.9.11 00596"
   },
   "OM1.10": {
     "segment": "OM1",
@@ -13177,7 +13177,7 @@
     "longName": "Preferred Long Name for the Observation",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field contains the fully-specified name for the observation or battery. It may include the full (unabbreviated) multiple-word names and contain up to 200 characters. It should be as scientifically precise as possible."
   },
   "OM1.12": {
     "segment": "OM1",
@@ -13217,7 +13217,7 @@
     "longName": "Portable Device Indicator",
     "maxLength": 1,
     "table": "0136",
-    "description": "This field indicates whether or not a portable device may be used for the service/test/observation. Refer to HL7 Table 0136 - Yes/no Indicator in Chapter 2C, Code Tables, for valid values. Y the observation can be obtained with a portable device brought to the patient N the patient or specimen must be transported to the device 8.8.9.16 00601 OM1-16 Observation Producing Department/Section (CWE) Coding System (ID)> ^ <Coding System Version ID (ST)> ^ <Alternate Coding System Version ID (ST)> ^ <Original Text (ST)> ^ <Second Alternate Identifier (ST)> ^ <Second Alternate Text (ST)> ^ <Name of Second Alternate Coding System (ID)> ^ <Second Alternate Coding System Version ID (ST)> ^ <Coding System OID (ST)> ^ <Value Set OID (ST)> ^ <Value Set Version ID (DTM)> ^ <Alternate Coding System OID (ST)> ^ <Alternate Value Set OID (ST)> ^ <Alternate Value Set Version ID (DTM)> ^ <Second Alternate Coding System OID (ST)> ^ <Second Alternate Value Set OID (ST)> ^ <Second Alternate Value Set Version ID (DTM)> Note: This field is deprecated and retained for backward compatibility as of v 2.8. This field permits the sorting of observation orders and values by the providing service's department/section. It provides \"source oriented\" reporting when required. Free text may be used instead of these codes, but in that case, they should be recorded as the second \"component\" of the field to distinguish them from the standard codes. Multiple codes in this field are separated by repeat delimiters. September 2015"
+    "description": "This field indicates whether or not a portable device may be used for the service/test/observation. Refer to HL7 Table 0136 - Yes/no Indicator in Chapter 2C, Code Tables, for valid values. Y the observation can be obtained with a portable device brought to the patient N the patient or specimen must be transported to the device 8.8.9.16 00601"
   },
   "OM1.16": {
     "segment": "OM1",
@@ -13227,7 +13227,7 @@
     "longName": "Observation Producing Department/Section",
     "maxLength": null,
     "table": "9999",
-    "description": null
+    "description": "Note: This field is deprecated and retained for backward compatibility as of v 2.8. Definition: This field permits the sorting of observation orders and values by the providing service's department/section. It provides \"source oriented\" reporting when required. Free text may be used instead of these codes, but in that case, they should be recorded as the second \"component\" of the field to distinguish them from the standard codes. Multiple codes in this field are separated by repeat delimiters."
   },
   "OM1.17": {
     "segment": "OM1",
@@ -13447,7 +13447,7 @@
     "longName": "Procedure Medication",
     "maxLength": null,
     "table": "9999",
-    "description": "This field contains the treatments that may be needed as part of the procedure. Examples are radioactive iodine for a thyroid screen, and methacholine for a methacholine spirometry challenge. This field should be identified as a CWE data type. 8.8.9.39 00624 OM1-39 Factors That May Affect the Observation (TX) This field contains the text description of the foods, diagnoses, drugs, or other conditions that may influence the interpretation of the observation. Information about the direction of the effect, and any recommendation about altering the diet, conditions, or drug before initiating the test observation. Most rules about factors that effect the test interpretation will be transmitted as free text. In such cases, the contents serve only as information for human reading. However, an alternative for machine readable rules also exists. The rule may be defined formally in the Arden Syntax (ASTM 1460-1992) which has syntax for defining algebraic and transcendental equations, as well as temporal and logical selection criteria based September 2015 on patient information stored in the computer record. Rules about patient preparation are written in Arden Syntax and should begin and end with a double semi-colon (;;), the Arden slot delimiter. 8.8.9.40 (ST) 00625 OM1-40 Service/Test/Observation Performance Schedule This field contains the diagnostic studies/tests that are performed only at certain times during the course of a work day or work week. This field indicates the maximum interval between successive test performances (the test may actually be performed more frequently). The format given in Chapter 4, Section 4.3.2.1, \"Repeat Pattern,\" should be used. If necessary, multiple codes may be given, separated by repeat delimiters. The use of multiple codes indicates that the test is performed at multiple concurrent intervals. For example, Q6H indicates that the test is performed at least once every 6 hours around the clock. QJ1 indicates that the test is performed at least every week on Mondays. QAM~QPM indicates that the test is performed at least once every morning and every evening. QJ1~QJ3~QJ5 indicates that the test is performed at least every week on Mondays, Wednesdays, and Fridays. C indicates that the test is performed continuously, 7 days per week."
+    "description": "This field contains the treatments that may be needed as part of the procedure. Examples are radioactive iodine for a thyroid screen, and methacholine for a methacholine spirometry challenge. This field should be identified as a CWE data type. 8.8.9.39 00624"
   },
   "OM1.39": {
     "segment": "OM1",
@@ -13457,7 +13457,7 @@
     "longName": "Factors that may Affect the Observation",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field contains the text description of the foods, diagnoses, drugs, or other conditions that may influence the interpretation of the observation. Information about the direction of the effect, and any recommendation about altering the diet, conditions, or drug before initiating the test observation. Most rules about factors that effect the test interpretation will be transmitted as free text. In such cases, the contents serve only as information for human reading. However, an alternative for machine readable rules also exists. The rule may be defined formally in the Arden Syntax (ASTM 1460-1992) which has syntax for defining algebraic and transcendental equations, as well as temporal and logical selection criteria based September 2015 on patient information stored in the computer record. Rules about patient preparation are written in Arden Syntax and should begin and end with a double semi-colon (;;), the Arden slot delimiter. 8.8.9.40 (ST) 00625 OM1-40 Service/Test/Observation Performance Schedule This field contains the diagnostic studies/tests that are performed only at certain times during the course of a work day or work week. This field indicates the maximum interval between successive test performances (the test may actually be performed more frequently). The format given in Chapter 4, Section 4.3.2.1, \"Repeat Pattern,\" should be used. If necessary, multiple codes may be given, separated by repeat delimiters. The use of multiple codes indicates that the test is performed at multiple concurrent intervals. For example, Q6H indicates that the test is performed at least once every 6 hours around the clock. QJ1 indicates that the test is performed at least every week on Mondays. QAM~QPM indicates that the test is performed at least once every morning and every evening. QJ1~QJ3~QJ5 indicates that the test is performed at least every week on Mondays, Wednesdays, and Fridays. C indicates that the test is performed continuously, 7 days per week."
   },
   "OM1.40": {
     "segment": "OM1",
@@ -13987,7 +13987,7 @@
     "longName": "Specimen Preference",
     "maxLength": null,
     "table": "0920",
-    "description": "This field indicates whether the Specimen/Attribute is Preferred or alternate for collection of the specimen. There can only be one occurrence of a Preferred or Alternate Specimen/Attribute for the code referenced in OM4-6 Specimen. For example, if two OM4 segments are received for specimen type of Serum, only one can be marked as Preferred. Refer to HL7 Table 0920 – Preferred Specimen/Attribute Status in Chapter 2C, Code Tables, for suggested values. 8.8.12.17 03312 OM4-17 Preferred Specimen/Attribute Sequence (NM) This field contains the value of the sequence number of the Preferred Specimen that these specimens are the alternative for. Note: For the preferred specimen (i.e., OM4-16 = \"P\"), this field is not populated. This field is used by the Alternate Specimen (i.e., OM4-16 = \"A\") to point to the preferred specimen that it is to replace or be used as an alternative."
+    "description": "This field indicates whether the Specimen/Attribute is Preferred or alternate for collection of the specimen. There can only be one occurrence of a Preferred or Alternate Specimen/Attribute for the code referenced in OM4-6 Specimen. For example, if two OM4 segments are received for specimen type of Serum, only one can be marked as Preferred. Refer to HL7 Table 0920 – Preferred Specimen/Attribute Status in Chapter 2C, Code Tables, for suggested values. 8.8.12.17 03312"
   },
   "OM4.17": {
     "segment": "OM4",
@@ -13997,7 +13997,7 @@
     "longName": "Preferred Specimen/Attribture Sequence ID",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field contains the value of the sequence number of the Preferred Specimen that these specimens are the alternative for. Note: For the preferred specimen (i.e., OM4-16 = \"P\"), this field is not populated. This field is used by the Alternate Specimen (i.e., OM4-16 = \"A\") to point to the preferred specimen that it is to replace or be used as an alternative."
   },
   "OM4.18": {
     "segment": "OM4",
@@ -14107,7 +14107,7 @@
     "longName": "Category Synonym",
     "maxLength": null,
     "table": null,
-    "description": "This field contains an alternate name(s) for the category of the test/service. Example: The category \"Radiology\" is a synonym name for the category \"Diagnostic Imaging\". 8.8.15.6 01484 OM7-6 Effective Test/Service Start Date/Time (DTM) This field contains the date and time that the service item is available to be ordered, performed, etc."
+    "description": "This field contains an alternate name(s) for the category of the test/service. Example: The category \"Radiology\" is a synonym name for the category \"Diagnostic Imaging\". 8.8.15.6 01484"
   },
   "OM7.6": {
     "segment": "OM7",
@@ -14117,7 +14117,7 @@
     "longName": "Effective Test/Service Start Date/Time",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field contains the date and time that the service item is available to be ordered, performed, etc."
   },
   "OM7.7": {
     "segment": "OM7",
@@ -14127,7 +14127,7 @@
     "longName": "Effective Test/Service End Date/Time",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the date and time that the service item is no longer authorized to be ordered, performed, etc. 8.8.15.8 01486 OM7-8 Test/Service Default Duration Quantity (NM) This field indicates the default duration quantity for the service."
+    "description": "This field contains the date and time that the service item is no longer authorized to be ordered, performed, etc. 8.8.15.8 01486"
   },
   "OM7.8": {
     "segment": "OM7",
@@ -14137,7 +14137,7 @@
     "longName": "Test/Service Default Duration Quantity",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field indicates the default duration quantity for the service."
   },
   "OM7.9": {
     "segment": "OM7",
@@ -17897,7 +17897,7 @@
     "longName": "Participant Location",
     "maxLength": null,
     "table": null,
-    "description": "This field specifies the physical location (e.g., nurse station, ancillary service location, clinic, or floor) that is participating. If either PRT-5 Participation Person or PRT-8 Participation Organization is valued, it reflects the location of the individual or organization participating as identified in PRT-4 Participation. Otherwise the location is directly participating as identified in PRT-4 Participation. If this attribute repeats, all instances must represent the same organization. September 2015 Condition: At least one of the Participation Person, Participation Organization, Participation Location, or Participation Device (and/or Participation Device Type) fields must be valued. 7.4.4.10 PRT-10 Participation Device (EI) 02348 Identifier for the device participating. This may reflect an unstructured or a structured identifier such as FDA UDI, RFID, IEEE EUI-64 identifiers, or bar codes."
+    "description": "This field specifies the physical location (e.g., nurse station, ancillary service location, clinic, or floor) that is participating. If either PRT-5 Participation Person or PRT-8 Participation Organization is valued, it reflects the location of the individual or organization participating as identified in PRT-4 Participation. Otherwise the location is directly participating as identified in PRT-4 Participation. If this attribute repeats, all instances must represent the same organization. September 2015 Condition: At least one of the Participation Person, Participation Organization, Participation Location, or Participation Device (and/or Participation Device Type) fields must be valued."
   },
   "PRT.10": {
     "segment": "PRT",
@@ -17907,7 +17907,7 @@
     "longName": "Participation Device",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "Identifier for the device participating. This may reflect an unstructured or a structured identifier such as FDA UDI, RFID, IEEE EUI-64 identifiers, or bar codes."
   },
   "PRT.11": {
     "segment": "PRT",
@@ -20177,7 +20177,7 @@
     "longName": "Relationship Type",
     "maxLength": null,
     "table": null,
-    "description": "This field contains the type of the relationship. 12.4.5.3 REL-3 This Relationship Instance Identifier (EI) 02242 This field contains the instance identifier of this relationship. September 2015"
+    "description": "This field contains the type of the relationship."
   },
   "REL.3": {
     "segment": "REL",
@@ -20187,7 +20187,7 @@
     "longName": "This Relationship Instance Identifier",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field contains the instance identifier of this relationship. September 2015"
   },
   "REL.4": {
     "segment": "REL",
@@ -26027,7 +26027,7 @@
     "longName": "Authentication Person, Time Stamp (set)",
     "maxLength": null,
     "table": null,
-    "description": null
+    "description": "This field contains a set of components describing by whom and when authentication was performed (either manually or electronically). The Date/Time Action Performed component describes the date/time of the authentication (Authentication Time Stamp). The remaining components identify the person performing the authentication (Authentication Person). If either of the Authenticating Person or the Authentication Time Stamp is valued as non-null, then both must be valued as non-null. TXA-22 - Condition: If TXA-22 is valued and the corresponding OBR segment is present in the message OBR-32 must be blank. If OBR-32 is valued while TXA-22 is valued, OBR-32 shall be ignored. See message definitions including TXA for further guidanceon which ORC/OBR pairs to consider."
   },
   "TXA.23": {
     "segment": "TXA",

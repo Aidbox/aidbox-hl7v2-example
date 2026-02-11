@@ -60,10 +60,11 @@ function stripPageNoise(text: string): string {
 }
 
 // Matches field definition headers in two formats:
-// 1. "4.5.3.1 OBR-1 Set ID – OBR (SI) 00237" (section number on same line)
+// 1. "4.5.3.1 OBR-1 Set ID – OBR (SI) 00237" (section number on same line, with item number)
 // 2. "OBX-1 Set ID - OBX (SI) 00569" (section number was on previous line)
-// Captures: segment, position, field name, dataType, item number
-const FIELD_HEADER_RE = /^(?:\d+[\.\d]*\s+)?(\w{2,3})-(\d+)\s+(.+?)\s+\((\w{2,7})\)\s+(\d{5})\s*$/;
+// 3. "2.12.1.1 BHS-1 Batch Field Separator (ST)" (no item number — some v2.8.2 chapters)
+// Captures: segment, position, field name, dataType, item number (optional)
+const FIELD_HEADER_RE = /^(?:\d+[\.\d]*\s+)?(\w{2,3})-(\d+)\s+(.+?)\s+\((\w{2,7})\)(?:\s+(\d{5}))?\s*$/;
 
 // Matches "Definition:" marker at start of line
 const DEFINITION_RE = /^Definition:\s*/;
@@ -85,7 +86,7 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
         index: i,
         segment: match[1]!,
         position: parseInt(match[2]!, 10),
-        item: match[5]!.padStart(5, "0"),
+        item: match[5] ? match[5].padStart(5, "0") : "",
         dataType: match[4]!,
         longName: match[3]!.trim().replace(/\s*[-\u2013]\s*\w{2,3}\s*$/, ""), // strip trailing "– SEG"
       });
@@ -446,19 +447,34 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
       continue;
     }
 
-    // Find header row containing "SEQ" and "OPT"
+    // Find header row containing "SEQ" and optionality column ("OPT", "USAGE", or "R/O")
     let optColStart = -1;
+    const titleLineIndex = i - 1;
     const headerLimit = Math.min(i + 5, lines.length);
     for (; i < headerLimit; i++) {
       const line = lines[i]!;
-      if (/\bSEQ\b/.test(line) && /\bOPT\b/.test(line)) {
-        optColStart = line.indexOf("OPT");
-        i++;
-        break;
+      if (/\bSEQ\b/.test(line)) {
+        if (/\bOPT\b/.test(line)) {
+          optColStart = line.indexOf("OPT");
+        } else if (/\bUSAGE\b/.test(line)) {
+          optColStart = line.indexOf("USAGE");
+        } else if (/\bR\/O\b/.test(line)) {
+          optColStart = line.indexOf("R/O");
+        }
+        if (optColStart !== -1) {
+          i++;
+          break;
+        }
       }
     }
 
-    if (optColStart === -1) continue;
+    if (optColStart === -1) {
+      console.warn(`  [attr-table] ${segName}: found title but no SEQ+OPT/USAGE header within ${headerLimit - titleLineIndex} lines`);
+      for (let j = titleLineIndex + 1; j < Math.min(headerLimit, lines.length); j++) {
+        console.warn(`    line: "${lines[j]}"`);
+      }
+      continue;
+    }
 
     // Parse data rows
     const fields: PdfAttributeTableField[] = [];
@@ -469,8 +485,10 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
       if (!trimmed) continue;
 
       // Recalibrate on repeated header after page break
-      if (/^\s*SEQ\b/.test(line) && /\bOPT\b/.test(line)) {
+      if (/^\s*SEQ\b/.test(line) && (/\bOPT\b/.test(line) || /\bUSAGE\b/.test(line) || /\bR\/O\b/.test(line))) {
         optColStart = line.indexOf("OPT");
+        if (optColStart === -1) optColStart = line.indexOf("USAGE");
+        if (optColStart === -1) optColStart = line.indexOf("R/O");
         continue;
       }
 
@@ -479,16 +497,16 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
       if (FIELD_HEADER_RE.test(trimmed)) break;
       if (SECTION_HEADING_RE.test(trimmed)) break;
 
-      // Data row: must start with SEQ (digits) and contain a 5-digit ITEM#
-      const seqMatch = trimmed.match(/^(\d{1,2})\s/);
+      // Data row: must start with SEQ (digits), allowing "1-n" or "1-N" range notation
+      const seqMatch = trimmed.match(/^(\d{1,3})(?:-[nN])?\s/);
+      if (!seqMatch) continue;
       const itemMatch = trimmed.match(/\b(\d{5})\b/);
-      if (!seqMatch || !itemMatch) continue;
 
       const position = parseInt(seqMatch[1]!, 10);
-      const item = itemMatch[1]!;
+      const item = itemMatch ? itemMatch[1]! : "";
 
-      // Extract OPT by column position from the header
-      const optSlice = line.slice(optColStart - 2, optColStart + 5).trim();
+      // Extract OPT by column position from the header (wide window to handle misalignment)
+      const optSlice = line.slice(Math.max(0, optColStart - 5), optColStart + 10).trim();
       // The slice may contain adjacent column data; find the valid usage code
       const usageToken = optSlice.split(/\s+/).find(t => VALID_USAGE_CODES.has(t));
       if (!usageToken) continue;
@@ -498,6 +516,8 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
 
     if (fields.length > 0) {
       result.set(segName, fields);
+    } else {
+      console.warn(`  [attr-table] ${segName}: header found (opt@col ${optColStart}) but no data rows matched`);
     }
   }
 
