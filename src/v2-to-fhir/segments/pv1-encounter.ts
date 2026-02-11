@@ -99,11 +99,7 @@ export function mapPatientClassToFHIRWithResult(
         localCode: classCode,
         localDisplay: `PV1-2 Patient Class: ${patientClass ?? "missing"}`,
         localSystem: PATIENT_CLASS_V2_SYSTEM,
-        // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
-        // Keep only `mappingType`; labels should come from the mapping registry.
         mappingType: "patient-class",
-        sourceFieldLabel: "PV1.2",
-        targetFieldLabel: "Encounter.class",
       },
     };
   }
@@ -246,8 +242,6 @@ export async function resolvePatientClass(
       localDisplay: `PV1-2 Patient Class: ${patientClass ?? "missing"}`,
       localSystem: PATIENT_CLASS_V2_SYSTEM,
       mappingType: "patient-class",
-      sourceFieldLabel: "PV1.2",
-      targetFieldLabel: "Encounter.class",
     },
   };
 }

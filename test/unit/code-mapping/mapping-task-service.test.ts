@@ -23,7 +23,7 @@ const sampleTask: Task = {
         display: "Observation.code mapping",
       },
     ],
-    text: "Map local lab code to LOINC",
+    text: "Map OBX-3 to Observation.code",
   },
   authoredOn: "2025-02-12T14:20:00Z",
   lastModified: "2025-02-12T14:20:00Z",
@@ -335,8 +335,6 @@ describe("composeMappingTask", () => {
       localDisplay: "Potassium [Serum/Plasma]",
       localSystem: "ACME-LAB-CODES",
       mappingType: "observation-code-loinc",
-      sourceFieldLabel: "OBX-3",
-      targetFieldLabel: "Observation.code",
     };
     const task = composeMappingTask(sender, error);
 
@@ -358,8 +356,11 @@ describe("composeMappingTask", () => {
     expect(inputMap.get("Local code")).toBe("K_SERUM");
     expect(inputMap.get("Local display")).toBe("Potassium [Serum/Plasma]");
     expect(inputMap.get("Local system")).toBe("ACME-LAB-CODES");
-    expect(inputMap.get("Source field")).toBe("OBX-3");
-    expect(inputMap.get("Target field")).toBe("Observation.code");
+    expect(inputMap.has("Source field")).toBe(false);
+    expect(inputMap.has("Target field")).toBe(false);
+
+    // code.text is derived from registry
+    expect(task.code?.text).toBe("Map OBX-3 to Observation.code");
   });
 
   test("creates obr-status mapping task with correct code and fields", () => {
@@ -368,19 +369,12 @@ describe("composeMappingTask", () => {
       localDisplay: "Unknown OBR status",
       localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
       mappingType: "obr-status",
-      sourceFieldLabel: "OBR-25",
-      targetFieldLabel: "DiagnosticReport.status",
     };
     const task = composeMappingTask(sender, error);
 
     expect(task.code?.coding?.[0]?.code).toBe("obr-status");
     expect(task.code?.coding?.[0]?.display).toBe("DiagnosticReport.status mapping");
-
-    const inputs = task.input || [];
-    const inputMap = new Map(inputs.map((i) => [i.type?.text, i.valueString]));
-
-    expect(inputMap.get("Source field")).toBe("OBR-25");
-    expect(inputMap.get("Target field")).toBe("DiagnosticReport.status");
+    expect(task.code?.text).toBe("Map OBR-25 to DiagnosticReport.status");
   });
 
   test("creates obx-status mapping task with correct code and fields", () => {
@@ -389,19 +383,12 @@ describe("composeMappingTask", () => {
       localDisplay: "Unknown OBX status",
       localSystem: "http://terminology.hl7.org/CodeSystem/v2-0085",
       mappingType: "obx-status",
-      sourceFieldLabel: "OBX-11",
-      targetFieldLabel: "Observation.status",
     };
     const task = composeMappingTask(sender, error);
 
     expect(task.code?.coding?.[0]?.code).toBe("obx-status");
     expect(task.code?.coding?.[0]?.display).toBe("Observation.status mapping");
-
-    const inputs = task.input || [];
-    const inputMap = new Map(inputs.map((i) => [i.type?.text, i.valueString]));
-
-    expect(inputMap.get("Source field")).toBe("OBX-11");
-    expect(inputMap.get("Target field")).toBe("Observation.status");
+    expect(task.code?.text).toBe("Map OBX-11 to Observation.status");
   });
 
   test("creates patient-class mapping task with correct code and fields", () => {
@@ -410,19 +397,12 @@ describe("composeMappingTask", () => {
       localDisplay: "Unknown patient class",
       localSystem: "http://terminology.hl7.org/CodeSystem/v2-0004",
       mappingType: "patient-class",
-      sourceFieldLabel: "PV1.2",
-      targetFieldLabel: "Encounter.class",
     };
     const task = composeMappingTask(sender, error);
 
     expect(task.code?.coding?.[0]?.code).toBe("patient-class");
     expect(task.code?.coding?.[0]?.display).toBe("Encounter.class mapping");
-
-    const inputs = task.input || [];
-    const inputMap = new Map(inputs.map((i) => [i.type?.text, i.valueString]));
-
-    expect(inputMap.get("Source field")).toBe("PV1.2");
-    expect(inputMap.get("Target field")).toBe("Encounter.class");
+    expect(task.code?.text).toBe("Map PV1-2 to Encounter.class");
   });
 
   test("generates deterministic task ID including mapping type", () => {
@@ -430,22 +410,16 @@ describe("composeMappingTask", () => {
       localCode: "TEST",
       localSystem: "LOCAL",
       mappingType: "observation-code-loinc",
-      sourceFieldLabel: "OBX-3",
-      targetFieldLabel: "Observation.code",
     };
     const error2: MappingError = {
       localCode: "TEST",
       localSystem: "LOCAL",
       mappingType: "observation-code-loinc",
-      sourceFieldLabel: "OBX-3",
-      targetFieldLabel: "Observation.code",
     };
     const error3: MappingError = {
       localCode: "TEST",
       localSystem: "LOCAL",
       mappingType: "obr-status",
-      sourceFieldLabel: "OBR-25",
-      targetFieldLabel: "DiagnosticReport.status",
     };
 
     const task1 = composeMappingTask(sender, error1);
@@ -464,8 +438,6 @@ describe("composeMappingTask", () => {
       localCode: "TEST",
       localSystem: "LOCAL",
       mappingType: "observation-code-loinc",
-      sourceFieldLabel: "OBX-3",
-      targetFieldLabel: "Observation.code",
       // No localDisplay
     };
     const task = composeMappingTask(sender, error);
@@ -483,8 +455,6 @@ describe("composeMappingTask", () => {
       localCode: "TEST",
       localSystem: "LOCAL",
       mappingType: "observation-code-loinc",
-      sourceFieldLabel: "OBX-3",
-      targetFieldLabel: "Observation.code",
     };
     const task = composeMappingTask(sender, error);
 
@@ -498,8 +468,6 @@ describe("composeMappingTask", () => {
       localCode: "TEST",
       localSystem: "LOCAL",
       mappingType: "observation-code-loinc",
-      sourceFieldLabel: "OBX-3",
-      targetFieldLabel: "Observation.code",
     };
     const task = composeMappingTask(sender, error);
 

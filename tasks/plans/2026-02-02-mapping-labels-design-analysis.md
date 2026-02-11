@@ -450,19 +450,19 @@ Rewrite `MAPPING_TYPES` with structured metadata and derivation helpers. Update 
 
 Remove `sourceFieldLabel` and `targetFieldLabel` from the `MappingError` interface. Update all converters that construct `MappingError` objects. Update `compose.ts` to stop persisting labels in Task.input and derive `code.text` from registry.
 
-- [ ] **mapping-errors.ts:31-32**: Remove `sourceFieldLabel: string` and `targetFieldLabel: string` from `MappingError` interface
-- [ ] **obx-observation.ts** (3 locations: `mapOBXStatusToFHIRWithResult` ~line 90, `resolveOBXStatus` ~lines 542 and 570): Remove `sourceFieldLabel` and `targetFieldLabel` from all `MappingError` object literals
-- [ ] **obr-diagnosticreport.ts** (3 locations: `mapOBRStatusToFHIRWithResult` ~line 81, `resolveOBRStatus` ~lines 291 and 320): Remove `sourceFieldLabel` and `targetFieldLabel` from all `MappingError` object literals
-- [ ] **pv1-encounter.ts** (2 locations: `mapPatientClassToFHIRWithResult` ~line 105, `resolvePatientClass` ~line 250): Remove `sourceFieldLabel` and `targetFieldLabel` from all `MappingError` object literals
-- [ ] **oru-r01.ts:192-193**: Remove `sourceFieldLabel` and `targetFieldLabel` from the LOINC `MappingError` in `convertOBXToObservationResolving()`
-- [ ] **compose.ts:89-90**: Remove the two lines that push "Source field" and "Target field" to Task.input
-- [ ] **compose.ts:109**: Change `text: \`Map ${error.sourceFieldLabel} to ${error.targetFieldLabel}\`` → `text: \`Map ${sourceLabel(typeConfig)} to ${targetLabel(typeConfig)}\`` (import `sourceLabel`, `targetLabel`)
-- [ ] **mapping-errors.test.ts**: Remove `sourceFieldLabel` and `targetFieldLabel` from ALL `MappingError` constructions (~10 occurrences across all test cases)
-- [ ] **mapping-task-service.test.ts**: Remove `sourceFieldLabel` and `targetFieldLabel` from ALL `MappingError` constructions (~8 occurrences)
-- [ ] **mapping-task-service.test.ts**: Remove assertions on `inputMap.get("Source field")` and `inputMap.get("Target field")` from composeMappingTask tests (~4 test cases)
-- [ ] **mapping-task-service.test.ts**: Update Task.code.coding[0].display assertions to match new derived values (e.g., `"Observation.code mapping"` instead of `"Observation code to LOINC mapping"`)
-- [ ] **mapping-task-service.test.ts**: Remove `sampleTask.input` entries for "Source field" and "Target field"
-- [ ] Run `bun run typecheck` and `bun test:unit` — must pass before next task
+- [x] **mapping-errors.ts:31-32**: Remove `sourceFieldLabel: string` and `targetFieldLabel: string` from `MappingError` interface
+- [x] **obx-observation.ts** (3 locations: `mapOBXStatusToFHIRWithResult` ~line 90, `resolveOBXStatus` ~lines 542 and 570): Remove `sourceFieldLabel` and `targetFieldLabel` from all `MappingError` object literals
+- [x] **obr-diagnosticreport.ts** (3 locations: `mapOBRStatusToFHIRWithResult` ~line 81, `resolveOBRStatus` ~lines 291 and 320): Remove `sourceFieldLabel` and `targetFieldLabel` from all `MappingError` object literals
+- [x] **pv1-encounter.ts** (2 locations: `mapPatientClassToFHIRWithResult` ~line 105, `resolvePatientClass` ~line 250): Remove `sourceFieldLabel` and `targetFieldLabel` from all `MappingError` object literals
+- [x] **oru-r01.ts:192-193**: Remove `sourceFieldLabel` and `targetFieldLabel` from the LOINC `MappingError` in `convertOBXToObservationResolving()`
+- [x] **compose.ts:89-90**: Remove the two lines that push "Source field" and "Target field" to Task.input
+- [x] **compose.ts:109**: Change `text: \`Map ${error.sourceFieldLabel} to ${error.targetFieldLabel}\`` → `text: \`Map ${sourceLabel(typeConfig)} to ${targetLabel(typeConfig)}\`` (import `sourceLabel`, `targetLabel`)
+- [x] **mapping-errors.test.ts**: Remove `sourceFieldLabel` and `targetFieldLabel` from ALL `MappingError` constructions (~10 occurrences across all test cases)
+- [x] **mapping-task-service.test.ts**: Remove `sourceFieldLabel` and `targetFieldLabel` from ALL `MappingError` constructions (~8 occurrences)
+- [x] **mapping-task-service.test.ts**: Remove assertions on `inputMap.get("Source field")` and `inputMap.get("Target field")` from composeMappingTask tests (~4 test cases)
+- [x] **mapping-task-service.test.ts**: Update Task.code.coding[0].display assertions to match new derived values (e.g., `"Observation.code mapping"` instead of `"Observation code to LOINC mapping"`)
+- [x] **mapping-task-service.test.ts**: Remove `sampleTask.input` entries for "Source field" and "Target field"
+- [x] Run `bun run typecheck` and `bun test:unit` — must pass before next task
 
 ---
 

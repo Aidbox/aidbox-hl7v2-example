@@ -84,11 +84,7 @@ export function mapOBXStatusToFHIRWithResult(
         localCode: status || "undefined",
         localDisplay: `OBX-11 status: ${status ?? "missing"}`,
         localSystem: "http://terminology.hl7.org/CodeSystem/v2-0085",
-        // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
-        // Keep only `mappingType`; labels should come from the mapping registry.
         mappingType: "obx-status",
-        sourceFieldLabel: "OBX-11",
-        targetFieldLabel: "Observation.status",
       },
     };
   }
@@ -539,8 +535,6 @@ async function resolveOBXStatus(
         localDisplay: "OBX-11 status: missing",
         localSystem: "http://terminology.hl7.org/CodeSystem/v2-0085",
         mappingType: "obx-status",
-        sourceFieldLabel: "OBX-11",
-        targetFieldLabel: "Observation.status",
       },
     };
   }
@@ -566,8 +560,6 @@ async function resolveOBXStatus(
       localDisplay: `OBX-11 status: ${normalizedStatus}`,
       localSystem,
       mappingType: "obx-status",
-      sourceFieldLabel: "OBX-11",
-      targetFieldLabel: "Observation.status",
     },
   };
 }

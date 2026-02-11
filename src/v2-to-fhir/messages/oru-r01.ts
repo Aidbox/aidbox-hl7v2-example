@@ -186,11 +186,7 @@ export async function convertOBXToObservationResolving(
         localCode: error.localCode || "",
         localDisplay: error.localDisplay,
         localSystem: error.localSystem,
-        // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
-        // Keep only `mappingType`; labels should come from the mapping registry.
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       });
     } else {
       throw error;

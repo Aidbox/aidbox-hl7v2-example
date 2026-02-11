@@ -46,8 +46,6 @@ function createLoincTask(overrides: Partial<Task> = {}): Task {
       { type: { text: "Local code" }, valueString: "K_SERUM" },
       { type: { text: "Local display" }, valueString: "Potassium [Serum/Plasma]" },
       { type: { text: "Local system" }, valueString: "ACME-LAB-CODES" },
-      { type: { text: "Source field" }, valueString: "OBX-3" },
-      { type: { text: "Target field" }, valueString: "Observation.code" },
     ],
     ...overrides,
   };
@@ -74,8 +72,6 @@ function createObrStatusTask(overrides: Partial<Task> = {}): Task {
       { type: { text: "Local code" }, valueString: "Y" },
       { type: { text: "Local display" }, valueString: "Order received" },
       { type: { text: "Local system" }, valueString: "http://terminology.hl7.org/CodeSystem/v2-0123" },
-      { type: { text: "Source field" }, valueString: "OBR-25" },
-      { type: { text: "Target field" }, valueString: "DiagnosticReport.status" },
     ],
     ...overrides,
   };
@@ -102,8 +98,6 @@ function createPatientClassTask(overrides: Partial<Task> = {}): Task {
       { type: { text: "Local code" }, valueString: "1" },
       { type: { text: "Local display" }, valueString: "Unknown class" },
       { type: { text: "Local system" }, valueString: "http://terminology.hl7.org/CodeSystem/v2-0004" },
-      { type: { text: "Source field" }, valueString: "PV1-2" },
-      { type: { text: "Target field" }, valueString: "Encounter.class" },
     ],
     ...overrides,
   };

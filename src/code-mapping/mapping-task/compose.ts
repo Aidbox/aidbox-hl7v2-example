@@ -7,7 +7,7 @@
 
 import type { Task, TaskInput } from "../../fhir/hl7-fhir-r4-core/Task";
 import type { BundleEntry } from "../../fhir/hl7-fhir-r4-core/Bundle";
-import { MAPPING_TYPES, targetLabel, type MappingTypeConfig } from "../mapping-types";
+import { MAPPING_TYPES, sourceLabel, targetLabel, type MappingTypeConfig } from "../mapping-types";
 import type { MappingError } from "../mapping-errors";
 import { generateConceptMapId, type SenderContext } from "../concept-map";
 import { simpleHash } from "../../utils/string";
@@ -87,13 +87,6 @@ export function composeMappingTask(
     inputs.push({ type: { text: "Local system" }, valueString: error.localSystem });
   }
 
-  // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
-  // Stop persisting source/target labels in Task.input.
-  // Resolve labels from `MAPPING_TYPES[error.mappingType]` in UI rendering.
-  // Source and target field labels for human-readable context
-  inputs.push({ type: { text: "Source field" }, valueString: error.sourceFieldLabel });
-  inputs.push({ type: { text: "Target field" }, valueString: error.targetFieldLabel });
-
   const now = new Date().toISOString();
 
   return {
@@ -109,9 +102,7 @@ export function composeMappingTask(
           display: taskDisplay(typeConfig),
         },
       ],
-      // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
-      // Build task text from registry labels after removing label fields from MappingError.
-      text: `Map ${error.sourceFieldLabel} to ${error.targetFieldLabel}`,
+      text: `Map ${sourceLabel(typeConfig)} to ${targetLabel(typeConfig)}`,
     },
     authoredOn: now,
     lastModified: now,
