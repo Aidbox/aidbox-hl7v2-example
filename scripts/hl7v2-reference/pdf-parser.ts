@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
-import type { PdfAttributeTableField, PdfComponentDescription, PdfComponentTableField, PdfDatatypeDescription, PdfFieldDescription, PdfSegmentDescription, PdfTable, PdfTableValue } from "./types";
+import type { PdfAttributeTableField, PdfComponentDescription, PdfComponentTableField, PdfDatatypeDescription, PdfDeprecatedComponent, PdfFieldDescription, PdfSegmentDescription, PdfTable, PdfTableValue } from "./types";
 
 function shellEscape(s: string): string {
   return "'" + s.replace(/'/g, "'\\''") + "'";
@@ -48,7 +48,7 @@ const PAGE_NOISE_PATTERNS = [
   /©.*Health Level Seven/,            // v2.8.2: "©Health Level Seven..." and reversed even-page format
   /^Final Standard\./,               // v2.5
   /^\w+\s+\d{4}\.\s*$/,             // "July 2003." (v2.5), "September 2015." (v2.8.2)
-  /^Chapter \d+:/,                    // Both versions
+  /^Chapter \d+[A-Z]?:/,              // Both versions (e.g., "Chapter 2A:", "Chapter 3:")
   /^Appendix [A-Z]:/,                // Both versions
 ];
 
@@ -116,12 +116,14 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
   return fields;
 }
 
-const MAX_DESCRIPTION_LENGTH = 3000;
+const MAX_DESCRIPTION_LENGTH = 4000;
 const SECTION_HEADING_RE = /^\d+\.\d+(?:\.\d+)*\s+[A-Z]/;
 
 export function extractDescription(sectionLines: string[]): string | null {
   let inComponents = false;
   let definitionFound = false;
+  let inPreamble = false;
+  const preambleParts: string[] = [];
   const descriptionParts: string[] = [];
 
   for (const line of sectionLines) {
@@ -131,19 +133,23 @@ export function extractDescription(sectionLines: string[]): string | null {
         descriptionParts.push("");
       }
       inComponents = false;
+      inPreamble = false;
       continue;
     }
 
-    // Stop at section headings, attribute tables, or segment headings
+    // Stop at section headings, attribute tables, segment headings, examples, or ch02A subsections
     if (definitionFound) {
       if (SECTION_HEADING_RE.test(trimmed)) break;
       if (ATTRIBUTE_TABLE_RE.test(trimmed)) break;
       if (SEGMENT_HEADING_RE.test(trimmed) && !trimmed.includes("....")) break;
+      if (/^Examples?:/i.test(trimmed)) break;
+      if (/^2\.A\.[\d.]+\s+/.test(trimmed)) break;
     }
 
     // Skip component listings
     if (COMPONENTS_RE.test(trimmed) || trimmed.startsWith("<") || trimmed.startsWith("&")) {
       inComponents = true;
+      inPreamble = false;
       continue;
     }
     if (inComponents && (trimmed.startsWith("<") || trimmed.startsWith("&") || trimmed.startsWith("("))) {
@@ -151,10 +157,31 @@ export function extractDescription(sectionLines: string[]): string | null {
     }
     inComponents = false;
 
+    // Before Definition: is found, capture known preamble blocks (Attention:, Note:)
+    if (!definitionFound && !inComponents) {
+      if (/^(Attention|Note):/.test(trimmed)) {
+        inPreamble = true;
+        preambleParts.push(trimmed);
+        continue;
+      }
+      if (inPreamble) {
+        // Stop preamble at table titles or other structural elements
+        if (COMP_TABLE_TITLE_RE.test(trimmed) || ATTRIBUTE_TABLE_RE.test(trimmed)) {
+          inPreamble = false;
+        } else {
+          preambleParts.push(trimmed);
+          continue;
+        }
+      }
+    }
+
     // Check for Definition: marker
     const defMatch = trimmed.match(DEFINITION_RE);
     if (defMatch) {
       definitionFound = true;
+      if (preambleParts.length > 0) {
+        descriptionParts.push(...preambleParts);
+      }
       const afterDef = trimmed.slice(defMatch[0].length).trim();
       if (afterDef) descriptionParts.push(afterDef);
       continue;
@@ -186,11 +213,17 @@ export function extractDescription(sectionLines: string[]): string | null {
     }
   }
 
+  // If no Definition: was found but preamble was collected, use preamble as description
+  if (descriptionParts.length === 0 && preambleParts.length > 0) {
+    descriptionParts.push(...preambleParts);
+  }
+
   if (descriptionParts.length === 0) return null;
 
   let description = descriptionParts
     .join(" ")
     .replace(/\s+/g, " ")
+    .replace(/\s*Chapter \d+[A-Z]?:\s*Control\s*(?:[-\u2013]\s*Data Types)?\s*/g, " ")
     .replace(/\s+\d+(?:\.\w+){2,}\s*$|\s+\d+\.[A-Za-z]\w*(?:\.\w+)*\s*$/, "")
     .trim();
 
@@ -504,14 +537,16 @@ const COMP_TABLE_TITLE_RE = /HL7 Component Table\s*[-\u2013]\s*([A-Z][A-Z0-9]{0,
 function parseDatatypeDescriptions(text: string): {
   datatypes: Map<string, PdfDatatypeDescription>;
   components: Map<string, PdfComponentDescription>;
+  deprecatedComponents: Map<string, PdfDeprecatedComponent>;
 } {
   const lines = text.split("\n");
   const datatypes = new Map<string, PdfDatatypeDescription>();
   const components = new Map<string, PdfComponentDescription>();
+  const deprecatedComponents = new Map<string, PdfDeprecatedComponent>();
 
   // First pass: find all datatype and component heading positions
   const dtHeaders: { index: number; name: string; longName: string }[] = [];
-  const compHeaders: { index: number; datatype: string; position: number }[] = [];
+  const compHeaders: { index: number; datatype: string; position: number; deprecated: boolean; longName: string }[] = [];
 
   let currentDt: string | null = null;
   let currentCompPos = 0;
@@ -543,7 +578,17 @@ function parseDatatypeDescriptions(text: string): {
       const compMatch = trimmed.match(COMPONENT_HEADING_RE);
       if (compMatch) {
         currentCompPos++;
-        compHeaders.push({ index: i, datatype: currentDt, position: currentCompPos });
+        compHeaders.push({ index: i, datatype: currentDt, position: currentCompPos, deprecated: false, longName: compMatch[1]! });
+      } else {
+        // Deprecated/withdrawn components have headings without (DT) suffix:
+        // "2.A.56.7 Degree" instead of "2.A.56.7 Degree (IS)"
+        // These always have the 2.A.N.M prefix, so we can match on that.
+        const deprecatedMatch = trimmed.match(/^2\.A\.\d+\.(\d+)\s+(.+)/);
+        if (deprecatedMatch) {
+          const pos = parseInt(deprecatedMatch[1]!, 10);
+          currentCompPos = pos;
+          compHeaders.push({ index: i, datatype: currentDt, position: currentCompPos, deprecated: true, longName: deprecatedMatch[2]!.trim() });
+        }
       }
     }
   }
@@ -588,8 +633,16 @@ function parseDatatypeDescriptions(text: string): {
 
     const section = lines.slice(startLine, endLine);
     const description = extractDescription(section);
-    if (description) {
-      const key = `${header.datatype}.${header.position}`;
+    const key = `${header.datatype}.${header.position}`;
+
+    if (header.deprecated) {
+      deprecatedComponents.set(key, {
+        datatype: header.datatype,
+        position: header.position,
+        longName: header.longName,
+        description,
+      });
+    } else if (description) {
       components.set(key, {
         datatype: header.datatype,
         position: header.position,
@@ -598,7 +651,7 @@ function parseDatatypeDescriptions(text: string): {
     }
   }
 
-  return { datatypes, components };
+  return { datatypes, components, deprecatedComponents };
 }
 
 function parseComponentTables(text: string): Map<string, PdfComponentTableField[]> {
@@ -695,11 +748,12 @@ async function findCh02aFile(pdfDir: string): Promise<string | null> {
 export async function parsePdfDatatypeDescriptions(pdfDir: string): Promise<{
   datatypes: Map<string, PdfDatatypeDescription>;
   components: Map<string, PdfComponentDescription>;
+  deprecatedComponents: Map<string, PdfDeprecatedComponent>;
 }> {
   const pdfPath = await findCh02aFile(pdfDir);
   if (!pdfPath) {
     console.warn("Warning: CH02A PDF not found, datatype descriptions will be empty");
-    return { datatypes: new Map(), components: new Map() };
+    return { datatypes: new Map(), components: new Map(), deprecatedComponents: new Map() };
   }
 
   const cmd = await findPdfToText();

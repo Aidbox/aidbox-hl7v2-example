@@ -92,6 +92,13 @@ export interface PdfComponentDescription {
   description: string;
 }
 
+export interface PdfDeprecatedComponent {
+  datatype: string;      // e.g. "PPN"
+  position: number;      // e.g. 7
+  longName: string;      // e.g. "Degree"
+  description: string | null;
+}
+
 export interface PdfComponentTableField {
   datatype: string;      // e.g. "CNE"
   position: number;      // SEQ number
@@ -133,6 +140,7 @@ export interface OutputDatatypeComponent {
   optionality: string | null;
   table: string | null;
   description: string | null;
+  deprecated: boolean;
 }
 
 export interface OutputDatatype {

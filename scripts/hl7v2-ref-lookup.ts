@@ -130,7 +130,8 @@ function showDatatypeComponent(query: string, data: ReferenceData): boolean {
     ? `${comp.optionality} (${optionalityLabel(comp.optionality)})`
     : "?";
 
-  console.log(`Datatype Component ${query} — ${comp.longName}`);
+  const depStr = comp.deprecated ? " [DEPRECATED]" : "";
+  console.log(`Datatype Component ${query} — ${comp.longName}${depStr}`);
   console.log(`  Datatype: ${dtName}${dt.longName ? ` (${dt.longName})` : ""}`);
   console.log(`  Data Type: ${comp.dataType}`);
   if (comp.maxLength !== null) console.log(`  Max Length: ${comp.maxLength}`);
@@ -172,7 +173,8 @@ function showField(query: string, data: ReferenceData) {
     console.log(`\nComponents (${field.dataType}):`);
     for (const c of dt.components) {
       const maxLen = c.maxLength !== null ? `, maxLen: ${c.maxLength}` : "";
-      console.log(`  ${c.component.padEnd(8)} ${c.longName} (${c.dataType}${maxLen})`);
+      const dep = c.deprecated ? " [DEPRECATED]" : "";
+      console.log(`  ${c.component.padEnd(8)} ${c.longName} (${c.dataType}${maxLen})${dep}`);
     }
   }
 }
@@ -204,7 +206,8 @@ function showComponent(query: string, data: ReferenceData) {
     ? `${comp.optionality} (${optionalityLabel(comp.optionality)})`
     : "?";
 
-  console.log(`Component ${query} — ${comp.longName}`);
+  const depStr = comp.deprecated ? " [DEPRECATED]" : "";
+  console.log(`Component ${query} — ${comp.longName}${depStr}`);
   console.log(`  Field: ${fieldKey} ${field.longName} (${field.dataType})`);
   console.log(`  Component: ${comp.component} ${comp.longName}`);
   console.log(`  Data Type: ${comp.dataType}`);
@@ -250,7 +253,8 @@ function showDatatype(query: string, data: ReferenceData): boolean {
       const maxLen = c.maxLength !== null ? `, maxLen: ${c.maxLength}` : "";
       const opt = c.optionality ? ` [${c.optionality}]` : "";
       const tbl = c.table ? ` [table ${c.table}]` : "";
-      console.log(`  ${c.component.padEnd(8)} ${c.longName} (${c.dataType}${maxLen})${opt}${tbl}`);
+      const dep = c.deprecated ? " [DEPRECATED]" : "";
+      console.log(`  ${c.component.padEnd(8)} ${c.longName} (${c.dataType}${maxLen})${opt}${tbl}${dep}`);
     }
   }
   return true;

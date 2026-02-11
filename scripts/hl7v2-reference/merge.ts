@@ -2,8 +2,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type {
   XsdField, XsdSegment, XsdDatatype, XsdMessage,
-  PdfAttributeTableField, PdfComponentDescription, PdfComponentTableField, PdfDatatypeDescription, PdfFieldDescription, PdfSegmentDescription, PdfTable,
-  OutputField, OutputSegment, OutputDatatype, OutputTable,
+  PdfAttributeTableField, PdfComponentDescription, PdfComponentTableField, PdfDatatypeDescription, PdfDeprecatedComponent, PdfFieldDescription, PdfSegmentDescription, PdfTable,
+  OutputField, OutputSegment, OutputDatatype, OutputDatatypeComponent, OutputTable,
 } from "./types";
 
 export interface MergeInput {
@@ -17,6 +17,7 @@ export interface MergeInput {
   pdfAttributeTables: Map<string, PdfAttributeTableField[]>;
   pdfDatatypeDescs: Map<string, PdfDatatypeDescription>;
   pdfComponentDescs: Map<string, PdfComponentDescription>;
+  pdfDeprecatedComponents: Map<string, PdfDeprecatedComponent>;
   pdfComponentTables: Map<string, PdfComponentTableField[]>;
 }
 
@@ -136,27 +137,56 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
     const pdfDt = input.pdfDatatypeDescs.get(name);
     if (pdfDt) datatypeDescriptionCount++;
 
+    const components: OutputDatatypeComponent[] = xsd.components.map(c => {
+      totalComponentCount++;
+      const compDesc = input.pdfComponentDescs.get(c.component);
+      const optionality = componentOptLookup.get(c.component) ?? null;
+      const table = componentTableLookup.get(c.component) ?? null;
+      if (compDesc) componentDescriptionCount++;
+      if (optionality) componentOptionalityCount++;
+      return {
+        component: c.component,
+        position: c.position,
+        dataType: c.dataType,
+        longName: c.longName,
+        maxLength: c.maxLength,
+        optionality,
+        table,
+        description: compDesc?.description ?? null,
+        deprecated: false,
+      };
+    });
+
+    // Insert deprecated components from PDF that are not in XSD
+    const xsdPositions = new Set(xsd.components.map(c => c.position));
+    for (const [key, dep] of input.pdfDeprecatedComponents) {
+      if (dep.datatype === name && !xsdPositions.has(dep.position)) {
+        totalComponentCount++;
+        const optionality = componentOptLookup.get(key) ?? null;
+        const table = componentTableLookup.get(key) ?? null;
+        if (dep.description) componentDescriptionCount++;
+        if (optionality) componentOptionalityCount++;
+        components.push({
+          component: key,
+          position: dep.position,
+          dataType: "W",
+          longName: dep.longName,
+          maxLength: null,
+          optionality,
+          table,
+          description: dep.description,
+          deprecated: true,
+        });
+      }
+    }
+
+    // Sort by position to maintain correct order
+    components.sort((a, b) => a.position - b.position);
+
     datatypesOutput[name] = {
       longName: pdfDt?.longName ?? null,
       description: pdfDt?.description ?? null,
-      components: xsd.components.map(c => {
-        totalComponentCount++;
-        const compDesc = input.pdfComponentDescs.get(c.component);
-        const optionality = componentOptLookup.get(c.component) ?? null;
-        const table = componentTableLookup.get(c.component) ?? null;
-        if (compDesc) componentDescriptionCount++;
-        if (optionality) componentOptionalityCount++;
-        return {
-          component: c.component,
-          position: c.position,
-          dataType: c.dataType,
-          longName: c.longName,
-          maxLength: c.maxLength,
-          optionality,
-          table,
-          description: compDesc?.description ?? null,
-        };
-      }),
+      components,
     };
   }
 

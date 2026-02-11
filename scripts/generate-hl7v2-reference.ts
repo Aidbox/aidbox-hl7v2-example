@@ -64,7 +64,7 @@ const [
   { fields: pdfFields, segments: pdfSegments },
   pdfTables,
   pdfAttributeTables,
-  { datatypes: pdfDatatypeDescs, components: pdfComponentDescs },
+  { datatypes: pdfDatatypeDescs, components: pdfComponentDescs, deprecatedComponents: pdfDeprecatedComponents },
   pdfComponentTables,
 ] = await Promise.all([
   parsePdfDescriptions(pdfDir),
@@ -78,6 +78,7 @@ console.log(`  Segment descriptions:   ${pdfSegments.size}`);
 console.log(`  Attribute tables:       ${pdfAttributeTables.size}`);
 console.log(`  Datatype descriptions:  ${pdfDatatypeDescs.size}`);
 console.log(`  Component descriptions: ${pdfComponentDescs.size}`);
+console.log(`  Deprecated components:  ${pdfDeprecatedComponents.size}`);
 console.log(`  Component tables:       ${pdfComponentTables.size}`);
 console.log(`  Tables:                 ${pdfTables.size}`);
 console.log();
@@ -85,7 +86,7 @@ console.log();
 // Phase 3: Merge and write
 console.log("Phase 3: Merging data and writing JSON...");
 const report = await mergeAndWrite(
-  { xsdFields, xsdSegments, xsdDatatypes, xsdMessages, pdfFields, pdfSegments, pdfTables, pdfAttributeTables, pdfDatatypeDescs, pdfComponentDescs, pdfComponentTables },
+  { xsdFields, xsdSegments, xsdDatatypes, xsdMessages, pdfFields, pdfSegments, pdfTables, pdfAttributeTables, pdfDatatypeDescs, pdfComponentDescs, pdfDeprecatedComponents, pdfComponentTables },
   outputDir,
 );
 console.log(`  Output written to: ${outputDir}`);
