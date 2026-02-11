@@ -114,6 +114,18 @@ To avoid cycles:
 - Never mock Aidbox behavior — if a test depends on Aidbox, make it an integration test against the real test instance
 - Use shared helpers from `test/integration/helpers.ts` for creating test resources; local helpers are OK only when there's a single integration test file for that domain
 
+## Type Integrity
+
+Types must accurately represent the actual data flow. If there's a mismatch between what the types say and what the code does, fix the types or the code — never silence the compiler.
+
+**Don't stub required fields with fallback defaults.** `value || ""` (or `|| 0`, `|| []`) to satisfy a required field means the types are lying. Either make the source type required (if the value is always present), handle the missing case explicitly (error, skip, early return), or make the target field optional (but critically review this decision. Often optional fields indicate bad data validation).
+
+**If a field is always provided in practice, make it required in the type.**
+
+**Don't use `as` casts to bypass type mismatches.** Refactor until the types align naturally. Acceptable uses: test code testing defensive runtime checks against malformed input.
+
+**Don't use `!` (non-null assertion) without local proof.** If a value is proven non-null by a guard or check in the same scope, prefer narrowing (e.g., `if` check, early return) over `!`. If `!` is used, the proof must be obvious within a few lines.
+
 ## General Principles
 
 - Don't add error handling, fallbacks, or validation for scenarios that can't happen
