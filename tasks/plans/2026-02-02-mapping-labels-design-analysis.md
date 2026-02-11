@@ -1,5 +1,5 @@
 ---
-status: ai-reviewed
+status: planned
 reviewer-iterations: 0
 prototype-files:
   - src/code-mapping/mapping-errors.ts
@@ -404,3 +404,103 @@ Approve for implementation. The core decision and scope are correct. Before impl
 
 ## User Feedback
 [TBD]
+
+# Implementation Plan
+
+## Overview
+Replace string labels (`sourceFieldLabel`, `targetFieldLabel`, `taskDisplay`) in the mapping registry with structured metadata (`source: { segment, field }`, `target: { resource, field }`). Remove per-instance labels from `MappingError` and `Task.input`. All display strings are derived from structured data via helper functions. This eliminates duplication across three storage locations, prevents notation drift (dash vs dot), and simplifies converters.
+
+## Development Approach
+- Complete each task fully before moving to the next
+- Make small, focused changes
+- **CRITICAL: `bun run typecheck` and `bun test:unit` must pass before starting next task**
+- **CRITICAL: update this plan when scope changes**
+
+## Validation Commands
+- `bun test:unit` — Run unit tests
+- `bun test:integration` — Run integration tests
+- `bun test:all` — Run all tests (unit + integration)
+- `bun run typecheck` — TypeScript type checking
+
+---
+
+## Task 1: Rewrite registry with structured metadata + update all src/ consumers
+
+Rewrite `MAPPING_TYPES` with structured metadata and derivation helpers. Update all source files that access the old string fields (`.taskDisplay`, `.sourceFieldLabel`, `.targetFieldLabel`) on the config object.
+
+- [ ] **mapping-types.ts**: Replace `MAPPING_TYPES` entries — remove `taskDisplay`, `sourceFieldLabel`, `targetFieldLabel`; add `source: { segment, field }` and `target: { resource, field }` per the design's Registry Shape section
+- [ ] **mapping-types.ts**: Add exported derivation helpers: `sourceLabel(config)`, `targetLabel(config)`, `taskDisplay(config)` per the design's Derivation Helpers section
+- [ ] **mapping-types.ts**: Update module docstring to reflect new structured fields and helpers
+- [ ] **compose.ts:104**: Change `display: typeConfig.taskDisplay` → `display: taskDisplay(typeConfig)` (import `taskDisplay` from mapping-types)
+- [ ] **concept-map/service.ts:225**: Change `type.targetFieldLabel` → `targetLabel(type)` in `createEmptyConceptMap()` (import `targetLabel` from mapping-types)
+- [ ] **mapping-tasks.ts:28**: Change `MAPPING_TYPES[filter].taskDisplay.replace(...)` → `taskDisplay(MAPPING_TYPES[filter]).replace(...)` in `getMappingTypeFilterDisplay()`
+- [ ] **mapping-tasks.ts:266**: Change `typeConfig.targetFieldLabel.split(".").pop()` → `targetLabel(typeConfig).split(".").pop()` in `renderResolutionForm()` (import `targetLabel`)
+- [ ] **mapping-tasks.ts:300-301**: Replace Task.input reads for "Source field"/"Target field" with registry derivation: use `getTaskMappingType(task)` → `MAPPING_TYPES[mappingType]` → `sourceLabel(config)` / `targetLabel(config)`
+- [ ] **code-mappings.ts:55**: Change `MAPPING_TYPES[filter].taskDisplay.replace(...)` → `taskDisplay(MAPPING_TYPES[filter]).replace(...)` in `getMappingTypeFilterDisplay()` (import `taskDisplay`)
+- [ ] **code-mappings.ts:294**: Change `MAPPING_TYPES[mappingType].targetFieldLabel` → `targetLabel(MAPPING_TYPES[mappingType])` in `renderAddMappingForm()` (import `targetLabel`)
+- [ ] **code-mappings.ts:346**: Change `MAPPING_TYPES[mappingType].targetFieldLabel` → `targetLabel(MAPPING_TYPES[mappingType])` in `renderMappingEntryPanel()`
+- [ ] **mapping-types.test.ts**: Rewrite "each type has all required fields" test to check `source.segment`, `source.field`, `target.resource`, `target.field`, `targetSystem`
+- [ ] **mapping-types.test.ts**: Rewrite "observation-code-loinc type has correct configuration" to assert structured shape
+- [ ] **mapping-types.test.ts**: Add tests for `sourceLabel()`, `targetLabel()`, `taskDisplay()` for each mapping type
+- [ ] Run `bun run typecheck` and `bun test:unit` — must pass before next task
+
+---
+
+## Task 2: Remove labels from MappingError + update converters + compose.ts Task.input
+
+Remove `sourceFieldLabel` and `targetFieldLabel` from the `MappingError` interface. Update all converters that construct `MappingError` objects. Update `compose.ts` to stop persisting labels in Task.input and derive `code.text` from registry.
+
+- [ ] **mapping-errors.ts:31-32**: Remove `sourceFieldLabel: string` and `targetFieldLabel: string` from `MappingError` interface
+- [ ] **obx-observation.ts** (3 locations: `mapOBXStatusToFHIRWithResult` ~line 90, `resolveOBXStatus` ~lines 542 and 570): Remove `sourceFieldLabel` and `targetFieldLabel` from all `MappingError` object literals
+- [ ] **obr-diagnosticreport.ts** (3 locations: `mapOBRStatusToFHIRWithResult` ~line 81, `resolveOBRStatus` ~lines 291 and 320): Remove `sourceFieldLabel` and `targetFieldLabel` from all `MappingError` object literals
+- [ ] **pv1-encounter.ts** (2 locations: `mapPatientClassToFHIRWithResult` ~line 105, `resolvePatientClass` ~line 250): Remove `sourceFieldLabel` and `targetFieldLabel` from all `MappingError` object literals
+- [ ] **oru-r01.ts:192-193**: Remove `sourceFieldLabel` and `targetFieldLabel` from the LOINC `MappingError` in `convertOBXToObservationResolving()`
+- [ ] **compose.ts:89-90**: Remove the two lines that push "Source field" and "Target field" to Task.input
+- [ ] **compose.ts:109**: Change `text: \`Map ${error.sourceFieldLabel} to ${error.targetFieldLabel}\`` → `text: \`Map ${sourceLabel(typeConfig)} to ${targetLabel(typeConfig)}\`` (import `sourceLabel`, `targetLabel`)
+- [ ] **mapping-errors.test.ts**: Remove `sourceFieldLabel` and `targetFieldLabel` from ALL `MappingError` constructions (~10 occurrences across all test cases)
+- [ ] **mapping-task-service.test.ts**: Remove `sourceFieldLabel` and `targetFieldLabel` from ALL `MappingError` constructions (~8 occurrences)
+- [ ] **mapping-task-service.test.ts**: Remove assertions on `inputMap.get("Source field")` and `inputMap.get("Target field")` from composeMappingTask tests (~4 test cases)
+- [ ] **mapping-task-service.test.ts**: Update Task.code.coding[0].display assertions to match new derived values (e.g., `"Observation.code mapping"` instead of `"Observation code to LOINC mapping"`)
+- [ ] **mapping-task-service.test.ts**: Remove `sampleTask.input` entries for "Source field" and "Target field"
+- [ ] Run `bun run typecheck` and `bun test:unit` — must pass before next task
+
+---
+
+## Task 3: Update integration tests
+
+Update all integration test files to match the new Task structure (no Source/Target field in input, derived display values).
+
+- [ ] **test/integration/helpers.ts:123**: Change `typeConfig.targetFieldLabel` → `targetLabel(typeConfig)` in `createTestConceptMapForType()` (import `targetLabel` from mapping-types)
+- [ ] **test/integration/api/mapping-tasks-resolution.integration.test.ts**: Update Task creation helpers — change `typeConfig.taskDisplay` to `taskDisplay(typeConfig)`, change `typeConfig.sourceFieldLabel`/`targetFieldLabel` to `sourceLabel(typeConfig)`/`targetLabel(typeConfig)`, remove "Source field"/"Target field" from Task.input
+- [ ] **test/integration/ui/mapping-tasks-queue.integration.test.ts**: Same updates as above — derived display, derived labels, no Source/Target field in input
+- [ ] **test/integration/ui/mapping-tasks-filtering.integration.test.ts**: Update `createTask()` helper to use `taskDisplay(config)` instead of `config.taskDisplay`
+- [ ] **test/integration/v2-to-fhir/oru-r01.integration.test.ts**: Remove assertions on Task.input containing "Source field" / "Target field" entries (lines ~336-341, ~407-412)
+- [ ] Run `bun run typecheck` and `bun test:all` — must pass before next task
+
+---
+
+## Task 4: Update documentation
+
+- [ ] **docs/developer-guide/how-to/adding-mapping-type.md**: Replace the MAPPING_TYPES example to show the new structured format (`source: { segment, field }`, `target: { resource, field }`, `targetSystem`)
+- [ ] **adding-mapping-type.md**: Remove references to `taskCode`, `taskDisplay`, `sourceFieldLabel`, `targetFieldLabel` as fields to add
+- [ ] **adding-mapping-type.md**: Update the converter example to show `MappingError` without label fields
+- [ ] **adding-mapping-type.md**: Mention that display labels are derived automatically from structured metadata
+- [ ] Run `bun run typecheck` — must pass before next task
+
+---
+
+## Task 5: Cleanup design artifacts
+
+- [ ] Remove all `DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md` comments from codebase (files: `mapping-errors.ts`, `compose.ts`, `mapping-tasks.ts`, `oru-r01.ts`, `obx-observation.ts`, `obr-diagnosticreport.ts`, `pv1-encounter.ts`)
+- [ ] Update design document frontmatter status to `implemented`
+- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis" src/`
+- [ ] Run `bun test:all` and `bun run typecheck` — final verification
+
+---
+
+## Post-Completion Verification
+1. **Functional test**: Start server (`bun run dev`), navigate to `/mapping/tasks` and `/mapping/table` — verify labels display correctly for all mapping types
+2. **Edge case test**: Verify that existing Tasks (with old Source/Target field inputs) still render correctly in the UI (labels come from registry now, old input fields are simply ignored)
+3. **Integration check**: Submit a test HL7v2 message with an unmapped code, verify Task is created without Source/Target field in input, and UI shows correct labels
+4. **No regressions**: All existing tests pass (`bun test:all`)
+5. **Cleanup verified**: No `DESIGN PROTOTYPE` comments remain in `src/`
