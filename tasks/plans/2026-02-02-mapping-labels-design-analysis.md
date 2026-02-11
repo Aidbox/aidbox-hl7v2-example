@@ -470,12 +470,12 @@ Remove `sourceFieldLabel` and `targetFieldLabel` from the `MappingError` interfa
 
 Update all integration test files to match the new Task structure (no Source/Target field in input, derived display values).
 
-- [ ] **test/integration/helpers.ts:123**: Change `typeConfig.targetFieldLabel` → `targetLabel(typeConfig)` in `createTestConceptMapForType()` (import `targetLabel` from mapping-types)
-- [ ] **test/integration/api/mapping-tasks-resolution.integration.test.ts**: Update Task creation helpers — change `typeConfig.taskDisplay` to `taskDisplay(typeConfig)`, change `typeConfig.sourceFieldLabel`/`targetFieldLabel` to `sourceLabel(typeConfig)`/`targetLabel(typeConfig)`, remove "Source field"/"Target field" from Task.input
-- [ ] **test/integration/ui/mapping-tasks-queue.integration.test.ts**: Same updates as above — derived display, derived labels, no Source/Target field in input
-- [ ] **test/integration/ui/mapping-tasks-filtering.integration.test.ts**: Update `createTask()` helper to use `taskDisplay(config)` instead of `config.taskDisplay`
-- [ ] **test/integration/v2-to-fhir/oru-r01.integration.test.ts**: Remove assertions on Task.input containing "Source field" / "Target field" entries (lines ~336-341, ~407-412)
-- [ ] Run `bun run typecheck` and `bun test:all` — must pass before next task
+- [x] **test/integration/helpers.ts:123**: Change `typeConfig.targetFieldLabel` → `targetLabel(typeConfig)` in `createTestConceptMapForType()` (import `targetLabel` from mapping-types)
+- [x] **test/integration/api/mapping-tasks-resolution.integration.test.ts**: Update Task creation helpers — change `typeConfig.taskDisplay` to `taskDisplay(typeConfig)`, change `typeConfig.sourceFieldLabel`/`targetFieldLabel` to `sourceLabel(typeConfig)`/`targetLabel(typeConfig)`, remove "Source field"/"Target field" from Task.input
+- [x] **test/integration/ui/mapping-tasks-queue.integration.test.ts**: Same updates as above — derived display, derived labels, no Source/Target field in input
+- [x] **test/integration/ui/mapping-tasks-filtering.integration.test.ts**: Update `createTask()` helper to use `taskDisplay(config)` instead of `config.taskDisplay`
+- [x] **test/integration/v2-to-fhir/oru-r01.integration.test.ts**: Remove assertions on Task.input containing "Source field" / "Target field" entries (lines ~336-341, ~407-412)
+- [x] Run `bun run typecheck` and `bun test:all` — all pass: typecheck OK, unit 1280/1280, integration 155/155. Also fixed 4 pre-existing fixture bugs (PV1-19 field position off by 3-4 pipes in base.hl7, with-specimen.hl7, with-notes.hl7, multiple-obr.hl7).
 
 ---
 

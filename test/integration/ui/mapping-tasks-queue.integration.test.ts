@@ -51,10 +51,10 @@ async function createPendingTask(
           {
             system: "urn:aidbox-hl7v2-converter:mapping-type",
             code: "observation-code-loinc",
-            display: "Observation code to LOINC mapping",
+            display: "Observation.code mapping",
           },
         ],
-        text: "Map local lab code to LOINC",
+        text: "Map OBX-3 to Observation.code",
       },
       authoredOn: "2025-02-12T14:20:00Z",
       lastModified: "2025-02-12T14:20:00Z",
@@ -121,8 +121,6 @@ async function createPendingTaskForType(
         { type: { text: "Local code" }, valueString: localCode },
         { type: { text: "Local display" }, valueString: localDisplay },
         { type: { text: "Local system" }, valueString: localSystem },
-        { type: { text: "Source field" }, valueString: sourceLabel(typeConfig) },
-        { type: { text: "Target field" }, valueString: targetLabel(typeConfig) },
       ],
     }),
   });

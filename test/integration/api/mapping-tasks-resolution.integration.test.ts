@@ -59,8 +59,6 @@ async function createTaskForType(
       { type: { text: "Local code" }, valueString: localCode },
       { type: { text: "Local display" }, valueString: localDisplay },
       { type: { text: "Local system" }, valueString: localSystem },
-      { type: { text: "Source field" }, valueString: sourceLabel(typeConfig) },
-      { type: { text: "Target field" }, valueString: targetLabel(typeConfig) },
     ],
   };
 
