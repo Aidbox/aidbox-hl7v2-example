@@ -78,6 +78,9 @@ export interface PdfAttributeTableField {
   position: number;    // SEQ number
   item: string;        // zero-padded 5-digit, e.g. "00106"
   optionality: string; // OPT code: "R", "O", "C", "RE", "CE", "X", "B", "W"
+  minLength: number | null;  // from LEN column: min part of "N..M", or N for single value
+  maxLength: number | null;  // from LEN column: max part of "N..M", or N for single value
+  confLength: string | null; // from C.LEN column: e.g. "20=", "5#" (v2.8.2 only)
 }
 
 export interface PdfDatatypeDescription {
@@ -112,7 +115,9 @@ export interface OutputField {
   item: string;
   dataType: string;
   longName: string;
+  minLength: number | null;
   maxLength: number | null;
+  confLength: string | null;
   table: string | null;
   description: string | null;
 }

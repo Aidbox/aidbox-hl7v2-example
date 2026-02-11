@@ -562,6 +562,8 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
 
     // Find header row containing "SEQ" and optionality column ("OPT", "USAGE", or "R/O")
     let optColStart = -1;
+    let lenColStart = -1;
+    let clenColStart = -1;
     const titleLineIndex = i - 1;
     const headerLimit = Math.min(i + 5, lines.length);
     for (; i < headerLimit; i++) {
@@ -575,6 +577,11 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
           optColStart = line.indexOf("R/O");
         }
         if (optColStart !== -1) {
+          // Also capture LEN and C.LEN column positions
+          const lenMatch = line.match(/\bLEN\b/);
+          if (lenMatch) lenColStart = line.indexOf(lenMatch[0]);
+          const clenMatch = line.match(/\bC\.LEN\b/);
+          if (clenMatch) clenColStart = line.indexOf(clenMatch[0]);
           i++;
           break;
         }
@@ -602,6 +609,10 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
         optColStart = line.indexOf("OPT");
         if (optColStart === -1) optColStart = line.indexOf("USAGE");
         if (optColStart === -1) optColStart = line.indexOf("R/O");
+        const lenMatch = line.match(/\bLEN\b/);
+        lenColStart = lenMatch ? line.indexOf(lenMatch[0]) : -1;
+        const clenMatch = line.match(/\bC\.LEN\b/);
+        clenColStart = clenMatch ? line.indexOf(clenMatch[0]) : -1;
         continue;
       }
 
@@ -624,7 +635,38 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
       const usageToken = optSlice.split(/\s+/).find(t => VALID_USAGE_CODES.has(t));
       if (!usageToken) continue;
 
-      fields.push({ segment: segName, position, item, optionality: usageToken });
+      // Extract LEN by column position: "N..M" (range) or "N" (single)
+      let minLength: number | null = null;
+      let maxLength: number | null = null;
+      if (lenColStart !== -1) {
+        const lenSlice = line.slice(Math.max(0, lenColStart - 3), lenColStart + 12).trim();
+        // Split into tokens and find one matching range or number pattern
+        for (const token of lenSlice.split(/\s+/)) {
+          const rangeMatch = token.match(/^(\d+)\.\.(\d+)$/);
+          if (rangeMatch) {
+            minLength = parseInt(rangeMatch[1]!, 10);
+            maxLength = parseInt(rangeMatch[2]!, 10);
+            break;
+          }
+          if (/^\d+$/.test(token)) {
+            minLength = parseInt(token, 10);
+            maxLength = minLength;
+            break;
+          }
+        }
+      }
+
+      // Extract C.LEN by column position: "N=" or "N#"
+      let confLength: string | null = null;
+      if (clenColStart !== -1) {
+        const clenSlice = line.slice(Math.max(0, clenColStart - 3), clenColStart + 12).trim();
+        for (const token of clenSlice.split(/\s+/)) {
+          const clenMatch = token.match(/^\d+[=#]$/);
+          if (clenMatch) { confLength = clenMatch[0]; break; }
+        }
+      }
+
+      fields.push({ segment: segName, position, item, optionality: usageToken, minLength, maxLength, confLength });
     }
 
     if (fields.length > 0) {

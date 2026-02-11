@@ -47,6 +47,18 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
   await mkdir(outputDir, { recursive: true });
   const warnings: string[] = [];
 
+  // Build length lookup from PDF attribute tables
+  const lengthLookup = new Map<string, { minLength: number | null; maxLength: number | null; confLength: string | null }>();
+  for (const [, fields] of input.pdfAttributeTables) {
+    for (const f of fields) {
+      lengthLookup.set(`${f.segment}.${f.position}`, {
+        minLength: f.minLength,
+        maxLength: f.maxLength,
+        confLength: f.confLength,
+      });
+    }
+  }
+
   // 1. Build fields.json
   const fieldsOutput: Record<string, OutputField> = {};
   let fieldDescriptionCount = 0;
@@ -68,13 +80,17 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
 
     if (description) fieldDescriptionCount++;
 
+    const pdfLen = lengthLookup.get(key);
+
     fieldsOutput[key] = {
       segment: xsd.segment,
       position: xsd.position,
       item: xsd.item,
       dataType: xsd.dataType,
       longName: xsd.longName,
-      maxLength: xsd.maxLength,
+      minLength: pdfLen?.minLength ?? null,
+      maxLength: xsd.maxLength ?? pdfLen?.maxLength ?? null,
+      confLength: pdfLen?.confLength ?? null,
       table: xsd.table,
       description,
     };

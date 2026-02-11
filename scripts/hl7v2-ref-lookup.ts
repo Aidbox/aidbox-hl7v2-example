@@ -162,7 +162,13 @@ function showField(query: string, data: ReferenceData) {
 
   console.log(`Field ${query} — ${field.longName}`);
   console.log(`  Data Type: ${field.dataType}`);
-  if (field.maxLength !== null) console.log(`  Max Length: ${field.maxLength}`);
+  if (field.minLength !== null && field.maxLength !== null) {
+    const lenStr = field.minLength === field.maxLength ? `${field.maxLength}` : `${field.minLength}..${field.maxLength}`;
+    const confStr = field.confLength ? ` (C.LEN: ${field.confLength})` : "";
+    console.log(`  Length: ${lenStr}${confStr}`);
+  } else if (field.maxLength !== null) {
+    console.log(`  Max Length: ${field.maxLength}`);
+  }
   console.log(`  Table: ${field.table ?? "-"}`);
   console.log(`  Optionality: ${optStr}`);
   console.log(`  Cardinality: ${cardStr}`);
@@ -230,11 +236,16 @@ function showSegment(query: string, data: ReferenceData): boolean {
       const f = data.fields[sf.field];
       const name = f?.longName ?? "?";
       const dt = f?.dataType ?? "?";
-      const maxLen = f?.maxLength !== null && f?.maxLength !== undefined ? `, maxLen: ${f.maxLength}` : "";
+      let lenStr = "";
+      if (f?.minLength != null && f?.maxLength != null) {
+        lenStr = f.minLength === f.maxLength ? `, len: ${f.maxLength}` : `, len: ${f.minLength}..${f.maxLength}`;
+      } else if (f?.maxLength != null) {
+        lenStr = `, maxLen: ${f.maxLength}`;
+      }
       const table = f?.table ? ` [table ${f.table}]` : "";
       const repeat = sf.maxOccurs !== 1 ? ", repeating" : "";
       const opt = sf.optionality ? ` [${sf.optionality}]` : "";
-      console.log(`  ${sf.field.padEnd(8)} ${name} (${dt}${maxLen}${repeat})${table}${opt}`);
+      console.log(`  ${sf.field.padEnd(8)} ${name} (${dt}${lenStr}${repeat})${table}${opt}`);
     }
   }
   return true;
