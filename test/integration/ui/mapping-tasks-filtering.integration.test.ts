@@ -11,6 +11,7 @@ import {
 } from "../../../src/ui/pages/mapping-tasks";
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 import { MAPPING_TYPES, type MappingTypeName } from "../../../src/code-mapping/mapping-types";
+import { taskDisplay } from "../../../src/code-mapping/mapping-task";
 
 // ============================================================================
 // Test Helpers
@@ -55,7 +56,7 @@ async function createTypedTask(
   status: "requested" | "completed" = "requested",
 ): Promise<Task> {
   const config = MAPPING_TYPES[mappingType];
-  return createTask(id, mappingType, config.taskDisplay, status);
+  return createTask(id, mappingType, taskDisplay(config), status);
 }
 
 // ============================================================================

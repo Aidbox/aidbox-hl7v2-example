@@ -7,12 +7,15 @@
  * ## Purpose
  *
  * This registry defines how different HL7v2 fields are mapped to FHIR values when
- * automatic mapping fails. Each mapping type specifies:
+ * automatic mapping fails. Each mapping type specifies structured metadata:
  *
- * - `taskDisplay`: Human-readable description shown in UI
+ * - `source`: HL7v2 source field (`segment` name and `field` position number)
+ * - `target`: FHIR target (`resource` type and `field` path)
  * - `targetSystem`: FHIR code system URI for the resolved value
- * - `sourceFieldLabel`: HL7v2 field reference for display (e.g., "OBX-3", "PV1.2")
- * - `targetFieldLabel`: FHIR field reference for display (e.g., "Observation.code")
+ *
+ * Display strings (source labels like "OBX-3", target labels like "Observation.code")
+ * are derived from structured metadata via helper functions:
+ * `sourceLabel()`, `targetLabel()`.
  *
  * ConceptMap IDs are generated automatically using the mapping type name as suffix:
  * `hl7v2-{sendingApplication}-{sendingFacility}-{mappingType}`
@@ -33,28 +36,24 @@
 
 export const MAPPING_TYPES = {
   "observation-code-loinc": {
-    taskDisplay: "Observation code to LOINC mapping",
+    source: { segment: "OBX", field: 3 },
+    target: { resource: "Observation", field: "code" },
     targetSystem: "http://loinc.org",
-    sourceFieldLabel: "OBX-3",
-    targetFieldLabel: "Observation.code",
   },
   "patient-class": {
-    taskDisplay: "Patient class mapping",
+    source: { segment: "PV1", field: 2 },
+    target: { resource: "Encounter", field: "class" },
     targetSystem: "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-    sourceFieldLabel: "PV1.2",
-    targetFieldLabel: "Encounter.class",
   },
   "obr-status": {
-    taskDisplay: "OBR result status mapping",
+    source: { segment: "OBR", field: 25 },
+    target: { resource: "DiagnosticReport", field: "status" },
     targetSystem: "http://hl7.org/fhir/diagnostic-report-status",
-    sourceFieldLabel: "OBR-25",
-    targetFieldLabel: "DiagnosticReport.status",
   },
   "obx-status": {
-    taskDisplay: "OBX observation status mapping",
+    source: { segment: "OBX", field: 11 },
+    target: { resource: "Observation", field: "status" },
     targetSystem: "http://hl7.org/fhir/observation-status",
-    sourceFieldLabel: "OBX-11",
-    targetFieldLabel: "Observation.status",
   },
 } as const;
 
@@ -63,6 +62,16 @@ export type MappingTypeName = keyof typeof MAPPING_TYPES;
 
 /** Configuration object for a single mapping type */
 export type MappingTypeConfig = (typeof MAPPING_TYPES)[MappingTypeName];
+
+/** "OBX-3", "PV1-2" — HL7v2 dash convention */
+export function sourceLabel(config: MappingTypeConfig): string {
+  return `${config.source.segment}-${config.source.field}`;
+}
+
+/** "Observation.code", "Encounter.class" */
+export function targetLabel(config: MappingTypeConfig): string {
+  return `${config.target.resource}.${config.target.field}`;
+}
 
 /**
  * Get mapping type configuration by type name.

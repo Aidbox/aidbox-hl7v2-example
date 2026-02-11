@@ -3,6 +3,8 @@ import {
   MAPPING_TYPES,
   getMappingTypeOrFail,
   isMappingTypeName,
+  sourceLabel,
+  targetLabel,
   type MappingTypeName,
 } from "../../../src/code-mapping/mapping-types";
 
@@ -20,30 +22,27 @@ describe("MAPPING_TYPES registry", () => {
     }
   });
 
-  test("each type has all required fields", () => {
-    const requiredFields = [
-      "taskDisplay",
-      "targetSystem",
-      "sourceFieldLabel",
-      "targetFieldLabel",
-    ];
-
+  test("each type has all required structured fields", () => {
     for (const [typeName, config] of Object.entries(MAPPING_TYPES)) {
-      for (const field of requiredFields) {
-        expect(
-          config[field as keyof typeof config],
-          `${typeName} missing ${field}`,
-        ).toBeDefined();
-      }
+      expect(config.source.segment, `${typeName} missing source.segment`).toBeDefined();
+      expect(config.source.field, `${typeName} missing source.field`).toBeDefined();
+      expect(config.target.resource, `${typeName} missing target.resource`).toBeDefined();
+      expect(config.target.field, `${typeName} missing target.field`).toBeDefined();
+      expect(config.targetSystem, `${typeName} missing targetSystem`).toBeDefined();
+    }
+  });
+
+  test("source.field is always a number", () => {
+    for (const [typeName, config] of Object.entries(MAPPING_TYPES)) {
+      expect(typeof config.source.field, `${typeName} source.field should be number`).toBe("number");
     }
   });
 
   test("observation-code-loinc type has correct configuration", () => {
     expect(MAPPING_TYPES["observation-code-loinc"]).toEqual({
-      taskDisplay: "Observation code to LOINC mapping",
+      source: { segment: "OBX", field: 3 },
+      target: { resource: "Observation", field: "code" },
       targetSystem: "http://loinc.org",
-      sourceFieldLabel: "OBX-3",
-      targetFieldLabel: "Observation.code",
     });
   });
 
@@ -58,6 +57,23 @@ describe("MAPPING_TYPES registry", () => {
       "http://hl7.org/fhir/observation-status",
     );
   });
+});
+
+describe("derivation helpers", () => {
+  test("sourceLabel produces HL7v2 dash notation for each type", () => {
+    expect(sourceLabel(MAPPING_TYPES["observation-code-loinc"])).toBe("OBX-3");
+    expect(sourceLabel(MAPPING_TYPES["patient-class"])).toBe("PV1-2");
+    expect(sourceLabel(MAPPING_TYPES["obr-status"])).toBe("OBR-25");
+    expect(sourceLabel(MAPPING_TYPES["obx-status"])).toBe("OBX-11");
+  });
+
+  test("targetLabel produces FHIR Resource.field notation for each type", () => {
+    expect(targetLabel(MAPPING_TYPES["observation-code-loinc"])).toBe("Observation.code");
+    expect(targetLabel(MAPPING_TYPES["patient-class"])).toBe("Encounter.class");
+    expect(targetLabel(MAPPING_TYPES["obr-status"])).toBe("DiagnosticReport.status");
+    expect(targetLabel(MAPPING_TYPES["obx-status"])).toBe("Observation.status");
+  });
+
 });
 
 describe("getMappingTypeOrFail", () => {
@@ -100,6 +116,6 @@ describe("isMappingTypeName", () => {
     expect(isMappingTypeName("loinc-mapping")).toBe(false);
     expect(isMappingTypeName("")).toBe(false);
     expect(isMappingTypeName("LOINC")).toBe(false);
-    expect(isMappingTypeName("loinc")).toBe(false); // Old type name should be invalid
+    expect(isMappingTypeName("loinc")).toBe(false);
   });
 });

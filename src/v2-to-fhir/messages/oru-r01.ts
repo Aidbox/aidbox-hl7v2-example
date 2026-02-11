@@ -176,6 +176,7 @@ export async function convertOBXToObservationResolving(
     errors.push(obxResult.error);
   }
 
+  // TODO refactor: probably, it should happen inside convertOBXWithMappingSupportAsync, because it already returns an object with an error field
   // Try LOINC code resolution
   let loincResolution: Awaited<ReturnType<typeof resolveToLoinc>> | undefined;
   try {
@@ -186,11 +187,7 @@ export async function convertOBXToObservationResolving(
         localCode: error.localCode || "",
         localDisplay: error.localDisplay,
         localSystem: error.localSystem,
-        // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
-        // Keep only `mappingType`; labels should come from the mapping registry.
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       });
     } else {
       throw error;

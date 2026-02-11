@@ -75,11 +75,7 @@ export function mapOBRStatusToFHIRWithResult(
         localCode: status || "undefined",
         localDisplay: `OBR-25 status: ${status ?? "missing"}`,
         localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
-        // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
-        // Keep only `mappingType`; labels should come from the mapping registry.
         mappingType: "obr-status",
-        sourceFieldLabel: "OBR-25",
-        targetFieldLabel: "DiagnosticReport.status",
       },
     };
   }
@@ -288,8 +284,6 @@ async function resolveOBRStatus(
         localDisplay: "OBR-25 status: missing",
         localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
         mappingType: "obr-status",
-        sourceFieldLabel: "OBR-25",
-        targetFieldLabel: "DiagnosticReport.status",
       },
     };
   }
@@ -316,8 +310,6 @@ async function resolveOBRStatus(
       localDisplay: `OBR-25 status: ${normalizedStatus}`,
       localSystem,
       mappingType: "obr-status",
-      sourceFieldLabel: "OBR-25",
-      targetFieldLabel: "DiagnosticReport.status",
     },
   };
 }

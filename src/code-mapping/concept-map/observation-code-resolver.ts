@@ -24,7 +24,7 @@ export class LoincResolutionError extends Error {
     message: string,
     public readonly localCode: string | undefined,
     public readonly localDisplay: string | undefined,
-    public readonly localSystem: string | undefined,
+    public readonly localSystem: string,
     public readonly sendingApplication: string,
     public readonly sendingFacility: string,
   ) {
@@ -118,31 +118,31 @@ async function resolveFromConceptMap(
   const localCode = observationIdentifier.$1_code;
   const localDisplay = observationIdentifier.$2_text;
   const localSystem = observationIdentifier.$3_system;
+  const localSystemNormalized = normalizeSystem(localSystem);
+
+  if (!localSystemNormalized) {
+    throw new MissingLocalSystemError(
+        `OBX-3 local code "${localCode}" is missing coding system (component 3). ` +
+        `Messages without local code system are not supported.`,
+        localCode,
+        localDisplay,
+        sender.sendingApplication,
+        sender.sendingFacility,
+    );
+  }
 
   if (!localCode) {
     throw new LoincResolutionError(
       "OBX-3 has no code value",
       undefined,
-      undefined,
-      localSystem,
-      sender.sendingApplication,
-      sender.sendingFacility,
-    );
-  }
-
-  if (!localSystem) {
-    throw new MissingLocalSystemError(
-      `OBX-3 local code "${localCode}" is missing coding system (component 3). ` +
-        `Messages without local code system are not supported.`,
-      localCode,
       localDisplay,
+      localSystemNormalized!,
       sender.sendingApplication,
       sender.sendingFacility,
     );
   }
 
   const conceptMapId = generateConceptMapId(sender, "observation-code-loinc");
-  const localSystemNormalized = normalizeSystem(localSystem);
 
   const result = await translateCode(
     conceptMapId,

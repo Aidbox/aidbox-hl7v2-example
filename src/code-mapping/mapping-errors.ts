@@ -24,12 +24,8 @@ import { generateConceptMapId } from "./concept-map";
 export interface MappingError {
   localCode: string;
   localDisplay?: string;
-  localSystem?: string;
+  localSystem: string;
   mappingType: MappingTypeName;
-  // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
-  // Remove per-instance labels and derive from `MAPPING_TYPES[mappingType]`.
-  sourceFieldLabel: string;
-  targetFieldLabel: string;
 }
 
 /**

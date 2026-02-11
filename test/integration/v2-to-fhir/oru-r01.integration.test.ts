@@ -332,14 +332,6 @@ describe("ORU_R01 E2E Integration", () => {
         type: { text: "Local code" },
         valueString: "Y",
       });
-      expect(task.input).toContainEqual({
-        type: { text: "Source field" },
-        valueString: "OBR-25",
-      });
-      expect(task.input).toContainEqual({
-        type: { text: "Target field" },
-        valueString: "DiagnosticReport.status",
-      });
     });
 
     test("reprocesses message after OBR-25 status mapping task resolution", async () => {
@@ -403,14 +395,6 @@ describe("ORU_R01 E2E Integration", () => {
       const obxStatusTask = tasks.find((t) => t.code?.coding?.[0]?.code === "obx-status");
       expect(obxStatusTask).toBeDefined();
       expect(obxStatusTask?.status).toBe("requested");
-      expect(obxStatusTask?.input).toContainEqual({
-        type: { text: "Source field" },
-        valueString: "OBX-11",
-      });
-      expect(obxStatusTask?.input).toContainEqual({
-        type: { text: "Target field" },
-        valueString: "Observation.status",
-      });
     });
 
     test("returns mapping_error when OBX-11 is N and creates obx-status Task", async () => {

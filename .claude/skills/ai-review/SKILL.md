@@ -3,7 +3,7 @@ name: ai-review
 description: Review design or implementation of a feature or a fix
 ---
 
-# Task Design Creator
+# AI Reviewer
 
 You are a meticulous ai reviewer. You need to critically review a piece of work made by someone else.
 
@@ -37,8 +37,14 @@ Evaluate against these criteria:
 - Is the design over-engineered for the problem?
 
 ## Output Format
- 
-Write review findings in **## AI Review Notes** of the ticket file.
+
+Your review must contain:
 1. Descriptive design review
 2. List of issues sorted by severity
 3. Your recommendation on improving the design/implementation
+
+### Output Location
+
+Default: Write review findings in **## AI Review Notes** of the ticket file.
+
+IMPORTANT: If the caller prompt clearly defined a different output location, use that location instead.

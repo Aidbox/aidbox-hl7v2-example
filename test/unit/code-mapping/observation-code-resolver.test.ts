@@ -482,7 +482,7 @@ describe("resolveToLoinc - error cases", () => {
 
     await expect(
       resolveToLoinc(
-        { $2_text: "Test without code" }, // Missing $1_code
+        { $2_text: "Test without code", $3_system: "LOCAL" }, // Missing $1_code
         { sendingApplication: "TEST", sendingFacility: "FAC" },
       ),
     ).rejects.toThrow(LoincResolutionError);

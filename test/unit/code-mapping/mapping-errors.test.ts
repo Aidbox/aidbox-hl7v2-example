@@ -28,8 +28,6 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Potassium [Serum/Plasma]",
         localSystem: "ACME-LAB-CODES",
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       },
     ];
 
@@ -54,7 +52,7 @@ describe("buildMappingErrorResult", () => {
     expect(task.resourceType).toBe("Task");
     expect(task.status).toBe("requested");
     expect(task.code?.coding?.[0]?.code).toBe("observation-code-loinc");
-    expect(task.code?.coding?.[0]?.display).toBe("Observation code to LOINC mapping");
+    expect(task.code?.coding?.[0]?.display).toBe("Observation.code mapping");
   });
 
   test("creates Task for obr-status mapping error", () => {
@@ -64,8 +62,6 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Unknown status",
         localSystem: "http://terminology.hl7.org/CodeSystem/v2-0123",
         mappingType: "obr-status",
-        sourceFieldLabel: "OBR-25",
-        targetFieldLabel: "DiagnosticReport.status",
       },
     ];
 
@@ -86,8 +82,6 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Not applicable",
         localSystem: "http://terminology.hl7.org/CodeSystem/v2-0085",
         mappingType: "obx-status",
-        sourceFieldLabel: "OBX-11",
-        targetFieldLabel: "Observation.status",
       },
     ];
 
@@ -108,8 +102,6 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Unknown class",
         localSystem: "http://terminology.hl7.org/CodeSystem/v2-0004",
         mappingType: "patient-class",
-        sourceFieldLabel: "PV1.2",
-        targetFieldLabel: "Encounter.class",
       },
     ];
 
@@ -130,24 +122,18 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Potassium",
         localSystem: "ACME-LAB",
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       },
       {
         localCode: "Y",
         localDisplay: "Unknown",
         localSystem: "v2-0123",
         mappingType: "obr-status",
-        sourceFieldLabel: "OBR-25",
-        targetFieldLabel: "DiagnosticReport.status",
       },
       {
         localCode: "N",
         localDisplay: "NA",
         localSystem: "v2-0085",
         mappingType: "obx-status",
-        sourceFieldLabel: "OBX-11",
-        targetFieldLabel: "Observation.status",
       },
     ];
 
@@ -171,16 +157,12 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Potassium",
         localSystem: "ACME-LAB",
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       },
       {
         localCode: "K_SERUM",
         localDisplay: "Potassium [Serum]",
         localSystem: "ACME-LAB",
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       },
     ];
 
@@ -198,16 +180,12 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Final",
         localSystem: "LOCAL",
         mappingType: "obr-status",
-        sourceFieldLabel: "OBR-25",
-        targetFieldLabel: "DiagnosticReport.status",
       },
       {
         localCode: "F",
         localDisplay: "Final",
         localSystem: "LOCAL",
         mappingType: "obx-status",
-        sourceFieldLabel: "OBX-11",
-        targetFieldLabel: "Observation.status",
       },
     ];
 
@@ -231,16 +209,12 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Empty code",
         localSystem: "ACME-LAB",
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       },
       {
         localCode: "K_SERUM",
         localDisplay: "Potassium",
         localSystem: "ACME-LAB",
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       },
     ];
 
@@ -256,8 +230,6 @@ describe("buildMappingErrorResult", () => {
       {
         localCode: "TEST",
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       },
     ] as MappingError[];
 
@@ -273,8 +245,6 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Potassium",
         localSystem: "ACME-LAB",
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       },
     ];
 
@@ -291,8 +261,6 @@ describe("buildMappingErrorResult", () => {
         localDisplay: "Potassium",
         localSystem: "ACME-LAB",
         mappingType: "observation-code-loinc",
-        sourceFieldLabel: "OBX-3",
-        targetFieldLabel: "Observation.code",
       },
     ];
 

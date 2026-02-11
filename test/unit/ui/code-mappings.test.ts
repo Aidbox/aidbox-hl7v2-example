@@ -161,8 +161,8 @@ describe("getMappingTypeFilterDisplay", () => {
     mock.module("../../../src/aidbox", () => createMockAidbox());
     const { getMappingTypeFilterDisplay } = await import("../../../src/ui/pages/code-mappings");
 
-    expect(getMappingTypeFilterDisplay("observation-code-loinc")).toBe("Observation code to LOINC");
-    expect(getMappingTypeFilterDisplay("obr-status")).toBe("OBR result status");
+    expect(getMappingTypeFilterDisplay("observation-code-loinc")).toBe("Observation.code");
+    expect(getMappingTypeFilterDisplay("obr-status")).toBe("DiagnosticReport.status");
   });
 });
 
@@ -293,8 +293,8 @@ describe("renderCodeMappingsPage", () => {
     );
 
     expect(html).toContain("All Types");
-    expect(html).toContain("Observation code to LOINC");
-    expect(html).toContain("Patient class");
+    expect(html).toContain("Observation.code");
+    expect(html).toContain("Encounter.class");
   });
 
   test("highlights active type filter", async () => {

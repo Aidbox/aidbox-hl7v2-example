@@ -35,7 +35,7 @@ function createLoincTask(overrides: Partial<Task> = {}): Task {
       coding: [{
         system: "urn:aidbox-hl7v2-converter:mapping-type",
         code: "observation-code-loinc",
-        display: "Observation code to LOINC mapping",
+        display: "Observation.code mapping",
       }],
       text: "Map OBX-3 to Observation.code",
     },
@@ -46,8 +46,6 @@ function createLoincTask(overrides: Partial<Task> = {}): Task {
       { type: { text: "Local code" }, valueString: "K_SERUM" },
       { type: { text: "Local display" }, valueString: "Potassium [Serum/Plasma]" },
       { type: { text: "Local system" }, valueString: "ACME-LAB-CODES" },
-      { type: { text: "Source field" }, valueString: "OBX-3" },
-      { type: { text: "Target field" }, valueString: "Observation.code" },
     ],
     ...overrides,
   };
@@ -63,7 +61,7 @@ function createObrStatusTask(overrides: Partial<Task> = {}): Task {
       coding: [{
         system: "urn:aidbox-hl7v2-converter:mapping-type",
         code: "obr-status",
-        display: "OBR result status mapping",
+        display: "DiagnosticReport.status mapping",
       }],
       text: "Map OBR-25 to DiagnosticReport.status",
     },
@@ -74,8 +72,6 @@ function createObrStatusTask(overrides: Partial<Task> = {}): Task {
       { type: { text: "Local code" }, valueString: "Y" },
       { type: { text: "Local display" }, valueString: "Order received" },
       { type: { text: "Local system" }, valueString: "http://terminology.hl7.org/CodeSystem/v2-0123" },
-      { type: { text: "Source field" }, valueString: "OBR-25" },
-      { type: { text: "Target field" }, valueString: "DiagnosticReport.status" },
     ],
     ...overrides,
   };
@@ -91,7 +87,7 @@ function createPatientClassTask(overrides: Partial<Task> = {}): Task {
       coding: [{
         system: "urn:aidbox-hl7v2-converter:mapping-type",
         code: "patient-class",
-        display: "Patient class mapping",
+        display: "Encounter.class mapping",
       }],
       text: "Map PV1-2 to Encounter.class",
     },
@@ -102,8 +98,6 @@ function createPatientClassTask(overrides: Partial<Task> = {}): Task {
       { type: { text: "Local code" }, valueString: "1" },
       { type: { text: "Local display" }, valueString: "Unknown class" },
       { type: { text: "Local system" }, valueString: "http://terminology.hl7.org/CodeSystem/v2-0004" },
-      { type: { text: "Source field" }, valueString: "PV1-2" },
-      { type: { text: "Target field" }, valueString: "Encounter.class" },
     ],
     ...overrides,
   };
@@ -152,10 +146,10 @@ describe("getMappingTypeFilterDisplay", () => {
   });
 
   test("returns task display without ' mapping' suffix for mapping types", () => {
-    expect(getMappingTypeFilterDisplay("observation-code-loinc")).toBe("Observation code to LOINC");
-    expect(getMappingTypeFilterDisplay("patient-class")).toBe("Patient class");
-    expect(getMappingTypeFilterDisplay("obr-status")).toBe("OBR result status");
-    expect(getMappingTypeFilterDisplay("obx-status")).toBe("OBX observation status");
+    expect(getMappingTypeFilterDisplay("observation-code-loinc")).toBe("Observation.code");
+    expect(getMappingTypeFilterDisplay("patient-class")).toBe("Encounter.class");
+    expect(getMappingTypeFilterDisplay("obr-status")).toBe("DiagnosticReport.status");
+    expect(getMappingTypeFilterDisplay("obx-status")).toBe("Observation.status");
   });
 });
 
@@ -408,8 +402,8 @@ describe("renderMappingTasksPage", () => {
 
     // Check type filter tabs
     expect(html).toContain(">All</a>");
-    expect(html).toContain(">Observation code to LOINC</a>");
-    expect(html).toContain(">Patient class</a>");
+    expect(html).toContain(">Observation.code</a>");
+    expect(html).toContain(">Encounter.class</a>");
     expect(html).toContain(">Status</a>");
   });
 
@@ -424,7 +418,7 @@ describe("renderMappingTasksPage", () => {
     );
 
     // LOINC filter should be active (blue)
-    expect(html).toContain('class="px-2 py-1 rounded text-xs font-medium bg-blue-600 text-white">Observation code to LOINC</a>');
+    expect(html).toContain('class="px-2 py-1 rounded text-xs font-medium bg-blue-600 text-white">Observation.code</a>');
   });
 
   test("includes type parameter in filter URLs when not 'all'", () => {
