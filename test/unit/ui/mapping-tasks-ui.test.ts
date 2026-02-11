@@ -35,7 +35,7 @@ function createLoincTask(overrides: Partial<Task> = {}): Task {
       coding: [{
         system: "urn:aidbox-hl7v2-converter:mapping-type",
         code: "observation-code-loinc",
-        display: "Observation code to LOINC mapping",
+        display: "Observation.code mapping",
       }],
       text: "Map OBX-3 to Observation.code",
     },
@@ -63,7 +63,7 @@ function createObrStatusTask(overrides: Partial<Task> = {}): Task {
       coding: [{
         system: "urn:aidbox-hl7v2-converter:mapping-type",
         code: "obr-status",
-        display: "OBR result status mapping",
+        display: "DiagnosticReport.status mapping",
       }],
       text: "Map OBR-25 to DiagnosticReport.status",
     },
@@ -91,7 +91,7 @@ function createPatientClassTask(overrides: Partial<Task> = {}): Task {
       coding: [{
         system: "urn:aidbox-hl7v2-converter:mapping-type",
         code: "patient-class",
-        display: "Patient class mapping",
+        display: "Encounter.class mapping",
       }],
       text: "Map PV1-2 to Encounter.class",
     },
@@ -152,10 +152,10 @@ describe("getMappingTypeFilterDisplay", () => {
   });
 
   test("returns task display without ' mapping' suffix for mapping types", () => {
-    expect(getMappingTypeFilterDisplay("observation-code-loinc")).toBe("Observation code to LOINC");
-    expect(getMappingTypeFilterDisplay("patient-class")).toBe("Patient class");
-    expect(getMappingTypeFilterDisplay("obr-status")).toBe("OBR result status");
-    expect(getMappingTypeFilterDisplay("obx-status")).toBe("OBX observation status");
+    expect(getMappingTypeFilterDisplay("observation-code-loinc")).toBe("Observation.code");
+    expect(getMappingTypeFilterDisplay("patient-class")).toBe("Encounter.class");
+    expect(getMappingTypeFilterDisplay("obr-status")).toBe("DiagnosticReport.status");
+    expect(getMappingTypeFilterDisplay("obx-status")).toBe("Observation.status");
   });
 });
 
@@ -408,8 +408,8 @@ describe("renderMappingTasksPage", () => {
 
     // Check type filter tabs
     expect(html).toContain(">All</a>");
-    expect(html).toContain(">Observation code to LOINC</a>");
-    expect(html).toContain(">Patient class</a>");
+    expect(html).toContain(">Observation.code</a>");
+    expect(html).toContain(">Encounter.class</a>");
     expect(html).toContain(">Status</a>");
   });
 
@@ -424,7 +424,7 @@ describe("renderMappingTasksPage", () => {
     );
 
     // LOINC filter should be active (blue)
-    expect(html).toContain('class="px-2 py-1 rounded text-xs font-medium bg-blue-600 text-white">Observation code to LOINC</a>');
+    expect(html).toContain('class="px-2 py-1 rounded text-xs font-medium bg-blue-600 text-white">Observation.code</a>');
   });
 
   test("includes type parameter in filter URLs when not 'all'", () => {

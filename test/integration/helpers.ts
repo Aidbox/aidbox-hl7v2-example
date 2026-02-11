@@ -16,7 +16,7 @@ import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/In
 import { processNextMessage } from "../../src/v2-to-fhir/processor-service";
 import { toKebabCase } from "../../src/utils/string";
 import { aidboxFetch } from "../../src/aidbox";
-import { MAPPING_TYPES, type MappingTypeName } from "../../src/code-mapping/mapping-types";
+import { MAPPING_TYPES, type MappingTypeName, targetLabel } from "../../src/code-mapping/mapping-types";
 export { aidboxFetch };
 
 export async function loadFixture(fixturePath: string): Promise<string> {
@@ -120,7 +120,7 @@ export async function createTestConceptMapForType(
   const conceptMap: ConceptMap = {
     resourceType: "ConceptMap",
     id,
-    name: `HL7v2 ${title} to ${typeConfig.targetFieldLabel}`,
+    name: `HL7v2 ${title} to ${targetLabel(typeConfig)}`,
     status: "active",
     title,
     sourceUri: `http://example.org/fhir/CodeSystem/${baseId}`,

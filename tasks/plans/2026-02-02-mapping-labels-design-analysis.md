@@ -428,21 +428,21 @@ Replace string labels (`sourceFieldLabel`, `targetFieldLabel`, `taskDisplay`) in
 
 Rewrite `MAPPING_TYPES` with structured metadata and derivation helpers. Update all source files that access the old string fields (`.taskDisplay`, `.sourceFieldLabel`, `.targetFieldLabel`) on the config object.
 
-- [ ] **mapping-types.ts**: Replace `MAPPING_TYPES` entries — remove `taskDisplay`, `sourceFieldLabel`, `targetFieldLabel`; add `source: { segment, field }` and `target: { resource, field }` per the design's Registry Shape section
-- [ ] **mapping-types.ts**: Add exported derivation helpers: `sourceLabel(config)`, `targetLabel(config)`, `taskDisplay(config)` per the design's Derivation Helpers section
-- [ ] **mapping-types.ts**: Update module docstring to reflect new structured fields and helpers
-- [ ] **compose.ts:104**: Change `display: typeConfig.taskDisplay` → `display: taskDisplay(typeConfig)` (import `taskDisplay` from mapping-types)
-- [ ] **concept-map/service.ts:225**: Change `type.targetFieldLabel` → `targetLabel(type)` in `createEmptyConceptMap()` (import `targetLabel` from mapping-types)
-- [ ] **mapping-tasks.ts:28**: Change `MAPPING_TYPES[filter].taskDisplay.replace(...)` → `taskDisplay(MAPPING_TYPES[filter]).replace(...)` in `getMappingTypeFilterDisplay()`
-- [ ] **mapping-tasks.ts:266**: Change `typeConfig.targetFieldLabel.split(".").pop()` → `targetLabel(typeConfig).split(".").pop()` in `renderResolutionForm()` (import `targetLabel`)
-- [ ] **mapping-tasks.ts:300-301**: Replace Task.input reads for "Source field"/"Target field" with registry derivation: use `getTaskMappingType(task)` → `MAPPING_TYPES[mappingType]` → `sourceLabel(config)` / `targetLabel(config)`
-- [ ] **code-mappings.ts:55**: Change `MAPPING_TYPES[filter].taskDisplay.replace(...)` → `taskDisplay(MAPPING_TYPES[filter]).replace(...)` in `getMappingTypeFilterDisplay()` (import `taskDisplay`)
-- [ ] **code-mappings.ts:294**: Change `MAPPING_TYPES[mappingType].targetFieldLabel` → `targetLabel(MAPPING_TYPES[mappingType])` in `renderAddMappingForm()` (import `targetLabel`)
-- [ ] **code-mappings.ts:346**: Change `MAPPING_TYPES[mappingType].targetFieldLabel` → `targetLabel(MAPPING_TYPES[mappingType])` in `renderMappingEntryPanel()`
-- [ ] **mapping-types.test.ts**: Rewrite "each type has all required fields" test to check `source.segment`, `source.field`, `target.resource`, `target.field`, `targetSystem`
-- [ ] **mapping-types.test.ts**: Rewrite "observation-code-loinc type has correct configuration" to assert structured shape
-- [ ] **mapping-types.test.ts**: Add tests for `sourceLabel()`, `targetLabel()`, `taskDisplay()` for each mapping type
-- [ ] Run `bun run typecheck` and `bun test:unit` — must pass before next task
+- [x] **mapping-types.ts**: Replace `MAPPING_TYPES` entries — remove `taskDisplay`, `sourceFieldLabel`, `targetFieldLabel`; add `source: { segment, field }` and `target: { resource, field }` per the design's Registry Shape section
+- [x] **mapping-types.ts**: Add exported derivation helpers: `sourceLabel(config)`, `targetLabel(config)`, `taskDisplay(config)` per the design's Derivation Helpers section
+- [x] **mapping-types.ts**: Update module docstring to reflect new structured fields and helpers
+- [x] **compose.ts:104**: Change `display: typeConfig.taskDisplay` → `display: taskDisplay(typeConfig)` (import `taskDisplay` from mapping-types)
+- [x] **concept-map/service.ts:225**: Change `type.targetFieldLabel` → `targetLabel(type)` in `createEmptyConceptMap()` (import `targetLabel` from mapping-types)
+- [x] **mapping-tasks.ts:28**: Change `MAPPING_TYPES[filter].taskDisplay.replace(...)` → `taskDisplay(MAPPING_TYPES[filter]).replace(...)` in `getMappingTypeFilterDisplay()`
+- [x] **mapping-tasks.ts:266**: Change `typeConfig.targetFieldLabel.split(".").pop()` → `targetLabel(typeConfig).split(".").pop()` in `renderResolutionForm()` (import `targetLabel`)
+- [x] **mapping-tasks.ts:300-301**: Replace Task.input reads for "Source field"/"Target field" with registry derivation: use `getTaskMappingType(task)` → `MAPPING_TYPES[mappingType]` → `sourceLabel(config)` / `targetLabel(config)`
+- [x] **code-mappings.ts:55**: Change `MAPPING_TYPES[filter].taskDisplay.replace(...)` → `taskDisplay(MAPPING_TYPES[filter]).replace(...)` in `getMappingTypeFilterDisplay()` (import `taskDisplay`)
+- [x] **code-mappings.ts:294**: Change `MAPPING_TYPES[mappingType].targetFieldLabel` → `targetLabel(MAPPING_TYPES[mappingType])` in `renderAddMappingForm()` (import `targetLabel`)
+- [x] **code-mappings.ts:346**: Change `MAPPING_TYPES[mappingType].targetFieldLabel` → `targetLabel(MAPPING_TYPES[mappingType])` in `renderMappingEntryPanel()`
+- [x] **mapping-types.test.ts**: Rewrite "each type has all required fields" test to check `source.segment`, `source.field`, `target.resource`, `target.field`, `targetSystem`
+- [x] **mapping-types.test.ts**: Rewrite "observation-code-loinc type has correct configuration" to assert structured shape
+- [x] **mapping-types.test.ts**: Add tests for `sourceLabel()`, `targetLabel()`, `taskDisplay()` for each mapping type
+- [x] Run `bun run typecheck` and `bun test:unit` — must pass before next task
 
 ---
 

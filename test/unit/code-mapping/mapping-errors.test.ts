@@ -54,7 +54,7 @@ describe("buildMappingErrorResult", () => {
     expect(task.resourceType).toBe("Task");
     expect(task.status).toBe("requested");
     expect(task.code?.coding?.[0]?.code).toBe("observation-code-loinc");
-    expect(task.code?.coding?.[0]?.display).toBe("Observation code to LOINC mapping");
+    expect(task.code?.coding?.[0]?.display).toBe("Observation.code mapping");
   });
 
   test("creates Task for obr-status mapping error", () => {

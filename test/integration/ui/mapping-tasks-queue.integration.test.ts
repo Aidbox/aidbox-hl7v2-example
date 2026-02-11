@@ -18,7 +18,8 @@ import { updateAffectedMessages } from "../../../src/code-mapping/mapping-task";
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
-import { MAPPING_TYPES, type MappingTypeName } from "../../../src/code-mapping/mapping-types";
+import { MAPPING_TYPES, type MappingTypeName, sourceLabel, targetLabel } from "../../../src/code-mapping/mapping-types";
+import { taskDisplay } from "../../../src/code-mapping/mapping-task";
 
 async function createPendingTask(
   id: string,
@@ -105,10 +106,10 @@ async function createPendingTaskForType(
           {
             system: "urn:aidbox-hl7v2-converter:mapping-type",
             code: mappingType,
-            display: typeConfig.taskDisplay,
+            display: taskDisplay(typeConfig),
           },
         ],
-        text: `Map ${typeConfig.sourceFieldLabel} to ${typeConfig.targetFieldLabel}`,
+        text: `Map ${sourceLabel(typeConfig)} to ${targetLabel(typeConfig)}`,
       },
       authoredOn: "2025-02-12T14:20:00Z",
       lastModified: "2025-02-12T14:20:00Z",
@@ -120,8 +121,8 @@ async function createPendingTaskForType(
         { type: { text: "Local code" }, valueString: localCode },
         { type: { text: "Local display" }, valueString: localDisplay },
         { type: { text: "Local system" }, valueString: localSystem },
-        { type: { text: "Source field" }, valueString: typeConfig.sourceFieldLabel },
-        { type: { text: "Target field" }, valueString: typeConfig.targetFieldLabel },
+        { type: { text: "Source field" }, valueString: sourceLabel(typeConfig) },
+        { type: { text: "Target field" }, valueString: targetLabel(typeConfig) },
       ],
     }),
   });

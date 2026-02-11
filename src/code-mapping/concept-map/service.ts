@@ -28,7 +28,7 @@ import {
   type Bundle,
 } from "../../aidbox";
 import { toKebabCase } from "../../utils/string";
-import { MAPPING_TYPES, type MappingTypeName } from "../mapping-types";
+import { MAPPING_TYPES, type MappingTypeName, targetLabel } from "../mapping-types";
 import { generateMappingTaskId, updateAffectedMessages } from "../mapping-task";
 import { PAGE_SIZE } from "../../ui/pagination";
 
@@ -222,7 +222,7 @@ export function createEmptyConceptMap(
   return {
     resourceType: "ConceptMap",
     id,
-    name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to ${type.targetFieldLabel}`,
+    name: `HL7v2 ${sender.sendingApplication}/${sender.sendingFacility} to ${targetLabel(type)}`,
     status: "active",
     title: formatSenderAsTitle(sender),
     sourceUri: `http://example.org/fhir/CodeSystem/hl7v2-${baseId}`,

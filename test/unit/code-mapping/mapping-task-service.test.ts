@@ -4,6 +4,7 @@ import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom
 import {
   composeMappingTask,
   composeTaskBundleEntry,
+  taskDisplay,
 } from "../../../src/code-mapping/mapping-task";
 import type { SenderContext } from "../../../src/code-mapping/concept-map";
 import { MAPPING_TYPES } from "../../../src/code-mapping/mapping-types";
@@ -19,7 +20,7 @@ const sampleTask: Task = {
       {
         system: "urn:aidbox-hl7v2-converter:mapping-type",
         code: "observation-code-loinc",
-        display: "Observation code to LOINC mapping",
+        display: "Observation.code mapping",
       },
     ],
     text: "Map local lab code to LOINC",
@@ -60,6 +61,15 @@ const sampleMessage: IncomingHL7v2Message = {
     },
   ],
 };
+
+describe("taskDisplay", () => {
+  test("produces 'Resource.field mapping' for each type", () => {
+    expect(taskDisplay(MAPPING_TYPES["observation-code-loinc"])).toBe("Observation.code mapping");
+    expect(taskDisplay(MAPPING_TYPES["patient-class"])).toBe("Encounter.class mapping");
+    expect(taskDisplay(MAPPING_TYPES["obr-status"])).toBe("DiagnosticReport.status mapping");
+    expect(taskDisplay(MAPPING_TYPES["obx-status"])).toBe("Observation.status mapping");
+  });
+});
 
 describe("generateMappingTaskId", () => {
   test("generates deterministic ID for same inputs", async () => {
@@ -336,7 +346,7 @@ describe("composeMappingTask", () => {
 
     // Check task code matches registry - now uses mapping type name directly
     expect(task.code?.coding?.[0]?.code).toBe("observation-code-loinc");
-    expect(task.code?.coding?.[0]?.display).toBe("Observation code to LOINC mapping");
+    expect(task.code?.coding?.[0]?.display).toBe("Observation.code mapping");
     expect(task.code?.coding?.[0]?.system).toBe("urn:aidbox-hl7v2-converter:mapping-type");
 
     // Check inputs
@@ -364,7 +374,7 @@ describe("composeMappingTask", () => {
     const task = composeMappingTask(sender, error);
 
     expect(task.code?.coding?.[0]?.code).toBe("obr-status");
-    expect(task.code?.coding?.[0]?.display).toBe("OBR result status mapping");
+    expect(task.code?.coding?.[0]?.display).toBe("DiagnosticReport.status mapping");
 
     const inputs = task.input || [];
     const inputMap = new Map(inputs.map((i) => [i.type?.text, i.valueString]));
@@ -385,7 +395,7 @@ describe("composeMappingTask", () => {
     const task = composeMappingTask(sender, error);
 
     expect(task.code?.coding?.[0]?.code).toBe("obx-status");
-    expect(task.code?.coding?.[0]?.display).toBe("OBX observation status mapping");
+    expect(task.code?.coding?.[0]?.display).toBe("Observation.status mapping");
 
     const inputs = task.input || [];
     const inputMap = new Map(inputs.map((i) => [i.type?.text, i.valueString]));
@@ -406,7 +416,7 @@ describe("composeMappingTask", () => {
     const task = composeMappingTask(sender, error);
 
     expect(task.code?.coding?.[0]?.code).toBe("patient-class");
-    expect(task.code?.coding?.[0]?.display).toBe("Patient class mapping");
+    expect(task.code?.coding?.[0]?.display).toBe("Encounter.class mapping");
 
     const inputs = task.input || [];
     const inputMap = new Map(inputs.map((i) => [i.type?.text, i.valueString]));

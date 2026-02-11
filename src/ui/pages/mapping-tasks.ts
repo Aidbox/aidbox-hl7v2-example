@@ -10,7 +10,7 @@ import { escapeHtml } from "../../utils/html";
 import { parsePageParam, createPagination, PAGE_SIZE, renderPaginationControls, type PaginationData } from "../pagination";
 import { renderNav, renderLayout, type NavData } from "../shared-layout";
 import { htmlResponse, getNavData } from "../shared";
-import { MAPPING_TYPES, type MappingTypeName, isMappingTypeName } from "../../code-mapping/mapping-types";
+import { MAPPING_TYPES, type MappingTypeName, isMappingTypeName, sourceLabel, targetLabel } from "../../code-mapping/mapping-types";
 import { getValidValuesWithDisplay } from "../../code-mapping/mapping-type-options";
 import { getMappingTypeShortLabel } from "../mapping-type-ui";
 
@@ -25,7 +25,7 @@ export type MappingTypeFilter = MappingTypeName | "all" | "status";
 export function getMappingTypeFilterDisplay(filter: MappingTypeFilter): string {
   if (filter === "all") return "All";
   if (filter === "status") return "Status";
-  return MAPPING_TYPES[filter].taskDisplay.replace(" mapping", "");
+  return targetLabel(MAPPING_TYPES[filter]);
 }
 
 /**
@@ -262,14 +262,13 @@ function renderResolutionForm(task: Task, mappingType: MappingTypeName): string 
   // For non-LOINC types, render a dropdown with allowed values
   const typeConfig = MAPPING_TYPES[mappingType];
   const options = getValidValuesWithDisplay(mappingType);
-  // targetFieldLabel usage
-  const targetLabel = typeConfig.targetFieldLabel.split(".").pop() || "value";
+  const targetFieldLabel = targetLabel(typeConfig).split(".").pop() || "value";
 
   return `
     <div class="mt-3 pt-3 border-t border-gray-100">
       <form method="POST" action="/api/mapping/tasks/${taskId}/resolve" class="flex items-end gap-3">
         <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Map to ${escapeHtml(targetLabel)}</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Map to ${escapeHtml(targetFieldLabel)}</label>
           <select name="resolvedCode" required
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             onchange="this.form.resolvedDisplay.value = this.selectedOptions[0]?.dataset.display || ''">
@@ -295,15 +294,14 @@ export function renderMappingTaskPanel(task: Task, isPending: boolean): string {
   const localCode = getTaskInputValue(task, "Local code") || "-";
   const localDisplay = getTaskInputValue(task, "Local display") || "";
   const localSystem = getTaskInputValue(task, "Local system") || "-";
-  // DESIGN PROTOTYPE: 2026-02-02-mapping-labels-design-analysis.md
-  // Replace Task.input label reads with lookup from `MAPPING_TYPES[mappingType]`.
-  const sourceField = getTaskInputValue(task, "Source field");
-  const targetField = getTaskInputValue(task, "Target field");
   const sampleValue = getTaskInputValue(task, "Sample value");
   const sampleUnits = getTaskInputValue(task, "Sample units");
   const sampleRange = getTaskInputValue(task, "Sample range");
   const resolvedMapping = getTaskOutputMapping(task);
   const mappingType = getTaskMappingType(task);
+  const mappingTypeConfig = mappingType ? MAPPING_TYPES[mappingType] : undefined;
+  const sourceField = mappingTypeConfig ? sourceLabel(mappingTypeConfig) : undefined;
+  const targetField = mappingTypeConfig ? targetLabel(mappingTypeConfig) : undefined;
 
   const dateStr = task.authoredOn
     ? new Date(task.authoredOn).toLocaleString()

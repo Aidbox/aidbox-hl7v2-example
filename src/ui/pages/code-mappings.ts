@@ -21,6 +21,7 @@ import {
   MAPPING_TYPES,
   type MappingTypeName,
   isMappingTypeName,
+  targetLabel,
 } from "../../code-mapping/mapping-types";
 import { getValidValuesWithDisplay } from "../../code-mapping/mapping-type-options";
 import { getMappingTypeShortLabel } from "../mapping-type-ui";
@@ -52,7 +53,7 @@ export function parseTypeFilter(typeParam: string | null): MappingTypeFilter {
  */
 export function getMappingTypeFilterDisplay(filter: MappingTypeFilter): string {
   if (filter === "all") return "All Types";
-  return MAPPING_TYPES[filter].taskDisplay.replace(" mapping", "");
+  return targetLabel(MAPPING_TYPES[filter]);
 }
 
 
@@ -291,7 +292,7 @@ function renderTargetCodeInput(
 
 function renderAddMappingForm(conceptMapId: string, mappingType: MappingTypeName, typeFilter: MappingTypeFilter): string {
   const cancelUrl = buildFilterUrl(typeFilter, conceptMapId);
-  const targetLabel = `Map to ${MAPPING_TYPES[mappingType].targetFieldLabel}`;
+  const targetFieldLabel = `Map to ${targetLabel(MAPPING_TYPES[mappingType])}`;
 
   return `
     <div class="bg-white rounded-lg shadow p-6 mb-6">
@@ -315,7 +316,7 @@ function renderAddMappingForm(conceptMapId: string, mappingType: MappingTypeName
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">${escapeHtml(targetLabel)}</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">${escapeHtml(targetFieldLabel)}</label>
           ${renderTargetCodeInput(mappingType)}
         </div>
         <div class="flex gap-2">
@@ -342,8 +343,7 @@ export function renderMappingEntryPanel(
   typeFilter: MappingTypeFilter,
 ): string {
   const encodedLocalCode = encodeURIComponent(entry.localCode);
-  // targetFieldLabel usage
-  const updateLabel = mappingType ? `Update ${MAPPING_TYPES[mappingType].targetFieldLabel}` : "Update target";
+  const updateLabel = mappingType ? `Update ${targetLabel(MAPPING_TYPES[mappingType])}` : "Update target";
 
   return `
     <li class="bg-white rounded-lg shadow">
