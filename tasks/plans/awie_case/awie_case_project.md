@@ -4,6 +4,8 @@
 
 A company runs 2 EHR systems producing HL7v2 messages of different versions, combined into batches/ZIP archives for FHIR conversion. See `data/local/awie_case/description.md` for full requirements. Sample data in `data/local/awie_case/awie_case_data/`.
 
+IMPORTANT: this case is just ONE example of real-world hl7v2->fhir use-cases. We should not support it by over-adapting to any of their patterns or hardcoding any of the identifiers.
+
 **Two EHR systems identified:**
 
 | | EHR 1: ASTRA/Cerberus (v2.2) | EHR 2: MEDTEX Xpan (v2.5.1) |

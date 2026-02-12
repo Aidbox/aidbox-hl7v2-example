@@ -39,47 +39,38 @@ This means MEDTEX patient `12345abcde` and ASTRA patient `11177777` become **two
 - **Practitioner**: No NPI in data; local IDs without system authority create duplicates
 - **Organization**: `BMH` from MEDTEX vs `W` from ASTRA — same hospital, different codes
 
-## Proposed Approaches
+## Proposed Approach: Authority+ID as Canonical Key
 
-**Option A: UNIPAT PE as canonical Patient ID**
-- Search PID-3 for `UNIPAT^PE` identifier type
-- Use its value as Patient.id (deterministic across EHRs)
-- Fall back to PID-2 or PID-3[0] if no UNIPAT PE present
-- **Risk**: ORU messages may not have UNIPAT PE → broken link
+The ID generator should use **authority+id** from PID-3 as the deterministic Patient ID. This is generic — it doesn't hardcode any specific identifier system.
 
-**Option B: System-prefixed IDs with identifier-based linking**
-- Patient.id = `{sender}-{local-id}` (no collisions, but no automatic linking)
-- Store ALL identifiers from PID-3 on the Patient resource
-- Cross-EHR linking via Aidbox search by identifier (e.g., find Patient with UNIPAT PE = X)
-- **Risk**: requires post-processing or search-based linking, not deterministic
+**Algorithm:**
+1. Scan PID-3 repeats for an identifier matching a **configured identifier type** (e.g., `PE` type, or a specific authority name) — configurable per deployment, not hardcoded
+2. If found: `Patient.id = kebab({authority}-{id})` — deterministic across senders sharing that authority
+3. If not found but per-sender config specifies a **placeholder authority**: use `{placeholder-authority}-{id}` from PID-2 or PID-3[0]
+4. Fallback: `{sender}-{id}` from PID-2 or PID-3[0] (no cross-EHR linking, but no collisions)
 
-**Option C: Two-phase processing**
-- Phase 1: Create resources with sender-prefixed IDs
-- Phase 2: Run a reconciliation job that links resources sharing UNIPAT PE identifiers
-- **Risk**: complexity, eventual consistency
+**Why this works generically:**
+- Any deployment where multiple senders share a Master Patient Index (MPI) can configure the shared authority type
+- Senders without an MPI get sender-prefixed IDs (safe default, no collisions)
+- The configuration is per-deployment, not per-sender — though per-sender overrides are supported for edge cases (e.g., one sender uses a different authority name for the same MPI)
 
-**User Feedback**:
-Looks like if they provided authority along with id (e.g. UNIPAT along with 123) then the ID will be the same across different senders, so our id generator needs to just use id+authority.
-In cases authority is missing, but we know that 2 senders share the same patients - we can use a placeholdered authority for them in the configuration (need to make per-sender configuration).
+**Awie Case example** (for validation, not as the design driver): All three EHRs use `UNIPAT^PE` in PID-3. Configuring `PE` as the preferred identifier type would make `authority+id` identical across senders for the same patient.
+
+**Per-sender placeholder authority**: When a sender omits the authority but is known to share patients with another sender, config can assign a placeholder authority so their IDs still align. Example: if sender X sends `PID-3: 12345` with no authority, config can say "treat sender X identifiers as belonging to authority FOO."
 
 ## Pitfalls
 
-1. **UNIPAT PE not universal**: If ORU messages lack it, the converter can't link lab results to the ADT-created Patient
-2. **Encounter cross-referencing**: Even harder than Patient — no shared visit number between EHRs
-3. **Draft patient race condition**: ORU creates draft Patient → ADT later creates "real" Patient with different ID → two Patients for one person
-4. **No NPI for practitioners**: Cross-EHR practitioner deduplication is essentially impossible without external data
-
-## Recommendation
-
-Start with **Option A** (UNIPAT PE as canonical) with fallback. Validate that UNIPAT PE is reliably present in production data (not just test data). If ORU messages lack it, add a preprocessor rule to inject UNIPAT PE from a lookup.
+1. **Configured authority not universal across message types**: A sender's ADT messages may include the shared authority, but ORU messages from the same sender may not. The fallback chain (step 3-4 above) handles this, but it means some messages won't auto-link. A preprocessor rule could inject the missing authority before conversion.
+2. **Encounter cross-referencing**: Harder than Patient — visit numbers (PV1-19) rarely share a cross-EHR authority. The same authority+id approach applies if the authority is present; otherwise encounters remain sender-scoped.
+3. **Draft patient race condition**: ORU creates draft Patient (with fallback ID) → ADT later creates "real" Patient (with authority+id) → two Patients for one person. Mitigation: preprocessor that injects authority, or post-processing merge.
+4. **No NPI for practitioners**: Cross-EHR practitioner deduplication is essentially impossible without external data. Accept duplicates initially.
 
 ## Decisions Needed
 
-- [ ] Is UNIPAT PE reliably present in ALL production messages (including ORU)?
-- [ ] Which option (A/B/C) for Patient identity?
-- [ ] How to handle Encounter cross-referencing (no shared visit number)?
+- [ ] Configuration format: how to specify preferred identifier type and placeholder authorities per deployment/sender?
+- [ ] How to handle Encounter cross-referencing when PV1-19 lacks a shared authority?
 - [ ] Accept practitioner duplicates initially, or block on NPI/external matching?
-- [ ] Per-sender configuration format for authority placeholders?
+- [ ] Fallback behavior: when no configured authority matches, use `{sender}-{id}` or error?
 
 ## Relevant Files
 

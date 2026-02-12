@@ -48,11 +48,11 @@ MEDTEX embeds 16-114 custom OBX segments per ADT message with institution-specif
 
 | Priority | Type Name | Source | Target | Rationale |
 |---|---|---|---|---|
-| CRITICAL | `gender-code` | PID-8 | Patient.gender | ASTRA 99SEX vs MEDTEX simple code |
-| HIGH | `race-code` | PID-10 | us-core-race extension | ASTRA 99RAC with no standard equivalent |
-| HIGH | `language-code` | PID-15 | Patient.communication | ASTRA 99CLAN vs HL70296 |
-| MEDIUM | `ethnicity-code` | PID-22 | us-core-ethnicity extension | ASTRA 99ETH |
-| MEDIUM | `relationship-code` | NK1-3 | RelatedPerson.relationship | ASTRA 99REL vs HL70063 |
+| CRITICAL | `gender-code` | PID-8 | Patient.gender | Senders use custom gender tables (HL70001 variants) |
+| HIGH | `race-code` | PID-10 | us-core-race extension | Custom race codes → CDC race codes for US Core |
+| HIGH | `language-code` | PID-15 | Patient.communication | Custom language codes → BCP-47/HL70296 |
+| MEDIUM | `ethnicity-code` | PID-22 | us-core-ethnicity extension | Custom ethnicity codes → CDC ethnicity codes |
+| MEDIUM | `relationship-code` | NK1-3 | RelatedPerson.relationship | Custom relationship codes → HL70063/v3-RoleCode |
 | ORM-specific | `orc-order-control` | ORC-1 | ServiceRequest.status | NW/CA/CM/HD → draft/revoked/completed/on-hold |
 | ORM-specific | `rxo-medication-code` | RXO-1 | MedicationRequest.medication | Local drug codes |
 | ORM-specific | `rxo-route` | RXO-5 | dosageInstruction.route | PO/IV/IM → FHIR route codes |
@@ -68,7 +68,7 @@ With ~1549 messages (70% ASTRA, 30% MEDTEX):
 
 1. **MEDTEX OBX explosion**: Creating mapping tasks for every custom OBX-3 code floods the queue with non-clinical questionnaire codes. Need a **whitelist/config** for which OBX codes warrant mapping vs. which should be stored as extensions or skipped.
 
-2. **ASTRA dual-coding pattern**: ASTRA sends BOTH standard HL7 code AND custom 99xxx in same field (e.g., `M^MALE^99SEX` where component 1 is HL7 standard, components 2-3 are custom). Need a "primary standard precedence" config to prefer HL7 standard when present.
+2. **Multi-coding precedence**: Some senders include BOTH a standard HL7 code AND a custom code in the same coded field (e.g., `M^MALE^99SEX` where component 1 is HL7 standard, components 2-3 are custom). Need a generic "prefer standard coding system" rule: when a field contains a code from a recognized standard table alongside a custom code, use the standard one and skip mapping. This should be configurable, not hardcoded to any specific sender or table prefix.
 
 3. **ConceptMap pollution**: Current system creates one ConceptMap per (sender + mapping type). As message types grow, unrelated codes mix in the same map. Consider extending ConceptMap ID to include message type.
 
@@ -78,7 +78,7 @@ With ~1549 messages (70% ASTRA, 30% MEDTEX):
 
 - [ ] MEDTEX OBX questionnaire data: map to FHIR Observations, store as extensions, or skip entirely?
 - [ ] OBX code whitelist format: config file, per-sender, or inline in mapping-types.ts?
-- [ ] ASTRA dual-coding: always prefer standard HL7 component, or configurable precedence?
+- [ ] Multi-coding precedence: always prefer standard HL7 component, or configurable per mapping type?
 - [ ] ConceptMap granularity: per (sender + type) or per (sender + type + message-type)?
 - [ ] Race/ethnicity: simple code mapping, or transformation rule with nested component handling?
 - [ ] Pre-population strategy: ship standard HL7 tables as seed ConceptMaps, or auto-resolve on first encounter?
