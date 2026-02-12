@@ -54,8 +54,9 @@ Cross-EHR referencing required. Encrypted data must pass through untouched. 10k 
 
 | # | Epic | Summary | Status |
 |---|---|---|---|
-| 1 | [Cross-EHR Patient Identity](epics/01_cross_ehr_identity_epic.md) | Design identity model using UNIPAT PE enterprise identifier to link patients across EHR systems. Affects all resource ID generation. | Design needed |
-| 2 | [Materialize Missing FHIR Resources](epics/02_missing_fhir_resources_epic.md) | Call existing Location/Organization/Practitioner/PractitionerRole converters from message-level code to produce standalone resources (infrastructure ~60% exists). | Ready to implement |
+| 0 | [Foundation Decisions](epics/00_foundation_decisions_epic.md) | Architectural decisions that block all implementation: ID generation for all 5 resource types, per-sender config format, draft resource handling, ADT subtype architecture, OBX routing. | **In progress** |
+| 1 | [Cross-EHR Patient Identity](epics/01_cross_ehr_identity_epic.md) | Generic authority+id identity model for linking patients across EHR systems. Configurable per deployment, not hardcoded to any identifier system. | Blocked by Epic 0 |
+| 2 | [Materialize Missing FHIR Resources](epics/02_missing_fhir_resources_epic.md) | Call existing Location/Organization/Practitioner/PractitionerRole converters from message-level code to produce standalone resources (infrastructure ~60% exists). | Blocked by Epic 0 |
 
 ### P1 -- ADT Completeness
 
@@ -90,8 +91,8 @@ Cross-EHR referencing required. Encrypted data must pass through untouched. 10k 
 ## Dependency Graph
 
 ```
-Epic 1 (Identity)
-  └─► Epic 2 (Resources) ──► Epic 3 (ADT Subtypes)
+Epic 0 (Foundation Decisions)
+  └─► Epic 1 (Identity) ──► Epic 2 (Resources) ──► Epic 3 (ADT Subtypes)
   └─► Epic 4 (ORM Orders)
   └─► Epic 5 (MDM Documents) ◄──► Epic 6 (ORU Enhancement)  [shared DocumentReference pattern]
 
@@ -99,6 +100,7 @@ Epic 3, 4, 5, 6 ──► Epic 7 (Code Mapping)  [new message types introduce ne
 Epic 7 ──► Epic 8 (Encrypted Pass-Through)  [encrypted codes must not trigger mapping tasks]
 ```
 
+Epic 0 decisions unblock Epics 1-2 (Tier 1), Epic 3 (Tier 2), and Epics 4-6 (Tier 3).
 Epics 4, 5, 6 (P2) are independent of each other and can be parallelized after P0/P1.
 
 ---
