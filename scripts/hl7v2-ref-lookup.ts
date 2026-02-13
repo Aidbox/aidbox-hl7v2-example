@@ -9,7 +9,7 @@ import type {
 } from "./hl7v2-reference/types";
 
 const PROJECT_ROOT = resolve(import.meta.dir, "..");
-const DEFAULT_VERSION = "2.5";
+const DEFAULT_VERSION = "2.8.2";
 
 interface ReferenceData {
   fields: Record<string, OutputField>;

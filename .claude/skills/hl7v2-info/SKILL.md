@@ -18,7 +18,15 @@ bun scripts/hl7v2-ref-lookup.ts <code> [--version <version>]
   - Component: `PID.3.1`, `CWE.1`
   - Table: `0001`, `0203`
   - Datatype: `CWE`, `ST`, `ID`
-- `--version`: HL7v2 version (default `2.5`). Supported: `2.5`, `2.8.2`
+- `--version`: HL7v2 version (default `2.8.2`). Supported: `2.5`, `2.8.2`
+
+## Version rules
+
+This project has reference data for **two HL7v2 versions**: v2.5 and v2.8.2.
+
+- **When answering user questions** (no version specified): look up **both versions in parallel** and present results. Highlight differences (optionality, cardinality, field presence, data types, table values). If identical, say so briefly.
+- **When coding** (writing/modifying converters, parsers, builders): use **v2.8.2** as the primary reference — this is the project's target version. Check v2.5 if dealing with backward-compatibility concerns or if the code explicitly references v2.5.
+- **When user specifies a version**: use only that version.
 
 ## When to use
 
