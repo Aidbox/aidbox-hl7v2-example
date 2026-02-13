@@ -180,8 +180,15 @@ Bun.serve({
     "/process-incoming-messages": {
       POST: async () => {
         (async () => {
-          while (await processNextV2ToFhirMessage()) {
-            // Process until queue empty
+          let hasMore = true;
+          while (hasMore) {
+            try {
+              hasMore = await processNextV2ToFhirMessage();
+            } catch (error) {
+              // Error already recorded on the message by processNextMessage.
+              // Log and continue to process remaining messages.
+              console.error("Error processing message (continuing):", error instanceof Error ? error.message : error);
+            }
           }
         })().catch(console.error);
 
