@@ -168,10 +168,10 @@ function prepareDG1ForExtraction(segments: HL7v2Segment[]): HL7v2Segment[] {
 
 /**
  * Generate composite condition ID
- * Format: {encounterId}-{kebab-case-name}
- * Encounter ID is mandatory for ADT_A01
+ * Format: {prefix}-{kebab-case-name}
+ * Prefix is encounter.id when available, falls back to patient.id
  */
-function generateConditionId(dg1: DG1, encounterId: string): string {
+function generateConditionId(dg1: DG1, prefix: string): string {
   // Extract condition name (prefer description, then display, then code)
   const conditionName =
     dg1.$4_diagnosisDescription ||
@@ -180,7 +180,7 @@ function generateConditionId(dg1: DG1, encounterId: string): string {
     "condition";
 
   const kebabName = toKebabCase(conditionName);
-  return `${encounterId}-${kebabName}`;
+  return `${prefix}-${kebabName}`;
 }
 
 /**
@@ -445,8 +445,8 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
       } as Condition["encounter"];
     }
 
-    // Generate composite ID (encounter.id is mandatory for ADT_A01)
-    condition.id = generateConditionId(dg1, encounter!.id!);
+    const conditionIdPrefix = encounter?.id ?? patient.id ?? "unknown";
+    condition.id = generateConditionId(dg1, conditionIdPrefix);
     conditions.push(condition);
   }
 
