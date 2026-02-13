@@ -23,7 +23,11 @@ export type MessageTypeConfig = {
 
 export type Hl7v2ToFhirConfig = Record<string, MessageTypeConfig | undefined>;
 
-const CONFIG_PATH = join(process.cwd(), "config", "hl7v2-to-fhir.json");
+const DEFAULT_CONFIG_PATH = join(process.cwd(), "config", "hl7v2-to-fhir.json");
+
+function getConfigPath(): string {
+  return process.env.HL7V2_TO_FHIR_CONFIG ?? DEFAULT_CONFIG_PATH;
+}
 
 let cachedConfig: Hl7v2ToFhirConfig | null = null;
 
@@ -41,11 +45,11 @@ export function hl7v2ToFhirConfig(): Hl7v2ToFhirConfig {
 
   let fileContent: string;
   try {
-    fileContent = readFileSync(CONFIG_PATH, "utf-8");
+    fileContent = readFileSync(getConfigPath(), "utf-8");
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error reading file";
     throw new Error(
-      `Failed to load HL7v2-to-FHIR config from ${CONFIG_PATH}: ${message}`,
+      `Failed to load HL7v2-to-FHIR config from ${getConfigPath()}: ${message}`,
     );
   }
 

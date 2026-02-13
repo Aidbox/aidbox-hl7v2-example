@@ -1,10 +1,12 @@
-const AIDBOX_URL = process.env.AIDBOX_URL || "http://localhost:8080";
-const CLIENT_ID = process.env.AIDBOX_CLIENT_ID || "root";
-const CLIENT_SECRET = process.env.AIDBOX_CLIENT_SECRET || "Vbro4upIT1";
+function getAidboxUrl(): string {
+  return process.env.AIDBOX_URL || "http://localhost:8080";
+}
 
-const credentials = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString(
-  "base64",
-);
+function getCredentials(): string {
+  const clientId = process.env.AIDBOX_CLIENT_ID || "root";
+  const clientSecret = process.env.AIDBOX_CLIENT_SECRET || "Vbro4upIT1";
+  return Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+}
 
 export class HttpError extends Error {
   constructor(
@@ -20,10 +22,10 @@ export async function aidboxFetch<T = unknown>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const response = await fetch(`${AIDBOX_URL}${path}`, {
+  const response = await fetch(`${getAidboxUrl()}${path}`, {
     ...options,
     headers: {
-      Authorization: `Basic ${credentials}`,
+      Authorization: `Basic ${getCredentials()}`,
       "Content-Type": "application/fhir+json",
       ...options.headers,
     },
@@ -85,9 +87,9 @@ export async function getResourceWithETag<T>(
   resourceType: string,
   id: string,
 ): Promise<ResourceWithETag<T>> {
-  const response = await fetch(`${AIDBOX_URL}/fhir/${resourceType}/${id}`, {
+  const response = await fetch(`${getAidboxUrl()}/fhir/${resourceType}/${id}`, {
     headers: {
-      Authorization: `Basic ${credentials}`,
+      Authorization: `Basic ${getCredentials()}`,
       "Content-Type": "application/fhir+json",
     },
   });
@@ -116,14 +118,14 @@ export async function updateResourceWithETag<T>(
   // Some resource types (e.g., ConceptMap) may not have versioning enabled in Aidbox,
   // resulting in empty etag. In those cases, we skip optimistic locking.
   const headers: Record<string, string> = {
-    Authorization: `Basic ${credentials}`,
+    Authorization: `Basic ${getCredentials()}`,
     "Content-Type": "application/fhir+json",
   };
   if (etag) {
     headers["If-Match"] = etag;
   }
 
-  const response = await fetch(`${AIDBOX_URL}/fhir/${resourceType}/${id}`, {
+  const response = await fetch(`${getAidboxUrl()}/fhir/${resourceType}/${id}`, {
     method: "PUT",
     headers,
     body: JSON.stringify(resource),

@@ -1,8 +1,11 @@
-import { describe, test, expect, afterEach } from "bun:test";
+import { describe, test, expect, beforeAll, afterAll, afterEach } from "bun:test";
+import { join } from "path";
 import { parseMessage } from "@atomic-ehr/hl7v2";
 import { convertADT_A01 } from "../../../../src/v2-to-fhir/messages/adt-a01";
 import type { Encounter } from "../../../../src/fhir/hl7-fhir-r4-core";
 import { clearConfigCache } from "../../../../src/v2-to-fhir/config";
+
+const TEST_CONFIG = join(__dirname, "../../../fixtures/config/hl7v2-to-fhir.json");
 
 afterEach(() => {
   clearConfigCache();
@@ -50,31 +53,50 @@ describe("convertADT_A01 - config-driven PV1 policy", () => {
     expect(encounter.identifier?.[0]?.value).toBe("V12345");
   });
 
-  test("ADT with missing PV1 (config: required=false) returns warning, skips Encounter", async () => {
-    const parsed = parseMessage(adtWithoutPV1);
-    const result = await convertADT_A01(parsed);
+  describe("PV1 required=false", () => {
+    let savedConfig: string | undefined;
 
-    expect(result.messageUpdate.status).toBe("warning");
-    expect(result.messageUpdate.error).toContain("PV1");
-    expect(result.bundle).toBeDefined();
+    beforeAll(() => {
+      savedConfig = process.env.HL7V2_TO_FHIR_CONFIG;
+      process.env.HL7V2_TO_FHIR_CONFIG = TEST_CONFIG;
+      clearConfigCache();
+    });
 
-    const encounterEntry = result.bundle!.entry?.find(
-      (e) => e.resource?.resourceType === "Encounter",
-    );
-    expect(encounterEntry).toBeUndefined();
-  });
+    afterAll(() => {
+      if (savedConfig === undefined) {
+        delete process.env.HL7V2_TO_FHIR_CONFIG;
+      } else {
+        process.env.HL7V2_TO_FHIR_CONFIG = savedConfig;
+      }
+      clearConfigCache();
+    });
 
-  test("ADT with invalid PV1-19 authority (config: required=false) returns warning, skips Encounter", async () => {
-    const parsed = parseMessage(adtWithInvalidAuthority);
-    const result = await convertADT_A01(parsed);
+    test("ADT with missing PV1 returns warning, skips Encounter", async () => {
+      const parsed = parseMessage(adtWithoutPV1);
+      const result = await convertADT_A01(parsed);
 
-    expect(result.messageUpdate.status).toBe("warning");
-    expect(result.messageUpdate.error).toContain("authority");
-    expect(result.bundle).toBeDefined();
+      expect(result.messageUpdate.status).toBe("warning");
+      expect(result.messageUpdate.error).toContain("PV1");
+      expect(result.bundle).toBeDefined();
 
-    const encounterEntry = result.bundle!.entry?.find(
-      (e) => e.resource?.resourceType === "Encounter",
-    );
-    expect(encounterEntry).toBeUndefined();
+      const encounterEntry = result.bundle!.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      );
+      expect(encounterEntry).toBeUndefined();
+    });
+
+    test("ADT with invalid PV1-19 authority returns warning, skips Encounter", async () => {
+      const parsed = parseMessage(adtWithInvalidAuthority);
+      const result = await convertADT_A01(parsed);
+
+      expect(result.messageUpdate.status).toBe("warning");
+      expect(result.messageUpdate.error).toContain("authority");
+      expect(result.bundle).toBeDefined();
+
+      const encounterEntry = result.bundle!.entry?.find(
+        (e) => e.resource?.resourceType === "Encounter",
+      );
+      expect(encounterEntry).toBeUndefined();
+    });
   });
 });

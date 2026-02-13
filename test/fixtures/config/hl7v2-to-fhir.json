@@ -1,0 +1,10 @@
+{
+  "ORU-R01": {
+    "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
+    "converter": { "PV1": { "required": false } }
+  },
+  "ADT-A01": {
+    "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
+    "converter": { "PV1": { "required": false } }
+  }
+}

@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, setDefaultTimeout } from "bun:test";
 import { $ } from "bun";
+import { join } from "path";
 
 // Fail fast if AIDBOX_LICENSE is not set
 if (!process.env.AIDBOX_LICENSE) {
@@ -18,6 +19,7 @@ const TEST_CLIENT_SECRET = "test_secret";
 // This must happen before any imports that use these values
 process.env.AIDBOX_URL = TEST_AIDBOX_URL;
 process.env.AIDBOX_CLIENT_SECRET = TEST_CLIENT_SECRET;
+process.env.HL7V2_TO_FHIR_CONFIG = join(__dirname, "../fixtures/config/hl7v2-to-fhir.json");
 
 beforeAll(async () => {
   // Check if Aidbox is already running
