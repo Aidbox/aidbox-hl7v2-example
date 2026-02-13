@@ -45,27 +45,36 @@ describe("convertADT_A01 - config-driven PV1 policy", () => {
     expect(encounterEntry).toBeDefined();
 
     const encounter = encounterEntry!.resource as Encounter;
-    expect(encounter.id).toBe("v12345");
+    expect(encounter.id).toBe("urn-oid-1-2-3-v12345");
     expect(encounter.identifier?.[0]?.type?.coding?.[0]?.code).toBe("VN");
     expect(encounter.identifier?.[0]?.value).toBe("V12345");
   });
 
-  test("ADT with missing PV1 (config: required=true) returns error, no bundle", async () => {
+  test("ADT with missing PV1 (config: required=false) returns warning, skips Encounter", async () => {
     const parsed = parseMessage(adtWithoutPV1);
     const result = await convertADT_A01(parsed);
 
-    expect(result.messageUpdate.status).toBe("error");
+    expect(result.messageUpdate.status).toBe("warning");
     expect(result.messageUpdate.error).toContain("PV1");
-    expect(result.bundle).toBeUndefined();
+    expect(result.bundle).toBeDefined();
+
+    const encounterEntry = result.bundle!.entry?.find(
+      (e) => e.resource?.resourceType === "Encounter",
+    );
+    expect(encounterEntry).toBeUndefined();
   });
 
-  test("ADT with invalid PV1-19 authority (config: required=true) returns error with descriptive message, no bundle", async () => {
+  test("ADT with invalid PV1-19 authority (config: required=false) returns warning, skips Encounter", async () => {
     const parsed = parseMessage(adtWithInvalidAuthority);
     const result = await convertADT_A01(parsed);
 
-    expect(result.messageUpdate.status).toBe("error");
-    expect(result.messageUpdate.error).toContain("CX.4");
+    expect(result.messageUpdate.status).toBe("warning");
     expect(result.messageUpdate.error).toContain("authority");
-    expect(result.bundle).toBeUndefined();
+    expect(result.bundle).toBeDefined();
+
+    const encounterEntry = result.bundle!.entry?.find(
+      (e) => e.resource?.resourceType === "Encounter",
+    );
+    expect(encounterEntry).toBeUndefined();
   });
 });

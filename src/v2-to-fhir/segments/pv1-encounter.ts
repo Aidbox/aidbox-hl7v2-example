@@ -518,8 +518,10 @@ export function buildEncounterFromPV1(
     identifierError = identifierResult.error;
   } else if (identifierResult.identifier) {
     identifiers.push(...identifierResult.identifier);
+    const system = identifierResult.identifier[0]!.system!;
     const vnValue = pv1.$19_visitNumber!.$1_value!;
-    encounter.id = vnValue.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    encounter.id = `${sanitize(system)}-${sanitize(vnValue)}`;
   }
 
   // PV1-50: Alternate Visit ID -> identifier

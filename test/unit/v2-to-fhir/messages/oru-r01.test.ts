@@ -52,7 +52,7 @@ describe("convertORU_R01 - config-driven PV1 policy", () => {
     expect(encounterEntry).toBeDefined();
 
     const encounter = encounterEntry!.resource as Encounter;
-    expect(encounter.id).toBe("v12345");
+    expect(encounter.id).toBe("urn-oid-1-2-3-v12345");
     expect(encounter.identifier?.[0]?.type?.coding?.[0]?.code).toBe("VN");
     expect(encounter.identifier?.[0]?.value).toBe("V12345");
   });
