@@ -27,151 +27,20 @@ Before the decisions, some facts that narrow the option space:
 
 ## TIER 1: Blocks Everything (decide before ANY implementation)
 
-### D1. Resource ID Generation — All 5 Resource Types
+### D1. Resource ID Generation
 
-Epic 1 established the Patient ID principle (authority+id), but **the same problem exists for Encounter, Practitioner, Organization, and Location**. Epic 2 cannot start until IDs are defined for all of them.
+#### D1a–D1b. Patient ID & Encounter ID — DECIDED
 
-**For each resource type below, decide the ID formula and what config is needed.**
+**Full design:** [Cross-EHR Patient & Encounter Identity](01_cross_ehr_identity_decisions.md)
 
-#### D1a. Patient ID
+Summary:
+- **Patient ID**: Priority-list algorithm scanning PID-3 (after preprocessor merges PID-2). Config: ordered `identifierPriority` rules mixing `{authority}` and `{type}` selectors. ID = `{matched-authority}-{id}`. No match → error (strict).
+- **Encounter ID**: `{authority}-{visit-number}` from PV1-19 directly. Single CX, no priority list. Authority injected by preprocessor when missing.
+- **Preprocessing boundary**: Core converter is strict (requires authority on every CX). Normalization (PID-2→PID-3 merge, authority injection) is preprocessor responsibility.
 
-Agreed approach: scan PID-3 for identifier with configured authority type, use `{authority}-{id}`.
+#### D1c–D1e. Practitioner, Organization, Location IDs
 
-Remaining question — **what is the identifier selection algorithm?**
-
-**Option 1: Prefer by identifier type code (e.g., `PE`, `MR`)**
-- Config: `{ "preferredIdentifierType": "PE" }` per deployment
-- Scan PID-3 repeats, pick first with matching CX.5 (identifier type)
-- Pro: simple, type codes are semi-standardized
-- Con: same type code used differently across senders
-
-**Option 2: Prefer by authority name (e.g., `UNIPAT`, `MPI`)**
-- Config: `{ "preferredAuthority": "UNIPAT" }` per deployment
-- Scan PID-3 repeats, pick first with matching CX.4.1 (assigning authority)
-- Pro: more specific, authorities are globally unique
-- Con: authority names vary more across deployments
-
-**Option 3: Priority list of (authority, type) pairs**
-- Config: `{ "identifierPriority": [{"authority": "UNIPAT", "type": "PE"}, {"type": "MR"}] }` per deployment
-- Try each rule in order, first match wins
-- Pro: most flexible, handles edge cases
-- Con: more complex config
-
-> **Decision D1a:** ____________________
->
-> **Fallback when no match:** `{sender}-{first-PID-3-id}` — acceptable? ____________________
-
-#### D1b. Encounter ID
-
-Current: `id-generation.ts` derives Encounter ID from PV1-19 (Visit Number) using HL7 v2.8.2 CX rules.
-
-**Question: should PV1-19 use the same authority+id logic as Patient?**
-
-PV1-19 is a CX datatype (same as PID-3 repeats), so the same algorithm could apply — scan for configured authority type, use `{authority}-{visit-id}`.
-
-**Option 1: Same authority+id logic as Patient**
-- PV1-19 with authority → `{authority}-{visit-number}`
-- PV1-19 without authority → `{sender}-{visit-number}` (sender-scoped)
-- Pro: consistent model, cross-EHR encounter linking if authority shared
-- Con: visit numbers rarely share authorities across EHRs in practice
-
-**Option 2: Always sender-scoped**
-- Encounter.id = `{sender}-{visit-number}` always (ignore authority)
-- Pro: simple, predictable, no surprise cross-EHR collisions
-- Con: can't auto-link encounters across EHRs even when authority exists
-
-> **Decision D1b:** ____________________
-
-#### D1c. Practitioner ID
-
-Current: XCN converter extracts name/ID but doesn't create standalone resources.
-
-**Question: what forms the Practitioner ID?**
-
-Sources: XCN.1 (ID number), XCN.9 (assigning authority), XCN.13 (identifier type).
-
-**Option 1: Authority+ID (same pattern as Patient)**
-- `{xcn.9-authority}-{xcn.1-id}` when authority present
-- `{sender}-{xcn.1-id}` when authority absent
-- Pro: consistent, enables cross-EHR dedup if NPI/authority shared
-- Con: XCN.9 is inconsistently populated (often just "XX")
-
-**Option 2: Always sender-scoped**
-- `{sender}-{xcn.1-id}` always
-- Pro: simple, no false cross-EHR matches from "XX" authority
-- Con: same doctor in two EHRs = two FHIR Practitioners
-
-**Option 3: NPI-preferred with sender fallback**
-- If XCN.1 looks like NPI (10-digit numeric) and XCN.9="NPI" → use NPI as global ID
-- Otherwise → sender-scoped
-- Pro: gold standard for US practitioner identity
-- Con: no NPI in Awie Case sample data (but other deployments might have it)
-
-> **Decision D1c:** ____________________
-
-#### D1d. Organization ID
-
-Multiple sources with different semantics:
-- MSH-4 (Sending Facility, HD): `W`, `BMH` — facility code
-- IN1-3/4 (Insurance Company, CX+XON): insurer IDs
-- PV1-39 (Servicing Facility, HD): facility code
-- XON datatype fields (PD1-3, GT1-5): organization names
-
-**Question: single ID scheme or source-dependent?**
-
-**Option 1: Source-typed IDs**
-- Facility: `facility-{code}` (from HD)
-- Insurer: `insurer-{id}` (from IN1-3 CX or kebab of IN1-4 name)
-- Employer/other: `org-{sender}-{kebab-name}`
-- Pro: no collisions between a hospital and an insurer with same code
-- Con: more complex, type prefix is a convention not enforced
-
-**Option 2: Flat namespace with sender scope**
-- `{sender}-{org-identifier}` for all
-- Pro: simple
-- Con: same hospital from two senders = two FHIR Organizations
-
-**Option 3: Authority+ID when available, sender-scoped fallback**
-- Same pattern as Patient — if org identifier has authority, use it
-- Pro: consistent
-- Con: HD (facility) doesn't have authority the way CX does
-
-> **Decision D1d:** ____________________
-
-#### D1e. Location ID
-
-Source: PL datatype from PV1-3 (assigned), PV1-6 (prior), PV1-11 (temp), PV1-42 (pending).
-
-Components: PL.1 (point-of-care/unit), PL.2 (room), PL.3 (bed), PL.4 (facility), PL.9 (location description).
-
-**Question 1: which components form the ID?**
-
-**Option 1: All available components**
-- `{facility}-{unit}-{room}-{bed}` — omit empty components
-- Pro: maximally specific, no collisions
-- Con: different EHRs populate different components (ASTRA sends 5, MEDTEX sends 3)
-
-**Option 2: Fixed components, sender-scoped**
-- `{sender}-{unit}-{room}-{bed}` — ignore PL.4 facility, use sender instead
-- Pro: predictable, no missing-component issues
-- Con: can't link same physical location across EHRs
-
-> **Decision D1e (ID scheme):** ____________________
-
-**Question 2: flat or hierarchical?**
-
-**Option A: Flat** — one Location per bed/room. `Location.physicalType` indicates level.
-- Pro: simple, fewer resources
-- Con: no parent-child relationships for drill-down
-
-**Option B: Hierarchical** — create Location for facility, ward, room, AND bed. Each references parent via `Location.partOf`.
-- Pro: richer model, supports "show all beds in ward X"
-- Con: 4x Location resources, PL data often insufficient to build full hierarchy
-
-**Option C: Start flat, add hierarchy later** — create bed-level Locations now. Adding hierarchy is backwards-compatible (add partOf reference + parent resources).
-- Pro: pragmatic, no wasted effort
-
-> **Decision D1e (hierarchy):** ____________________
+**Deferred to Epic 2** — see [Epic 2 ID decisions](02_missing_fhir_resources_epic_ids.md).
 
 ---
 

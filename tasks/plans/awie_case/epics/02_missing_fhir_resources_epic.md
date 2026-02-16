@@ -19,13 +19,34 @@
 - ASTRA: `2D^0244^B^W^OCC` (5 components: unit^room^bed^facility^status)
 - MEDTEX: `B5SURG^5130^D` (3 components: unit^room^bed)
 
-**ID generation**: `{sender-facility}-{unit}-{room}-{bed}` with kebab-case normalization. Must handle varying component counts.
+**PL components**: PL.1 (point-of-care/unit), PL.2 (room), PL.3 (bed), PL.4 (facility), PL.9 (location description).
 
 **Pitfalls**:
 - PL field depth inconsistency between EHRs
 - Physical type must be inferred from component position (PL.1=point-of-care, PL.2=room, PL.3=bed)
 - Deduplication: same physical location across messages should produce same Location.id
-- Location hierarchy (bed → room → ward → facility) — do we create multiple nested Locations or flat?
+
+### ID scheme decision
+
+**Option 1: All available components**
+- `{facility}-{unit}-{room}-{bed}` — omit empty components
+- Pro: maximally specific, no collisions
+- Con: different EHRs populate different components
+
+**Option 2: Fixed components, sender-scoped**
+- `{sender}-{unit}-{room}-{bed}` — ignore PL.4 facility, use sender instead
+- Pro: predictable, no missing-component issues
+- Con: can't link same physical location across EHRs
+
+> **Decision (ID scheme):** ____________________
+
+### Hierarchy decision
+
+**Option A: Flat** — one Location per bed/room. `Location.physicalType` indicates level.
+**Option B: Hierarchical** — create Location for facility, ward, room, AND bed with `Location.partOf`.
+**Option C: Start flat, add hierarchy later** — backwards-compatible extension.
+
+> **Decision (hierarchy):** ____________________
 
 ## 2.2 Organization
 
@@ -35,15 +56,37 @@
 
 **Key insight**: There are 5+ distinct sources of Organization data, each requiring different handling. The insurance company Organization is different from the sending facility Organization.
 
-**ID generation**:
-- For facilities: `{facility-code}` from MSH-4 (e.g., `bmh`, `w`)
-- For insurers: `{insurer-id}` from IN1-3 or kebab-case of IN1-4 name
-- Include sender context to avoid collisions
-
 **Pitfalls**:
 - Same org under different names/codes (e.g., "BLUE CROSS" in IN1-4 vs code "02" in IN1-3)
 - HD (simple) vs XON (rich) format — need converters for both
 - `managingOrganization` on Location requires Organization to exist first → ordering dependency in bundle
+
+### ID decision
+
+Multiple sources with different semantics:
+- MSH-4 (Sending Facility, HD): `W`, `BMH` — facility code
+- IN1-3/4 (Insurance Company, CX+XON): insurer IDs
+- PV1-39 (Servicing Facility, HD): facility code
+- XON datatype fields (PD1-3, GT1-5): organization names
+
+**Option 1: Source-typed IDs**
+- Facility: `facility-{code}` (from HD)
+- Insurer: `insurer-{id}` (from IN1-3 CX or kebab of IN1-4 name)
+- Employer/other: `org-{sender}-{kebab-name}`
+- Pro: no collisions between a hospital and an insurer with same code
+- Con: more complex, type prefix is a convention not enforced
+
+**Option 2: Flat namespace with sender scope**
+- `{sender}-{org-identifier}` for all
+- Pro: simple
+- Con: same hospital from two senders = two FHIR Organizations
+
+**Option 3: Authority+ID when available, sender-scoped fallback**
+- Same pattern as Patient — if org identifier has authority, use it
+- Pro: consistent
+- Con: HD (facility) doesn't have authority the way CX does
+
+> **Decision:** ____________________
 
 ## 2.3 Practitioner
 
@@ -51,18 +94,45 @@
 
 **Current state**: `xcn-practitioner.ts` — full XCN→Practitioner converter exists. PV1 converter calls it (line 352) but only builds `Encounter.participant` with display text, NOT standalone Practitioner resources. Same for DG1 asserter.
 
-**Format variation**:
-- ASTRA: `1144244203^LYNN^RICHARD^E^^^MD^^^^^^XX` (numeric ID)
-- MEDTEX: `PRUT.DO^Prutz^Thomas^D^JR^^DO^^^^^^XX` (code-based ID)
-- No NPI present in any sample data
-
-**ID generation**: `{sender}-{xcn.1}` with normalization. Must handle both numeric and alphanumeric IDs. Cross-EHR deduplication requires NPI or external matching — not possible with current data.
-
 **Pitfalls**:
 - Same doctor appearing in PV1-7 AND DG1-16 of the same message — must deduplicate within bundle
 - No NPI in sample data means cross-EHR practitioner matching is impossible without external mapping
 - ROL segment not processed at all currently — contains additional provider roles (Primary Care Provider, Admitting Doctor, NP Informed Provider)
 - XCN.9 (assigning authority) inconsistently populated — sometimes just "XX"
+
+### ID decision
+
+ID derived from XCN.1 (ID number), XCN.9 (assigning authority), XCN.13 (identifier type).
+
+#### Data findings
+
+| Sender | XCN.1 (ID) | XCN.9 (Authority) | XCN.13 (Type) |
+|--------|-----------|-------------------|---------------|
+| ASTRA | `1144244203` (numeric) | (empty) | `XX` |
+| MEDTEX | `VASDJ.DO` (text) | (empty) | `XX` |
+| Xpan Lab OBR | `FIOM.MD` | `MIS&&ISO` | `XX` |
+| Xpan Lab OBX-25 | `Dr D Mathur` | `NPI&2.16.840.1.113883.4.6&ISO` | `NPI` |
+
+Most have no authority. `XX` (Organization identifier) is widely misused as type for persons. No cross-EHR practitioner MPI exists.
+
+**Option 1: Authority+ID (same pattern as Patient)**
+- `{xcn.9-authority}-{xcn.1-id}` when authority present
+- `{sender}-{xcn.1-id}` when authority absent
+- Pro: consistent, enables cross-EHR dedup if NPI/authority shared
+- Con: XCN.9 is inconsistently populated (often just "XX")
+
+**Option 2: Always sender-scoped**
+- `{sender}-{xcn.1-id}` always
+- Pro: simple, no false cross-EHR matches from "XX" authority
+- Con: same doctor in two EHRs = two FHIR Practitioners
+
+**Option 3: NPI-preferred with sender fallback**
+- If XCN.1 looks like NPI (10-digit numeric) and XCN.9="NPI" → use NPI as global ID
+- Otherwise → sender-scoped
+- Pro: gold standard for US practitioner identity
+- Con: no NPI in Awie Case sample data (but other deployments might have it)
+
+> **Decision:** ____________________
 
 ## 2.4 PractitionerRole
 
@@ -89,8 +159,10 @@ This should be done as a **cross-cutting concern** applied to ADT_A01 first, the
 
 ## Decisions Needed
 
-- [ ] Location hierarchy: flat (one Location per bed) or hierarchical (bed → room → ward → facility)?
-- [ ] Organization deduplication: how to handle same org under different names/codes?
+- [ ] Location ID scheme: all available components vs sender-scoped fixed components?
+- [ ] Location hierarchy: flat, hierarchical, or start flat?
+- [ ] Organization ID: source-typed, flat sender-scoped, or authority+ID?
+- [ ] Practitioner ID: authority+ID, always sender-scoped, or NPI-preferred?
 - [ ] PractitionerRole scope: per encounter-role pair, or per practitioner-role globally?
 - [ ] ROL segment: process now or defer?
 
