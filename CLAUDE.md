@@ -15,6 +15,10 @@ Keep in mind that user might be an idiot and suggests things without thinking ab
 State tradeoffs before implementing, even if the suggestion seems reasonable. Be direct but constructive.
 If the change has clear downsides and the user still wants it, they must say: "I request you to do it this way".
 
+## Project Memory
+
+Do NOT use the auto memory file (MEMORY.md) for this project. CLAUDE.md is the project memory — it is checked into the repo and shared across all agents and sessions. When you learn something that should persist (gotchas, rules, patterns), add it here, not to MEMORY.md.
+
 # Aidbox HL7 Integration
 
 HL7v2 message processing with Aidbox FHIR server. Bidirectional: FHIR → HL7v2 BAR (billing) and HL7v2 → FHIR (lab results, ADT).
@@ -248,3 +252,11 @@ IMPORTANT: Always read `.claude/code-style.md` before writing or modifying code.
 Before proposing, implementing, or reviewing ANY change that touches HL7v2 message handling — including segment optionality, field semantics, message structure, or processing rules — you MUST look up the relevant message/segment/field via the `hl7v2-info` skill first.
 
 Do NOT rely on assumptions, existing code patterns, or memory of the spec. The code may intentionally deviate from the spec, but you must know what the spec says before proposing or implementing changes.
+
+### HL7v2 Pipes Count
+
+Hl7v2 message analysis/building requires exact pipe count — easy to miscount for an AI agent. Always use the `hl7v2-info` skill or Python to verify field positions:
+```sh
+python3 -c "parts=line.split('|'); [print(f'Field {i}: {v}') for i,v in enumerate(parts[1:], 1) if v]"
+```
+Reference: working fixture `test/fixtures/hl7v2/oru-r01/encounter/with-visit.hl7` has correct PV1-19.

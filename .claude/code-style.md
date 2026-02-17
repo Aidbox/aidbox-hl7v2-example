@@ -100,6 +100,10 @@ This ensures:
 - Internal implementation can change without breaking consumers
 - Each module owns its logic; consumers don't orchestrate it
 
+### File Creation
+
+Before creating a file, ask yourself: does the amount of code justify a separate module? A small handler, helper, or type that has exactly one consumer belongs in the consumer's file (or in a shared file that already exists). Pattern-matching on directory conventions is not a reason to create a file — the code's size and reuse are.
+
 ## Avoid Cyclic Dependencies
 
 Never create circular imports between modules. If module A imports from module B, then module B must not import from module A (directly or indirectly).
