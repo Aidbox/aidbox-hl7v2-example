@@ -48,9 +48,13 @@ bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
 bun run generate-hl7v2-reference  # Generate data/hl7v2-reference/ from XSD+PDF (see docs)
 ```
 
-**Integration tests** use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
+Integration tests use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
 
-→ Details: `docs/developer-guide/how-to/development-guide.md`
+**IMPORTANT — Testing rules:**
+1. **Always run `bun test:all` after any change.** Never run only `bun test:unit`. Do not skip integration tests.
+2. **Don't manually run `docker compose` for integration tests.** The test command (`bun test:integration` or `bun test:all`) automatically starts Docker containers, waits for health, and runs migrations.
+
+Read `docs/developer-guide/how-to/development-guide.md` for: test infrastructure details, how to run specific tests, writing new tests (conventions, integration test helpers), code generation workflows, and debugging.
 
 ## Architecture Overview
 
@@ -238,3 +242,9 @@ Use Bun instead of Node.js:
 ## Code Style
 
 IMPORTANT: Always read `.claude/code-style.md` before writing or modifying code.
+
+## HL7v2 Spec Compliance Rule
+
+Before proposing, implementing, or reviewing ANY change that touches HL7v2 message handling — including segment optionality, field semantics, message structure, or processing rules — you MUST look up the relevant message/segment/field via the `hl7v2-info` skill first.
+
+Do NOT rely on assumptions, existing code patterns, or memory of the spec. The code may intentionally deviate from the spec, but you must know what the spec says before proposing or implementing changes.
