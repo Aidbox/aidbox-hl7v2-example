@@ -127,6 +127,8 @@ bun run regenerate-fhir    # Regenerate src/fhir/hl7-fhir-r4-core/
 bun run regenerate-hl7v2   # Regenerate src/hl7v2/generated/
 ```
 
+Caveat: `bun run regenerate-hl7v2` and `bun run generate-hl7v2-reference` are completely different workflows. The former regenerates runtime TypeScript bindings; the latter regenerates local reference JSON from HL7 XSD/PDF sources. See [HL7v2 Reference Data Generation](hl7v2-reference-generation.md).
+
 See [Extracting Modules](extracting-modules.md) for details on the generated code structure.
 
 ## Debugging
@@ -176,4 +178,3 @@ curl http://localhost:8080/health
 # Re-run migrations
 bun run migrate
 ```
-
