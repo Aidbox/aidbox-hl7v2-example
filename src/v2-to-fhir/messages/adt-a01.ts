@@ -49,6 +49,7 @@ import { convertNK1ToRelatedPerson } from "../segments/nk1-relatedperson";
 import { convertDG1ToCondition } from "../segments/dg1-condition";
 import { convertAL1ToAllergyIntolerance } from "../segments/al1-allergyintolerance";
 import { convertIN1ToCoverage } from "../segments/in1-coverage";
+import { resourceExists } from "../../aidbox";
 import { toKebabCase } from "../../utils/string";
 import {
   buildMappingErrorResult,
@@ -353,6 +354,9 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
 
   const patientRef = patient.id ? `Patient/${patient.id}` : "Patient/unknown";
 
+  // NOTE: only used for pv1 error handling right now, but will be used to avoid a new patient generation in the future
+  const patientKnown = patient.id && await resourceExists("Patient", patient.id);
+
   // =========================================================================
   // Extract PV1 -> Encounter (config-driven PV1 policy)
   // =========================================================================
@@ -369,7 +373,7 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
         messageUpdate: {
           status: "error",
           error: "PV1 segment is required for ADT-A01 but missing",
-          patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
+          patient: patientKnown ? { reference: `Patient/${patient.id}` } : undefined,
         },
       };
     }
@@ -389,7 +393,7 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
           messageUpdate: {
             status: "error",
             error: pv1Result.identifierError,
-            patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,
+            patient: patientKnown ? { reference: `Patient/${patient.id}` } : undefined,
           },
         };
       }

@@ -64,6 +64,18 @@ export async function putResource<T>(
   });
 }
 
+export async function resourceExists(
+  resourceType: string,
+  id: string,
+): Promise<boolean> {
+  try {
+    await aidboxFetch(`/fhir/${resourceType}/${id}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export class PreconditionFailedError extends Error {
   constructor(message: string) {
     super(message);
