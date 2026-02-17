@@ -17,6 +17,7 @@ import {
 } from "./ui/pages/messages";
 import { handleMappingTasksPage } from "./ui/pages/mapping-tasks";
 import { handleCodeMappingsPage } from "./ui/pages/code-mappings";
+import { highlightHL7WithDataTooltip } from "./ui/shared-layout";
 import {
   handleAddEntry,
   handleUpdateEntry,
@@ -87,6 +88,16 @@ Bun.serve({
         console.error("LOINC validation error:", error);
         return Response.json({ error: "Validation failed" }, { status: 500 });
       }
+    },
+
+    // =========================================================================
+    // HL7v2 Highlight API
+    // =========================================================================
+    "/api/hl7v2/highlight": {
+      POST: async (req) => {
+        const { message } = (await req.json()) as { message: string };
+        return Response.json({ html: highlightHL7WithDataTooltip(message) });
+      },
     },
 
     // =========================================================================

@@ -4,10 +4,7 @@
  * Displays Outgoing and Incoming HL7v2 messages pages.
  */
 
-import {
-  highlightHL7Message,
-  getHighlightStyles,
-} from "@atomic-ehr/hl7v2/src/hl7v2/highlight";
+import { highlightHL7WithDataTooltip } from "../shared-layout";
 import type {
   OutgoingBarMessage,
   IncomingHL7v2Message,
@@ -97,14 +94,6 @@ export async function handleIncomingMessagesPage(req: Request): Promise<Response
 // ============================================================================
 // Helper Functions (internal)
 // ============================================================================
-
-function highlightHL7WithDataTooltip(
-  message: string | undefined,
-): string {
-  const html = highlightHL7Message(message);
-  // Replace title= with data-tooltip= to avoid native browser tooltip
-  return html.replace(/\btitle="/g, 'data-tooltip="');
-}
 
 function formatError(error: string): string {
   // Try to extract and format JSON from error message

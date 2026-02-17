@@ -213,9 +213,26 @@ function renderMLLPClientPage(
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">HL7v2 Message</label>
-            <textarea name="message" rows="12" required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="MSH|^~\\&|...">${state.message}</textarea>
+            <div class="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+              <div class="flex border-b border-gray-300 bg-gray-50">
+                <button type="button" id="tab-edit"
+                  class="px-4 py-1.5 text-sm font-medium border-b-2 border-blue-500 text-blue-600 bg-white"
+                  onclick="switchTab('edit')">Edit</button>
+                <button type="button" id="tab-preview"
+                  class="px-4 py-1.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700"
+                  onclick="switchTab('preview')">Preview</button>
+              </div>
+              <div id="panel-edit">
+                <textarea name="message" rows="12" required
+                  class="w-full px-3 py-2 font-mono text-sm border-0 focus:ring-0 focus:outline-none resize-y"
+                  placeholder="MSH|^~\\&|...">${state.message}</textarea>
+              </div>
+              <div id="panel-preview" class="hidden">
+                <div id="preview-content" class="hl7-message-container p-3 bg-gray-50 font-mono text-xs overflow-x-auto whitespace-pre" style="min-height: 288px">
+                  <span class="text-gray-400 text-sm">Enter a message and switch to Preview to see highlighted fields.</span>
+                </div>
+              </div>
+            </div>
             <p class="mt-1 text-xs text-gray-500">Use \\r for segment separators or paste multi-line message</p>
           </div>
 
@@ -240,7 +257,7 @@ function renderMLLPClientPage(
             ${sampleMessages
               .map(
                 (sample, i) => `
-              <button type="button" onclick="document.querySelector('textarea[name=message]').value = decodeURIComponent('${encodeURIComponent(sample.message)}')"
+              <button type="button" onclick="document.querySelector('textarea[name=message]').value = decodeURIComponent('${encodeURIComponent(sample.message)}'); previewDirty = true; switchTab('edit')"
                 class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors">
                 ${sample.name}
               </button>
@@ -264,7 +281,59 @@ function renderMLLPClientPage(
           <pre class="text-xs font-mono bg-white p-2 rounded overflow-x-auto">bun run mllp</pre>
         </div>
       </div>
-    </div>`;
+    </div>
+
+    <script>
+      let previewDirty = true;
+
+      document.querySelector('textarea[name=message]').addEventListener('input', () => {
+        previewDirty = true;
+      });
+
+      async function switchTab(tab) {
+        const editTab = document.getElementById('tab-edit');
+        const previewTab = document.getElementById('tab-preview');
+        const editPanel = document.getElementById('panel-edit');
+        const previewPanel = document.getElementById('panel-preview');
+        const activeClasses = 'border-blue-500 text-blue-600 bg-white';
+        const inactiveClasses = 'border-transparent text-gray-500 hover:text-gray-700';
+
+        if (tab === 'edit') {
+          editTab.className = 'px-4 py-1.5 text-sm font-medium border-b-2 ' + activeClasses;
+          previewTab.className = 'px-4 py-1.5 text-sm font-medium border-b-2 ' + inactiveClasses;
+          editPanel.classList.remove('hidden');
+          previewPanel.classList.add('hidden');
+        } else {
+          previewTab.className = 'px-4 py-1.5 text-sm font-medium border-b-2 ' + activeClasses;
+          editTab.className = 'px-4 py-1.5 text-sm font-medium border-b-2 ' + inactiveClasses;
+          editPanel.classList.add('hidden');
+          previewPanel.classList.remove('hidden');
+          if (previewDirty) await loadPreview();
+        }
+      }
+
+      async function loadPreview() {
+        const message = document.querySelector('textarea[name=message]').value;
+        const content = document.getElementById('preview-content');
+        if (!message.trim()) {
+          content.innerHTML = '<span class="text-gray-400 text-sm">Enter a message and switch to Preview to see highlighted fields.</span>';
+          return;
+        }
+        content.innerHTML = '<span class="text-gray-400 text-sm">Loading preview...</span>';
+        try {
+          const res = await fetch('/api/hl7v2/highlight', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+          });
+          const data = await res.json();
+          content.innerHTML = data.html;
+          previewDirty = false;
+        } catch {
+          content.innerHTML = '<span class="text-red-500 text-sm">Failed to load preview.</span>';
+        }
+      }
+    </script>`;
 
   return renderLayout(
     "MLLP Test Client",
