@@ -56,6 +56,8 @@ The ID generator should use **authority+id** from PID-3 as the deterministic Pat
 
 **Awie Case example** (for validation, not as the design driver): All three EHRs use `UNIPAT^PE` in PID-3. Configuring `PE` as the preferred identifier type would make `authority+id` identical across senders for the same patient.
 
+**Important testing gap**: this sample corpus demonstrates shared namespace usage (`UNIPAT^PE`) but has limited/no obvious same-person overlap across EHR feeds. Add synthetic fixtures with the same UNIPAT value emitted by different senders to verify true cross-EHR merge behavior in tests.
+
 **Per-sender placeholder authority**: When a sender omits the authority but is known to share patients with another sender, config can assign a placeholder authority so their IDs still align. Example: if sender X sends `PID-3: 12345` with no authority, config can say "treat sender X identifiers as belonging to authority FOO."
 
 ## Pitfalls

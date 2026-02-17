@@ -151,6 +151,8 @@ Encounter.id = `{authority}-{visit-number}` from PV1-19 directly.
 
 **Shared pattern with Patient ID:** both require authority on every CX after preprocessing. Patient ID adds a priority list to choose WHICH CX from a pool; Encounter ID has only one CX, so it's used directly.
 
+**NEW FINDINGS**: PV1-19 is not enough, sometimes id is specified in PV1-51 (^^^^ST01W^TN in ASTRA A04 samples: data/local/awie_case/awie_case_data/ASTRA-ADT-A04-01/ASTRA-ADT-A04-01.txt). 
+
 ---
 
 ## Impact on existing code

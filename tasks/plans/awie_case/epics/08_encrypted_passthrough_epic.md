@@ -15,6 +15,7 @@ Evidence in data:
 - Patient names: `VvlPikj5^GQW`, `Rzswuouwsz^Frcwr^Anti-Xa`, `KCZUGWFDV^IEPSXLM`
 - DOB masking: `****0517`, `****0427` (partial masking)
 - Addresses: `2048 Dplclufc Mw^^Zywbhl^HU^50719`
+- In some sender variants, ADT questionnaire OBX also uses non-standard datatypes/statuses (`IF`, `SW`, status `D`)
 
 ## Implications for Converter
 
@@ -34,6 +35,8 @@ Evidence in data:
 
 4. **Mixed encrypted/clear data**: Some fields encrypted, others not, within the same message. Can't just "skip all validation for encrypted senders."
 
+5. **Handle encrypted/non-standard OBX**: Encrypted datatype/status combinations from encrypted questionnaire feeds will pollute mapping Task queue with non-standard values. Need to investigate: are these fields non-standard and should be mapped or they're encrypted and shouldn't (what will we do then for their conversion if we need those fields?).
+
 ## User Feedback
 
 - Validation/parsing should be **configurable per-sender**. Some clients want it, some don't.
@@ -44,6 +47,7 @@ Evidence in data:
 - [ ] Per-sender config format: which fields to skip validation for?
 - [ ] Date handling: store masked dates as strings, or use a special extension?
 - [ ] Mapping task suppression: per-sender flag, per-field flag, or detect-encrypted heuristic?
+- [ ] Handling of non-standard OBX datatype/status (e.g., `IF`/`SW`, status `D`): explicit allowlist, pass-through, or normalization rule?
 - [ ] Scope: apply to ADT only, or all message types?
 
 ## Relevant Files

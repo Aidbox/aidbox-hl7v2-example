@@ -17,6 +17,8 @@ IMPORTANT: this case is just ONE example of real-world hl7v2->fhir use-cases. We
 
 **Message types in data** (~10 types): ADT A01/A02/A03/A04/A11/A12/A13, ORU_R01, ORM_O01, MDM_T02
 
+**Packaging/transport quirks in samples:** some files contain multiple HL7 messages (multiple `MSH` envelopes in one file) and some payloads are CR-delimited (`\r`) rather than newline-delimited.
+
 **Target**: 13 FHIR resource types (Patient, Encounter, Condition, Coverage, DocumentReference, Location, MedicationRequest, Observation, Organization, Practitioner, PractitionerRole, ServiceRequest + implicitly DiagnosticReport/Specimen/AllergyIntolerance/RelatedPerson).
 
 Cross-EHR referencing required. Encrypted data must pass through untouched. 10k msgs/hr performance target.
@@ -116,5 +118,23 @@ These themes span multiple epics and should be tracked as design constraints:
 3. **DocumentReference pattern**: Shared between Epics 5 (MDM) and 6 (ORU pathology). Design once, use twice.
 
 4. **Per-sender configuration**: Currently minimal (`config/hl7v2-to-fhir.json`). Epics 1, 7, 8 all need per-sender config extensions. Design the config shape once.
+Per-sender matching also needs aliasing/normalization (e.g., sender variants like `REG|BMH` vs `REG|BMP`/blank facility) to avoid ConceptMap/config fragmentation.
 
 5. **HL7v2 type generation**: Epics 4 (ORC/RXO/TQ1), 5 (TXA) may need `bun run regenerate-hl7v2` or manual additions to `src/hl7v2/generated/`.
+
+6. **Ingestion normalization**: Parser/ingestion must support CR-delimited payloads and multiple messages per file before conversion starts (or before it's even saved).
+
+7. **Deduplication semantics**: `MSH-10` is not reliable as a globally unique dedupe key in this corpus; idempotency should primarily rely on deterministic FHIR resource IDs and message content/context.
+
+=====================================
+
+# Afterthought concerns:
+
+## Sender key needs normalization/fallback policy, not just MSH-3|MSH-4.
+
+Codex notes:
+- You have variants: REG|BMH, REG|BMP, REG| and extra senders (IST| KGA, IST|LGI, MEDTEX PTH|BMH, MEDTEX LAB|CLAR).
+- Examples: data/local/awie_case/awie_case_data/ORM-O01-6/ORM-O01-6.txt, data/local/awie_case/awie_case_data/MEDTEX-ADT-A0320250512_07/MEDTEX- ADT-A03-Message+2+0000000000.txt.
+- Tradeoff: strict sender key isolation is safe, but without aliasing/defaults you’ll fragment ConceptMaps/config.
+
+User feedback: It makes sense, because if a single ehr serves several facilities, they all will likely have the same mappings and our pipeline will require setting manual mappings (or uploading a ConceptMap) for all of them. Need to make an option in the config to setup a hardcoded alias for a sender (OR just always use sending application?? is this safe? Or better provide flexibility to use sender-application for some fields and full sender id for something else?)

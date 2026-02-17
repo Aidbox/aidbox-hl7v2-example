@@ -23,6 +23,8 @@ Before the decisions, some facts that narrow the option space:
 
 5. **Converter uses raw segment parsing**, not typed messages. Adding new message types means: add a `case` in `converter.ts` switch + write a converter function that calls `findSegment()`. No generated message type needed.
 
+6. **MSH-10 is not globally unique in this dataset.** The same control ID appears across different event types and files for the same sender, so dedupe MUST NOT rely on `MSH-10` alone.
+
 ---
 
 ## TIER 1: Blocks Everything (decide before ANY implementation)
@@ -197,7 +199,7 @@ Neither has interfaces in `src/hl7v2/generated/fields.ts`.
 - Pro: fast, unblocked by generator issues
 - Con: diverges from generation pipeline, maintenance burden
 
-> **Decision D6:** ____________________
+> **Decision D6:** They will be generated, it's part of development-guide.
 >
 > **Note:** This doesn't block P0-P1 work. Can be deferred, but should be investigated early to avoid surprises when P2 starts.
 

@@ -70,7 +70,7 @@ With ~1549 messages (70% ASTRA, 30% MEDTEX):
 
 2. **Multi-coding precedence**: Some senders include BOTH a standard HL7 code AND a custom code in the same coded field (e.g., `M^MALE^99SEX` where component 1 is HL7 standard, components 2-3 are custom). Need a generic "prefer standard coding system" rule: when a field contains a code from a recognized standard table alongside a custom code, use the standard one and skip mapping. This should be configurable, not hardcoded to any specific sender or table prefix.
 
-3. **ConceptMap pollution**: Current system creates one ConceptMap per (sender + mapping type). As message types grow, unrelated codes mix in the same map. Consider extending ConceptMap ID to include message type.
+3. **Document-like ORU OBX should bypass mapping**: Pathology ORU payloads may contain hundreds of `TX` OBX lines with empty OBX-3 and often missing OBX-11. If routed through normal code/status mapping they produce meaningless mapping errors. OBX routing must classify these as DocumentReference content before mapping.
 
 4. **Race/ethnicity complexity**: Not a simple code→code mapping. ASTRA 99RAC is `1^WHITE^C^WHITE^MCKOMB` (nested custom codes). FHIR US Core expects CDC race codes. This requires transformation rules, not just ConceptMap lookups.
 
