@@ -197,12 +197,14 @@ The `$update-mapping` operation ensures mappings in a ConceptMap match the input
 
 URL: [base]/ConceptMap/[id]/$update-mapping
 
-The server SHALL replace each matching mapping with the input values; properties absent from the input are removed from the existing entry. If no matching mapping exists, the server SHALL add it. 
+The server SHALL replace each matching mapping with the input values; properties absent from the input are removed from the existing entry. If no matching mapping exists, the server SHALL add it.
+
+If the input adds a `target` mapping for a source code that has `noMap=true`, the server SHALL clear `noMap` before adding the target. If the input sets `noMap=true` for a source code that has existing target mappings, the server SHALL remove all existing targets for that code in the group before setting `noMap`.
 
 If no `group` exists for the given `source` and `target`, one is created. The server SHOULD report the number of mappings updated and added in the OperationOutcome.
 
 The server SHALL return an OperationOutcome with `severity=error` and `code=business-rule` when:
-- A source code has `noMap=true` and the input adds a `target` mapping for it, or vice versa
+
 - Multiple groups share the same `source` and `target` (ambiguous target group)
 
 Clients MAY supply an `If-Match` header; servers SHALL reject the request if the ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
@@ -224,11 +226,7 @@ Clients MAY supply an `If-Match` header; servers SHALL reject the request if the
 
 When `update-type=replace-element` is specified, the operation uses element-level matching (see [Element-level Matching](#element-level-matching)).
 
-The server SHALL replace the entire matched element with the input values. If no matching element exists, the server SHALL add it.
-
-This update SHALL NOT return an error when a source code has `noMap=true` and the input adds a `target` mapping for it, or vice versa
-
-The server SHOULD report the number of elements replaced and added in the OperationOutcome.
+The server SHALL replace the entire matched element with the input values. If no matching element exists, the server SHALL add it. The server SHOULD report the number of elements replaced and added in the OperationOutcome.
 
 ### Example
 
