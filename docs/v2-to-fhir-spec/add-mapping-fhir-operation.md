@@ -1,12 +1,12 @@
 # ConceptMap Mapping Operations
 
-This page defines four operations for managing individual mappings within large [ConceptMap](https://hl7.org/fhir/conceptmap.html) resources: `$add-mapping`, `$update-mapping`, `$remove-mapping`, and `$replace-element`.
+This page defines operations for managing individual mappings within large [ConceptMap](https://hl7.org/fhir/conceptmap.html) resources: `$add-mapping`, `$update-mapping`, `$remove-mapping`, and `$replace-element`.
 
 ## Background
 
 The existing [$add](https://fhir.hl7.org/fhir/resource-operation-add.html) and [$remove](https://fhir.hl7.org/fhir/resource-operation-remove.html) operations (see [Operations for Large Resources](https://www.hl7.org/fhir/operations-for-large-resources.html)) return the modified resource and use structural matching on array entries. ConceptMap resources may contain thousands of mappings and require matching on a domain-specific composite key, so these operations return an OperationOutcome instead.
 
-For all four operations, only `group` elements in the input are processed; all other elements are ignored.
+For all operations, only `group` elements in the input are processed; all other elements are ignored.
 
 ## Matching Algorithm
 
@@ -26,9 +26,10 @@ URL: [base]/ConceptMap/[id]/$add-mapping
 
 The server SHALL add each input mapping that does not already exist. If an input mapping already exists (same match key), the server ignores it by default (`if-exists=ignore`) and SHOULD report skipped entries in the OperationOutcome; set `if-exists=fail` to return an error instead. If no `group` exists for the given `source` and `target`, one is created.
 
-It is an error to add a mapping with `target` for a source code that already has `noMap=true`, or to add `noMap=true` for a code that already has target mappings.
-It is also an error if the ConceptMap contains more than one group with the same `source` and `target` as an input mapping, since the target group is ambiguous.
-In either case the server SHALL return an OperationOutcome with `severity=error` and `code=business-rule`.
+The server SHALL return an OperationOutcome with `severity=error` and `code=business-rule` when:
+
+- A source code has `noMap=true` and the input adds a `target` mapping for it, or vice versa
+- Multiple groups share the same `source` and `target` (ambiguous target group)
 
 Clients MAY supply an `If-Match` header; servers SHALL reject the request if the ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
 
@@ -199,9 +200,10 @@ URL: [base]/ConceptMap/[id]/$update-mapping
 The server SHALL replace each matching mapping with the input values; properties absent from the input are removed from the existing entry. If no matching mapping exists, the server SHALL add it. If no `group` exists for the given `source` and `target`, one is created.
 The server SHOULD report the number of mappings updated and added in the OperationOutcome.
 
-Like `$add-mapping`, it is an error to add a mapping with `target` for a source code that already has `noMap=true`, or to add `noMap=true` for a code that already has target mappings.
-It is also an error if the ConceptMap contains more than one group with the same `source` and `target` as an input mapping, since the target group is ambiguous.
-In either case the server SHALL return an OperationOutcome with `severity=error` and `code=business-rule`.
+The server SHALL return an OperationOutcome with `severity=error` and `code=business-rule` when:
+
+- A source code has `noMap=true` and the input adds a `target` mapping for it, or vice versa
+- Multiple groups share the same `source` and `target` (ambiguous target group)
 
 Clients MAY supply an `If-Match` header; servers SHALL reject the request if the ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
 
@@ -465,7 +467,9 @@ The server SHALL match each input element by `(group.source, group.target, eleme
 
 Unlike `$add-mapping` and `$update-mapping`, no `noMap` conflict check is performed — the input element replaces whatever was previously there, enabling atomic transitions between mapped and `noMap` states.
 
-It is an error if the ConceptMap contains more than one group with the same `source` and `target` as an input element, since the target group is ambiguous. The server SHALL return an OperationOutcome with `severity=error` and `code=business-rule`.
+The server SHALL return an OperationOutcome with `severity=error` and `code=business-rule` when:
+
+- Multiple groups share the same `source` and `target` (ambiguous target group)
 
 Clients MAY supply an `If-Match` header; servers SHALL reject the request if the ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
 
