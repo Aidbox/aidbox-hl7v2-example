@@ -10,13 +10,11 @@ For all operations, only `group` elements in the input are processed; all other 
 
 ## Matching Algorithm
 
-`$add-mapping`, `$update-mapping` (default), and `$remove-mapping` use target-level matching. Two mappings match when they have identical values for `group.source`, `group.target`, `element.code`, and `element.target.code`.
+All three operations use target-level matching. Two mappings match when they have identical values for `group.source`, `group.target`, `element.code`, and `element.target.code`.
 
-For `noMap` entries (no `element.target`), matching uses `group.source`, `group.target`, and `element.code` only.
+When `element.noMap` is `true`, there is no target code; matching uses `group.source`, `group.target`, and `element.code` only.
 
-### Element-level Matching
-
-`$update-mapping` with `update-type=replace-element` uses element-level matching on (`group.source`, `group.target`, `element.code`) only, replacing all targets and other element properties atomically.
+Only the match-key fields listed above are compared; other properties such as `display` or `relationship` are not considered during matching.
 
 ## $add-mapping Operation
 
@@ -199,22 +197,26 @@ URL: [base]/ConceptMap/[id]/$update-mapping
 
 The server SHALL replace each matching mapping with the input values; properties absent from the input are removed from the existing entry. If no matching mapping exists, the server SHALL add it.
 
-If the input adds a `target` mapping for a source code that has `noMap=true`, the server SHALL clear `noMap` before adding the target. If the input sets `noMap=true` for a source code that has existing target mappings, the server SHALL remove all existing targets for that code in the group before setting `noMap`.
+When the input conflicts with existing `noMap` state, the server SHALL auto-resolve by default:
+- Input adds a `target` for a `noMap` element — clear `noMap`, then add the target
+- Input sets `noMap=true` for an element with targets — remove all existing targets, then set `noMap`
+
+Set `on-conflict=fail` to return an error instead of auto-resolving.
 
 If no `group` exists for the given `source` and `target`, one is created. The server SHOULD report the number of mappings updated and added in the OperationOutcome.
 
 The server SHALL return an OperationOutcome with `severity=error` and `code=business-rule` when:
-
 - Multiple groups share the same `source` and `target` (ambiguous target group)
+- `on-conflict` is `fail` and the input conflicts with existing `noMap` state
 
 Clients MAY supply an `If-Match` header; servers SHALL reject the request if the ETag does not match. See [Managing Resource Contention](https://hl7.org/fhir/http.html#concurrency).
 
 **In Parameters**
 
-| Name | Cardinality | Type | Documentation                                                                               |
-|------|-------------|------|---------------------------------------------------------------------------------------------|
-| mappings | 1..1 | ConceptMap | Only `group` elements are processed                                                         |
-| update-type | 0..1 | code | `replace-mapping` (default) — target-level upsert; `replace-element` — element-level upsert |
+| Name | Cardinality | Type | Documentation |
+|------|-------------|------|---------------|
+| mappings | 1..1 | ConceptMap | Only `group` elements are processed |
+| on-conflict | 0..1 | code | Behaviour when input conflicts with existing `noMap` state: `resolve` (default) — auto-resolve by clearing the conflicting state; `fail` — return an error |
 
 **Out Parameters**
 
@@ -222,13 +224,7 @@ Clients MAY supply an `If-Match` header; servers SHALL reject the request if the
 |------|-------------|------|---------------|
 | return | 1..1 | OperationOutcome | Outcome of the operation |
 
-### replace-element Update Type
-
-When `update-type=replace-element` is specified, the operation uses element-level matching (see [Element-level Matching](#element-level-matching)).
-
-The server SHALL replace the entire matched element with the input values. If no matching element exists, the server SHALL add it. The server SHOULD report the number of elements replaced and added in the OperationOutcome.
-
-### Example
+### Examples
 
 Request: update the relationship of an existing GLUC → 2345-7 mapping and add a new BUN → 3094-0 mapping in one call.
 
@@ -281,12 +277,10 @@ Content-Type: application/fhir+json
 }
 ```
 
-### Example with `update-type=replace-element`
-
 Request: transition GLUC from a target mapping to `noMap`.
 
 ```http
-POST /ConceptMap/lab-codes-to-loinc/$update-mapping?update-type=replace-element HTTP/1.1
+POST /ConceptMap/lab-codes-to-loinc/$update-mapping HTTP/1.1
 Content-Type: application/fhir+json
 
 {
@@ -302,7 +296,7 @@ Content-Type: application/fhir+json
 }
 ```
 
-Response: element replaced.
+Response: mapping updated.
 
 ```http
 HTTP/1.1 200 OK
@@ -313,7 +307,7 @@ Content-Type: application/fhir+json
   "issue": [{
     "severity": "information",
     "code": "informational",
-    "diagnostics": "1 element replaced"
+    "diagnostics": "1 mapping updated"
   }]
 }
 ```
@@ -346,11 +340,11 @@ Content-Type: application/fhir+json
       "type": "ConceptMap"
     },
     {
-      "name": "update-type",
+      "name": "on-conflict",
       "use": "in",
       "min": 0,
       "max": "1",
-      "documentation": "Matching level: 'replace-mapping' (default) — target-level upsert; 'replace-element' — element-level atomic replace, no noMap conflict check.",
+      "documentation": "Behaviour when input conflicts with existing noMap state: 'resolve' (default) — auto-resolve by clearing the conflicting state; 'fail' — return an error.",
       "type": "code"
     },
     {
@@ -516,8 +510,3 @@ Content-Type: application/fhir+json
 ### Multiple groups with the same source and target
 
 Multiple groups with the same `source` and `target` within a single ConceptMap are permitted but discouraged. When different mapping subsets require different `unmapped` handling, they SHOULD be modeled as separate ConceptMap resources — subsets are a concept map-level concern.
-
-### Why not a separate `$replace-element` operation?
-
-Element-level replacement (`update-type=replace-element`) is added to address noMap->mapping transition (and vice versa).
-It is expressed as a parameter on `$update-mapping` rather than a separate operation because the two modes share identical inputs, outputs, and create/update behavior — they only differ in matching granularity.
