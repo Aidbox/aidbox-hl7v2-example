@@ -135,6 +135,13 @@ function parseHdNamespace(
  *   - No-op if PID-2 is empty or has no CX.1 value.
  *   - Never overwrites existing PID-3 content — always appends.
  *
+ * Field-presence guard: preprocessor.ts calls isFieldPresentInSegment(segment, "2")
+ * before invoking this function. The guard returns false for absent, null, or empty-string
+ * fields — so this function is only called when PID-2 is a non-empty string.
+ * The preprocessor's own "no-op if PID-2 is empty/no CX.1" guard handles the case
+ * where PID-2 is a non-empty string but the parsed CX has no CX.1 component.
+ * Both layers independently enforce the same invariant without conflict.
+ *
  * Config trigger: MessageTypeConfig.preprocess.PID."2" = ["merge-pid2-into-pid3"]
  */
 // DESIGN PROTOTYPE:

@@ -285,6 +285,18 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  * AL1 - Allergy Information (0..*)
  * IN1 - Insurance (0..*)
  */
+// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+// convertADT_A01 signature will gain mpiClient (last optional param):
+//   export async function convertADT_A01(
+//     parsed: HL7v2Message,
+//     mpiClient: MpiClient = new StubMpiClient(),  // NEW
+//   ): Promise<ConversionResult>
+//
+// mpiClient is passed to selectPatientId() at the Patient.id assignment site below.
+// Import: import { StubMpiClient, type MpiClient } from "../mpi-client";
+// Import: import { selectPatientId } from "../id-generation";
+// The default value ensures existing call sites (converter.ts, tests) need no changes.
+// END DESIGN PROTOTYPE
 export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionResult> {
   // =========================================================================
   // Extract MSH

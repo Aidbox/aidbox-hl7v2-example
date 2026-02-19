@@ -21,6 +21,21 @@ import {
   type PreprocessorContext,
 } from "./preprocessor-registry";
 
+// =============================================================================
+// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+//
+// This file requires changes when the config restructure is implemented:
+//
+// 1. preprocessMessage(): line below accesses config[configKey] (flat-record style).
+//    After restructure: change to config.messages[configKey].
+//
+// 2. applyPreprocessors() type annotation: uses NonNullable<Hl7v2ToFhirConfig[string]>["preprocess"]
+//    After restructure: change to NonNullable<MessageTypeConfig>["preprocess"]
+//    (import MessageTypeConfig from "./config").
+//
+// TypeScript will catch both issues at compile time once Hl7v2ToFhirConfig type changes.
+// =============================================================================
+
 /**
  * Preprocesses a parsed HL7v2 message based on config.
  * Returns a (possibly modified) parsed message.
@@ -34,6 +49,7 @@ export function preprocessMessage(
     return parsed;
   }
 
+  // DESIGN PROTOTYPE: config[configKey] → config.messages[configKey] after restructure
   const messageConfig = config[configKey];
   if (!messageConfig?.preprocess) {
     return parsed;
@@ -61,6 +77,8 @@ function extractMessageTypeKey(parsed: HL7v2Message): string | null {
 
 function applyPreprocessors(
   parsed: HL7v2Message,
+  // DESIGN PROTOTYPE: NonNullable<Hl7v2ToFhirConfig[string]>["preprocess"] →
+  //   NonNullable<MessageTypeConfig>["preprocess"] after config restructure
   preprocessConfig: NonNullable<Hl7v2ToFhirConfig[string]>["preprocess"],
 ): HL7v2Message {
   if (!preprocessConfig) {

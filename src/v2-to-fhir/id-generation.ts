@@ -37,14 +37,21 @@ import type { Encounter } from "../fhir/hl7-fhir-r4-core";
  * DESIGN PROTOTYPE: MatchRule
  *
  * Selects the first CX from the identifier pool where:
- *   - CX.4.1 matches `authority` (if specified)
+ *   - CX.4.1 (HD Namespace ID) matches `authority` exactly (if specified)
  *   - CX.5 matches `type` (if specified)
  * At least one of authority or type must be present (validated at config load time).
+ *
+ * Matching uses CX.4.1 only (not extractHDAuthority which prefers CX.4.2 Universal ID).
+ * Config entries are human namespace strings ("UNIPAT", "ST01"), not OIDs.
+ *
+ * ID formation authority prefix: CX.4.1 if non-empty, else CX.4.2 if non-empty,
+ * else the raw CX.4 string (e.g. "&&ISO" → "--iso" after sanitization).
+ * This differs from extractHDAuthority used for Encounter.id (which prefers CX.4.2).
  */
 // DESIGN PROTOTYPE:
 // export type MatchRule = {
-//   authority?: string; // match CX.4.1
-//   type?: string;      // match CX.5
+//   authority?: string; // match CX.4.1 (HD Namespace ID) exactly — human namespace string, not OID
+//   type?: string;      // match CX.5 exactly
 // };
 
 /**
@@ -103,17 +110,29 @@ import type { Encounter } from "../fhir/hl7-fhir-r4-core";
  *   1. Filter out CX entries with empty CX.1 — they are never candidates.
  *   2. For each rule:
  *      a. MatchRule { authority?, type? }:
- *         - Find first CX where CX.4.1 === authority (if set) AND CX.5 === type (if set)
- *         - Match: return { id: `${sanitize(cx4Authority)}-${sanitize(cx1Value)}` }
- *         - No match: continue to next rule
+ *         - authority check: CX.4.1 === rule.authority (if set)
+ *         - type check: CX.5 === rule.type (if set)
+ *         - Both must pass when both are set.
+ *         - On match — derive authority prefix for the ID:
+ *             authorityPrefix = CX.4.1 if non-empty,
+ *                               else CX.4.2 if non-empty,
+ *                               else sanitize(raw CX.4 string) — handles "&&ISO" → "--iso"
+ *             return { id: `${sanitize(authorityPrefix)}-${sanitize(cx1Value)}` }
+ *         - No match: continue to next rule.
  *      b. MpiLookupRule { mpiLookup }:
- *         - Find source CX using mpiLookup.source match rules
+ *         - Find source CX using mpiLookup.source match rules (same CX.4.1 matching)
  *         - No source: skip to next rule (fallthrough)
  *         - Query mpiClient.crossReference (pix) or mpiClient.match (match strategy)
  *         - status='found': return { id: `${sanitize(target.authority)}-${sanitize(result.value)}` }
  *         - status='not-found': skip to next rule (fallthrough)
  *         - status='unavailable': return { error: `MPI unavailable: ${result.error}` } (HARD ERROR)
  *   3. All rules exhausted without match: return { error: 'No identifier priority rule matched ...' }
+ *
+ * HD subcomponent semantics — deliberately different from extractHDAuthority:
+ *   Matching uses CX.4.1 because config entries are namespace strings, not OIDs.
+ *   ID formation uses CX.4.1 first for consistency with matching, falls back to CX.4.2
+ *   then the raw CX.4 string to ensure a usable prefix even for bare `&&ISO` identifiers.
+ *   Encounter.id formation uses extractHDAuthority (prefers CX.4.2) — unaffected.
  *
  * Sanitization: `s.toLowerCase().replace(/[^a-z0-9-]/g, "-")` — same as Encounter.id.
  *

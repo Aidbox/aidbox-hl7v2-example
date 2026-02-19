@@ -572,6 +572,19 @@ function createConditionalPatientEntry(patient: Patient): BundleEntry {
 //     lookupPatient: PatientLookupFn,
 //     mpiClient: MpiClient,                // NEW: injected MPI client
 //   ): Promise<PatientHandlingResult>
+//
+// convertORU_R01 public signature will also gain mpiClient (last param, optional with default):
+//   export async function convertORU_R01(
+//     parsed: HL7v2Message,
+//     lookupPatient: PatientLookupFn = defaultPatientLookup,
+//     lookupEncounter: EncounterLookupFn = defaultEncounterLookup,
+//     mpiClient: MpiClient = new StubMpiClient(),  // NEW
+//   ): Promise<ConversionResult>
+//
+// mpiClient is passed from convertORU_R01 → handlePatient → selectPatientId.
+// The default value ensures existing call sites (converter.ts, tests) require no changes
+// unless they need to inject a non-stub MpiClient (e.g., for future real MPI tests).
+// handleEncounter does not need mpiClient — encounter identity is via PV1-19, not PID.
 // END DESIGN PROTOTYPE
 async function handlePatient(
   pid: PID,
