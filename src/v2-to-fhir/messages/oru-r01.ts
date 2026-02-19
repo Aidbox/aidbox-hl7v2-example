@@ -577,8 +577,15 @@ function createConditionalPatientEntry(patient: Patient): BundleEntry {
 //     parsed: HL7v2Message,
 //     lookupPatient: PatientLookupFn = defaultPatientLookup,
 //     lookupEncounter: EncounterLookupFn = defaultEncounterLookup,
-//     resolvePatientId: PatientIdResolver,  // NEW — no default; converter.ts always passes it
+//     resolvePatientId: PatientIdResolver = (ids) =>
+//       selectPatientId(ids, hl7v2ToFhirConfig().identitySystem!.patient!.rules, new StubMpiClient()),
 //   ): Promise<ConversionResult>
+//
+// The default is a lazy closure that mirrors exactly what converter.ts does when it wires the
+// resolver. This makes resolvePatientId truly optional — existing unit tests that call
+//   convertORU_R01(parsed, mockLookupPatient, mockLookupEncounter)
+// continue to work without modification. A required param after two optional params is invalid
+// TypeScript; the lazy default is the minimal fix that preserves the parameter ordering.
 //
 // resolvePatientId is passed from convertORU_R01 → handlePatient → resolvePatientId(ids).
 // converter.ts creates the resolver as a closure and passes it to convertORU_R01.

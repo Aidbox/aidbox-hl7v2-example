@@ -45,10 +45,12 @@ import {
 //   Throws descriptive Error at startup if any validation fails.
 //   Full spec: tasks/plans/2026-02-19-patient-encounter-identity.md (Technical Details)
 //
-// NEW: export type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>;
-//   Defined here and in id-generation.ts. Re-exported for converter.ts and message converters.
+// NEW: import { type PatientIdResolver } from "./id-generation";
+//   (Only needed if validateIdentitySystemRules type signature requires it)
+//   PatientIdResolver is defined and exported ONLY from id-generation.ts.
+//   config.ts does NOT re-export it. All converters import PatientIdResolver from id-generation.ts.
 //
-// Import IdentifierPriorityRule and PatientIdResolver from id-generation.ts when implementing.
+// Import IdentifierPriorityRule from id-generation.ts when implementing.
 // =============================================================================
 
 // DESIGN PROTOTYPE: Updated MessageTypeConfig with PID preprocessing support:
