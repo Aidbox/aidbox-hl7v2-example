@@ -16,10 +16,10 @@ You MUST follow this cycle:
 
 If the user instructed you to proceed to the next task, you start following the point 1 from the instruction above again.
 
-### Review Agent Prompt
+### Review Agent Prompt (sub-agent)
 
 ```
-Use skill ai-review to review implementation of Task [N] from [current_task_document_path]. The changes are uncommited. Return your review output as your response, do not change any files. 
+Use skill ai-review to review implementation of Task [N] from [current_task_document_path]. Think hard. The changes are uncommited. Return your review output as your response, do not change any files. 
 ```
 
 Replace [N] and [current_task_document_path] with appropriate values.

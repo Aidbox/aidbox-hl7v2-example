@@ -36,6 +36,11 @@ Evaluate against these criteria:
 - Is there a simpler approach that would work?
 - Is the design over-engineered for the problem?
 
+### 6. Test Coverage
+- Are the test cases comprehensive?
+- Is the unit vs integration split appropriate?
+- Are edge cases covered by tests?
+
 ## Output Format
 
 Your review must contain:

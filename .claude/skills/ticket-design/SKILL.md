@@ -1,5 +1,5 @@
 ---
-name: task-design
+name: ticket-design
 description: Create a design document with prototype placeholders for a feature. Includes agent review loop before user approval. Resumable - can commit and continue later.
 ---
 
@@ -87,7 +87,7 @@ prototype-files: []
 | `ready-for-review` | Design document AND all prototype placeholders created |
 | `changes-requested` | Review or user feedback requires updates |
 | `ai-reviewed` | Passed agent review, ready for user approval |
-| `approved` | User approved, ready for /task-plan |
+| `approved` | User approved, ready for /ticket-plan |
 
 ## Prototype Placeholder Format
 
@@ -185,7 +185,7 @@ Minimal scaffold = frontmatter + all section headers from the template, with emp
 | `status: ready-for-review` | Phase 5 (AI Review) |
 | `status: changes-requested` | Phase 3 (Discuss with user before fixing) |
 | `status: ai-reviewed` | Phase 6 (User Approval) |
-| `status: approved` | **Automatically invoke /task-plan skill** - do not ask user |
+| `status: approved` | **Automatically invoke /ticket-plan skill** - do not ask user |
 
 If resuming from an existing file, briefly summarize the current state to the user before continuing.
 
@@ -272,13 +272,13 @@ After Phase 3 completes:
 
 ---
 
-### Phase 4: Create/Fix Design & Prototypes (Sub-Agent)
+### Phase 4: Create/Fix Design & Prototypes
 
-**Spawn a Design agent** to create the design document and prototype placeholders, OR to fix an existing design based on feedback.
+Create the design document and prototype placeholders, OR spawn a sub-agent to fix an existing design based on feedback.
 
 **Choose the prompt based on document status:**
 - `status: explored` → Use **Create Design prompt**
-- `status: changes-requested` → Use **Fix Design prompt**
+- `status: changes-requested` → Spawn a sub-agent with the **Fix Design prompt**
 
 ---
 
@@ -336,7 +336,7 @@ The document contains context you need:
 #### Fix Design prompt (status: changes-requested)
 
 ```
-Fix the design based on feedback for [feature name].
+Fix the design based on feedback for [feature name]. Think hard.
 
 ## Design Document
 Read: tasks/plans/YYYY-MM-DD-feature-name.md
@@ -381,52 +381,19 @@ The document contains feedback to address:
 
 **Spawn a Review agent** to critique the design.
 
+```
+ to review implementation of Task [N] from [current_task_document_path]. Think hard. The changes are uncommited. Return your review output as your response, do not change any files. 
+```
+
 **Review agent prompt:**
 ```
-You are reviewing a software design for [feature name]. Think very hard.
+Use skill ai-review to review a software design for [feature name]. Think very hard.
 
 ## Design Document
 Read: tasks/plans/YYYY-MM-DD-feature-name.md
 
 ## Prototype Files
 [List files with DESIGN PROTOTYPE markers - include file paths]
-
-## Review Criteria
-
-Evaluate the design against these criteria:
-
-### 1. Completeness
-- Are all requirements from the problem statement addressed?
-- Are there missing components or flows?
-
-### 2. Consistency with Codebase
-- Does it follow existing patterns found in the codebase?
-- Does it use established libraries and conventions?
-
-### 3. Clean Architecture
-- Is there clear separation of concerns?
-- Are dependencies pointing in the right direction?
-- Is the design testable?
-- Doesn't it introduce unnecessary coupling?
-
-### 4. Best Practices
-- Does it follow SOLID principles where applicable?
-- Does it follow best practices in `./claude/code-style.md`?
-- Is error handling appropriate?
-- Are edge cases considered?
-
-### 5. Feasibility
-- Are the proposed changes realistic?
-- Are there hidden complexities not addressed?
-
-### 6. Simpler Alternatives
-- Is there a simpler approach that would work?
-- Is the design over-engineered for the problem?
-
-### 7. Test Coverage
-- Are the test cases comprehensive?
-- Is the unit vs integration split appropriate?
-- Are edge cases covered by tests?
 
 ## Output Format
 
@@ -469,7 +436,7 @@ Present the design to the user for approval:
 6. Number of review iterations it took
 
 **Ask the user:**
-- **Approve**: Set `status: approved`, commit, then automatically invoke /task-plan
+- **Approve**: Set `status: approved`, commit, then automatically invoke /ticket-plan
 - **Request changes / discuss**: Record feedback in **# Context > ## User Feedback**, set `status: changes-requested`, commit, **go back to Phase 3** to discuss the changes before fixing
 
 **On approval:**
@@ -479,4 +446,4 @@ git add tasks/plans/YYYY-MM-DD-feature-name.md
 git commit -m "Design approved: [feature-name]"
 ```
 
-Then automatically invoke the /task-plan skill to create the implementation plan. Do not ask the user - proceed directly.
+Then automatically invoke the /ticket-plan skill to create the implementation plan. Do not ask the user - proceed directly.

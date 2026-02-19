@@ -1,5 +1,5 @@
 ---
-name: task-plan
+name: ticket-plan
 description: Create detailed implementation plan from an approved design. Converts design document and prototype placeholders into step-by-step tasks for execution by Claude Code agents.
 ---
 
@@ -17,13 +17,13 @@ Before starting, verify that an approved design exists:
 **If no approved design exists:**
 ```
 No approved design found for this feature.
-Run /task-design first to create and approve a design, or specify the design file path.
+Run /ticket-design first to create and approve a design, or specify the design file path.
 ```
 
 **If design exists but not approved:**
 ```
 Design exists but status is '[current-status]', not 'approved'.
-Run /task-design to continue the design process.
+Run /ticket-design to continue the design process.
 ```
 
 ## Output Location
