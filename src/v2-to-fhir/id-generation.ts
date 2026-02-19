@@ -34,6 +34,22 @@ import type { Encounter } from "../fhir/hl7-fhir-r4-core";
 // import type { MpiClient } from "./mpi-client";
 
 /**
+ * DESIGN PROTOTYPE: PatientIdResolver
+ *
+ * Opaque resolver function injected into converters via converter.ts.
+ * Converters call resolvePatientId(pid.$3_identifier ?? []) without knowing
+ * the algorithm, rule list, or MPI client.
+ *
+ * Created by converter.ts as a closure:
+ *   const resolvePatientId: PatientIdResolver = (ids) =>
+ *     selectPatientId(ids, config.identitySystem.patient.rules, mpiClient);
+ *
+ * Pattern matches PatientLookupFn / EncounterLookupFn already used in oru-r01.ts.
+ */
+// DESIGN PROTOTYPE:
+// export type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>;
+
+/**
  * DESIGN PROTOTYPE: MatchRule
  *
  * Selects the first CX from the identifier pool where:
@@ -137,7 +153,7 @@ import type { Encounter } from "../fhir/hl7-fhir-r4-core";
  * Sanitization: `s.toLowerCase().replace(/[^a-z0-9-]/g, "-")` — same as Encounter.id.
  *
  * @param identifiers - CX[] from PID-3 after preprocessing (merge-pid2-into-pid3 has already run)
- * @param rules       - ordered IdentifierPriorityRule[] from config.identifierPriority
+ * @param rules       - ordered IdentifierPriorityRule[] from config.identitySystem.patient.rules
  * @param mpiClient   - injectable MpiClient; pass StubMpiClient when no MPI is configured
  */
 // DESIGN PROTOTYPE:

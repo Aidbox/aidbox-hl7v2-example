@@ -125,7 +125,7 @@ export interface MpiClient {
  * via HTTP calls to the configured MPI endpoint.
  *
  * Note: Because StubMpiClient always returns 'not-found', any MpiLookupRule
- * in config.identifierPriority will always be skipped (not an error — 'not-found'
+ * in config.identitySystem.patient.rules will always be skipped (not an error — 'not-found'
  * falls through to the next rule). This means adding an mpiLookup rule to config
  * with the stub client is safe — it degrades gracefully to the next match rule.
  */

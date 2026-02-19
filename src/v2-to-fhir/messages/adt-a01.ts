@@ -348,15 +348,21 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
   // Replace the ad-hoc block above (lines 331-335) with:
   //
-  //   const patientIdResult = await selectPatientId(
+  //   const patientIdResult = await resolvePatientId(
   //     pid.$3_identifier ?? [],       // PID-3 after preprocessing (merge-pid2-into-pid3 already ran)
-  //     config.identifierPriority,     // config now has top-level identifierPriority (not config["ADT-A01"])
-  //     mpiClient,                     // injected MpiClient (StubMpiClient by default)
-  //   );
+  //   );                               // resolvePatientId injected from converter.ts (no algorithm knowledge here)
   //   if ('error' in patientIdResult) {
   //     throw new Error(`Patient ID selection failed: ${patientIdResult.error}`);
   //   }
   //   patient.id = patientIdResult.id;
+  //
+  // convertADT_A01 signature gains: resolvePatientId: PatientIdResolver (instead of mpiClient: MpiClient)
+  //   export async function convertADT_A01(
+  //     parsed: HL7v2Message,
+  //     resolvePatientId: PatientIdResolver,  // NEW
+  //   ): Promise<ConversionResult>
+  //
+  // Import: import { type PatientIdResolver } from "../id-generation";
   //
   // Also update config access below from config["ADT-A01"] to config.messages["ADT-A01"].
   // END DESIGN PROTOTYPE

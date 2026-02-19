@@ -1,12 +1,16 @@
 {
   "_DESIGN_PROTOTYPE": "2026-02-19-patient-encounter-identity.md — This file will be restructured. Current flat format (message type as top-level key) will be replaced with the shape shown below. Remove this comment block when implementing.",
   "_DESIGN_PROTOTYPE_new_shape": {
-    "identifierPriority": [
-      { "authority": "UNIPAT" },
-      { "type": "PE" },
-      { "authority": "ST01" },
-      { "type": "MR" }
-    ],
+    "identitySystem": {
+      "patient": {
+        "rules": [
+          { "authority": "UNIPAT" },
+          { "type": "PE" },
+          { "authority": "ST01" },
+          { "type": "MR" }
+        ]
+      }
+    },
     "messages": {
       "ADT-A01": {
         "preprocess": {

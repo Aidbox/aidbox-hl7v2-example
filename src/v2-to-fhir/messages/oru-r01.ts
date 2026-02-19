@@ -119,21 +119,20 @@ export async function defaultEncounterLookup(
  * with older message formats.
  *
  * DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
- * This entire function will be removed and replaced with selectPatientId().
+ * This entire function will be removed and replaced with resolvePatientId() call.
  * The call site in handlePatient() (line ~554) becomes:
  *
- *   const patientIdResult = await selectPatientId(
+ *   const patientIdResult = await resolvePatientId(
  *     pid.$3_identifier ?? [],       // PID-3 after preprocessing (merge-pid2-into-pid3 already ran)
- *     config.identifierPriority,     // config.messages["ORU-R01"] for message-type config
- *     mpiClient,                     // injected MpiClient (StubMpiClient by default)
- *   );
+ *   );                               // resolvePatientId injected from converter.ts (no algorithm knowledge here)
  *   if ('error' in patientIdResult) {
  *     throw new Error(`Patient ID selection failed: ${patientIdResult.error}`);
  *   }
  *   const patientId = patientIdResult.id;
  *
- * handlePatient() signature will gain a `mpiClient: MpiClient` parameter.
+ * handlePatient() signature will gain `resolvePatientId: PatientIdResolver` (instead of mpiClient: MpiClient).
  * Config access changes from config["ORU-R01"] to config.messages["ORU-R01"].
+ * Import: import { type PatientIdResolver } from "../id-generation";
  * END DESIGN PROTOTYPE
  */
 function extractPatientId(pid: PID): string {
@@ -565,26 +564,25 @@ function createConditionalPatientEntry(patient: Patient): BundleEntry {
  * non-existent patient arrive simultaneously.
  */
 // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// handlePatient() signature will gain `mpiClient: MpiClient` parameter:
+// handlePatient() signature will gain `resolvePatientId: PatientIdResolver` (instead of mpiClient: MpiClient):
 //   async function handlePatient(
 //     pid: PID,
 //     baseMeta: Meta,
 //     lookupPatient: PatientLookupFn,
-//     mpiClient: MpiClient,                // NEW: injected MPI client
+//     resolvePatientId: PatientIdResolver,  // NEW: injected resolver (no algorithm knowledge here)
 //   ): Promise<PatientHandlingResult>
 //
-// convertORU_R01 public signature will also gain mpiClient (last param, optional with default):
+// convertORU_R01 public signature will also gain resolvePatientId (last param):
 //   export async function convertORU_R01(
 //     parsed: HL7v2Message,
 //     lookupPatient: PatientLookupFn = defaultPatientLookup,
 //     lookupEncounter: EncounterLookupFn = defaultEncounterLookup,
-//     mpiClient: MpiClient = new StubMpiClient(),  // NEW
+//     resolvePatientId: PatientIdResolver,  // NEW — no default; converter.ts always passes it
 //   ): Promise<ConversionResult>
 //
-// mpiClient is passed from convertORU_R01 → handlePatient → selectPatientId.
-// The default value ensures existing call sites (converter.ts, tests) require no changes
-// unless they need to inject a non-stub MpiClient (e.g., for future real MPI tests).
-// handleEncounter does not need mpiClient — encounter identity is via PV1-19, not PID.
+// resolvePatientId is passed from convertORU_R01 → handlePatient → resolvePatientId(ids).
+// converter.ts creates the resolver as a closure and passes it to convertORU_R01.
+// handleEncounter does not need resolvePatientId — encounter identity is via PV1-19, not PID.
 // END DESIGN PROTOTYPE
 async function handlePatient(
   pid: PID,

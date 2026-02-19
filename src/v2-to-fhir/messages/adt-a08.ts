@@ -85,28 +85,23 @@ function createBundleEntry(resource: Patient): BundleEntry {
 //
 //   export async function convertADT_A08(
 //     parsed: HL7v2Message,
-//     mpiClient: MpiClient = new StubMpiClient(),  // NEW
+//     resolvePatientId: PatientIdResolver,  // NEW — injected from converter.ts (no mpiClient here)
 //   ): Promise<ConversionResult>
 //
 // Replace the ad-hoc Patient.id block (lines 122–129 below) with:
 //
-//   const config = hl7v2ToFhirConfig();
-//   const patientIdResult = await selectPatientId(
+//   const patientIdResult = await resolvePatientId(
 //     pid.$3_identifier ?? [],       // PID-3 after preprocessing (merge-pid2-into-pid3 already ran)
-//     config.identifierPriority,
-//     mpiClient,
-//   );
+//   );                               // resolvePatientId injected from converter.ts (no algorithm knowledge here)
 //   if ('error' in patientIdResult) {
 //     throw new Error(`Patient ID selection failed: ${patientIdResult.error}`);
 //   }
 //   patient.id = patientIdResult.id;
 //
-// Also update converter.ts: case "ADT_A08" must pass mpiClient and await:
-//   case "ADT_A08": return await convertADT_A08(parsed, mpiClient);
+// Also update converter.ts: case "ADT_A08" must pass resolvePatientId and await:
+//   case "ADT_A08": return await convertADT_A08(parsed, resolvePatientId);
 //
-// Import: import { StubMpiClient, type MpiClient } from "../mpi-client";
-// Import: import { selectPatientId } from "../id-generation";
-// Import: import { hl7v2ToFhirConfig } from "../config";
+// Import: import { type PatientIdResolver } from "../id-generation";
 // The function becomes async — update `converter.ts` `case "ADT_A08"` to await.
 // END DESIGN PROTOTYPE
 

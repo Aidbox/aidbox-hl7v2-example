@@ -14,14 +14,17 @@ import {
 // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
 //
 // Config restructure: Hl7v2ToFhirConfig changes from a flat Record<messageType, config>
-// to a typed object with top-level `identifierPriority` and a `messages` record.
+// to a typed object with `identitySystem.patient.rules` and a `messages` record.
 //
 // NEW MessageTypeConfig: preprocess gains PID segment with fields "2" and "3".
 //
 // NEW Hl7v2ToFhirConfig shape:
 //   {
-//     identifierPriority: IdentifierPriorityRule[];  // global, deployment-level
-//     messages: Record<string, MessageTypeConfig | undefined>;
+//     identitySystem?: {
+//       patient?: { rules: IdentifierPriorityRule[] };  // global, deployment-level
+//       encounter?: { rules: never[] };                 // placeholder for future
+//     };
+//     messages?: Record<string, MessageTypeConfig | undefined>;
 //   }
 //
 // Migration impact:
@@ -29,18 +32,23 @@ import {
 //   - validatePreprocessorIds() must walk config.messages instead of top-level config
 //   - All callers of hl7v2ToFhirConfig() that access message configs must change from
 //     config["ADT-A01"] to config.messages["ADT-A01"]
+//   - Converters no longer access config.identitySystem.patient.rules directly —
+//     they receive resolvePatientId: PatientIdResolver from converter.ts
 //
-// NEW: validateIdentifierPriorityRules(config: Hl7v2ToFhirConfig): void
+// NEW: validateIdentitySystemRules(config: Hl7v2ToFhirConfig): void
 //   Called from hl7v2ToFhirConfig() AFTER the cast, BEFORE validatePreprocessorIds().
 //   Validates:
-//     1. config.identifierPriority is an array (runtime guard — cast does not validate)
-//     2. config.identifierPriority is non-empty
+//     1. config.identitySystem.patient.rules is an array (runtime guard — cast does not validate)
+//     2. config.identitySystem.patient.rules is non-empty
 //     3. Each MatchRule has at least one of authority or type
 //     4. Each MpiLookupRule with strategy='pix' has a source array
 //   Throws descriptive Error at startup if any validation fails.
 //   Full spec: tasks/plans/2026-02-19-patient-encounter-identity.md (Technical Details)
 //
-// Import IdentifierPriorityRule from id-generation.ts when implementing.
+// NEW: export type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>;
+//   Defined here and in id-generation.ts. Re-exported for converter.ts and message converters.
+//
+// Import IdentifierPriorityRule and PatientIdResolver from id-generation.ts when implementing.
 // =============================================================================
 
 // DESIGN PROTOTYPE: Updated MessageTypeConfig with PID preprocessing support:
@@ -61,8 +69,11 @@ import {
 
 // DESIGN PROTOTYPE: New top-level config type:
 // export type Hl7v2ToFhirConfig = {
-//   identifierPriority: IdentifierPriorityRule[];
-//   messages: Record<string, MessageTypeConfig | undefined>;
+//   identitySystem?: {
+//     patient?: { rules: IdentifierPriorityRule[] };
+//     encounter?: { rules: never[] }; // placeholder for future encounter identity rules
+//   };
+//   messages?: Record<string, MessageTypeConfig | undefined>;
 // };
 
 // END DESIGN PROTOTYPE
