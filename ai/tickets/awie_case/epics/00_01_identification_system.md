@@ -138,6 +138,126 @@ Config: `[{authority: "UNIPAT"}, {type: "PE"}, {authority: "ST01"}, {type: "MR"}
 | Xpan lab | &&ISO/MR, &&ISO/PI, &&ISO/AN | Rule 4: type MR | `&&ISO-M000000721` |
 | Hypothetical: no match | FOO/XX | No match | **Error** |
 
+### Extended rule type: MPI lookup
+
+#### Problem
+
+Some senders don't include the enterprise identifier. MEDTEX sends `BMH/PE` without UNIPAT ~98% of the time. The priority-list selects the best *available* identifier, but can't obtain identifiers absent from the message. Result: separate FHIR Patients (`BMH-11220762` vs `UNIPAT-19624139`) for the same physical person.
+
+#### Solution
+
+The priority list supports a second rule type — `mpiLookup` — that queries an external MPI to cross-reference local identifiers to enterprise identifiers. MPI rules participate in the same ordered fallback chain as match rules. **Single source of truth** — one list, read top-to-bottom.
+
+#### Extended config
+
+```json
+{
+  "identifierPriority": [
+    { "authority": "UNIPAT" },
+    {
+      "mpiLookup": {
+        "endpoint": { "baseUrl": "https://mpi.example.org/fhir", "timeout": 5000 },
+        "strategy": "pix",
+        "source": [{ "type": "PE" }, { "type": "MR" }],
+        "target": {
+          "system": "urn:oid:2.16.840.1.113883.1.111",
+          "authority": "UNIPAT",
+          "type": "PE"
+        }
+      }
+    },
+    { "type": "PE" },
+    { "authority": "ST01" },
+    { "type": "MR" }
+  ]
+}
+```
+
+Read top-to-bottom: "Try UNIPAT from the message. Not found? Ask MPI. MPI doesn't know this patient? Use whatever PE is available. No PE? Try ST01. Then MR. Nothing? Error."
+
+#### Extended algorithm
+
+The algorithm from D1a gains a second rule type:
+
+For each rule in `identifierPriority`:
+- **Match rule** `{authority?, type?}` — unchanged from D1a
+- **MPI rule** `{mpiLookup: ...}`:
+  1. Pick source identifier from pool using `source` rules (same matching logic as match rules)
+  2. No source identifier found → skip to next rule
+  3. Query MPI using configured strategy
+  4. MPI returns result → return `{target.authority}-{value}` as Patient.id
+  5. MPI returns no match → skip to next rule (patient not yet in MPI)
+  6. **MPI unavailable → error.** Message processing stops. Does NOT fall through.
+
+Rules after an mpiLookup are reachable when:
+- The mpiLookup was **skipped** (no source identifier in pool), OR
+- MPI returned **no match** (patient not registered in MPI yet)
+
+They are **NOT** reachable as fallback for MPI failures. MPI configured + triggered + unavailable = hard error. Existing reprocessing mechanism handles retry when MPI recovers.
+
+#### Strategies
+
+**`pix` — IHE PIXm (ITI-83): identifier cross-referencing**
+
+`GET [base]/Patient/$ihe-pix?sourceIdentifier=<system>|<value>&targetSystem=<uri>`
+
+Fast, deterministic. Use when MPI knows both identifier domains (both source systems feed the MPI). Source: picks a CX from the pool using `source` rules. Requires mapping the picked identifier's HL7v2 authority to a FHIR system URI (mapping mechanism is an implementation detail — deferred to MPI integration phase).
+
+**`match` — IHE PDQm (ITI-119): demographic matching**
+
+`POST [base]/Patient/$match` with Patient resource built from PID demographics (name, DOB, sex).
+
+Probabilistic. Use when source identifiers aren't registered in the MPI. Additional config: `matchThreshold` (0-1, default 0.95) — only accepts matches above threshold. Source: demographics from PID, not a pool identifier. `source` rules are not used for this strategy.
+
+Both strategies produce the same output: an identifier to use as Patient.id, or nothing.
+
+#### Example walkthrough (with MPI)
+
+Config: `[{authority: "UNIPAT"}, {mpiLookup: {strategy: "pix", source: [{type: "PE"}], target: {authority: "UNIPAT", ...}}}, {type: "PE"}, {authority: "ST01"}, {type: "MR"}]`
+
+| Message | Pool | Rule evaluation | Patient.id |
+|---------|------|-----------------|------------|
+| ASTRA with UNIPAT | UNIPAT/PE, ST01W/MR, ST01/PI | Rule 1 matches (UNIPAT in pool) — MPI never called | `UNIPAT-11195429` |
+| MEDTEX with UNIPAT | UNIPAT/PE | Rule 1 matches | `UNIPAT-11216032` |
+| MEDTEX without UNIPAT | BMH/PE | Rule 1: no UNIPAT → Rule 2: picks BMH/PE, PIXm returns 19624139 | `UNIPAT-19624139` |
+| MEDTEX, MPI down | BMH/PE | Rule 1: no → Rule 2: picks BMH/PE, MPI timeout → **error** | — |
+| MEDTEX, MPI no match | BMH/PE | Rule 1: no → Rule 2: PIXm returns empty → Rule 3: PE matches BMH | `BMH-11220762` |
+| Xpan lab | &&ISO/MR, &&ISO/PI, &&ISO/AN | Rule 1: no → Rule 2: no PE in pool, skip → Rule 3: no PE → Rule 5: MR | `&&ISO-M000000721` |
+
+Config without MPI (simpler deployment — no mpiLookup rule):
+
+`[{authority: "UNIPAT"}, {type: "PE"}, {authority: "ST01"}, {type: "MR"}]`
+
+Identical to original D1a. No external dependencies.
+
+#### Design choice: why inline in the priority list?
+
+Alternative considered: separate `mpiEnrichment` config that runs before the priority list. Rejected because:
+
+- **Config coupling.** Enrichment's "trigger when missing" condition and the priority list's first rule must stay in sync. Change one, forget the other → silent misconfiguration.
+- **No ordering control.** Enrichment always runs before all priority rules. Can't express "try local UNIPAT, then MPI, then local PE" — the relative position matters.
+- **Multiple MPI targets.** A second MPI would require an enrichment array with unclear ordering. Inline rules interleave naturally.
+
+The inline approach is a single source of truth. The tradeoff (heterogeneous rule types in one list, async algorithm) is handled by dependency injection — the MPI client is an injected interface, easily mocked in tests.
+
+#### Implementation scope
+
+**Current phase: prepare the interface, stub MPI calls.** The priority-list algorithm supports both rule types from the start, but the MPI client is a stub. This ensures the config schema, algorithm, and tests are ready when real MPI integration becomes a priority.
+
+```typescript
+interface MpiClient {
+  crossReference(source: {system: string, value: string}, targetSystem: string): Promise<MpiResult>;
+  match(demographics: PatientDemographics, targetSystem: string): Promise<MpiResult>;
+}
+
+type MpiResult =
+  | { status: 'found'; identifier: { value: string } }
+  | { status: 'not-found' }
+  | { status: 'unavailable'; error: string };
+```
+
+Stub implementation returns `{ status: 'not-found' }` for all queries. When MPI integration is prioritized, only the stub needs replacement — algorithm, config, and tests are already in place.
+
 ---
 
 ## Decision D1b: Encounter ID
@@ -159,7 +279,7 @@ Encounter.id = `{authority}-{visit-number}` from PV1-19 directly.
 
 | File | Change needed |
 |------|--------------|
-| `src/v2-to-fhir/id-generation.ts` | Add Patient ID priority-list algorithm; keep existing Encounter ID logic (already uses CX authority) |
+| `src/v2-to-fhir/id-generation.ts` | Add Patient ID priority-list algorithm with match + mpiLookup rule types; MpiClient interface + stub; keep existing Encounter ID logic |
 | `src/v2-to-fhir/segments/pid-patient.ts` | Patient.id assignment must use priority-list result instead of raw PID-2/PID-3[0] |
 | `src/v2-to-fhir/messages/adt-a01.ts` | Replace ad-hoc Patient.id logic (lines 330-334) with priority-list call |
 | `src/v2-to-fhir/messages/oru-r01.ts` | Replace `extractPatientId()` (lines 121-129) with priority-list call |
