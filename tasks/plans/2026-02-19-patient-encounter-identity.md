@@ -1,6 +1,6 @@
 ---
-status: ready-for-review
-reviewer-iterations: 2
+status: ai-reviewed
+reviewer-iterations: 3
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
   - src/v2-to-fhir/config.ts
@@ -824,4 +824,68 @@ This is a correct and reasonable behavior, but a real sender that populates CX.9
 **Issue 12 — RESOLVED:** Added a note row in Test Cases table explicitly stating that 'match' strategy tests are deferred to the MPI implementation ticket, with explanation of why (stub always returns 'not-found', demographics not available in current signature).
 
 **Issue 13 — RESOLVED:** Added "CX with only CX.9 or CX.10 populated (no CX.4)" to Edge Cases table. Documents that `inject-authority-from-msh` correctly no-ops (CX.9/CX.10 are valid HL7 authority sources), `MatchRule.authority` will not match (CX.4.1 is empty), and operators must configure type-only rules for such senders.
+
+---
+
+## AI Review Notes — Pass 3 (2026-02-19)
+
+### Scope
+
+Third and final review pass. All 5 blockers and 8 issues from Passes 1 and 2 are confirmed resolved. This pass cross-checks prototype files against design doc claims, inspects existing tests for migration scope, and checks for implementation traps not caught by the compiler.
+
+---
+
+### All Pass 1 and Pass 2 Resolutions Confirmed
+
+Cross-checked every resolved issue against the prototype files:
+
+- `preprocessor.ts`: DESIGN PROTOTYPE comment at lines 25–37 correctly identifies both change sites (`config[configKey]` → `config.messages[configKey]` and the type annotation). TypeScript will enforce both at compile time once `Hl7v2ToFhirConfig` changes.
+- `preprocessor-registry.ts`: Prototype stubs for `mergePid2IntoPid3` and `injectAuthorityFromMsh` present with full behavioral documentation including field-presence guard interaction. SEGMENT_PREPROCESSORS registration is commented-out and clearly marked.
+- `config.ts`: DESIGN PROTOTYPE comment at lines 13–68 fully specifies the restructured types and the new `validateIdentifierPriorityRules()` function with implementation spec.
+- `id-generation.ts`: All new types and `selectPatientId` algorithm are documented in prototype comments with complete JSDoc.
+- `adt-a01.ts`, `adt-a08.ts`, `oru-r01.ts`: All have DESIGN PROTOTYPE markers at the correct call sites.
+- `converter.ts`: DESIGN PROTOTYPE comment specifies per-call `StubMpiClient` instantiation and updated call sites for all three converters.
+- `mpi-client.ts`: New file is complete and production-ready (not just a stub type — includes full JSDoc, correct contract documentation, `StubMpiClient` with dual method stubs).
+- Config JSON: DESIGN PROTOTYPE prototype shape embedded as `_DESIGN_PROTOTYPE_new_shape` key.
+
+---
+
+### Observation: `handleEncounter` Config Access Lacks In-File Marker
+
+`oru-r01.ts` line 674: `const pv1Required = config["ORU-R01"]?.converter?.PV1?.required ?? false;` — this access site is inside `handleEncounter`, not near the DESIGN PROTOTYPE markers which are on `extractPatientId` and `handlePatient`. An implementor reading `handleEncounter` in isolation would not see a prototype marker reminding them to change the config access.
+
+This is not a blocker: the TypeScript compiler will catch it — once `Hl7v2ToFhirConfig` changes from `Record<string, ...>` to `{ identifierPriority, messages }`, `config["ORU-R01"]` (and `config["ADT-A01"]` on line 391 of `adt-a01.ts`) will fail to type-check. The Affected Components table also covers it. Noted for implementor awareness only.
+
+---
+
+### Observation: `config` Variable Order in adt-a01.ts
+
+In `adt-a01.ts`, the DESIGN PROTOTYPE block for `selectPatientId` is at lines 348–362 (inside the patient extraction section), but `const config = hl7v2ToFhirConfig()` is called on line 390 (inside the PV1 section, after the patient block). The prototype references `config.identifierPriority` before `config` is declared.
+
+This is not a blocker: the implementor will hit a compile error on the first reference to `config` before its declaration. The fix is trivial (hoist `const config = hl7v2ToFhirConfig()` to the top of the function, before the patient block). No design change needed.
+
+---
+
+### Existing Test Migration Scope — Verified
+
+Inspected `test/unit/v2-to-fhir/config.test.ts` (17 test cases) and `test/unit/v2-to-fhir/preprocessor.test.ts` (14 test cases). Every test in both files constructs `Hl7v2ToFhirConfig` objects in the flat record format. After the config restructure, all of these will fail to compile. The Affected Components table correctly lists both files with specific migration instructions. The migration is mechanical (wrap message configs under `messages`, add `identifierPriority` fixture array). No hidden scope.
+
+Additionally: `validatePreprocessorIds` currently iterates `Object.entries(config)` at `config.ts` line 146. After the restructure, `Object.entries(config)` would yield `["identifierPriority", [...]], ["messages", {...}]` — the array entry would be treated as a message config (no `preprocess` key → silently skipped), and the `messages` object would be treated as a message config (no `preprocess` key → silently skipped). Net result: **preprocessor validation would silently pass for everything**. This is the most dangerous migration trap. The design doc's Affected Components table calls it out, and the TypeScript type change will force the fix — but an implementor must not assume the existing test suite would catch a missed `validatePreprocessorIds` update, because the tests themselves use inline config objects that bypass the loader.
+
+This is not a blocker (compiler + Affected Components table cover it), but it is the highest-risk migration step and should be addressed first during implementation.
+
+---
+
+### No New Blockers Found
+
+The design is complete and implementable as written. All algorithmic decisions are specified, all affected files are identified, and all edge cases are documented. The two minor observations above are implementation gotchas, not design gaps.
+
+### Pass 3 Summary
+
+| # | Severity | Issue | Status |
+|---|----------|-------|--------|
+| (all prior) | — | See Passes 1 and 2 | All resolved |
+| 14 | Note | `handleEncounter` in oru-r01.ts lacks DESIGN PROTOTYPE marker at config access site (line 674); compiler will catch it | No action needed |
+| 15 | Note | `config` variable referenced before declaration in adt-a01.ts DESIGN PROTOTYPE block; implementor must hoist `hl7v2ToFhirConfig()` call | No action needed |
+| 16 | High risk (implementation) | `validatePreprocessorIds` silent pass-through risk if `Object.entries(config)` not updated to `Object.entries(config.messages)` — existing tests will not catch this because they use inline configs; highest-risk migration step | Documented, covered by Affected Components table |
 
