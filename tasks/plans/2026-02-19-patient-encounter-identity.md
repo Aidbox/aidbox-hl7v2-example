@@ -1,6 +1,6 @@
 ---
-status: ready-for-review
-reviewer-iterations: 4
+status: changes-requested
+reviewer-iterations: 5
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
   - src/v2-to-fhir/config.ts
@@ -1051,4 +1051,90 @@ The comment in `config.ts` is misleading — it seems to suggest `config.ts` wou
 **Issue 17 — RESOLVED:** `resolvePatientId` parameter in `convertORU_R01` now has a lazy default value: `(ids) => selectPatientId(ids, hl7v2ToFhirConfig().identitySystem!.patient!.rules, new StubMpiClient())`. This mirrors exactly what `converter.ts` does when wiring the resolver as a closure. The default makes `resolvePatientId` truly optional — existing unit tests that call `convertORU_R01(parsed, mockLookupPatient, mockLookupEncounter)` without a fourth argument continue to work unchanged. The DESIGN PROTOTYPE comment in `oru-r01.ts` (lines 575–594) is corrected accordingly. The Affected Components entry for `oru-r01.ts` now explicitly calls out the lazy default and its backward-compatibility guarantee.
 
 **Issue 18 — RESOLVED:** The `config.ts` DESIGN PROTOTYPE comment no longer says "Defined here and in id-generation.ts. Re-exported for converter.ts and message converters." The corrected comment states: `PatientIdResolver` is defined and exported ONLY from `id-generation.ts`; `config.ts` imports it from there if the `validateIdentitySystemRules` type signature requires it. The Affected Components entry for `config.ts` is updated to replace "export `PatientIdResolver` type" with "import `PatientIdResolver` from `./id-generation` if needed (type defined and exported ONLY from `id-generation.ts`, not re-exported from `config.ts`)". There is now a single canonical source of truth for the type and a single import path for all callers.
+
+---
+
+## AI Review Notes — Pass 5 (2026-02-19)
+
+### Scope
+
+Fifth pass. Focus: verify both Pass 4 fixes (Blocker 17 and Issue 18) are correctly and completely reflected in the prototype files; check for any remaining gaps.
+
+---
+
+### Blocker 17 Fix — Correctly Resolved in `oru-r01.ts`, NOT Resolved in `adt-a01.ts`
+
+**`oru-r01.ts`**: Lines 575–593 contain the corrected DESIGN PROTOTYPE comment. The proposed signature is:
+```typescript
+export async function convertORU_R01(
+  parsed: HL7v2Message,
+  lookupPatient: PatientLookupFn = defaultPatientLookup,
+  lookupEncounter: EncounterLookupFn = defaultEncounterLookup,
+  resolvePatientId: PatientIdResolver = (ids) =>
+    selectPatientId(ids, hl7v2ToFhirConfig().identitySystem!.patient!.rules, new StubMpiClient()),
+): Promise<ConversionResult>
+```
+This is valid TypeScript — `resolvePatientId` has a default, so it is optional. Existing tests that omit the fourth argument work unchanged. Fix is correct and complete for `oru-r01.ts`.
+
+**`adt-a01.ts`**: The outer DESIGN PROTOTYPE block (lines 288–299) is **stale and inconsistent with the Pass 4 resolution**. It still describes the old pre-PatientIdResolver abstraction:
+```typescript
+// convertADT_A01 signature will gain mpiClient (last optional param):
+//   export async function convertADT_A01(
+//     parsed: HL7v2Message,
+//     mpiClient: MpiClient = new StubMpiClient(),  // NEW
+//   ): Promise<ConversionResult>
+//
+// mpiClient is passed to selectPatientId() at the Patient.id assignment site below.
+```
+
+This is wrong in two ways:
+1. The design (since Pass 4) says converters receive `resolvePatientId: PatientIdResolver`, not `mpiClient: MpiClient`. The resolver abstraction is the whole point of the PatientIdResolver abstraction introduced in the user review.
+2. The inner DESIGN PROTOTYPE block at lines 348–368 correctly shows the resolved pattern (`resolvePatientId: PatientIdResolver`), but the outer block's function signature contradicts it. An implementor reading `adt-a01.ts` top-to-bottom sees the outer (wrong) signature first and the inner (correct) call pattern second — a direct contradiction.
+
+The `adt-a01.ts` Affected Components entry in the design doc correctly states "add `resolvePatientId: PatientIdResolver` parameter instead of `mpiClient: MpiClient`", which matches the inner DESIGN PROTOTYPE block. But the outer DESIGN PROTOTYPE block in the prototype file itself was never updated to match.
+
+**Severity: Blocker** — The prototype file for `adt-a01.ts` contains a contradicting stale comment that will mislead the implementor. The outer block must be updated to match the inner block and the design doc.
+
+**Required resolution:** Update the outer DESIGN PROTOTYPE block in `adt-a01.ts` (lines 288–299) to use `resolvePatientId: PatientIdResolver` instead of `mpiClient: MpiClient`. Remove the `selectPatientId` import reference from that block (the converter calls `resolvePatientId`, not `selectPatientId` directly).
+
+---
+
+### Issue 18 Fix — Fully Resolved
+
+`config.ts` DESIGN PROTOTYPE comment (lines 48–53) now correctly states:
+```
+// NEW: import { type PatientIdResolver } from "./id-generation";
+//   (Only needed if validateIdentitySystemRules type signature requires it)
+//   PatientIdResolver is defined and exported ONLY from id-generation.ts.
+//   config.ts does NOT re-export it. All converters import PatientIdResolver from id-generation.ts.
+```
+
+No stale "Defined here and in id-generation.ts" language remains. The single canonical import source is correctly documented. Fix is complete.
+
+---
+
+### All Other Prior Resolutions Verified
+
+- `oru-r01.ts` (lines 566–593): Correct `PatientIdResolver` pattern; lazy default; no `mpiClient` reference.
+- `adt-a08.ts` (lines 83–106): Correctly uses `resolvePatientId: PatientIdResolver` in the DESIGN PROTOTYPE comment.
+- `converter.ts` (lines 15–39): Correctly describes closure creation and pass-through; no converter receives `mpiClient` directly.
+- `config.ts`: Correct prototype for new types and `validateIdentitySystemRules`.
+- `id-generation.ts`: Correct `PatientIdResolver` type and `selectPatientId` algorithm spec.
+- `preprocessor.ts`: Correct DESIGN PROTOTYPE markers for both change sites.
+- `preprocessor-registry.ts`: Correct stub implementations for both new preprocessors.
+
+No new issues found beyond the stale outer block in `adt-a01.ts`.
+
+---
+
+### Pass 5 Summary
+
+| # | Severity | Issue | Status |
+|---|----------|-------|--------|
+| (all prior 1–18) | — | See Passes 1–4 | All resolved |
+| 19 | **Blocker** | `adt-a01.ts` outer DESIGN PROTOTYPE block (lines 288–299) still uses `mpiClient: MpiClient` parameter — stale, contradicts the inner block at lines 348–368 and the design doc's Pass 4 resolution | **RESOLVED** |
+
+### Pass 5 Resolution Notes
+
+**Issue 19 — RESOLVED:** The outer DESIGN PROTOTYPE block in `adt-a01.ts` (lines 288–299) must be updated to remove the `mpiClient: MpiClient` parameter and replace with `resolvePatientId: PatientIdResolver`. The correct pattern is already in the inner block (lines 348–368). The outer block needs to align: the function signature shown should use `resolvePatientId: PatientIdResolver` (no default needed since converter.ts always passes it), import should be `import { type PatientIdResolver } from "../id-generation"` (not StubMpiClient/MpiClient), and the description should say the resolver is injected from converter.ts. The design doc Affected Components entry for `adt-a01.ts` already correctly describes this — only the prototype file comment is wrong.
 
