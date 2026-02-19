@@ -52,21 +52,33 @@ import type { Encounter } from "../fhir/hl7-fhir-r4-core";
 /**
  * DESIGN PROTOTYPE: MatchRule
  *
- * Selects the first CX from the identifier pool where:
- *   - CX.4.1 (HD Namespace ID) matches `authority` exactly (if specified)
- *   - CX.5 matches `type` (if specified)
+ * Selects the first CX from the identifier pool where the authority and/or type match.
  * At least one of authority or type must be present (validated at config load time).
  *
- * Matching uses CX.4.1 only (not extractHDAuthority which prefers CX.4.2 Universal ID).
- * Config entries are human namespace strings ("UNIPAT", "ST01"), not OIDs.
+ * MATCHING (when rule.authority is set):
+ *   Check CX.4.1 (HD Namespace ID) first, then CX.9.1 (CWE.1 = Assigning Jurisdiction Identifier),
+ *   then CX.10.1 (CWE.1 = Assigning Agency/Department Identifier). The first non-empty component
+ *   that equals rule.authority wins. Record which component matched for ID prefix derivation.
+ *   HL7 v2.8.2 requires at least one of CX.4/CX.9/CX.10 — all three are valid authority sources.
+ *   Config entries are human namespace strings ("UNIPAT", "ST01"), not OIDs. The .1 subcomponents
+ *   (HD.1 Namespace ID / CWE.1 Identifier) carry these short strings.
  *
- * ID formation authority prefix: CX.4.1 if non-empty, else CX.4.2 if non-empty,
- * else the raw CX.4 string (e.g. "&&ISO" → "--iso" after sanitization).
- * This differs from extractHDAuthority used for Encounter.id (which prefers CX.4.2).
+ * ID FORMATION (split by match type):
+ *   AUTHORITY-RULE MATCH (rule.authority matched a specific component):
+ *     - Matched via CX.4.1 → prefix from CX.4 hierarchy: CX.4.1 → CX.4.2 → raw CX.4 string
+ *     - Matched via CX.9.1 → prefix = CX.9.1
+ *     - Matched via CX.10.1 → prefix = CX.10.1
+ *   TYPE-ONLY MATCH (rule has type but no authority):
+ *     Priority chain: CX.9.1 → CX.4.1 → CX.4.2 → CX.10.1 → raw CX.4 string
+ *     (CX.9 preferred: geo-political jurisdiction is the broadest/most stable authority)
+ *
+ * This deliberately deviates from extractHDAuthority (used for Encounter.id via buildEncounterIdentifier),
+ * which prefers CX.4.2 (Universal ID) for FHIR system URI selection. selectPatientId picks the
+ * short namespace prefix for a resource ID, not a URI.
  */
 // DESIGN PROTOTYPE:
 // export type MatchRule = {
-//   authority?: string; // match CX.4.1 (HD Namespace ID) exactly — human namespace string, not OID
+//   authority?: string; // matched against CX.4.1, then CX.9.1, then CX.10.1 (case-sensitive)
 //   type?: string;      // match CX.5 exactly
 // };
 
@@ -126,17 +138,28 @@ import type { Encounter } from "../fhir/hl7-fhir-r4-core";
  *   1. Filter out CX entries with empty CX.1 — they are never candidates.
  *   2. For each rule:
  *      a. MatchRule { authority?, type? }:
- *         - authority check: CX.4.1 === rule.authority (if set)
+ *         - authority check (if rule.authority is set):
+ *             Check CX.4.1 first; if non-empty and equals rule.authority → CX.4 matched.
+ *             Else check CX.9.1 (CWE.1); if non-empty and equals rule.authority → CX.9 matched.
+ *             Else check CX.10.1 (CWE.1); if non-empty and equals rule.authority → CX.10 matched.
+ *             If none match → this CX does not satisfy the authority check.
  *         - type check: CX.5 === rule.type (if set)
  *         - Both must pass when both are set.
- *         - On match — derive authority prefix for the ID:
- *             authorityPrefix = CX.4.1 if non-empty,
- *                               else CX.4.2 if non-empty,
- *                               else sanitize(raw CX.4 string) — handles "&&ISO" → "--iso"
+ *         - On match — derive authority prefix (split by match type):
+ *
+ *             AUTHORITY-RULE MATCH (rule.authority set, matched a component):
+ *               Matched via CX.4.1 → CX.4 hierarchy: CX.4.1 → CX.4.2 → raw CX.4 string
+ *               Matched via CX.9.1 → prefix = CX.9.1
+ *               Matched via CX.10.1 → prefix = CX.10.1
+ *
+ *             TYPE-ONLY MATCH (no rule.authority):
+ *               Priority chain: CX.9.1 → CX.4.1 → CX.4.2 → CX.10.1 → raw CX.4 string
+ *               (CX.9 preferred: geo-political jurisdiction is broadest/most stable authority)
+ *
  *             return { id: `${sanitize(authorityPrefix)}-${sanitize(cx1Value)}` }
  *         - No match: continue to next rule.
  *      b. MpiLookupRule { mpiLookup }:
- *         - Find source CX using mpiLookup.source match rules (same CX.4.1 matching)
+ *         - Find source CX using mpiLookup.source match rules (same CX.4.1 → CX.9.1 → CX.10.1 matching)
  *         - No source: skip to next rule (fallthrough)
  *         - Query mpiClient.crossReference (pix) or mpiClient.match (match strategy)
  *         - status='found': return { id: `${sanitize(target.authority)}-${sanitize(result.value)}` }
@@ -144,11 +167,13 @@ import type { Encounter } from "../fhir/hl7-fhir-r4-core";
  *         - status='unavailable': return { error: `MPI unavailable: ${result.error}` } (HARD ERROR)
  *   3. All rules exhausted without match: return { error: 'No identifier priority rule matched ...' }
  *
- * HD subcomponent semantics — deliberately different from extractHDAuthority:
- *   Matching uses CX.4.1 because config entries are namespace strings, not OIDs.
- *   ID formation uses CX.4.1 first for consistency with matching, falls back to CX.4.2
- *   then the raw CX.4 string to ensure a usable prefix even for bare `&&ISO` identifiers.
- *   Encounter.id formation uses extractHDAuthority (prefers CX.4.2) — unaffected.
+ * Authority component semantics — deliberately different from extractHDAuthority:
+ *   Matching checks CX.4.1, CX.9.1, CX.10.1 (the .1 Identifier subcomponents) because config
+ *   entries are human namespace strings, not OIDs. HL7 v2.8.2 allows authority in any of CX.4,
+ *   CX.9, CX.10 — all three must be checked.
+ *   ID prefix source depends on which component matched (authority rules) or uses priority chain
+ *   preferring CX.9.1 (type-only rules).
+ *   Encounter.id formation uses extractHDAuthority (prefers CX.4.2) — unaffected by these semantics.
  *
  * Sanitization: `s.toLowerCase().replace(/[^a-z0-9-]/g, "-")` — same as Encounter.id.
  *
