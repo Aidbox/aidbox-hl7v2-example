@@ -1,6 +1,6 @@
 ---
-status: ready-for-review
-reviewer-iterations: 3
+status: changes-requested
+reviewer-iterations: 4
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
   - src/v2-to-fhir/config.ts
@@ -952,4 +952,97 @@ The design is complete and implementable as written. All algorithmic decisions a
 | 14 | Note | `handleEncounter` in oru-r01.ts lacks DESIGN PROTOTYPE marker at config access site (line 674); compiler will catch it | No action needed |
 | 15 | Note | `config` variable referenced before declaration in adt-a01.ts DESIGN PROTOTYPE block; implementor must hoist `hl7v2ToFhirConfig()` call | No action needed |
 | 16 | High risk (implementation) | `validatePreprocessorIds` silent pass-through risk if `Object.entries(config)` not updated to `Object.entries(config.messages)` — existing tests will not catch this because they use inline configs; highest-risk migration step | Documented, covered by Affected Components table |
+
+---
+
+## AI Review Notes — Pass 4 (2026-02-19)
+
+### Scope
+
+Fourth and final review pass. Focus: `PatientIdResolver` abstraction consistency across all files and design sections; `identitySystem.patient.rules` reference correctness everywhere; whether converters call `resolvePatientId(ids)` (not `selectPatientId` directly); remaining gaps blocking implementation.
+
+---
+
+### PatientIdResolver Abstraction — Fully Consistent
+
+Cross-checked `PatientIdResolver` across all prototype files and design doc sections:
+
+- Design doc (Proposed Approach, Key Decisions, Trade-offs, Technical Details): all use `PatientIdResolver` consistently; closure pattern documented precisely
+- `id-generation.ts` prototype comment: matches exactly — `type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>`
+- `converter.ts` DESIGN PROTOTYPE: creates closure `(ids) => selectPatientId(ids, config.identitySystem.patient.rules, mpiClient)`, passes `resolvePatientId` to all three converters; no converter receives `mpiClient` or `selectPatientId` reference
+- `adt-a01.ts` DESIGN PROTOTYPE: receives `resolvePatientId: PatientIdResolver`, calls `await resolvePatientId(pid.$3_identifier ?? [])` — correct
+- `adt-a08.ts` DESIGN PROTOTYPE: same pattern as adt-a01.ts — correct
+- `oru-r01.ts` DESIGN PROTOTYPE (`handlePatient` and `convertORU_R01`): receives and threads `resolvePatientId: PatientIdResolver` — correct
+
+No inconsistency found in the PatientIdResolver abstraction itself.
+
+---
+
+### `identitySystem.patient.rules` References — Fully Consistent
+
+All references in the design doc and all prototype files use `identitySystem.patient.rules`:
+- `config.ts` DESIGN PROTOTYPE type definition: `patient?: { rules: IdentifierPriorityRule[] }` — correct
+- `converter.ts` DESIGN PROTOTYPE: `config.identitySystem.patient.rules` — correct
+- `id-generation.ts` JSDoc `@param rules`: "from `config.identitySystem.patient.rules`" — correct
+- `mpi-client.ts` StubMpiClient comment (line 128): "any MpiLookupRule in `config.identitySystem.patient.rules`" — correct
+
+No stale `identifierPriority` references remain anywhere.
+
+---
+
+### BLOCKER: `convertORU_R01` Signature is Invalid TypeScript
+
+**Severity: Blocker**
+
+The prototype comment in `oru-r01.ts` (lines 575–581) proposes this signature:
+
+```typescript
+export async function convertORU_R01(
+  parsed: HL7v2Message,
+  lookupPatient: PatientLookupFn = defaultPatientLookup,
+  lookupEncounter: EncounterLookupFn = defaultEncounterLookup,
+  resolvePatientId: PatientIdResolver,  // NEW — no default; converter.ts always passes it
+): Promise<ConversionResult>
+```
+
+This is **invalid TypeScript**: a required parameter (`resolvePatientId`) cannot follow optional parameters (`lookupPatient` and `lookupEncounter` which have defaults). TypeScript will reject this at compile time with: `A required parameter cannot follow an optional parameter`.
+
+Existing unit tests call `convertORU_R01(parsed, mockLookupPatient, mockLookupEncounter)` — they must continue to work. The correct fix is to give `resolvePatientId` a default value (e.g., a `StubMpiClient`-based fallback resolver constructed from the config) or to reorder the parameters so required params come first.
+
+**Options:**
+1. Give `resolvePatientId` a default: `resolvePatientId: PatientIdResolver = defaultResolvePatientId` where `defaultResolvePatientId` is constructed lazily from `hl7v2ToFhirConfig()` and `new StubMpiClient()`. This maintains backward compatibility for all existing test call sites.
+2. Move `resolvePatientId` to be the second parameter (before the optional lookup fns): `convertORU_R01(parsed, resolvePatientId, lookupPatient?, lookupEncounter?)`. Tests that pass only 1 or 2 args remain valid. Tests that pass `lookupPatient` explicitly must also pass `resolvePatientId` — a larger test migration.
+3. Extract all dependencies into a context object (aligns with the `ConverterContext` refactoring ticket `00_03_converter_context_refactor.md`).
+
+Option 1 (give `resolvePatientId` a default) is the minimal fix consistent with the current design. The default should mirror what `converter.ts` does: call `hl7v2ToFhirConfig()` and `new StubMpiClient()` lazily. This makes `resolvePatientId` truly optional for tests that don't exercise patient ID resolution, consistent with how `lookupPatient` and `lookupEncounter` have defaults.
+
+**Required resolution:** The design must specify a valid TypeScript signature for `convertORU_R01` with `resolvePatientId`. The prototype comment must be corrected. The Affected Components entry for `oru-r01.ts` must call this out explicitly so the implementor doesn't copy the invalid signature verbatim.
+
+---
+
+### Issue: `PatientIdResolver` Dual-Export Risk (`config.ts` and `id-generation.ts`)
+
+**Severity: Medium**
+
+`config.ts` DESIGN PROTOTYPE comment (lines 48–51) states:
+```
+// NEW: export type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>;
+//   Defined here and in id-generation.ts. Re-exported for converter.ts and message converters.
+```
+
+This implies `PatientIdResolver` would be defined (or re-exported) from both `config.ts` AND `id-generation.ts`. Exporting the same type from two modules creates an import-source confusion: should converters import from `"../id-generation"` or `"./config"`? The design doc Technical Details section (and `adt-a01.ts`, `adt-a08.ts`, `oru-r01.ts` prototype comments) consistently say `import { type PatientIdResolver } from "../id-generation"`.
+
+The comment in `config.ts` is misleading — it seems to suggest `config.ts` would also export `PatientIdResolver`, but that is not needed if all callers import from `id-generation.ts`. `config.ts` should only export `PatientIdResolver` if it needs it internally (e.g., for `validateIdentitySystemRules` type signatures), but even that doesn't require re-exporting it to the public API.
+
+**Required resolution:** Clarify in the `config.ts` Affected Components entry and DESIGN PROTOTYPE comment that `PatientIdResolver` is defined and exported from `id-generation.ts` only. `config.ts` imports it from there if needed. Remove the "Defined here and in id-generation.ts" language to eliminate the ambiguity.
+
+---
+
+### Pass 4 Summary
+
+| # | Severity | Issue | Status |
+|---|----------|-------|--------|
+| (all prior 1–16) | — | See Passes 1–3 | All resolved |
+| 17 | **Blocker** | `convertORU_R01` prototype signature is invalid TypeScript: required `resolvePatientId` param follows two optional params with defaults; will not compile | Open |
+| 18 | Medium | `PatientIdResolver` dual-export ambiguity between `config.ts` and `id-generation.ts`; all converter import sites say `id-generation.ts` but `config.ts` comment implies co-ownership | Open |
 
