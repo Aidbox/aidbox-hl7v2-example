@@ -30,6 +30,16 @@ import {
 //   - All callers of hl7v2ToFhirConfig() that access message configs must change from
 //     config["ADT-A01"] to config.messages["ADT-A01"]
 //
+// NEW: validateIdentifierPriorityRules(config: Hl7v2ToFhirConfig): void
+//   Called from hl7v2ToFhirConfig() AFTER the cast, BEFORE validatePreprocessorIds().
+//   Validates:
+//     1. config.identifierPriority is an array (runtime guard — cast does not validate)
+//     2. config.identifierPriority is non-empty
+//     3. Each MatchRule has at least one of authority or type
+//     4. Each MpiLookupRule with strategy='pix' has a source array
+//   Throws descriptive Error at startup if any validation fails.
+//   Full spec: tasks/plans/2026-02-19-patient-encounter-identity.md (Technical Details)
+//
 // Import IdentifierPriorityRule from id-generation.ts when implementing.
 // =============================================================================
 

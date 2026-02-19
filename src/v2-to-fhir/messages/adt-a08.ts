@@ -80,6 +80,36 @@ function createBundleEntry(resource: Patient): BundleEntry {
 // Main Converter Function
 // ============================================================================
 
+// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+// convertADT_A08 must be updated identically to convertADT_A01:
+//
+//   export async function convertADT_A08(
+//     parsed: HL7v2Message,
+//     mpiClient: MpiClient = new StubMpiClient(),  // NEW
+//   ): Promise<ConversionResult>
+//
+// Replace the ad-hoc Patient.id block (lines 122–129 below) with:
+//
+//   const config = hl7v2ToFhirConfig();
+//   const patientIdResult = await selectPatientId(
+//     pid.$3_identifier ?? [],       // PID-3 after preprocessing (merge-pid2-into-pid3 already ran)
+//     config.identifierPriority,
+//     mpiClient,
+//   );
+//   if ('error' in patientIdResult) {
+//     throw new Error(`Patient ID selection failed: ${patientIdResult.error}`);
+//   }
+//   patient.id = patientIdResult.id;
+//
+// Also update converter.ts: case "ADT_A08" must pass mpiClient and await:
+//   case "ADT_A08": return await convertADT_A08(parsed, mpiClient);
+//
+// Import: import { StubMpiClient, type MpiClient } from "../mpi-client";
+// Import: import { selectPatientId } from "../id-generation";
+// Import: import { hl7v2ToFhirConfig } from "../config";
+// The function becomes async — update `converter.ts` `case "ADT_A08"` to await.
+// END DESIGN PROTOTYPE
+
 /**
  * Convert HL7v2 ADT_A08 message to FHIR Transaction Bundle
  *

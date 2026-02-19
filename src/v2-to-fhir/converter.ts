@@ -13,15 +13,18 @@ import { convertADT_A01 } from "./messages/adt-a01";
 import { convertADT_A08 } from "./messages/adt-a08";
 import { convertORU_R01 } from "./messages/oru-r01";
 // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// When implementing, import StubMpiClient here and pass it to convertADT_A01 / convertORU_R01:
+// When implementing, import StubMpiClient here and pass it to all three converters:
 //   import { StubMpiClient } from "./mpi-client";
-// Instantiate once per convertToFHIR call (or as a module-level constant — StubMpiClient is stateless):
+// Instantiate once per convertToFHIR call (StubMpiClient is stateless — a module-level
+// constant would also work, but per-call instantiation is clearer for future real clients):
 //   const mpiClient = new StubMpiClient();
-// Pass to each converter:
+// Pass to each converter (all three converters become async):
 //   case "ADT_A01": return await convertADT_A01(parsed, mpiClient);
+//   case "ADT_A08": return await convertADT_A08(parsed, mpiClient);  // NOTE: convertADT_A08 becomes async
 //   case "ORU_R01": return await convertORU_R01(parsed, mpiClient);
 // The MpiClient parameter is last (after the existing optional lookupPatient/lookupEncounter params
 // in convertORU_R01) to minimize call-site changes. See oru-r01.ts for the updated signature.
+// ADT_A08 becomes async (was sync) — no other callers outside converter.ts.
 // END DESIGN PROTOTYPE
 
 // ============================================================================
