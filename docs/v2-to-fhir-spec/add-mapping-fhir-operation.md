@@ -22,10 +22,11 @@ The `$add-mapping` operation merges mappings into a ConceptMap, skipping any tha
 
 URL: [base]/ConceptMap/[id]/$add-mapping
 
-The server SHALL add each input mapping that does not already exist. If an input mapping already exists (same match key), the server ignores it by default (`if-exists=ignore`) and SHOULD report skipped entries in the OperationOutcome; set `if-exists=fail` to return an error instead. If no `group` exists for the given `source` and `target`, one is created.
+The server SHALL add each input mapping that does not already exist. If no `group` exists for the given `source` and `target`, one is created.
+
+If an input mapping already exists (same match key), the server ignores it by default (`if-exists=ignore`) and SHOULD report skipped entries in the OperationOutcome. Set `if-exists=fail` to return an error instead.
 
 The server SHALL return an OperationOutcome with `severity=error` and `code=business-rule` when:
-
 - A source code has `noMap=true` and the input adds a `target` mapping for it, or vice versa
 - Multiple groups share the same `source` and `target` (ambiguous target group)
 
