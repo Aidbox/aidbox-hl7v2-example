@@ -130,6 +130,12 @@ Types must accurately represent the actual data flow. If there's a mismatch betw
 
 **Don't use `!` (non-null assertion) without local proof.** If a value is proven non-null by a guard or check in the same scope, prefer narrowing (e.g., `if` check, early return) over `!`. If `!` is used, the proof must be obvious within a few lines.
 
+## Usability over code purity
+
+When designing configuration or system interfaces, prioritize the operation and maintenance experience — simplicity, single source of truth, hard to misconfigure. Internal code properties (function purity, testability, etc.) can almost always be achieved through implementation patterns without compromising the external interface. 
+
+Example: if the choice is between "elegant internals with fragile config coupling" and "slightly mixed internals with robust single-source-of-truth config" — choose robust config.
+
 ## General Principles
 
 - Don't add error handling, fallbacks, or validation for scenarios that can't happen

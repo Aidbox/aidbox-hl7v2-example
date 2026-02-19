@@ -219,15 +219,17 @@ data/
 
 For implementation details, see `docs/developer-guide/`:
 
-| When you need | Read |
-|---------------|------|
-| System diagrams, polling pattern details | `architecture.md` |
-| FHIR→HL7v2 field mappings, segment builders | `bar-generation.md` |
-| HL7v2→FHIR conversion, ORU processing | `oru-processing.md` |
-| ConceptMap workflow, Task lifecycle | `code-mapping.md` |
-| MLLP protocol, ACK generation | `mllp-server.md` |
-| HL7v2 builders, field naming (`$N_fieldName`) | `hl7v2-module.md` |
-| Coding standards | `.claude/code-style.md` |
+| When you need                                                                            | Read |
+|------------------------------------------------------------------------------------------|------|
+| System diagrams, polling pattern details                                                 | `architecture.md` |
+| FHIR→HL7v2 field mappings, segment builders                                              | `bar-generation.md` |
+| HL7v2→FHIR conversion, ORU processing                                                    | `oru-processing.md` |
+| ConceptMap workflow, Task lifecycle                                                      | `code-mapping.md` |
+| MLLP protocol, ACK generation                                                            | `mllp-server.md` |
+| HL7v2 builders, field naming (`$N_fieldName`)                                            | `hl7v2-module.md` |
+| HL7 reference JSON generation (XSD+PDF → data/hl7v2-reference), used by hl7v2-info skill | `how-to/hl7v2-reference-generation.md` |
+| Testing, integration infra, codegen/debug workflows                                      | `how-to/development-guide.md` |
+| Coding standards                                                                         | `.claude/code-style.md` |
 
 ## Bun Guidelines
 
