@@ -1,5 +1,5 @@
 ---
-status: changes-requested
+status: ai-reviewed
 reviewer-iterations: 5
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
@@ -351,7 +351,7 @@ function validateIdentitySystemRules(config: Hl7v2ToFhirConfig): void {
       if (!rule.authority && !rule.type) {
         throw new Error(
           `Invalid identitySystem.patient.rules[${i}]: MatchRule must specify at least one of: ` +
-          `"authority" (matches CX.4.1) or "type" (matches CX.5).`
+          `"authority" (matched against CX.4.1, CX.9.1, or CX.10.1) or "type" (matches CX.5).`
         );
       }
     }
@@ -508,6 +508,7 @@ function injectAuthorityFromMsh(
 | MPI rule (pix strategy): MPI returns not-found — falls through to next rule | Unit | selectPatientId continues to next rule, returns result from next match |
 | MPI rule (pix strategy): MPI unavailable — hard error | Unit | selectPatientId returns `{ error: "MPI unavailable: ..." }` |
 | MPI rule (pix strategy): no source identifier in pool — skip | Unit | selectPatientId skips MPI rule, evaluates next rule |
+| MpiLookupRule (pix strategy): source identifier selected via CX.9.1 — MPI finds result | Unit | Rule has `source: [{ authority: "STATEX" }]`; pool has CX with CX.4.1="" and CX.9.1="STATEX"; MPI crossReference called with correct source; returns `unipat-19624139` |
 | **Note — 'match' strategy tests:** Tests for `strategy='match'` in `selectPatientId` are deferred to the MPI implementation ticket. The stub always returns 'not-found' for `match()`, which means the 'match' flow cannot be meaningfully exercised until a real MpiClient is available. The current signature `(identifiers: CX[], rules, mpiClient)` does not provide demographics — this is a known limitation documented in Key Decisions. The MPI implementation ticket will determine whether `selectPatientId` gains a `demographics?: PatientDemographics` parameter or whether demographics extraction is done inside the real MpiClient via a different mechanism. | — | Deferred |
 | Rule list empty | Unit | Config load throws validation error via `validateIdentitySystemRules()` (does not reach selectPatientId) |
 | MatchRule with neither authority nor type | Unit | Config load throws validation error via `validateIdentitySystemRules()` |
@@ -1284,6 +1285,6 @@ Edge cases table additions for CX.9/CX.10 are present and accurate (rows for CX.
 | # | Severity | Issue | Status |
 |---|----------|-------|--------|
 | (all prior 1–19) | — | See Passes 1–5 | All resolved |
-| 20 | **Blocker** | `validateIdentitySystemRules` error message says `"authority" (matches CX.4.1)` — stale after CX.9/CX.10 addition; must say "matched against CX.4.1, CX.9.1, or CX.10.1" | Open |
-| 21 | Low | No test case for `mpiLookup.source` MatchRule matching via CX.9.1 or CX.10.1 | Open |
+| 20 | **Blocker** | `validateIdentitySystemRules` error message says `"authority" (matches CX.4.1)` — stale after CX.9/CX.10 addition; must say "matched against CX.4.1, CX.9.1, or CX.10.1" | **RESOLVED** |
+| 21 | Low | No test case for `mpiLookup.source` MatchRule matching via CX.9.1 or CX.10.1 | **RESOLVED** |
 

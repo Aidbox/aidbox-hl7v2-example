@@ -412,11 +412,11 @@ Return only one line, exactly:
 
 1. Run Review agent
 2. Parse verdict from response
-3. If `BLOCKERS FOUND` and `reviewer-iterations < 3`:
+3. If `BLOCKERS FOUND`:
    - Increment `reviewer-iterations` in design doc
    - Spawn Design agent in FIX MODE
    - Run Review agent again (go to step 1)
-4. If `APPROVED FOR USER REVIEW` or `reviewer-iterations >= 3`:
+4. If `APPROVED FOR USER REVIEW`:
    - Proceed to Phase 6
 
 ---

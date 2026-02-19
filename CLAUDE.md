@@ -251,9 +251,11 @@ IMPORTANT: Always read `.claude/code-style.md` before writing or modifying code.
 
 ## HL7v2 Spec Compliance Rule
 
-Before proposing, implementing, or reviewing ANY change that touches HL7v2 message handling — including segment optionality, field semantics, message structure, or processing rules — you MUST look up the relevant message/segment/field via the `hl7v2-info` skill first.
+Before proposing, implementing, designing or reviewing ANY change that touches HL7v2 message handling — including segment optionality, field semantics, message structure, or processing rules — you MUST look up the relevant message/segment/field via the `hl7v2-info` skill first.
 
 Do NOT rely on assumptions, existing code patterns, or memory of the spec. The code may intentionally deviate from the spec, but you must know what the spec says before proposing or implementing changes.
+
+**Spec completeness rule:** You must handle ALL components/fields defined in the spec — not just those present in current sample data or example messages. Never skip a field or component solely because the example senders don't populate it.
 
 ### HL7v2 Pipes Count
 
