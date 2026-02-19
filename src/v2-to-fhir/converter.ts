@@ -13,29 +13,7 @@ import { convertADT_A01 } from "./messages/adt-a01";
 import { convertADT_A08 } from "./messages/adt-a08";
 import { convertORU_R01 } from "./messages/oru-r01";
 // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// When implementing, create a PatientIdResolver closure in convertToFHIR() and pass it
-// to all three converters. No converter receives mpiClient directly.
-//
-// Imports needed:
-//   import { StubMpiClient } from "./mpi-client";
-//   import { selectPatientId, type PatientIdResolver } from "./id-generation";
-//   import { hl7v2ToFhirConfig } from "./config";
-//
-// Inside convertToFHIR():
-//   const config = hl7v2ToFhirConfig();
-//   const mpiClient = new StubMpiClient();  // stateless — per-call instantiation is clear
-//   const resolvePatientId: PatientIdResolver = (ids) =>
-//     selectPatientId(ids, config.identitySystem.patient.rules, mpiClient);
-//
-// Pass resolvePatientId to each converter (all three converters become async if not already):
-//   case "ADT_A01": return await convertADT_A01(parsed, resolvePatientId);
-//   case "ADT_A08": return await convertADT_A08(parsed, resolvePatientId);  // NOTE: convertADT_A08 becomes async
-//   case "ORU_R01": return await convertORU_R01(parsed, resolvePatientId);
-//
-// convertORU_R01 retains existing optional lookupPatient/lookupEncounter parameters.
-// resolvePatientId is passed as the last new parameter (after lookupEncounter) to minimize
-// call-site changes for existing tests that pass lookupPatient/lookupEncounter explicitly.
-// ADT_A08 becomes async (was sync) — no other callers outside converter.ts.
+// Create PatientIdResolver closure in convertToFHIR() and pass to all converters.
 // END DESIGN PROTOTYPE
 
 // ============================================================================

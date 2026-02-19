@@ -1,5 +1,5 @@
 ---
-status: changes-requested
+status: ready-for-review
 reviewer-iterations: 6
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
@@ -24,7 +24,7 @@ Patient identity across two EHR systems (ASTRA, MEDTEX) produces inconsistent Pa
 
 **Priority-list algorithm** replaces the ad-hoc logic in both `adt-a01.ts` and `oru-r01.ts`. A single ordered list of `IdentifierPriorityRule` entries is evaluated against the pool of CX identifiers from PID-3. The first rule that matches a CX with a non-empty value wins. Two rule types exist:
 
-- **MatchRule** `{ authority?, type? }` — matches the first CX where the authority matches any of CX.4.1, CX.9.1 (CWE.1), or CX.10.1 (CWE.1) in that order, and/or CX.5 equals the type. At least one of the two must be specified.
+- **MatchRule** `{ authority?, type?, any? }` — matches the first CX where the authority matches any of CX.4.1, CX.9.1 (CWE.1), or CX.10.1 (CWE.1) in that order, and/or CX.5 equals the type. A special variant `{ any: true }` matches the first CX with a non-empty CX.1 and a derivable authority prefix (type-only priority chain); bare CX entries with no authority are skipped. At least one of `authority`, `type`, or `any` must be specified.
 - **MpiLookupRule** `{ mpiLookup: { ... } }` — picks a source identifier from the pool using nested match rules, queries an external MPI, and if the MPI returns a result, uses that as Patient.id. If the MPI is unavailable (network error, timeout), it is a hard error — no fallthrough. If the MPI returns no match, the rule is skipped and the next rule in the list is tried.
 
 The resulting Patient.id format is `{sanitize(authority)}-{sanitize(value)}` using the same sanitization pattern already applied to Encounter.id in `id-generation.ts`.
@@ -34,7 +34,7 @@ The resulting Patient.id format is `{sanitize(authority)}-{sanitize(value)}` usi
 **PatientIdResolver abstraction** (`type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>`) follows the same pattern as `PatientLookupFn`/`EncounterLookupFn` already used in `oru-r01.ts`. `converter.ts` creates the resolver as a closure over `config.identitySystem.patient.rules` and `mpiClient`. Each converter (`convertADT_A01`, `convertADT_A08`, `convertORU_R01`) receives `resolvePatientId: PatientIdResolver` instead of `mpiClient: MpiClient` — the converter calls `resolvePatientId(pid.$3_identifier ?? [])` without knowing the algorithm, rule list, or MPI client.
 
 **Preprocessor rules** handle normalization before the converter sees identifiers:
-- `"merge-pid2-into-pid3"` fires on PID field 2; appends the PID-2 CX into PID-3's repeat list (or creates PID-3 if absent), then clears PID-2.
+- `"move-pid2-into-pid3"` fires on PID field 2; appends the PID-2 CX into PID-3's repeat list (or creates PID-3 if absent), then clears PID-2.
 - `"inject-authority-from-msh"` fires on PID field 3; for each CX in PID-3 that has a value but no authority (CX.4/9/10 all empty), injects the MSH-3/4 derived namespace as CX.4.1. Only fills gaps — never overrides existing authority.
 
 The preprocessor config is added to `MessageTypeConfig.preprocess` for segment `PID` fields `"2"` and `"3"`.
@@ -60,7 +60,7 @@ The preprocessor config is added to `MessageTypeConfig.preprocess` for segment `
 
 ## Trade-offs
 
-**Priority-list vs simpler schemes:** The priority-list is more config to maintain compared to "always use UNIPAT if present, else first CX". The tradeoff is intentional: real data has nine authorities across two EHR systems with different field positions. A simpler scheme cannot handle ASTRA putting UNIPAT in PID-2 while MEDTEX puts it in PID-3, because by the time the converter sees PID-3, PID-2 is a separate field. The preprocessor boundary (merge-pid2-into-pid3 first, then priority-list on PID-3) keeps the converter clean.
+**Priority-list vs simpler schemes:** The priority-list is more config to maintain compared to "always use UNIPAT if present, else first CX". The tradeoff is intentional: real data has nine authorities across two EHR systems with different field positions. A simpler scheme cannot handle ASTRA putting UNIPAT in PID-2 while MEDTEX puts it in PID-3, because by the time the converter sees PID-3, PID-2 is a separate field. The preprocessor boundary (move-pid2-into-pid3 first, then priority-list on PID-3) keeps the converter clean.
 
 **MPI hard error vs fallthrough:** The hard-error choice means that when MPI is down, ALL messages for patients that don't have a direct UNIPAT in the message will fail, not just degrade to local IDs. This is the correct behavior for a deployment that has committed to cross-EHR matching — silent fallthrough would silently create duplicate patients that need manual deduplication later. Operators who want graceful degradation should not configure an mpiLookup rule; they can always fall back to the no-MPI config.
 
@@ -78,17 +78,21 @@ The preprocessor config is added to `MessageTypeConfig.preprocess` for segment `
 |------|-------------|-------------|
 | `src/v2-to-fhir/id-generation.ts` | Extend | Add `IdentifierPriorityRule` union type, `PatientIdResult` type, `selectPatientId()` async function |
 | `src/v2-to-fhir/mpi-client.ts` | New file | `MpiClient` interface, `MpiResult` type, `PatientDemographics` type, `StubMpiClient` class |
-| `src/v2-to-fhir/config.ts` | Modify | Restructure `Hl7v2ToFhirConfig` to `{ identitySystem?: { patient?: { rules: IdentifierPriorityRule[] } }, messages?: Record<string, MessageTypeConfig> }`, extend `MessageTypeConfig.preprocess` with PID fields, update `validatePreprocessorIds` to walk `config.messages` instead of top-level config object; add `validateIdentitySystemRules()` called from `hl7v2ToFhirConfig()` before caching — validates: (1) `identitySystem.patient.rules` is a non-empty array, (2) each MatchRule has at least one of `authority`/`type`, (3) each MpiLookupRule with `strategy='pix'` has `source` defined; add runtime guard before caching: `if (!Array.isArray(config.identitySystem?.patient?.rules)) throw new Error('...')`; import `PatientIdResolver` from `./id-generation` if needed (type is defined and exported ONLY from `id-generation.ts`, not re-exported from `config.ts`) |
+| `src/v2-to-fhir/config.ts` | Modify | Restructure `Hl7v2ToFhirConfig` to `{ identitySystem?: { patient?: { rules: IdentifierPriorityRule[] } }, messages?: Record<string, MessageTypeConfig> }`, extend `MessageTypeConfig.preprocess` with PID fields, update `validatePreprocessorIds` to walk `config.messages` instead of top-level config object; add `validateIdentitySystemRules()` called from `hl7v2ToFhirConfig()` before caching — validates: (1) `identitySystem.patient.rules` is a non-empty array, (2) each MatchRule has at least one of `authority`/`type`/`any`; add runtime guard before caching: `if (!Array.isArray(config.identitySystem?.patient?.rules)) throw new Error('...')`; import `PatientIdResolver` from `./id-generation` if needed (type is defined and exported ONLY from `id-generation.ts`, not re-exported from `config.ts`) |
 | `src/v2-to-fhir/preprocessor.ts` | Modify | Update `config[configKey]` → `config.messages[configKey]` (line 37); update `applyPreprocessors` type annotation `NonNullable<Hl7v2ToFhirConfig[string]>["preprocess"]` → `NonNullable<MessageTypeConfig>["preprocess"]` (line 64) |
-| `src/v2-to-fhir/preprocessor-registry.ts` | Extend | Add `"merge-pid2-into-pid3"` and `"inject-authority-from-msh"` registrations |
+| `src/v2-to-fhir/preprocessor-registry.ts` | Extend | Add `"move-pid2-into-pid3"` and `"inject-authority-from-msh"` registrations |
 | `src/v2-to-fhir/messages/adt-a01.ts` | Modify | Replace ad-hoc Patient.id logic (lines 331–335) with `resolvePatientId()` call; add `resolvePatientId: PatientIdResolver` parameter instead of `mpiClient: MpiClient`; update config access to `config.messages["ADT-A01"]` |
 | `src/v2-to-fhir/messages/adt-a08.ts` | Modify | Replace ad-hoc Patient.id logic (lines 122–129) with `resolvePatientId()` call; make function async (currently sync); add `resolvePatientId: PatientIdResolver` parameter instead of `mpiClient: MpiClient`; update `converter.ts` call site to `await convertADT_A08(parsed, resolvePatientId)`. Config access to `config.messages["ADT-A08"]` (entry may be absent — handled by `config.messages["ADT-A08"]?.converter?.PV1?.required ?? false`). Note: ADT_A08 does not use PV1 — only Patient ID logic is affected. |
 | `src/v2-to-fhir/messages/oru-r01.ts` | Modify | Remove `extractPatientId()`; replace call site in `handlePatient()` with `resolvePatientId()`; add `resolvePatientId: PatientIdResolver` parameter to `handlePatient()` and `convertORU_R01()` instead of `mpiClient: MpiClient`; update config access to `config.messages["ORU-R01"]`; `resolvePatientId` has a lazy default in `convertORU_R01` that mirrors `converter.ts` wiring: `(ids) => selectPatientId(ids, hl7v2ToFhirConfig().identitySystem!.patient!.rules, new StubMpiClient())` — existing unit tests that omit the fourth argument continue to work without modification |
 | `src/v2-to-fhir/converter.ts` | Modify | Instantiate `StubMpiClient` once per `convertToFHIR()` call; load config via `hl7v2ToFhirConfig()`; create `resolvePatientId: PatientIdResolver` closure: `(ids) => selectPatientId(ids, config.identitySystem.patient.rules, mpiClient)`; pass `resolvePatientId` to `convertADT_A01`, `convertADT_A08`, and `convertORU_R01`; converters no longer receive `mpiClient` directly |
 | `src/v2-to-fhir/processor-service.ts` | Check | Review whether `processor-service.ts` calls `convertToFHIR` directly (via `converter.ts`) or the individual converter functions. If it calls `converter.ts`, no change needed there — `converter.ts` handles the instantiation. Confirm at implementation time. |
 | `config/hl7v2-to-fhir.json` | Modify | Add `identitySystem.patient.rules` array; move message configs under `messages` key |
-| `test/unit/v2-to-fhir/config.test.ts` | Modify | Migrate all fixture objects from flat `{ "ORU-R01": {...} }` shape to `{ identitySystem: { patient: { rules: [...] } }, messages: { "ORU-R01": {...} } }` shape. Update type assertions and navigation tests accordingly. The "unknown preprocessor ID throws startup error" test must continue to work after `validatePreprocessorIds` walks `config.messages`. Add test: `identitySystem.patient.rules` missing from JSON throws at startup (not runtime). Add test: MatchRule with neither authority nor type throws at startup. Add test: MpiLookupRule pix with no source throws at startup. |
+| `test/unit/v2-to-fhir/config.test.ts` | Modify | Migrate all fixture objects from flat `{ "ORU-R01": {...} }` shape to `{ identitySystem: { patient: { rules: [...] } }, messages: { "ORU-R01": {...} } }` shape. Update type assertions and navigation tests accordingly. The "unknown preprocessor ID throws startup error" test must continue to work after `validatePreprocessorIds` walks `config.messages`. Add test: `identitySystem.patient.rules` missing from JSON throws at startup (not runtime). Add test: MatchRule with neither `authority`, `type`, nor `any` throws at startup. |
 | `test/unit/v2-to-fhir/preprocessor.test.ts` | Modify | Migrate `configWithMshFallback` and `configWithoutPreprocess` constants from flat-record shape to new typed shape. All message-config access in test fixtures must change. |
+| `test/integration/v2-to-fhir/adt.integration.test.ts` | Extend | Add `describe("patient identity system", ...)` block for ADT_A01 identity tests (ASTRA UNIPAT in PID-2, cross-EHR matching, reprocessing idempotency) |
+| `test/integration/v2-to-fhir/oru-r01.integration.test.ts` | Extend | Add `describe("patient identity system", ...)` block for ORU_R01 identity tests (MEDTEX without UNIPAT falls to type-PE, no-match error propagation) |
+
+**Follow-up:** Create a ticket for segment-level preprocessors (framework extension: a preprocessor that fires once per segment with no field-presence gate). Include a sub-task to migrate `move-pid2-into-pid3` to segment-level once the framework supports it. The current PID-2 field registration is correct for now — PID-3 level would have a bug (gate fails if PID-3 is absent, which is exactly the ASTRA case), and PID-level is not supported without framework changes.
 
 ## Technical Details
 
@@ -162,7 +166,7 @@ export type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>;
 ```typescript
 // src/v2-to-fhir/id-generation.ts (additions)
 
-/** Match rule: select first CX where authority and/or type match. At least one must be specified. */
+/** Match rule: select first CX where authority and/or type match. At least one of authority, type, or any must be specified. */
 export type MatchRule = {
   /**
    * Matches the authority of a CX entry by checking CX.4.1 (HD Namespace ID) first,
@@ -181,11 +185,18 @@ export type MatchRule = {
    *
    * HL7 v2.8.2 requires at least one of CX.4, CX.9, CX.10 to be populated. All three are valid
    * authority sources and must be checked. CX entries with no authority in any of these three
-   * components are only eligible for type-only rules.
+   * components are only eligible for type-only rules or `{ any: true }` (if a prefix can be derived).
    */
   authority?: string; // matched against CX.4.1, then CX.9.1, then CX.10.1 (case-sensitive)
   type?: string;      // match CX.5 exactly
-  // Constraint: at least one of authority or type must be present (validated at config load time)
+  /**
+   * When true, matches the first CX with a non-empty CX.1 regardless of authority or type.
+   * ID prefix uses the type-only priority chain: CX.9.1 → CX.4.1 → CX.4.2 → CX.10.1 → raw CX.4 string.
+   * If no prefix can be derived (all authority components empty — bare CX), the CX is skipped
+   * and the next CX in the pool is tried. Intended as a last-resort fallback rule.
+   */
+  any?: true;
+  // Constraint: at least one of authority, type, or any must be present (validated at config load time)
 };
 
 /** MPI lookup rule: query external MPI using a source identifier from the pool. */
@@ -220,7 +231,12 @@ export type PatientIdResult =
  * Algorithm:
  * 1. Skip CX entries with no CX.1 value.
  * 2. For each rule in order:
- *    a. MatchRule { authority?, type? }:
+ *    a. MatchRule { authority?, type?, any? }:
+ *       - If rule.any is true:
+ *         Match the first CX with non-empty CX.1 regardless of authority or type.
+ *         Derive prefix using the type-only priority chain: CX.9.1 → CX.4.1 → CX.4.2 → CX.10.1 → raw CX.4 string.
+ *         If no prefix can be derived (all authority components empty — bare CX), skip this CX
+ *         and try the next CX in the pool. If no CX yields a prefix, skip to the next rule.
  *       - authority check (if rule.authority is set): check CX.4.1 → CX.9.1 (CWE.1) → CX.10.1 (CWE.1)
  *         in that order. The first non-empty component that equals rule.authority wins.
  *         Record WHICH component matched (cx4match / cx9match / cx10match) — used for ID prefix.
@@ -247,7 +263,7 @@ export type PatientIdResult =
  *       iii. status='found' → return { id: `${sanitize(target.authority)}-${sanitize(result.value)}` }
  *       iv.  status='not-found' → skip to next rule.
  *       v.   status='unavailable' → return { error: '...' } (hard error, NOT skip)
- * 3. No rule matched → return { error: 'No identifier priority rule matched ...' }
+ * 3. No rule matched (including empty identifier pool) → return { error: 'No identifier priority rule matched ...' }
  *
  * Authority component semantics (deliberate deviation from extractHDAuthority):
  *   - MATCHING: checks CX.4.1, then CX.9.1 (CWE.1 = Identifier), then CX.10.1 (CWE.1 = Identifier).
@@ -286,7 +302,7 @@ export type MessageTypeConfig = {
       "19"?: SegmentPreprocessorId[];
     };
     PID?: {
-      "2"?: SegmentPreprocessorId[];  // NEW: merge-pid2-into-pid3
+      "2"?: SegmentPreprocessorId[];  // NEW: move-pid2-into-pid3
       "3"?: SegmentPreprocessorId[];  // NEW: inject-authority-from-msh
     };
   };
@@ -298,7 +314,7 @@ export type MessageTypeConfig = {
 export type Hl7v2ToFhirConfig = {
   identitySystem?: {
     patient?: { rules: IdentifierPriorityRule[] };
-    encounter?: { rules: never[] }; // placeholder for future encounter identity rules
+    // Future: encounter?: { rules: IdentifierPriorityRule[] };
   };
   messages?: Record<string, MessageTypeConfig | undefined>;
 };
@@ -339,19 +355,14 @@ function validateIdentitySystemRules(config: Hl7v2ToFhirConfig): void {
   for (let i = 0; i < rules.length; i++) {
     const rule = rules[i];
     if ('mpiLookup' in rule) {
-      // MpiLookupRule validation
-      if (rule.mpiLookup.strategy === 'pix' && !rule.mpiLookup.source) {
-        throw new Error(
-          `Invalid identitySystem.patient.rules[${i}]: MpiLookupRule with strategy='pix' ` +
-          `must have a "source" array to select the source identifier.`
-        );
-      }
+      // MpiLookupRule — no field-level validation here; MPI-specific validation
+      // (e.g., pix requires source) deferred to the MPI implementation ticket.
     } else {
-      // MatchRule validation
-      if (!rule.authority && !rule.type) {
+      // MatchRule validation: at least one of authority, type, or any must be set
+      if (!rule.authority && !rule.type && !rule.any) {
         throw new Error(
           `Invalid identitySystem.patient.rules[${i}]: MatchRule must specify at least one of: ` +
-          `"authority" (matched against CX.4.1, CX.9.1, or CX.10.1) or "type" (matches CX.5).`
+          `"authority" (matched against CX.4.1, CX.9.1, or CX.10.1), "type" (matches CX.5), or "any" (true).`
         );
       }
     }
@@ -381,7 +392,8 @@ This ensures any missing, empty, or malformed `identitySystem.patient.rules` is 
         { "authority": "UNIPAT" },
         { "type": "PE" },
         { "authority": "ST01" },
-        { "type": "MR" }
+        { "type": "MR" },
+        { "any": true }
       ]
     }
   },
@@ -389,17 +401,25 @@ This ensures any missing, empty, or malformed `identitySystem.patient.rules` is 
     "ADT-A01": {
       "preprocess": {
         "PID": {
-          "2": ["merge-pid2-into-pid3"],
+          "2": ["move-pid2-into-pid3"],
           "3": ["inject-authority-from-msh"]
         },
         "PV1": { "19": ["fix-authority-with-msh"] }
       },
       "converter": { "PV1": { "required": true } }
     },
+    "ADT-A08": {
+      "preprocess": {
+        "PID": {
+          "2": ["move-pid2-into-pid3"],
+          "3": ["inject-authority-from-msh"]
+        }
+      }
+    },
     "ORU-R01": {
       "preprocess": {
         "PID": {
-          "2": ["merge-pid2-into-pid3"],
+          "2": ["move-pid2-into-pid3"],
           "3": ["inject-authority-from-msh"]
         },
         "PV1": { "19": ["fix-authority-with-msh"] }
@@ -416,7 +436,7 @@ This ensures any missing, empty, or malformed `identitySystem.patient.rules` is 
 // src/v2-to-fhir/preprocessor-registry.ts (new additions)
 
 /**
- * merge-pid2-into-pid3: Fired on PID field 2.
+ * move-pid2-into-pid3: Fired on PID field 2.
  * If PID-2 has a non-empty CX.1 value, appends the PID-2 CX as a new repeat in PID-3.
  * Clears PID-2 after migration. Never overwrites existing PID-3 content.
  * No-op if PID-2 is empty (empty CX.1 value).
@@ -438,7 +458,7 @@ This ensures any missing, empty, or malformed `identitySystem.patient.rules` is 
  * true (non-empty string), but the preprocessor should still treat it as a no-op
  * because there is no CX.1 value to migrate.
  */
-function mergePid2IntoPid3(
+function movePid2IntoPid3(
   context: PreprocessorContext,
   segment: HL7v2Segment,
 ): void { /* DESIGN PROTOTYPE */ }
@@ -470,15 +490,17 @@ function injectAuthorityFromMsh(
 | MPI rule triggered, MPI unavailable (timeout/network) | Hard error: `{ error: "MPI unavailable: ..." }`. Does NOT fall through to next rule. Existing retry mechanism handles reprocessing when MPI recovers. |
 | MPI rule triggered, MPI returns no match | Skip to next rule. Patient not yet registered in MPI — expected when MPI coverage is incomplete. |
 | MPI rule, no source identifier found in pool | Skip to next rule. Source identifiers (configured via `source` match rules) are absent from this message — rule is not applicable. |
-| PID-3 empty after preprocessing | Error before selectPatientId is called: "PID-3 is required but missing after preprocessing". |
+| PID-3 empty after preprocessing | `selectPatientId` receives an empty pool, all rules are exhausted, and returns `{ error: 'No identifier priority rule matched for identifiers: []' }`. No separate guard in converters — `selectPatientId` owns this case via natural rule exhaustion. |
 | CX entry with empty CX.1 value | Skipped silently — not counted as a candidate for any rule. A rule matching authority/type on an empty-value CX is not a match. |
-| CX entry with value but no authority after preprocessing | Eligible for type-only rules. Not eligible for authority rules or MPI source selection (no authority to map to MPI system). |
+| CX entry with value but no authority after preprocessing | Silently skipped by authority rules and `{ any: true }` (no prefix derivable from empty authority components). Eligible for type-only rules only (type check matches CX.5 regardless of authority). No hard error on individual bare CX entries. If all pool identifiers are bare and unresolvable, "no rules matched" fires as the final error. Operators configure `inject-authority-from-msh` to fix bare identifiers before conversion. |
 | Authority or value contains characters outside `[a-z0-9-]` | Sanitized via `s.toLowerCase().replace(/[^a-z0-9-]/g, "-")` — same pattern as Encounter.id. Both authority and value are sanitized independently. E.g., `&&ISO` → `--iso`, `ST01W` → `st01w`. |
 | CX with only CX.4.2 (Universal ID / OID), no CX.4.1 (namespace), and no CX.9/CX.10 | MatchRule `{ authority: "..." }` will not match — matching checks CX.4.1, CX.9.1, CX.10.1, all of which are empty. The CX is still eligible for type-only rules. For ID formation under a type-only rule, the priority chain (CX.9.1 → CX.4.1 → CX.4.2 → CX.10.1 → raw CX.4 string) falls through to CX.4.2 as the first non-empty value. Config entries must use the .1 identifier subcomponents, not OIDs. If a sender provides identifiers only via OID in CX.4.2, use a type-only rule and accept the OID as the authority prefix in the Patient.id. |
 | MSH has no namespace (only Universal ID or empty) | `inject-authority-from-msh` is a no-op — bare PID-3 CX entries remain without authority after this preprocessor. They are still eligible for type-only rules. The same limitation applies to `fix-authority-with-msh` for PV1-19 (documented in that preprocessor's TODO comment). |
 | `&&ISO` authority after sanitization produces leading dashes (`--iso`) | The FHIR R4 ID format allows `[A-Za-z0-9\-\.]{1,64}` — leading hyphens are technically valid. Aidbox does not additionally restrict the ID format beyond the FHIR spec. The `--iso-m000000721` result is accepted by Aidbox. This is a known consequence of sanitizing `&&ISO` (namespace empty, universal ID empty, type "ISO") where CX.4.1 is empty, CX.4.2 is empty, and the raw CX.4 string `&&ISO` sanitizes to `--iso`. |
-| MatchRule specifies neither authority nor type | Validated at config load time via `validateIdentitySystemRules()`: throws `Error("MatchRule must specify at least one of: authority, type")`. |
-| MpiLookupRule with strategy='pix' but no `source` rules | Config validation error at load time via `validateIdentitySystemRules()`: `source` is required for pix strategy. |
+| MatchRule specifies neither authority, type, nor any | Validated at config load time via `validateIdentitySystemRules()`: throws `Error("MatchRule must specify at least one of: authority, type, or any")`. |
+| `{ any: true }` rule matches first CX with derivable prefix | `{ any: true }` iterates CX pool; first CX with non-empty CX.1 AND a derivable authority prefix (via type-only priority chain) wins. Returns `{ id: "{sanitize(prefix)}-{sanitize(CX.1)}" }`. |
+| `{ any: true }` rule skips bare CX (no prefix derivable) | CX with non-empty CX.1 but CX.4/CX.9/CX.10 all empty — no prefix can be derived. `{ any: true }` skips this CX and tries the next CX in the pool. |
+| `{ any: true }` rule: all CX entries are bare — falls through to next rule | All CX entries have CX.1 values but no authority components. `{ any: true }` cannot derive a prefix for any, skips to the next rule. If no further rules exist, "no rules matched" fires. |
 | `identitySystem.patient.rules` key missing entirely from config JSON | `validateIdentitySystemRules()` detects `!Array.isArray(config.identitySystem?.patient?.rules)` at startup and throws a descriptive error. The loader does not crash with a cryptic `TypeError` at runtime — the failure is caught at startup before the cache is populated. |
 | Two CX entries both match a rule | First matching CX in the pool order wins. Pool order is the order of PID-3 repeats after preprocessing. |
 | Rule list is empty | `validateIdentitySystemRules()` detects empty array at config load time and throws `Error("identitySystem.patient.rules must not be empty")`. `selectPatientId` is never called with an empty rule list. |
@@ -491,7 +513,7 @@ function injectAuthorityFromMsh(
 
 | Test Case | Type | Description |
 |-----------|------|-------------|
-| ASTRA message: UNIPAT in PID-2, ST01W/MR + ST01/PI in PID-3 — after merge-pid2-into-pid3, rule `{authority: "UNIPAT"}` matches via CX.4.1 | Unit | CX has CX.4.1="UNIPAT"; matching checks CX.4.1 first, finds match; prefix = "UNIPAT" (CX.4 hierarchy). selectPatientId returns `unipat-11195429` |
+| ASTRA message: UNIPAT in PID-2, ST01W/MR + ST01/PI in PID-3 — after move-pid2-into-pid3, rule `{authority: "UNIPAT"}` matches via CX.4.1 | Unit | CX has CX.4.1="UNIPAT"; matching checks CX.4.1 first, finds match; prefix = "UNIPAT" (CX.4 hierarchy). selectPatientId returns `unipat-11195429` |
 | MEDTEX message: UNIPAT directly in PID-3 — rule `{authority: "UNIPAT"}` matches via CX.4.1 without preprocessing | Unit | CX has CX.4.1="UNIPAT"; CX.4.1 check matches immediately. selectPatientId returns `unipat-11216032` |
 | MEDTEX without UNIPAT: BMH/PE in PID-3, rule `{type: "PE"}` matches as second rule — type-only prefix uses CX.4.1 | Unit | CX has CX.5="PE", CX.4.1="BMH", CX.9.1 empty. Type-only prefix chain: CX.9.1 empty → CX.4.1="BMH" wins. selectPatientId returns `bmh-11220762` |
 | Xpan lab: `&&ISO`/MR, `&&ISO`/PI, `&&ISO`/AN — rule `{type: "MR"}` matches at position 4, type-only prefix falls to raw CX.4 string | Unit | CX has CX.5="MR", CX.9.1 empty, CX.4.1 empty, CX.4.2 empty, CX.10.1 empty. Type-only prefix chain exhausts CX.9.1/CX.4.1/CX.4.2/CX.10.1, falls back to raw CX.4 string `&&ISO` → sanitized to `--iso`. selectPatientId returns `--iso-m000000721`. |
@@ -510,23 +532,25 @@ function injectAuthorityFromMsh(
 | MPI rule (pix strategy): no source identifier in pool — skip | Unit | selectPatientId skips MPI rule, evaluates next rule |
 | MpiLookupRule (pix strategy): source identifier selected via CX.9.1 — MPI finds result | Unit | Rule has `source: [{ authority: "STATEX" }]`; pool has CX with CX.4.1="" and CX.9.1="STATEX"; MPI crossReference called with correct source; returns `unipat-19624139` |
 | **Note — 'match' strategy tests:** Tests for `strategy='match'` in `selectPatientId` are deferred to the MPI implementation ticket. The stub always returns 'not-found' for `match()`, which means the 'match' flow cannot be meaningfully exercised until a real MpiClient is available. The current signature `(identifiers: CX[], rules, mpiClient)` does not provide demographics — this is a known limitation documented in Key Decisions. The MPI implementation ticket will determine whether `selectPatientId` gains a `demographics?: PatientDemographics` parameter or whether demographics extraction is done inside the real MpiClient via a different mechanism. | — | Deferred |
+| `{ any: true }` matches first CX with derivable prefix | Unit | Pool has CX1 (CX.4.1="BMH", CX.1="123") and CX2 (CX.4.1="ST01", CX.1="456"). `{ any: true }` matches CX1 first; type-only prefix chain: CX.9.1 empty → CX.4.1="BMH" wins. Returns `bmh-123`. |
+| `{ any: true }` skips bare CX, matches CX with authority | Unit | Pool has bare CX (CX.1="999", no CX.4/9/10) then CX with CX.4.1="FOO" and CX.1="888". `{ any: true }` skips bare CX (no prefix), matches second CX. Returns `foo-888`. |
+| `{ any: true }` with all bare CX — falls through to next rule | Unit | Pool has only bare CX entries. `{ any: true }` cannot derive prefix for any. If next rule is `{ type: "MR" }` and a bare CX has CX.5="MR", that rule catches it (type-only rules are eligible for bare CX). |
 | Rule list empty | Unit | Config load throws validation error via `validateIdentitySystemRules()` (does not reach selectPatientId) |
-| MatchRule with neither authority nor type | Unit | Config load throws validation error via `validateIdentitySystemRules()` |
-| MpiLookupRule with strategy='pix' and no source array | Unit | Config load throws validation error via `validateIdentitySystemRules()` |
+| MatchRule with neither authority, type, nor any | Unit | Config load throws validation error via `validateIdentitySystemRules()` |
 | `identitySystem.patient.rules` key absent from JSON | Unit | Config load throws descriptive error at startup (not a runtime crash in selectPatientId) |
 | inject-authority-from-msh: bare CX `12345^^^^MR` gets authority from MSH | Unit | CX.4.1 set to derived MSH namespace; CX.1, CX.5 unchanged |
 | inject-authority-from-msh: CX already has CX.4 — not overridden | Unit | Existing CX.4 preserved |
-| merge-pid2-into-pid3: PID-2 CX moved to PID-3, PID-2 cleared | Unit | PID-3 gains new repeat with PID-2 CX data; PID-2 is empty after |
-| merge-pid2-into-pid3: PID-2 empty — no-op | Unit | PID-3 unchanged |
+| move-pid2-into-pid3: PID-2 CX moved to PID-3, PID-2 cleared | Unit | PID-3 gains new repeat with PID-2 CX data; PID-2 is empty after |
+| move-pid2-into-pid3: PID-2 empty — no-op | Unit | PID-3 unchanged |
 | Config load: new JSON shape with `identitySystem.patient.rules` + `messages` | Unit | Config loads without error; `config.identitySystem.patient.rules` is array; `config.messages["ADT-A01"]` accessible |
 | Config load: unknown preprocessor ID in PID rules | Unit | Throws with descriptive error at load time |
 | **Migrated: config.test.ts** — valid config returns typed object with new shape | Unit | `configWithMshFallback` fixture updated to `{ identitySystem: { patient: { rules: [{authority: "UNIPAT"}] } }, messages: { "ORU-R01": {...}, "ADT-A01": {...} } }`; `config["ORU-R01"]` access changes to `config.messages["ORU-R01"]`; matching semantics in rule description updated to reflect CX.4.1 → CX.9.1 → CX.10.1 check order |
 | **Migrated: config.test.ts** — unknown preprocessor ID in messages[...] throws startup error | Unit | Validates that `validatePreprocessorIds` now walks `config.messages` (not `Object.entries(config)`) |
 | **Migrated: preprocessor.test.ts** — `configWithMshFallback` and `configWithoutPreprocess` constants use new shape | Unit | All `preprocessMessage(parsed, config)` calls in existing tests pass with restructured config |
-| ADT-A01 end-to-end: ASTRA message with UNIPAT in PID-2 produces `unipat-{value}` Patient.id | Integration | Full message through converter produces Patient with correct id |
-| ORU-R01 end-to-end: MEDTEX without UNIPAT falls back to type-PE rule | Integration | Full message produces Patient with `bmh-{value}` id |
-| Reprocessing idempotency: same message processed twice produces same Patient.id | Integration | Second processing upserts, not duplicates |
-| No-match error propagates to IncomingHL7v2Message status | Integration | Message gets status=error with appropriate error message |
+| ADT-A01 end-to-end: ASTRA message with UNIPAT in PID-2 produces `unipat-{value}` Patient.id | Integration | In `test/integration/v2-to-fhir/adt.integration.test.ts` inside `describe("patient identity system", ...)`. Full message through converter produces Patient with correct id |
+| ORU-R01 end-to-end: MEDTEX without UNIPAT falls back to type-PE rule | Integration | In `test/integration/v2-to-fhir/oru-r01.integration.test.ts` inside `describe("patient identity system", ...)`. Full message produces Patient with `bmh-{value}` id |
+| Reprocessing idempotency: same message processed twice produces same Patient.id | Integration | In existing integration test file. Second processing upserts, not duplicates |
+| No-match error propagates to IncomingHL7v2Message status | Integration | In existing integration test file. Message gets status=error with appropriate error message |
 
 # Context
 
@@ -564,12 +588,14 @@ Current `config/hl7v2-to-fhir.json`:
         { "authority": "UNIPAT" },
         { "type": "PE" },
         { "authority": "ST01" },
-        { "type": "MR" }
+        { "type": "MR" },
+        { "any": true }
       ]
     }
   },
   "messages": {
     "ADT-A01": { "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } }, "converter": { "PV1": { "required": true } } },
+    "ADT-A08": { "preprocess": { "PID": { "2": ["move-pid2-into-pid3"], "3": ["inject-authority-from-msh"] } } },
     "ORU-R01": { "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } }, "converter": { "PV1": { "required": false } } }
   }
 }
@@ -581,11 +607,11 @@ Registry at `src/v2-to-fhir/preprocessor-registry.ts`:
 - Rules registered by kebab-case ID in `SEGMENT_PREPROCESSORS`
 - Each receives `(context: PreprocessorContext, segment: HL7v2Segment) => void`
 - Modify segment in place on `HL7v2Segment.fields`
-- Config key is segment+field: `{ "PID": { "2": ["merge-pid2-into-pid3"] } }`
+- Config key is segment+field: `{ "PID": { "2": ["move-pid2-into-pid3"] } }`
 - `SegmentPreprocessorId` is strictly typed to registered IDs
 
 New preprocessors needed:
-- `"merge-pid2-into-pid3"`: fired on PID field 2; moves PID-2 CX into PID-3 repeats
+- `"move-pid2-into-pid3"`: fired on PID field 2; moves PID-2 CX into PID-3 repeats
 - `"inject-authority-from-msh"`: fired on PID field 3; injects MSH authority into bare CX entries
 
 `MessageTypeConfig.preprocess` type currently only has `PV1."19"` — needs `PID."2"` and `PID."3"` added.
@@ -637,29 +663,29 @@ A: `identitySystem.patient.rules` + messages record:
 
 **Summary:** 7 user feedback items from round 3 are present in the "User Feedback" section but have NOT been incorporated into the actual design sections (Problem Statement, Proposed Approach, Key Decisions, Technical Details, Edge Cases, Test Cases, Affected Components). The design body still reflects the pre-feedback state. All 7 items are blockers because they require design section changes before implementation can proceed.
 
-Additionally, the prototype files still contain design rationale in comments (violating feedback item 5). Several prototypes use the old name `merge-pid2-into-pid3` (violating feedback item 1).
+Additionally, the prototype files still contain design rationale in comments (violating feedback item 5). Several prototypes use the old name `move-pid2-into-pid3` (violating feedback item 1).
 
 ---
 
-#### BLOCKER 1: `merge-pid2-into-pid3` not renamed to `move-pid2-into-pid3` (feedback #1)
+#### BLOCKER 1: `move-pid2-into-pid3` not renamed to `move-pid2-into-pid3` (feedback #1)
 
 **Unaddressed in design sections:**
-- Proposed Approach (line 37): `"merge-pid2-into-pid3"` — still uses old name
-- Affected Components table (line 83): `"merge-pid2-into-pid3"` in preprocessor-registry.ts description
-- Technical Details, Config JSON example (line 392): `"2": ["merge-pid2-into-pid3"]`
-- Technical Details, preprocessor signature (line 441): `mergePid2IntoPid3`
-- Edge Cases table: "merge-pid2-into-pid3" references (lines 519, 520)
-- Test Cases table: "merge-pid2-into-pid3" references (lines 519, 520, 525)
+- Proposed Approach (line 37): `"move-pid2-into-pid3"` — still uses old name
+- Affected Components table (line 83): `"move-pid2-into-pid3"` in preprocessor-registry.ts description
+- Technical Details, Config JSON example (line 392): `"2": ["move-pid2-into-pid3"]`
+- Technical Details, preprocessor signature (line 441): `movePid2IntoPid3`
+- Edge Cases table: "move-pid2-into-pid3" references (lines 519, 520)
+- Test Cases table: "move-pid2-into-pid3" references (lines 519, 520, 525)
 - Context > Preprocessor infrastructure (lines 586-589): old name
 
 **Unaddressed in prototypes:**
-- `config/hl7v2-to-fhir.json` (line 18): `"2": ["merge-pid2-into-pid3"]` in `_DESIGN_PROTOTYPE_new_shape`
-- `src/v2-to-fhir/preprocessor-registry.ts` (line 25): `"merge-pid2-into-pid3"` in commented registration
-- `src/v2-to-fhir/preprocessor-registry.ts` (lines 125-157): function named `mergePid2IntoPid3`, all doc references
+- `config/hl7v2-to-fhir.json` (line 18): `"2": ["move-pid2-into-pid3"]` in `_DESIGN_PROTOTYPE_new_shape`
+- `src/v2-to-fhir/preprocessor-registry.ts` (line 25): `"move-pid2-into-pid3"` in commented registration
+- `src/v2-to-fhir/preprocessor-registry.ts` (lines 125-157): function named `movePid2IntoPid3`, all doc references
 
 **Also missing:** The feedback says to create a new ticket for segment-level preprocessors with a sub-task to migrate `move-pid2-into-pid3` to segment-level once supported. This should be noted as a follow-up action in the design, or referenced as an explicit out-of-scope item.
 
-**Resolution:** Rename all occurrences of `merge-pid2-into-pid3` to `move-pid2-into-pid3` throughout the design document and all prototype files. Add a note in Affected Components or a "Follow-up" section about the segment-level preprocessor ticket.
+**Resolution:** Rename all occurrences of `move-pid2-into-pid3` to `move-pid2-into-pid3` throughout the design document and all prototype files. Add a note in Affected Components or a "Follow-up" section about the segment-level preprocessor ticket.
 
 ---
 
@@ -771,7 +797,7 @@ All 7 user feedback items must be incorporated into the design body sections (no
 
 ### User review — 2026-02-19 (round 3)
 
-**1. Rename `merge-pid2-into-pid3` → `move-pid2-into-pid3`**
+**1. Rename `move-pid2-into-pid3` → `move-pid2-into-pid3`**
 The preprocessor removes the identifier from PID-2 (not just copies), so "move" is accurate. Name must be updated in all locations: preprocessor-registry.ts, design doc, config/hl7v2-to-fhir.json prototype, and all references.
 Create a new ticket for segment-level preprocessors (framework extension: a preprocessor that fires once per segment with no field-presence gate). Include a sub-task to migrate `move-pid2-into-pid3` to segment-level once the framework supports it.
 The current PID-2 field registration is confirmed correct for now — PID-3 level would have a bug (gate fails if PID-3 is absent, which is exactly the ASTRA case), and PID-level is not supported without framework changes.

@@ -114,25 +114,8 @@ export async function defaultEncounterLookup(
  * Extract patient ID from PID segment.
  * Tries PID-2 first, then falls back to PID-3.1 (first identifier).
  *
- * Design note: PID-2 was deprecated in HL7 v2.4+ in favor of PID-3, but many
- * legacy systems still use PID-2. We check PID-2 first for backward compatibility
- * with older message formats.
- *
  * DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
- * This entire function will be removed and replaced with resolvePatientId() call.
- * The call site in handlePatient() (line ~554) becomes:
- *
- *   const patientIdResult = await resolvePatientId(
- *     pid.$3_identifier ?? [],       // PID-3 after preprocessing (merge-pid2-into-pid3 already ran)
- *   );                               // resolvePatientId injected from converter.ts (no algorithm knowledge here)
- *   if ('error' in patientIdResult) {
- *     throw new Error(`Patient ID selection failed: ${patientIdResult.error}`);
- *   }
- *   const patientId = patientIdResult.id;
- *
- * handlePatient() signature will gain `resolvePatientId: PatientIdResolver` (instead of mpiClient: MpiClient).
- * Config access changes from config["ORU-R01"] to config.messages["ORU-R01"].
- * Import: import { type PatientIdResolver } from "../id-generation";
+ * This function will be removed; replaced with resolvePatientId() call in handlePatient().
  * END DESIGN PROTOTYPE
  */
 function extractPatientId(pid: PID): string {
@@ -564,41 +547,15 @@ function createConditionalPatientEntry(patient: Patient): BundleEntry {
  * non-existent patient arrive simultaneously.
  */
 // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// handlePatient() signature will gain `resolvePatientId: PatientIdResolver` (instead of mpiClient: MpiClient):
-//   async function handlePatient(
-//     pid: PID,
-//     baseMeta: Meta,
-//     lookupPatient: PatientLookupFn,
-//     resolvePatientId: PatientIdResolver,  // NEW: injected resolver (no algorithm knowledge here)
-//   ): Promise<PatientHandlingResult>
-//
-// convertORU_R01 public signature will also gain resolvePatientId (last param):
-//   export async function convertORU_R01(
-//     parsed: HL7v2Message,
-//     lookupPatient: PatientLookupFn = defaultPatientLookup,
-//     lookupEncounter: EncounterLookupFn = defaultEncounterLookup,
-//     resolvePatientId: PatientIdResolver = (ids) =>
-//       selectPatientId(ids, hl7v2ToFhirConfig().identitySystem!.patient!.rules, new StubMpiClient()),
-//   ): Promise<ConversionResult>
-//
-// The default is a lazy closure that mirrors exactly what converter.ts does when it wires the
-// resolver. This makes resolvePatientId truly optional — existing unit tests that call
-//   convertORU_R01(parsed, mockLookupPatient, mockLookupEncounter)
-// continue to work without modification. A required param after two optional params is invalid
-// TypeScript; the lazy default is the minimal fix that preserves the parameter ordering.
-//
-// resolvePatientId is passed from convertORU_R01 → handlePatient → resolvePatientId(ids).
-// converter.ts creates the resolver as a closure and passes it to convertORU_R01.
-// handleEncounter does not need resolvePatientId — encounter identity is via PV1-19, not PID.
+// handlePatient() and convertORU_R01() gain resolvePatientId: PatientIdResolver parameter.
+// convertORU_R01 has a lazy default so existing unit tests continue to work.
 // END DESIGN PROTOTYPE
 async function handlePatient(
   pid: PID,
   baseMeta: Meta,
   lookupPatient: PatientLookupFn,
 ): Promise<PatientHandlingResult> {
-  // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-  // Replace this call with selectPatientId() — see extractPatientId() JSDoc above for details.
-  // END DESIGN PROTOTYPE
+  // DESIGN PROTOTYPE: Replace with resolvePatientId(pid.$3_identifier ?? [])
   const patientId = extractPatientId(pid);
   const patientRef = { reference: `Patient/${patientId}` } as Reference<"Patient">;
 

@@ -286,16 +286,8 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  * IN1 - Insurance (0..*)
  */
 // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// convertADT_A01 signature gains resolvePatientId (injected from converter.ts):
-//   export async function convertADT_A01(
-//     parsed: HL7v2Message,
-//     resolvePatientId: PatientIdResolver,  // NEW — always passed by converter.ts
-//   ): Promise<ConversionResult>
-//
-// resolvePatientId is called at the Patient.id assignment site below (see inner DESIGN PROTOTYPE block).
-// converter.ts creates the resolver as a closure over config.identitySystem.patient.rules + StubMpiClient.
+// Signature gains resolvePatientId: PatientIdResolver parameter.
 // Import: import { type PatientIdResolver } from "../id-generation";
-// END DESIGN PROTOTYPE
 export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionResult> {
   // =========================================================================
   // Extract MSH
@@ -345,25 +337,8 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
     patient.id = pid.$3_identifier[0].$1_value;
   }
   // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-  // Replace the ad-hoc block above (lines 331-335) with:
-  //
-  //   const patientIdResult = await resolvePatientId(
-  //     pid.$3_identifier ?? [],       // PID-3 after preprocessing (merge-pid2-into-pid3 already ran)
-  //   );                               // resolvePatientId injected from converter.ts (no algorithm knowledge here)
-  //   if ('error' in patientIdResult) {
-  //     throw new Error(`Patient ID selection failed: ${patientIdResult.error}`);
-  //   }
-  //   patient.id = patientIdResult.id;
-  //
-  // convertADT_A01 signature gains: resolvePatientId: PatientIdResolver (instead of mpiClient: MpiClient)
-  //   export async function convertADT_A01(
-  //     parsed: HL7v2Message,
-  //     resolvePatientId: PatientIdResolver,  // NEW
-  //   ): Promise<ConversionResult>
-  //
-  // Import: import { type PatientIdResolver } from "../id-generation";
-  //
-  // Also update config access below from config["ADT-A01"] to config.messages["ADT-A01"].
+  // Replace the ad-hoc block above with resolvePatientId(pid.$3_identifier ?? []).
+  // Update config access: config["ADT-A01"] -> config.messages["ADT-A01"].
   // END DESIGN PROTOTYPE
 
   // Add meta tags

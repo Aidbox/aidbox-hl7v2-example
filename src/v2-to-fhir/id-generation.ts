@@ -20,178 +20,57 @@
 import type { CX, HD, CWE } from "../hl7v2/generated/fields";
 import type { Encounter } from "../fhir/hl7-fhir-r4-core";
 
-// =============================================================================
 // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-//
-// Patient ID priority-list algorithm for cross-EHR identity resolution.
-// Replaces ad-hoc PID-2/PID-3[0] logic in adt-a01.ts and oru-r01.ts.
-//
-// Full spec: ai/tickets/awie_case/2026-02-19-patient-encounter-identity.md
-// MpiClient and StubMpiClient: src/v2-to-fhir/mpi-client.ts
-// =============================================================================
-
-// DESIGN PROTOTYPE: Import MpiClient from mpi-client.ts when implemented
 // import type { MpiClient } from "./mpi-client";
 
-/**
- * DESIGN PROTOTYPE: PatientIdResolver
- *
- * Opaque resolver function injected into converters via converter.ts.
- * Converters call resolvePatientId(pid.$3_identifier ?? []) without knowing
- * the algorithm, rule list, or MPI client.
- *
- * Created by converter.ts as a closure:
- *   const resolvePatientId: PatientIdResolver = (ids) =>
- *     selectPatientId(ids, config.identitySystem.patient.rules, mpiClient);
- *
- * Pattern matches PatientLookupFn / EncounterLookupFn already used in oru-r01.ts.
- */
-// DESIGN PROTOTYPE:
+/** Resolves Patient.id from a pool of CX identifiers. Injected into converters by converter.ts. */
 // export type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>;
 
 /**
- * DESIGN PROTOTYPE: MatchRule
- *
- * Selects the first CX from the identifier pool where the authority and/or type match.
- * At least one of authority or type must be present (validated at config load time).
- *
- * MATCHING (when rule.authority is set):
- *   Check CX.4.1 (HD Namespace ID) first, then CX.9.1 (CWE.1 = Assigning Jurisdiction Identifier),
- *   then CX.10.1 (CWE.1 = Assigning Agency/Department Identifier). The first non-empty component
- *   that equals rule.authority wins. Record which component matched for ID prefix derivation.
- *   HL7 v2.8.2 requires at least one of CX.4/CX.9/CX.10 — all three are valid authority sources.
- *   Config entries are human namespace strings ("UNIPAT", "ST01"), not OIDs. The .1 subcomponents
- *   (HD.1 Namespace ID / CWE.1 Identifier) carry these short strings.
- *
- * ID FORMATION (split by match type):
- *   AUTHORITY-RULE MATCH (rule.authority matched a specific component):
- *     - Matched via CX.4.1 → prefix from CX.4 hierarchy: CX.4.1 → CX.4.2 → raw CX.4 string
- *     - Matched via CX.9.1 → prefix = CX.9.1
- *     - Matched via CX.10.1 → prefix = CX.10.1
- *   TYPE-ONLY MATCH (rule has type but no authority):
- *     Priority chain: CX.9.1 → CX.4.1 → CX.4.2 → CX.10.1 → raw CX.4 string
- *     (CX.9 preferred: geo-political jurisdiction is the broadest/most stable authority)
- *
- * This deliberately deviates from extractHDAuthority (used for Encounter.id via buildEncounterIdentifier),
- * which prefers CX.4.2 (Universal ID) for FHIR system URI selection. selectPatientId picks the
- * short namespace prefix for a resource ID, not a URI.
+ * Selects first CX where authority and/or type match.
+ * When `any` is true, matches first CX with non-empty CX.1 and derivable prefix.
+ * At least one of authority, type, or any must be set (validated at config load time).
  */
-// DESIGN PROTOTYPE:
 // export type MatchRule = {
-//   authority?: string; // matched against CX.4.1, then CX.9.1, then CX.10.1 (case-sensitive)
-//   type?: string;      // match CX.5 exactly
+//   authority?: string;
+//   type?: string;
+//   any?: true;
 // };
 
-/**
- * DESIGN PROTOTYPE: MpiLookupRule
- *
- * Queries an external MPI using a source identifier from the pool.
- * Participates in the same ordered fallback chain as MatchRule.
- *
- * Behavior:
- *   - No source identifier found in pool → skip to next rule
- *   - MPI returns found → use returned value as Patient.id
- *   - MPI returns not-found → skip to next rule
- *   - MPI unavailable → HARD ERROR, does NOT fall through
- */
-// DESIGN PROTOTYPE:
+/** Queries external MPI using a source identifier from the pool. */
 // export type MpiLookupRule = {
 //   mpiLookup: {
-//     endpoint: {
-//       baseUrl: string;
-//       timeout?: number; // ms, default 5000
-//     };
+//     endpoint: { baseUrl: string; timeout?: number };
 //     strategy: 'pix' | 'match';
-//     source?: MatchRule[];    // For 'pix': which identifier to send to MPI
-//     target: {
-//       system: string;        // FHIR system URI for PIXm targetSystem param
-//       authority: string;     // HL7v2 authority for the resulting Patient.id
-//       type?: string;
-//     };
-//     matchThreshold?: number; // For 'match' strategy, default 0.95
+//     source?: MatchRule[];
+//     target: { system: string; authority: string; type?: string };
+//     matchThreshold?: number;
 //   };
 // };
 
-/**
- * DESIGN PROTOTYPE: IdentifierPriorityRule
- * Union of the two rule types. Config is an ordered array of these.
- */
-// DESIGN PROTOTYPE:
 // export type IdentifierPriorityRule = MatchRule | MpiLookupRule;
 
-/**
- * DESIGN PROTOTYPE: PatientIdResult
- * Discriminated union result from selectPatientId.
- */
-// DESIGN PROTOTYPE:
 // export type PatientIdResult =
 //   | { id: string }
 //   | { error: string };
 
 /**
- * DESIGN PROTOTYPE: selectPatientId
+ * Select Patient.id from CX identifiers using ordered priority rules.
+ * Returns `{ id }` on match or `{ error }` when no rule matches or MPI is unavailable.
  *
- * Selects Patient.id from a pool of CX identifiers (PID-3 after preprocessing)
- * using an ordered list of IdentifierPriorityRule entries.
- *
- * Algorithm (executed top-to-bottom through rules):
- *   1. Filter out CX entries with empty CX.1 — they are never candidates.
- *   2. For each rule:
- *      a. MatchRule { authority?, type? }:
- *         - authority check (if rule.authority is set):
- *             Check CX.4.1 first; if non-empty and equals rule.authority → CX.4 matched.
- *             Else check CX.9.1 (CWE.1); if non-empty and equals rule.authority → CX.9 matched.
- *             Else check CX.10.1 (CWE.1); if non-empty and equals rule.authority → CX.10 matched.
- *             If none match → this CX does not satisfy the authority check.
- *         - type check: CX.5 === rule.type (if set)
- *         - Both must pass when both are set.
- *         - On match — derive authority prefix (split by match type):
- *
- *             AUTHORITY-RULE MATCH (rule.authority set, matched a component):
- *               Matched via CX.4.1 → CX.4 hierarchy: CX.4.1 → CX.4.2 → raw CX.4 string
- *               Matched via CX.9.1 → prefix = CX.9.1
- *               Matched via CX.10.1 → prefix = CX.10.1
- *
- *             TYPE-ONLY MATCH (no rule.authority):
- *               Priority chain: CX.9.1 → CX.4.1 → CX.4.2 → CX.10.1 → raw CX.4 string
- *               (CX.9 preferred: geo-political jurisdiction is broadest/most stable authority)
- *
- *             return { id: `${sanitize(authorityPrefix)}-${sanitize(cx1Value)}` }
- *         - No match: continue to next rule.
- *      b. MpiLookupRule { mpiLookup }:
- *         - Find source CX using mpiLookup.source match rules (same CX.4.1 → CX.9.1 → CX.10.1 matching)
- *         - No source: skip to next rule (fallthrough)
- *         - Query mpiClient.crossReference (pix) or mpiClient.match (match strategy)
- *         - status='found': return { id: `${sanitize(target.authority)}-${sanitize(result.value)}` }
- *         - status='not-found': skip to next rule (fallthrough)
- *         - status='unavailable': return { error: `MPI unavailable: ${result.error}` } (HARD ERROR)
- *   3. All rules exhausted without match: return { error: 'No identifier priority rule matched ...' }
- *
- * Authority component semantics — deliberately different from extractHDAuthority:
- *   Matching checks CX.4.1, CX.9.1, CX.10.1 (the .1 Identifier subcomponents) because config
- *   entries are human namespace strings, not OIDs. HL7 v2.8.2 allows authority in any of CX.4,
- *   CX.9, CX.10 — all three must be checked.
- *   ID prefix source depends on which component matched (authority rules) or uses priority chain
- *   preferring CX.9.1 (type-only rules).
- *   Encounter.id formation uses extractHDAuthority (prefers CX.4.2) — unaffected by these semantics.
- *
- * Sanitization: `s.toLowerCase().replace(/[^a-z0-9-]/g, "-")` — same as Encounter.id.
- *
- * @param identifiers - CX[] from PID-3 after preprocessing (merge-pid2-into-pid3 has already run)
- * @param rules       - ordered IdentifierPriorityRule[] from config.identitySystem.patient.rules
- * @param mpiClient   - injectable MpiClient; pass StubMpiClient when no MPI is configured
+ * @param identifiers - CX[] from PID-3 (after preprocessing)
+ * @param rules - ordered IdentifierPriorityRule[] from config.identitySystem.patient.rules
+ * @param mpiClient - injectable MpiClient (use StubMpiClient when MPI not configured)
  */
-// DESIGN PROTOTYPE:
 // export async function selectPatientId(
 //   identifiers: CX[],
 //   rules: IdentifierPriorityRule[],
 //   mpiClient: MpiClient,
 // ): Promise<PatientIdResult> {
-//   throw new Error('Not implemented — see 2026-02-19-patient-encounter-identity.md');
+//   throw new Error('Not implemented');
 // }
 
 // END DESIGN PROTOTYPE
-// =============================================================================
 
 export type EncounterIdentifierResult = {
   identifier?: Encounter["identifier"];

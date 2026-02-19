@@ -10,76 +10,31 @@ import {
  * Config is keyed by message type strings (e.g., "ORU-R01", "ADT-A01").
  */
 
-// =============================================================================
 // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
 //
-// Config restructure: Hl7v2ToFhirConfig changes from a flat Record<messageType, config>
-// to a typed object with `identitySystem.patient.rules` and a `messages` record.
-//
-// NEW MessageTypeConfig: preprocess gains PID segment with fields "2" and "3".
-//
-// NEW Hl7v2ToFhirConfig shape:
-//   {
-//     identitySystem?: {
-//       patient?: { rules: IdentifierPriorityRule[] };  // global, deployment-level
-//       encounter?: { rules: never[] };                 // placeholder for future
-//     };
-//     messages?: Record<string, MessageTypeConfig | undefined>;
-//   }
-//
-// Migration impact:
-//   - config/hl7v2-to-fhir.json format changes (breaking — caught at startup by validation)
-//   - validatePreprocessorIds() must walk config.messages instead of top-level config
-//   - All callers of hl7v2ToFhirConfig() that access message configs must change from
-//     config["ADT-A01"] to config.messages["ADT-A01"]
-//   - Converters no longer access config.identitySystem.patient.rules directly —
-//     they receive resolvePatientId: PatientIdResolver from converter.ts
-//
-// NEW: validateIdentitySystemRules(config: Hl7v2ToFhirConfig): void
-//   Called from hl7v2ToFhirConfig() AFTER the cast, BEFORE validatePreprocessorIds().
-//   Validates:
-//     1. config.identitySystem.patient.rules is an array (runtime guard — cast does not validate)
-//     2. config.identitySystem.patient.rules is non-empty
-//     3. Each MatchRule has at least one of authority or type
-//     4. Each MpiLookupRule with strategy='pix' has a source array
-//   Throws descriptive Error at startup if any validation fails.
-//   Full spec: ai/tickets/awie_case/2026-02-19-patient-encounter-identity.md (Technical Details)
-//
-// NEW: import { type PatientIdResolver } from "./id-generation";
-//   (Only needed if validateIdentitySystemRules type signature requires it)
-//   PatientIdResolver is defined and exported ONLY from id-generation.ts.
-//   config.ts does NOT re-export it. All converters import PatientIdResolver from id-generation.ts.
-//
-// Import IdentifierPriorityRule from id-generation.ts when implementing.
-// =============================================================================
-
-// DESIGN PROTOTYPE: Updated MessageTypeConfig with PID preprocessing support:
+// Updated MessageTypeConfig with PID preprocessing support:
 // export type MessageTypeConfig = {
 //   preprocess?: {
-//     PV1?: {
-//       "19"?: SegmentPreprocessorId[];
-//     };
+//     PV1?: { "19"?: SegmentPreprocessorId[] };
 //     PID?: {
-//       "2"?: SegmentPreprocessorId[];  // merge-pid2-into-pid3
+//       "2"?: SegmentPreprocessorId[];  // move-pid2-into-pid3
 //       "3"?: SegmentPreprocessorId[];  // inject-authority-from-msh
 //     };
 //   };
-//   converter?: {
-//     PV1?: { required?: boolean };
-//   };
+//   converter?: { PV1?: { required?: boolean } };
 // };
-
-// DESIGN PROTOTYPE: New top-level config type:
+//
+// New top-level config type:
 // export type Hl7v2ToFhirConfig = {
 //   identitySystem?: {
 //     patient?: { rules: IdentifierPriorityRule[] };
-//     encounter?: { rules: never[] }; // placeholder for future encounter identity rules
 //   };
 //   messages?: Record<string, MessageTypeConfig | undefined>;
 // };
-
+//
+// New: validateIdentitySystemRules() called before validatePreprocessorIds().
+// validatePreprocessorIds() walks config.messages instead of top-level config.
 // END DESIGN PROTOTYPE
-// =============================================================================
 
 export type MessageTypeConfig = {
   preprocess?: {

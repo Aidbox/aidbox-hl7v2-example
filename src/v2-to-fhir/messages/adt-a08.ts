@@ -81,28 +81,8 @@ function createBundleEntry(resource: Patient): BundleEntry {
 // ============================================================================
 
 // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// convertADT_A08 must be updated identically to convertADT_A01:
-//
-//   export async function convertADT_A08(
-//     parsed: HL7v2Message,
-//     resolvePatientId: PatientIdResolver,  // NEW — injected from converter.ts (no mpiClient here)
-//   ): Promise<ConversionResult>
-//
-// Replace the ad-hoc Patient.id block (lines 122–129 below) with:
-//
-//   const patientIdResult = await resolvePatientId(
-//     pid.$3_identifier ?? [],       // PID-3 after preprocessing (merge-pid2-into-pid3 already ran)
-//   );                               // resolvePatientId injected from converter.ts (no algorithm knowledge here)
-//   if ('error' in patientIdResult) {
-//     throw new Error(`Patient ID selection failed: ${patientIdResult.error}`);
-//   }
-//   patient.id = patientIdResult.id;
-//
-// Also update converter.ts: case "ADT_A08" must pass resolvePatientId and await:
-//   case "ADT_A08": return await convertADT_A08(parsed, resolvePatientId);
-//
-// Import: import { type PatientIdResolver } from "../id-generation";
-// The function becomes async — update `converter.ts` `case "ADT_A08"` to await.
+// Gains resolvePatientId: PatientIdResolver parameter. Becomes async.
+// Replace ad-hoc Patient.id block with resolvePatientId(pid.$3_identifier ?? []).
 // END DESIGN PROTOTYPE
 
 /**
