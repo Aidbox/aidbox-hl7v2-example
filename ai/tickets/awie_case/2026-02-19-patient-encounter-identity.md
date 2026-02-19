@@ -755,10 +755,10 @@ Replace ad-hoc Patient.id assignment across three converters (ADT_A01, ADT_A08, 
 
 Foundation types used by `selectPatientId` and `converter.ts`. No existing code depends on this file yet.
 
-- [ ] Replace the design prototype scaffold in `src/v2-to-fhir/mpi-client.ts` with the real implementation: `MpiResult` union type, `PatientDemographics` type, `MpiClient` interface with `crossReference()` and `match()`, `StubMpiClient` class
-- [ ] Keep comments behavioral-only (what, params, errors) — no design rationale
-- [ ] Write unit tests in `test/unit/v2-to-fhir/mpi-client.test.ts`: StubMpiClient.crossReference returns `{ status: 'not-found' }`, StubMpiClient.match returns `{ status: 'not-found' }`
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+- [x] Replace the design prototype scaffold in `src/v2-to-fhir/mpi-client.ts` with the real implementation: `MpiResult` union type, `PatientDemographics` type, `MpiClient` interface with `crossReference()` and `match()`, `StubMpiClient` class
+- [x] Keep comments behavioral-only (what, params, errors) — no design rationale
+- [x] Write unit tests in `test/unit/v2-to-fhir/mpi-client.test.ts`: StubMpiClient.crossReference returns `{ status: 'not-found' }`, StubMpiClient.match returns `{ status: 'not-found' }`
+- [x] Run `bun test:all` and `bun run typecheck` — must pass before next task
 
 ---
 

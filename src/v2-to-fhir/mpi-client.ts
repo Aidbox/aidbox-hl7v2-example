@@ -1,10 +1,3 @@
-/**
- * DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
- *
- * MPI (Master Patient Index) client interface and stub implementation.
- * Current status: STUB ONLY — StubMpiClient always returns { status: 'not-found' }.
- */
-
 export type MpiResult =
   | { status: "found"; identifier: { value: string } }
   | { status: "not-found" }
