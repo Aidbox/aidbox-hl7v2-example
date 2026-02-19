@@ -1,5 +1,5 @@
 ---
-status: approved
+status: planned
 reviewer-iterations: 7
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
@@ -732,3 +732,197 @@ Not in scope. Remove from spec. The MPI implementation ticket will define valida
 
 **7. Integration tests: extend existing files, not new files**
 Add `describe("patient identity system", ...)` blocks inside existing `test/integration/v2-to-fhir/adt.integration.test.ts` and `oru-r01.integration.test.ts`. Do not create new integration test files.
+
+# Implementation Plan
+
+## Overview
+
+Replace ad-hoc Patient.id assignment across three converters (ADT_A01, ADT_A08, ORU_R01) with a config-driven priority-list algorithm (`selectPatientId`). Restructure `Hl7v2ToFhirConfig` from a flat record to a typed object with `identitySystem.patient.rules` + `messages` keys. Add two PID preprocessors (`move-pid2-into-pid3`, `inject-authority-from-msh`) and an MPI client stub to support cross-EHR patient matching.
+
+## Development Approach
+- Complete each task fully before moving to the next
+- Make small, focused changes
+- **CRITICAL: run `bun test:all` after every task — all tests must pass before starting next task**
+- **CRITICAL: update this plan when scope changes**
+
+## Validation Commands
+- `bun test:all` — Run all tests (unit + integration)
+- `bun run typecheck` — TypeScript type checking
+
+---
+
+## Task 1: Create MPI client stub (`mpi-client.ts`)
+
+Foundation types used by `selectPatientId` and `converter.ts`. No existing code depends on this file yet.
+
+- [ ] Replace the design prototype scaffold in `src/v2-to-fhir/mpi-client.ts` with the real implementation: `MpiResult` union type, `PatientDemographics` type, `MpiClient` interface with `crossReference()` and `match()`, `StubMpiClient` class
+- [ ] Keep comments behavioral-only (what, params, errors) — no design rationale
+- [ ] Write unit tests in `test/unit/v2-to-fhir/mpi-client.test.ts`: StubMpiClient.crossReference returns `{ status: 'not-found' }`, StubMpiClient.match returns `{ status: 'not-found' }`
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+
+---
+
+## Task 2: Add types and `selectPatientId()` to `id-generation.ts`
+
+Core algorithm. Depends on `MpiClient` from Task 1.
+
+- [ ] Replace commented-out prototype types in `src/v2-to-fhir/id-generation.ts` with real exports: `MatchRule`, `MpiLookupRule`, `IdentifierPriorityRule`, `PatientIdResult`, `PatientIdResolver`
+- [ ] Implement `selectPatientId(identifiers, rules, mpiClient)` following the algorithm in design Technical Details:
+  - Skip CX entries with empty CX.1
+  - For each rule in order: handle `{ any: true }` (match first CX with derivable prefix, skip bare CX), authority matching (CX.4.1 → CX.9.1 → CX.10.1), type matching (CX.5), combined authority+type
+  - Authority-rule prefix: matched via CX.4.1 → CX.4 hierarchy, CX.9.1 → CX.9.1, CX.10.1 → CX.10.1
+  - Type-only / `{ any: true }` prefix chain: CX.9.1 → CX.4.1 → CX.4.2 → CX.10.1 → raw CX.4 string
+  - MpiLookupRule: find source CX, query MPI, handle found/not-found/unavailable
+  - No rule matched → `{ error: "No identifier priority rule matched..." }`
+- [ ] Use same sanitization pattern as `buildEncounterIdentifier`: `s.toLowerCase().replace(/[^a-z0-9-]/g, "-")`
+- [ ] Write unit tests in `test/unit/v2-to-fhir/select-patient-id.test.ts` covering ALL test cases from design:
+  - ASTRA UNIPAT via CX.4.1 → `unipat-11195429`
+  - MEDTEX UNIPAT directly in PID-3 → `unipat-11216032`
+  - MEDTEX BMH/PE type-only → `bmh-11220762`
+  - Xpan `&&ISO`/MR type-only → `--iso-m000000721`
+  - Authority via CX.9.1, CX.10.1
+  - Authority NOT matching CX.4.2
+  - Type-only prefix chain: CX.9.1 preferred over CX.4.1
+  - Type-only with CX.10.1 only
+  - CX.4.2-based prefix for type-only
+  - No matching rule → error
+  - Empty CX.1 → skipped
+  - MPI pix: found, not-found (falls through), unavailable (hard error), no source (skip)
+  - MPI pix source via CX.9.1
+  - `{ any: true }`: matches first CX with derivable prefix
+  - `{ any: true }`: skips bare CX, matches next CX with authority
+  - `{ any: true }`: all bare CX → falls through to next rule
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+
+---
+
+## Task 3: Restructure config types and JSON
+
+Config foundation. All existing config consumers and tests must be migrated.
+
+- [ ] Update `src/v2-to-fhir/config.ts`:
+  - Add `PID` key to `MessageTypeConfig.preprocess` type: `PID?: { "2"?: SegmentPreprocessorId[]; "3"?: SegmentPreprocessorId[] }`
+  - Change `Hl7v2ToFhirConfig` from `Record<string, MessageTypeConfig | undefined>` to `{ identitySystem?: { patient?: { rules: IdentifierPriorityRule[] } }; messages?: Record<string, MessageTypeConfig | undefined> }`
+  - Import `IdentifierPriorityRule` from `./id-generation`
+  - Add `validateIdentitySystemRules(config)` function (Guards 1-3 from design: array present, non-empty, each MatchRule has authority/type/any)
+  - Call `validateIdentitySystemRules` before `validatePreprocessorIds` in `hl7v2ToFhirConfig()`
+  - Update `validatePreprocessorIds` to iterate `config.messages` instead of top-level `Object.entries(config)`. Must skip `identitySystem` and other non-message keys
+- [ ] Update `config/hl7v2-to-fhir.json`: replace flat format with new shape (`identitySystem.patient.rules` + `messages` record). Remove `_DESIGN_PROTOTYPE` and `_DESIGN_PROTOTYPE_new_shape` comment keys
+- [ ] Update `src/v2-to-fhir/preprocessor.ts`:
+  - Change `config[configKey]` → `config.messages?.[configKey]` (line 43)
+  - Change `applyPreprocessors` type annotation from `NonNullable<Hl7v2ToFhirConfig[string]>["preprocess"]` to `NonNullable<MessageTypeConfig>["preprocess"]` (import `MessageTypeConfig`)
+- [ ] Migrate `test/unit/v2-to-fhir/config.test.ts`:
+  - All fixture objects: flat `{ "ORU-R01": {...} }` → `{ identitySystem: { patient: { rules: [{ authority: "UNIPAT" }] } }, messages: { "ORU-R01": {...} } }`
+  - All `config["ORU-R01"]` access → `config.messages?.["ORU-R01"]`
+  - "unknown preprocessor ID" test: still works after `validatePreprocessorIds` walks `config.messages`
+  - Add test: `identitySystem.patient.rules` missing from JSON → throws at startup
+  - Add test: MatchRule with neither authority, type, nor any → throws at startup
+  - Add test: empty rules array → throws at startup
+- [ ] Migrate `test/unit/v2-to-fhir/preprocessor.test.ts`:
+  - `configWithMshFallback` → `{ identitySystem: { patient: { rules: [{ authority: "UNIPAT" }] } }, messages: { "ORU-R01": {...}, "ADT-A01": {...} } }`
+  - `configWithoutPreprocess` → same structure without `preprocess` keys
+  - Inline `config` objects in tests: same migration
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+
+---
+
+## Task 4: Implement PID preprocessors
+
+Two new preprocessors in the registry. Depends on config supporting PID fields (Task 3).
+
+- [ ] In `src/v2-to-fhir/preprocessor-registry.ts`:
+  - Remove all DESIGN PROTOTYPE comments
+  - Register `"move-pid2-into-pid3": movePid2IntoPid3` and `"inject-authority-from-msh": injectAuthorityFromMsh` in `SEGMENT_PREPROCESSORS`
+  - Implement `movePid2IntoPid3(context, segment)`:
+    - Guard: segment must be PID
+    - Read PID-2 (field index 2); if CX.1 is empty → no-op
+    - Read PID-3 (field index 3); append PID-2 CX as new repeat (handle array/non-array/absent)
+    - Clear PID-2 (set `segment.fields[2] = undefined` or empty)
+  - Implement `injectAuthorityFromMsh(context, segment)`:
+    - Guard: segment must be PID
+    - Derive namespace from MSH-3/MSH-4 (reuse `parseHdNamespace` pattern from `fixAuthorityWithMsh`)
+    - For each CX repeat in PID-3: if CX.1 has value AND CX.4/9/10 all empty → inject derived namespace as CX.4.1
+    - Never override existing authority. No-op if MSH has no usable namespace
+- [ ] Update `SegmentPreprocessorId` type: it's derived from `keyof typeof SEGMENT_PREPROCESSORS`, so registering new entries auto-updates it
+- [ ] Write unit tests in `test/unit/v2-to-fhir/preprocessor-pid.test.ts`:
+  - `move-pid2-into-pid3`: PID-2 CX moved to PID-3, PID-2 cleared
+  - `move-pid2-into-pid3`: PID-2 empty → no-op
+  - `move-pid2-into-pid3`: PID-3 already has repeats → PID-2 appended as additional repeat
+  - `inject-authority-from-msh`: bare CX `12345^^^^MR` gets authority from MSH
+  - `inject-authority-from-msh`: CX already has CX.4 → not overridden
+  - `inject-authority-from-msh`: CX with CX.9 populated → not overridden
+  - `inject-authority-from-msh`: MSH has no namespace → no-op
+- [ ] Add preprocessor tests to `test/unit/v2-to-fhir/preprocessor.test.ts`:
+  - Config with PID.2/PID.3 preprocessors and full message → verify both fire in order
+  - Config with unknown PID preprocessor ID → throws at load time
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+
+---
+
+## Task 5: Wire `PatientIdResolver` into converters
+
+Replace ad-hoc Patient.id logic in all three converters. Depends on Tasks 2-3.
+
+- [ ] Update `src/v2-to-fhir/converter.ts`:
+  - Remove DESIGN PROTOTYPE comments
+  - Import `selectPatientId`, `type PatientIdResolver` from `./id-generation`
+  - Import `StubMpiClient` from `./mpi-client`
+  - Import `hl7v2ToFhirConfig` from `./config`
+  - In `convertToFHIR()`: instantiate `StubMpiClient`, load config, create closure `const resolvePatientId: PatientIdResolver = (ids) => selectPatientId(ids, config.identitySystem!.patient!.rules, mpiClient)`
+  - Pass `resolvePatientId` to `convertADT_A01`, `convertADT_A08`, `convertORU_R01`
+  - `convertADT_A08` call becomes `await convertADT_A08(parsed, resolvePatientId)`
+- [ ] Update `src/v2-to-fhir/messages/adt-a01.ts`:
+  - Remove DESIGN PROTOTYPE comments
+  - Import `type PatientIdResolver` from `../id-generation`
+  - Add `resolvePatientId: PatientIdResolver` parameter to `convertADT_A01`
+  - Replace ad-hoc Patient.id block (lines 333-338) with: `const result = await resolvePatientId(pid.$3_identifier ?? []); if ('error' in result) { return { messageUpdate: { status: 'error', error: result.error } }; }; patient.id = result.id;`
+  - Update config access: `config["ADT-A01"]` → `config.messages?.["ADT-A01"]`
+- [ ] Update `src/v2-to-fhir/messages/adt-a08.ts`:
+  - Remove DESIGN PROTOTYPE comments
+  - Import `type PatientIdResolver` from `../id-generation`
+  - Make `convertADT_A08` async: `export async function convertADT_A08(parsed, resolvePatientId: PatientIdResolver)`
+  - Replace ad-hoc Patient.id block (lines 127-134) with `resolvePatientId()` call and error handling
+- [ ] Update `src/v2-to-fhir/messages/oru-r01.ts`:
+  - Remove DESIGN PROTOTYPE comments and `extractPatientId()` function
+  - Import `selectPatientId`, `type PatientIdResolver` from `../id-generation`
+  - Import `StubMpiClient` from `../mpi-client`
+  - Add `resolvePatientId: PatientIdResolver` parameter to `handlePatient()` and `convertORU_R01()`
+  - Add lazy default in `convertORU_R01`: `resolvePatientId = (ids) => selectPatientId(ids, hl7v2ToFhirConfig().identitySystem!.patient!.rules, new StubMpiClient())` — so existing unit tests that omit the parameter continue to work
+  - Replace `extractPatientId(pid)` in `handlePatient()` with `const result = await resolvePatientId(pid.$3_identifier ?? [])` and handle `{ error }` case
+  - Update config access in `handleEncounter`: `config["ORU-R01"]` → `config.messages?.["ORU-R01"]`
+- [ ] Remove `src/v2-to-fhir/preprocessor.ts` DESIGN PROTOTYPE comments
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+
+---
+
+## Task 6: Integration tests
+
+Depends on all implementation tasks (1-5). Tests full message flow through converter.
+
+- [ ] Add `describe("patient identity system", ...)` block in `test/integration/v2-to-fhir/adt.integration.test.ts`:
+  - ADT-A01 end-to-end: ASTRA message with UNIPAT in PID-2 produces `unipat-{value}` Patient.id
+  - Reprocessing idempotency: same message processed twice produces same Patient.id (upsert, not duplicate)
+- [ ] Add `describe("patient identity system", ...)` block in `test/integration/v2-to-fhir/oru-r01.integration.test.ts`:
+  - ORU-R01 end-to-end: MEDTEX without UNIPAT falls back to type-PE rule
+  - No-match error: message with unrecognized identifiers → IncomingHL7v2Message gets status=error
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+
+---
+
+## Task 7: Cleanup design artifacts
+
+- [ ] Remove all `DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md` comments from all source files
+- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity" src/ config/`
+- [ ] Update design document status to `implemented`
+- [ ] Run `bun test:all` and `bun run typecheck` — final verification
+
+---
+
+## Post-Completion Verification
+
+1. **Functional test**: Send an ASTRA ADT_A01 message with UNIPAT in PID-2 through the full pipeline — Patient.id should be `unipat-{value}`
+2. **Edge case test**: Send a message with only `&&ISO`/MR identifiers — Patient.id should be `--iso-{value}`
+3. **Cross-EHR test**: Send ASTRA and MEDTEX messages for the same physical patient (both with UNIPAT) — both produce the same `unipat-{value}` Patient.id
+4. **Config validation**: Start server with missing `identitySystem.patient.rules` — should fail fast at startup with descriptive error
+5. **No regressions**: All existing tests pass (`bun test:all`)
+6. **Cleanup verified**: No `DESIGN PROTOTYPE` comments remain in source
