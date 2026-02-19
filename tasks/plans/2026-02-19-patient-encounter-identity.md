@@ -1,6 +1,6 @@
 ---
-status: ready-for-review
-reviewer-iterations: 1
+status: changes-requested
+reviewer-iterations: 2
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
   - src/v2-to-fhir/config.ts
@@ -646,3 +646,96 @@ This is not a blocker — it is a known consequence of the sanitizer applied to 
 **Issue 8 — RESOLVED:** Added "`&&ISO` authority after sanitization produces leading dashes" row to Edge Cases table. Confirmed Aidbox accepts IDs matching `[A-Za-z0-9\-\.]{1,64}` without additional restrictions — `--iso-m000000721` is valid. Updated the Xpan test case description to explain the raw CX.4 string fallback mechanism that produces `--iso`.
 
 ## User Feedback
+
+---
+
+## AI Review Notes — Pass 2 (2026-02-19)
+
+### Scope
+
+Second review pass. All 3 blockers and 5 non-blocking issues from Pass 1 are confirmed resolved. This pass focuses on: CX.4.1 vs CX.4.2 semantic consistency, config restructure migration completeness, mpiClient injection wiring, test coverage gaps, and remaining edge cases.
+
+---
+
+### CX.4.1 vs CX.4.2 Semantics — Fully Consistent
+
+The resolution from Pass 1 (BLOCKER 3) is now thorough and consistent. The design document, Key Decisions table, `selectPatientId` JSDoc in `id-generation.ts` prototype comments, and the Technical Details algorithm all agree:
+
+- **Matching**: CX.4.1 only. Config entries are human namespace strings.
+- **ID formation prefix**: CX.4.1 → CX.4.2 → raw CX.4 string (for `&&ISO` case).
+- The `&&ISO` → `--iso` test case is fully explained with the raw-string-fallback mechanism.
+- Explicit statement that this deliberately deviates from `extractHDAuthority` (used for Encounter.id, which prefers CX.4.2 for system URIs) — the deviation is justified and documented.
+
+No issues here.
+
+---
+
+### Config Restructure Migration — Complete with One Gap
+
+The migration path is complete: `preprocessor.ts` is added to Affected Components with the two required line changes, `validatePreprocessorIds` is documented to walk `config.messages`, and existing tests in `config.test.ts` and `preprocessor.test.ts` are listed with specific migration instructions. One gap remains:
+
+**The design does not specify who validates `config.identifierPriority` at load time.** The design says MatchRule with neither authority nor type "validated at config load time" and MpiLookupRule with pix strategy but no source "config validation error at load time." But neither `validatePreprocessorIds` nor any new validation function is described as performing these checks. The current `validatePreprocessorIds` only validates preprocessor IDs. Nothing in the Affected Components table or Technical Details describes a `validateIdentifierPriorityRules()` function or extends `validatePreprocessorIds` to cover the new rules.
+
+Concretely missing from the design:
+- Who runs `{ MatchRule with no authority or no type }` validation?
+- Who runs `{ MpiLookupRule with strategy='pix' and no source }` validation?
+- Edge case: `identifierPriority` missing entirely from JSON (not just empty). The new `Hl7v2ToFhirConfig` requires `identifierPriority` as a non-optional field. But the current loader does `const config = parsed as Hl7v2ToFhirConfig;` — a cast, not a runtime validation. If the JSON omits `identifierPriority`, `config.identifierPriority` will be `undefined` at runtime but typed as `IdentifierPriorityRule[]`. This will cause a runtime crash inside `selectPatientId` (when iterating rules) rather than a clean startup error.
+
+**Severity: Blocker** — the design claims config validation is done at load time, but the mechanism is unspecified and the existing loader pattern (cast, not validate) means the missing-field case crashes at runtime rather than at startup. This must be addressed: either describe a `validateIdentifierPriorityRules()` function added to `hl7v2ToFhirConfig()`, or document that a runtime guard (`if (!Array.isArray(config.identifierPriority))`) is added to the loader before caching.
+
+---
+
+### mpiClient Injection Wiring — Mostly Complete, One Gap
+
+The injection strategy is now clearly specified:
+- `convertADT_A01(parsed, mpiClient = new StubMpiClient())` — default parameter
+- `convertORU_R01(parsed, lookupPatient, lookupEncounter, mpiClient = new StubMpiClient())` — last optional parameter
+- `converter.ts` passes `mpiClient` through (or relies on the default)
+- `processor-service.ts` calls `convertToFHIR(parsed)` which routes to `converter.ts` — no change needed
+
+One gap: **`convertADT_A08` is not addressed.** `converter.ts` handles three message types: `ADT_A01`, `ADT_A08`, and `ORU_R01`. The design only updates `ADT_A01` and `ORU_R01`. `convertADT_A08` presumably uses the same ad-hoc Patient.id logic that this design is replacing in `ADT_A01` and `ORU_R01`. If `ADT_A08` is intentionally excluded (e.g., because ASTRA/MEDTEX don't send ADT_A08 messages), that should be stated explicitly. If it is not excluded, it is a missing affected component.
+
+**Severity: Medium** — either document the explicit exclusion of `ADT_A08` (and why it is safe to leave ad-hoc logic there) or add `adt-a08.ts` to Affected Components.
+
+---
+
+### 'match' Strategy Demographics Extraction — Unspecified
+
+`MpiLookupRule` supports `strategy: 'pix' | 'match'`. The `selectPatientId` algorithm in both the design document and `id-generation.ts` prototype only specifies the 'pix' flow (find source CX → `mpiClient.crossReference()`). The 'match' flow is not described: where do `PatientDemographics` come from? `selectPatientId` receives only `CX[]` (identifiers), not the full PID segment. To extract demographics (family name, given name, birth date, gender), the function would need either the full `PID` object or a demographics parameter.
+
+The stub doesn't expose this problem (it ignores all inputs and returns `not-found`), but when a real client is implemented, `selectPatientId`'s current signature `(identifiers: CX[], rules, mpiClient)` is insufficient for the 'match' strategy. The function would need an additional `demographics?: PatientDemographics` parameter, or the 'match' strategy would need to be deferred to the real implementation ticket.
+
+**Severity: Medium** — the stub masks this gap. Since the MPI is a stub now, this won't block the current ticket. However, the design should acknowledge it explicitly: either (a) note that `selectPatientId` will need a `demographics` parameter when 'match' strategy is implemented, or (b) exclude 'match' strategy from the `selectPatientId` algorithm spec and note it will be designed in the MPI implementation ticket. Leaving it undefined creates a false promise that the current signature can support 'match'.
+
+---
+
+### Test Coverage — One Gap
+
+All test cases from Pass 1 are present. One gap was identified: there is no unit test for the 'match' strategy path in `selectPatientId`. The existing MPI test cases cover the 'pix' flow (found/not-found/unavailable/no-source). Since 'match' strategy is unspecified (see above), no test can be written for it — this is expected. However, the test cases table should note that 'match' strategy tests are deferred to the MPI implementation ticket, so an implementor doesn't think coverage is complete.
+
+**Severity: Low** — informational, not a blocker.
+
+---
+
+### `inject-authority-from-msh` and CX.9/CX.10 Edge Case — Design Correct But Undocumented
+
+The preprocessor prototype says: "If CX.1 has a value AND all of CX.4/9/10 are empty → inject MSH namespace as CX.4.1." This correctly follows the same pattern as `buildEncounterIdentifier`. Specifically: if a CX has CX.9 (jurisdiction) or CX.10 (department) populated but no CX.4, the preprocessor treats that CX as having an existing authority and does not inject. This is correct — CX.9 and CX.10 are valid HL7 authority sources.
+
+However, the design does not document this consequence: a CX with only CX.9 populated (and no CX.4.1/CX.4.2) will NOT get CX.4.1 injected, and subsequently `selectPatientId`'s `MatchRule` with `authority: "UNIPAT"` will compare against the (empty) CX.4.1 and not match. The CX would be eligible only for type-only rules.
+
+This is a correct and reasonable behavior, but a real sender that populates CX.9 instead of CX.4 would produce Patient IDs from CX.9/CX.10 type-only rules with an uninformative authority prefix. The edge case is not in the Edge Cases table and should be documented.
+
+**Severity: Low** — edge case documentation gap, does not affect correctness.
+
+---
+
+### Summary of Pass 2 Issues
+
+| # | Severity | Issue |
+|---|----------|-------|
+| 9 | **Blocker** | `config.identifierPriority` validation at load time is unspecified; missing field crashes at runtime rather than startup; no `validateIdentifierPriorityRules` function described |
+| 10 | Medium | `convertADT_A08` not addressed — either exclude explicitly with justification or add to Affected Components |
+| 11 | Medium | 'match' strategy demographics extraction path is unspecified in `selectPatientId` algorithm; current signature insufficient when real MPI client is implemented |
+| 12 | Low | Test cases table should note 'match' strategy tests deferred to MPI implementation ticket |
+| 13 | Low | CX with only CX.9/CX.10 populated (no CX.4): inject-authority-from-msh no-ops, CX gets no authority prefix — not in Edge Cases table |
+
