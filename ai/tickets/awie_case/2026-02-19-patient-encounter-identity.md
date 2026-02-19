@@ -1,6 +1,6 @@
 ---
 status: changes-requested
-reviewer-iterations: 5
+reviewer-iterations: 6
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
   - src/v2-to-fhir/config.ts
@@ -632,6 +632,140 @@ A: `identitySystem.patient.rules` + messages record:
 ```
 
 ## AI Review Notes
+
+### AI Review — iteration 6 (2026-02-19)
+
+**Summary:** 7 user feedback items from round 3 are present in the "User Feedback" section but have NOT been incorporated into the actual design sections (Problem Statement, Proposed Approach, Key Decisions, Technical Details, Edge Cases, Test Cases, Affected Components). The design body still reflects the pre-feedback state. All 7 items are blockers because they require design section changes before implementation can proceed.
+
+Additionally, the prototype files still contain design rationale in comments (violating feedback item 5). Several prototypes use the old name `merge-pid2-into-pid3` (violating feedback item 1).
+
+---
+
+#### BLOCKER 1: `merge-pid2-into-pid3` not renamed to `move-pid2-into-pid3` (feedback #1)
+
+**Unaddressed in design sections:**
+- Proposed Approach (line 37): `"merge-pid2-into-pid3"` — still uses old name
+- Affected Components table (line 83): `"merge-pid2-into-pid3"` in preprocessor-registry.ts description
+- Technical Details, Config JSON example (line 392): `"2": ["merge-pid2-into-pid3"]`
+- Technical Details, preprocessor signature (line 441): `mergePid2IntoPid3`
+- Edge Cases table: "merge-pid2-into-pid3" references (lines 519, 520)
+- Test Cases table: "merge-pid2-into-pid3" references (lines 519, 520, 525)
+- Context > Preprocessor infrastructure (lines 586-589): old name
+
+**Unaddressed in prototypes:**
+- `config/hl7v2-to-fhir.json` (line 18): `"2": ["merge-pid2-into-pid3"]` in `_DESIGN_PROTOTYPE_new_shape`
+- `src/v2-to-fhir/preprocessor-registry.ts` (line 25): `"merge-pid2-into-pid3"` in commented registration
+- `src/v2-to-fhir/preprocessor-registry.ts` (lines 125-157): function named `mergePid2IntoPid3`, all doc references
+
+**Also missing:** The feedback says to create a new ticket for segment-level preprocessors with a sub-task to migrate `move-pid2-into-pid3` to segment-level once supported. This should be noted as a follow-up action in the design, or referenced as an explicit out-of-scope item.
+
+**Resolution:** Rename all occurrences of `merge-pid2-into-pid3` to `move-pid2-into-pid3` throughout the design document and all prototype files. Add a note in Affected Components or a "Follow-up" section about the segment-level preprocessor ticket.
+
+---
+
+#### BLOCKER 2: `{ any: true }` MatchRule variant not added (feedback #2)
+
+**Unaddressed in design sections:**
+- MatchRule type definition (Technical Details, lines 166-189): no `any?: true` field
+- `selectPatientId` algorithm description (lines 222-267): no handling of `{ any: true }` rules
+- `validateIdentitySystemRules` spec (lines 318-359): does not accept `{ any: true }` as valid (would fail validation since it has neither authority nor type)
+- Edge Cases table: no entry for `{ any: true }` behavior, bare CX skipping under `{ any: true }`
+- Test Cases table: no test for `{ any: true }` matching first CX with non-empty value; no test for `{ any: true }` skipping bare CX (no prefix derivable)
+- Config JSON example (line 376-386): no example showing `{ any: true }` as a fallback rule
+
+**Resolution:** Add `any?: boolean` to the `MatchRule` type. Update the algorithm description: when `any: true`, match any CX with non-empty CX.1; use type-only prefix chain for ID formation; skip CX if no authority prefix derivable (all authority components empty). Update `validateIdentitySystemRules` to accept `{ any: true }` without requiring authority or type. The validation constraint becomes: at least one of `authority`, `type`, or `any` must be set. Add edge cases and test cases. Add an example config showing `{ any: true }` as the last fallback rule.
+
+---
+
+#### BLOCKER 3: "PID-3 empty after preprocessing" pre-call guard not removed (feedback #3)
+
+**Unaddressed in design sections:**
+- Edge Cases table (line 473): Still says `PID-3 empty after preprocessing | Error before selectPatientId is called: "PID-3 is required but missing after preprocessing"` — this is exactly what the feedback says to remove
+- Proposed Approach does not mention that `selectPatientId` owns the empty-pool case
+- The converter prototype comments in `adt-a01.ts` (lines 347-367) and `oru-r01.ts` (lines 121-136) do not mention any pre-call guard, but the edge case table contradicts the feedback
+
+**Resolution:** Change the Edge Cases entry for "PID-3 empty after preprocessing" to: `selectPatientId receives empty pool, all rules exhausted, returns { error: 'No identifier priority rule matched for identifiers: []' }. No separate guard in converters.` Remove any references to a pre-call guard in converter descriptions. Add a brief note in the algorithm description that empty input pools are handled naturally by rule exhaustion.
+
+---
+
+#### BLOCKER 4: Bare CX handling not updated in Edge Cases (feedback #4)
+
+**Partially addressed:** The edge case "CX entry with value but no authority after preprocessing" (line 475) says "Eligible for type-only rules. Not eligible for authority rules or MPI source selection" — this is partially correct but does not reflect the full feedback.
+
+**Missing:**
+- No mention that `{ any: true }` also skips bare CX (no prefix derivable) — this is coupled with BLOCKER 2
+- The edge case text should explicitly state: "Silently skipped by authority rules and `{ any: true }` (no prefix derivable). Eligible for type-only rules only. No hard error on individual bare CX. If all pool identifiers are bare and unresolvable, 'no rules matched' fires."
+- The feedback explicitly says to update this edge case note
+
+**Resolution:** Rewrite the "CX entry with value but no authority after preprocessing" edge case entry to match the feedback language. Add interaction with `{ any: true }`.
+
+---
+
+#### BLOCKER 5: Prototype comments still contain design rationale (feedback #5)
+
+**Unaddressed in prototypes:** All prototype files still contain extensive design rationale, options considered, and justifications in comments:
+
+- `src/v2-to-fhir/id-generation.ts`: Lines 27-31 (design prototype header with reference), lines 42-48 (closure creation rationale and pattern matching explanation), lines 55-78 (matching semantics explanation, deliberate deviation justification, extractHDAuthority comparison), lines 85-96 (MpiLookupRule behavior explanation), lines 131-177 (full algorithm restatement with authority semantics explanation and extractHDAuthority deviation)
+- `src/v2-to-fhir/mpi-client.ts`: Lines 2-24 (design decisions section explaining why 'unavailable' is not an exception, why 'not-found' falls through, injectable rationale), lines 115-131 (extensive "when to use" and degradation explanation on StubMpiClient)
+- `src/v2-to-fhir/config.ts`: Lines 16-54 (migration impact analysis, import notes, what to change after restructure)
+- `src/v2-to-fhir/preprocessor-registry.ts`: Lines 122-193 (full behavioral spec restated in comments for both new preprocessors)
+- `src/v2-to-fhir/preprocessor.ts`: Lines 24-37 (migration instructions)
+- `src/v2-to-fhir/messages/adt-a01.ts`: Lines 288-298 and 347-367 (design prototype blocks with rationale)
+- `src/v2-to-fhir/messages/adt-a08.ts`: Lines 83-106 (design prototype block with implementation notes)
+- `src/v2-to-fhir/messages/oru-r01.ts`: Lines 121-136 (extractPatientId replacement rationale) and 566-593 (handlePatient/convertORU_R01 signature design with lazy default explanation)
+- `src/v2-to-fhir/converter.ts`: Lines 15-39 (design prototype block with import instructions and closure creation)
+
+Per the feedback, prototype code comments must only document: what the function does, parameter semantics, and what errors it returns/throws. All design rationale, options considered, migration instructions, and pattern justifications must be stripped.
+
+**Resolution:** Strip all design rationale from prototype comments. Keep only behavioral documentation (what, parameters, errors). This is an implementation-time task but the design document should explicitly note this requirement, e.g., in the Affected Components table or as a general implementation note.
+
+---
+
+#### BLOCKER 6: `mpiLookup pix requires source` validation not removed (feedback #6)
+
+**Unaddressed in design sections:**
+- `validateIdentitySystemRules` spec (lines 340-348): Still includes Guard 3 MpiLookupRule validation that checks `strategy === 'pix' && !source` and throws
+- Edge Cases table (line 481): Still says `MpiLookupRule with strategy='pix' but no source rules | Config validation error at load time via validateIdentitySystemRules()`
+- Test Cases table (line 515): Still has `MpiLookupRule with strategy='pix' and no source array | Unit | Config load throws validation error via validateIdentitySystemRules()`
+- Affected Components (line 90, config.ts description): Still lists "(3) each MpiLookupRule with strategy='pix' has source defined" as a validation item
+- Affected Components (line 81, config.ts description): Lists `(3) each MpiLookupRule with strategy='pix' has `source` defined` in the description
+
+**Resolution:** Remove the pix-source validation from `validateIdentitySystemRules` spec, the corresponding edge case, the corresponding test case, and the description in Affected Components. The MPI implementation ticket will define MPI-specific validation.
+
+---
+
+#### BLOCKER 7: Integration test approach not updated (feedback #7)
+
+**Partially addressed:** Test Cases table (lines 526-529) lists integration tests but does not specify where they go. The table format does not indicate file placement.
+
+**Unaddressed:**
+- Affected Components table: no entry for `test/integration/v2-to-fhir/adt.integration.test.ts` or `oru-r01.integration.test.ts`
+- No explicit statement that integration tests go inside existing files (not new files)
+- The feedback is clear: `describe("patient identity system", ...)` blocks inside existing files
+
+**Resolution:** Add entries to the Affected Components table for `test/integration/v2-to-fhir/adt.integration.test.ts` (Change Type: Extend, Description: Add `describe("patient identity system", ...)` block for ADT_A01 identity tests) and `test/integration/v2-to-fhir/oru-r01.integration.test.ts` (same pattern). Add a note in the Test Cases table or a general implementation note that integration tests extend existing files.
+
+---
+
+#### NON-BLOCKER observations (for completeness):
+
+**A. ADT-A08 preprocessor config missing from JSON example:**
+The config JSON example (lines 376-411) shows `ADT-A01` and `ORU-R01` message configs with PID preprocessors, but no `ADT-A08` entry. The Affected Components table (line 85) says ADT_A08 gains `resolvePatientId` and notes config access to `config.messages["ADT-A08"]`. If ADT_A08 also needs PID-2/PID-3 preprocessing (ASTRA can send A08 updates), an `ADT-A08` message config should be shown in the example, or there should be an explicit note that ADT-A08 has no preprocessing configured (relies on PID-3 being already well-formed by the time A08 arrives). This is a minor gap — implementers can infer it, but the design should be explicit.
+
+**B. `encounter?: { rules: never[] }` placeholder:**
+The config type includes `encounter?: { rules: never[] }` as a placeholder. `never[]` is technically an empty array type that cannot have elements. If this is truly just a placeholder for future use, consider using a comment or `unknown[]` instead of `never[]`, since `never[]` conveys "this array is always empty" which is semantically odd for a rules array. Minor nit — not a blocker.
+
+**C. Config JSON prototype file has stale comment keys:**
+`config/hl7v2-to-fhir.json` has `_DESIGN_PROTOTYPE` and `_DESIGN_PROTOTYPE_new_shape` comment keys alongside the actual config. The prototype note says "Remove this comment block when implementing." This is acceptable for a prototype but should be cleaned up at implementation time. Not a blocker.
+
+**D. `adt-a01.ts` converter accesses config directly:**
+Line 396: `const pv1Required = config["ADT-A01"]?.converter?.PV1?.required ?? true;` — The design says this changes to `config.messages["ADT-A01"]` but the prototype file still has the old accessor. This is expected (prototype shows intent via comments, not actual code change). Consistent with prototype conventions.
+
+---
+
+### Recommendation
+
+All 7 user feedback items must be incorporated into the design body sections (not just left in the User Feedback section). The design is comprehensive and well-structured — the algorithm, types, edge cases, and test cases are thorough. The core issue is simply that round 3 feedback was recorded but not applied. Once the 7 blockers are addressed (rename, add `{ any: true }`, remove pre-call guard from edge case, update bare CX edge case, note prototype comment cleanup requirement, remove pix-source validation, add integration test file entries), the design is ready for implementation.
 
 ## User Feedback
 
