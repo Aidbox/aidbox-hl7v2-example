@@ -1,5 +1,5 @@
 ---
-status: ready-for-review
+status: changes-requested
 reviewer-iterations: 5
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
@@ -1187,4 +1187,103 @@ No new issues found beyond the stale outer block in `adt-a01.ts`.
 ### Pass 5 Resolution Notes
 
 **Issue 19 — RESOLVED:** The outer DESIGN PROTOTYPE block in `adt-a01.ts` (lines 288–299) must be updated to remove the `mpiClient: MpiClient` parameter and replace with `resolvePatientId: PatientIdResolver`. The correct pattern is already in the inner block (lines 348–368). The outer block needs to align: the function signature shown should use `resolvePatientId: PatientIdResolver` (no default needed since converter.ts always passes it), import should be `import { type PatientIdResolver } from "../id-generation"` (not StubMpiClient/MpiClient), and the description should say the resolver is injected from converter.ts. The design doc Affected Components entry for `adt-a01.ts` already correctly describes this — only the prototype file comment is wrong.
+
+---
+
+## AI Review Notes — Pass 6 (2026-02-19)
+
+### Scope
+
+Sixth pass. All 19 prior issues are resolved. Focus: whether the CX.9/CX.10 additions from user feedback round 2 are correctly and completely specified — algorithm correctness, CWE.1 semantics, ID prefix split consistency, edge cases, test cases, and MpiLookupRule source matching.
+
+---
+
+### CX.9.1 and CX.10.1 Semantics — Correct
+
+CWE.1 is the "Identifier" (code) subcomponent of CWE. For CX.9 (Assigning Jurisdiction) and CX.10 (Assigning Agency/Department), CWE.1 carries the short code string — the correct target for human namespace strings like "STATEX" or "DEPT01". The design, `id-generation.ts` JSDoc, and algorithm spec all consistently reference CX.9.1 and CX.10.1 as CWE.1. No semantic error here.
+
+---
+
+### Algorithm Specification — Correct and Unambiguous
+
+The three-component matching order (CX.4.1 → CX.9.1 → CX.10.1) is specified identically in:
+- Proposed Approach (MatchRule description)
+- Key Decisions table (last row)
+- Technical Details algorithm (selectPatientId JSDoc in both the design doc and `id-generation.ts` prototype)
+- `MatchRule` type comment in `id-generation.ts`
+
+The ID prefix split is consistent across all locations:
+- Authority-rule match via CX.9.1 → prefix = CX.9.1 (no sub-fallback within CWE — correct since CX.9 is CWE, not HD)
+- Authority-rule match via CX.10.1 → prefix = CX.10.1 (same reasoning)
+- Type-only prefix chain: CX.9.1 → CX.4.1 → CX.4.2 → CX.10.1 → raw CX.4 string
+
+The asymmetry between CX.4 (which has a hierarchy: .1 → .2 → raw string) and CX.9/CX.10 (which use only .1) is unexplained but correct: CX.4 is HD type (Hierarchic Designator) with meaningful subcomponents HD.1 (namespace) and HD.2 (universal ID/OID); CX.9 and CX.10 are CWE type where .1 is the identifier code, .2 is the text, and .3 is the coding system — none of these are useful ID prefixes. The design could note this to prevent implementors from adding CX.9.2/CX.9.3 fallbacks by analogy. Non-blocking.
+
+---
+
+### MpiLookupRule Source Matching — Correctly Specified
+
+The algorithm spec states "Find source CX using rule.mpiLookup.source match rules (same CX.4.1 → CX.9.1 → CX.10.1 matching)." This correctly reuses the MatchRule three-component authority check for `source` selection. The specification is unambiguous — source MatchRules apply the same matching logic as top-level MatchRules.
+
+---
+
+### BLOCKER 20: `validateIdentitySystemRules` error message is stale after CX.9/CX.10 addition
+
+**Severity: Blocker**
+
+The `validateIdentitySystemRules` specification in Technical Details contains this error message:
+
+```typescript
+throw new Error(
+  `Invalid identitySystem.patient.rules[${i}]: MatchRule must specify at least one of: ` +
+  `"authority" (matches CX.4.1) or "type" (matches CX.5).`
+);
+```
+
+The parenthetical `(matches CX.4.1)` is now incorrect. After the CX.9/CX.10 extension, `authority` is matched against CX.4.1 **or** CX.9.1 **or** CX.10.1. An operator reading this error at startup would think CX.4.1 is the sole match target, which is wrong and would lead them to configure rules incorrectly or misdiagnose matching failures.
+
+This is code that will be written verbatim into `config.ts` during implementation — the incorrect description is not just documentation, it is the runtime operator-facing error message.
+
+**Required resolution:** Update the error message in the `validateIdentitySystemRules` spec to:
+```typescript
+`"authority" (matched against CX.4.1, CX.9.1, or CX.10.1) or "type" (matches CX.5).`
+```
+
+---
+
+### Issue 21: No test case for MpiLookupRule.source matching via CX.9.1 or CX.10.1
+
+**Severity: Low — coverage gap**
+
+The test cases cover MatchRule authority matching via CX.9.1 (row: "Authority rule matches via CX.9.1") and CX.10.1 (row: "Authority rule matches via CX.10.1"). However, there is no test for `mpiLookup.source` MatchRules matching via CX.9.1 or CX.10.1. Since the spec says `source` uses "same CX.4.1 → CX.9.1 → CX.10.1 matching," this code path is unexercised by tests.
+
+This is a gap because the `source` selection code path is structurally separate from the top-level MatchRule code path — an implementor who copies the top-level matching logic but forgets to extend it in the `source` selection would produce a bug that no existing test would catch.
+
+**Required resolution:** Add a unit test: "MpiLookupRule (pix strategy): source identifier selected via CX.9.1 — MPI finds result." Rule has `source: [{ authority: "STATEX" }]`; pool has CX with CX.4.1="" and CX.9.1="STATEX". Verify MPI crossReference is called with the correct source system and value.
+
+---
+
+### All Other CX.9/CX.10 Additions — Consistent
+
+Test cases for new paths are present:
+- "Authority rule matches via CX.9.1" — correct.
+- "Authority rule matches via CX.10.1" — correct.
+- "Authority rule does NOT match when authority string is only in CX.4.2" — correctly documents that CX.4.2 is not a matching target (only CX.4.1/CX.9.1/CX.10.1 are).
+- "Type-only rule with CX that has CX.9.1 populated — prefix comes from CX.9.1" — correct.
+- "Type-only rule with CX that has CX.9.1 empty and CX.4.1 populated — prefix comes from CX.4.1" — correct.
+- "Type-only rule with CX that has CX.10.1 only" — correct.
+
+Edge cases table additions for CX.9/CX.10 are present and accurate (rows for CX.9.1/CX.10.1 authority match, type-only with CX.9.1, CX with only CX.9 or CX.10 populated and inject-authority-from-msh).
+
+`buildEncounterIdentifier` is confirmed unchanged by the design — its authority extraction (via `extractHDAuthority` and `extractCWEAuthority`) is separate and independently checks CX.9 and CX.10, but uses different semantics (prefers CX.4.2 for HD, CX.3 for CWE) appropriate for FHIR system URI selection. No conflict.
+
+---
+
+### Pass 6 Summary
+
+| # | Severity | Issue | Status |
+|---|----------|-------|--------|
+| (all prior 1–19) | — | See Passes 1–5 | All resolved |
+| 20 | **Blocker** | `validateIdentitySystemRules` error message says `"authority" (matches CX.4.1)` — stale after CX.9/CX.10 addition; must say "matched against CX.4.1, CX.9.1, or CX.10.1" | Open |
+| 21 | Low | No test case for `mpiLookup.source` MatchRule matching via CX.9.1 or CX.10.1 | Open |
 
