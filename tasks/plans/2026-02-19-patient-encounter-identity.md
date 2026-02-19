@@ -1,5 +1,5 @@
 ---
-status: changes-requested
+status: ai-reviewed
 reviewer-iterations: 5
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
