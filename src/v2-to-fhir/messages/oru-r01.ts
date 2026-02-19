@@ -117,6 +117,24 @@ export async function defaultEncounterLookup(
  * Design note: PID-2 was deprecated in HL7 v2.4+ in favor of PID-3, but many
  * legacy systems still use PID-2. We check PID-2 first for backward compatibility
  * with older message formats.
+ *
+ * DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+ * This entire function will be removed and replaced with selectPatientId().
+ * The call site in handlePatient() (line ~554) becomes:
+ *
+ *   const patientIdResult = await selectPatientId(
+ *     pid.$3_identifier ?? [],       // PID-3 after preprocessing (merge-pid2-into-pid3 already ran)
+ *     config.identifierPriority,     // config.messages["ORU-R01"] for message-type config
+ *     mpiClient,                     // injected MpiClient (StubMpiClient by default)
+ *   );
+ *   if ('error' in patientIdResult) {
+ *     throw new Error(`Patient ID selection failed: ${patientIdResult.error}`);
+ *   }
+ *   const patientId = patientIdResult.id;
+ *
+ * handlePatient() signature will gain a `mpiClient: MpiClient` parameter.
+ * Config access changes from config["ORU-R01"] to config.messages["ORU-R01"].
+ * END DESIGN PROTOTYPE
  */
 function extractPatientId(pid: PID): string {
   if (pid.$2_patientId?.$1_value) {
@@ -546,11 +564,23 @@ function createConditionalPatientEntry(patient: Patient): BundleEntry {
  * draft patient is created even if multiple ORU messages for the same
  * non-existent patient arrive simultaneously.
  */
+// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+// handlePatient() signature will gain `mpiClient: MpiClient` parameter:
+//   async function handlePatient(
+//     pid: PID,
+//     baseMeta: Meta,
+//     lookupPatient: PatientLookupFn,
+//     mpiClient: MpiClient,                // NEW: injected MPI client
+//   ): Promise<PatientHandlingResult>
+// END DESIGN PROTOTYPE
 async function handlePatient(
   pid: PID,
   baseMeta: Meta,
   lookupPatient: PatientLookupFn,
 ): Promise<PatientHandlingResult> {
+  // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+  // Replace this call with selectPatientId() — see extractPatientId() JSDoc above for details.
+  // END DESIGN PROTOTYPE
   const patientId = extractPatientId(pid);
   const patientRef = { reference: `Patient/${patientId}` } as Reference<"Patient">;
 

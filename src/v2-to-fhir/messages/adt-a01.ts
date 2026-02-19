@@ -333,6 +333,21 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   } else if (pid.$3_identifier?.[0]?.$1_value) {
     patient.id = pid.$3_identifier[0].$1_value;
   }
+  // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+  // Replace the ad-hoc block above (lines 331-335) with:
+  //
+  //   const patientIdResult = await selectPatientId(
+  //     pid.$3_identifier ?? [],       // PID-3 after preprocessing (merge-pid2-into-pid3 already ran)
+  //     config.identifierPriority,     // config now has top-level identifierPriority (not config["ADT-A01"])
+  //     mpiClient,                     // injected MpiClient (StubMpiClient by default)
+  //   );
+  //   if ('error' in patientIdResult) {
+  //     throw new Error(`Patient ID selection failed: ${patientIdResult.error}`);
+  //   }
+  //   patient.id = patientIdResult.id;
+  //
+  // Also update config access below from config["ADT-A01"] to config.messages["ADT-A01"].
+  // END DESIGN PROTOTYPE
 
   // Add meta tags
   patient.meta = { ...patient.meta, ...baseMeta };

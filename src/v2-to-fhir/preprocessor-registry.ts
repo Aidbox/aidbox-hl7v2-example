@@ -19,6 +19,11 @@ export type SegmentPreprocessorFn = (
 
 export const SEGMENT_PREPROCESSORS: Record<string, SegmentPreprocessorFn> = {
   "fix-authority-with-msh": fixAuthorityWithMsh,
+  // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+  // Register new PID preprocessors here when implemented:
+  //   "merge-pid2-into-pid3": mergePid2IntoPid3,
+  //   "inject-authority-from-msh": injectAuthorityFromMsh,
+  // END DESIGN PROTOTYPE
 };
 
 export type SegmentPreprocessorId = keyof typeof SEGMENT_PREPROCESSORS;
@@ -108,6 +113,77 @@ function parseHdNamespace(
     system: parts[1] || undefined,
   };
 }
+
+// =============================================================================
+// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+//
+// New preprocessor implementations for PID segment normalization.
+// These are placeholders — register in SEGMENT_PREPROCESSORS when implemented.
+// =============================================================================
+
+/**
+ * DESIGN PROTOTYPE: merge-pid2-into-pid3
+ *
+ * Fired on PID field 2 (PID-2, Patient ID — deprecated in HL7 v2.4+, removed in v2.8.2).
+ * ASTRA senders place UNIPAT in PID-2; this moves it into PID-3 so the converter
+ * sees all identifiers in one place.
+ *
+ * Behavior:
+ *   - If PID-2 has a non-empty CX.1 value: append PID-2 CX as a new repeat in PID-3.
+ *     PID-3 is created if absent.
+ *   - Clear PID-2 after migration (set to empty).
+ *   - No-op if PID-2 is empty or has no CX.1 value.
+ *   - Never overwrites existing PID-3 content — always appends.
+ *
+ * Config trigger: MessageTypeConfig.preprocess.PID."2" = ["merge-pid2-into-pid3"]
+ */
+// DESIGN PROTOTYPE:
+// function mergePid2IntoPid3(
+//   context: PreprocessorContext,
+//   segment: HL7v2Segment,
+// ): void {
+//   if (segment.segment !== "PID") return;
+//   // 1. Read PID-2 (field index 2)
+//   // 2. If empty or no CX.1 value, return
+//   // 3. Append PID-2 CX to PID-3 (field index 3, which is a repeat array)
+//   // 4. Clear PID-2 (set segment.fields[2] to empty/undefined)
+// }
+
+/**
+ * DESIGN PROTOTYPE: inject-authority-from-msh
+ *
+ * Fired on PID field 3 (PID-3, Patient Identifier List — the primary identifier field).
+ * Some senders omit the assigning authority on identifiers (e.g., `12345^^^^MR`).
+ * This injects the MSH-3/4 derived namespace as CX.4.1 for bare identifiers.
+ *
+ * Behavior:
+ *   - For each CX repeat in PID-3:
+ *     * If CX.1 has a value AND all of CX.4/9/10 are empty → inject MSH namespace as CX.4.1
+ *     * If CX already has any authority → skip (never overrides)
+ *   - Authority derivation: same logic as fix-authority-with-msh (MSH-3 + MSH-4 namespaces)
+ *   - No-op if MSH has no usable namespace.
+ *
+ * Config trigger: MessageTypeConfig.preprocess.PID."3" = ["inject-authority-from-msh"]
+ *
+ * Note: named "inject-authority-from-msh" (not "fix-authority-with-msh") to distinguish
+ * from the PV1 variant — same authority derivation logic, different segment target and
+ * application (PID-3 repeats vs single PV1-19).
+ */
+// DESIGN PROTOTYPE:
+// function injectAuthorityFromMsh(
+//   context: PreprocessorContext,
+//   segment: HL7v2Segment,
+// ): void {
+//   if (segment.segment !== "PID") return;
+//   const mshSegment = findSegment(context.parsedMessage, "MSH");
+//   if (!mshSegment) return;
+//   // Derive namespace from MSH-3/4 (same as parseHdNamespace usage in fixAuthorityWithMsh)
+//   // For each CX repeat in segment.fields[3]:
+//   //   if CX.1 has value AND CX.4/9/10 all empty → set CX.4.1 = namespace
+// }
+
+// END DESIGN PROTOTYPE
+// =============================================================================
 
 /**
  * Insert authority (CX.4) into PV1-19 parsed segment field.

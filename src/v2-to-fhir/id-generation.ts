@@ -20,6 +20,119 @@
 import type { CX, HD, CWE } from "../hl7v2/generated/fields";
 import type { Encounter } from "../fhir/hl7-fhir-r4-core";
 
+// =============================================================================
+// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+//
+// Patient ID priority-list algorithm for cross-EHR identity resolution.
+// Replaces ad-hoc PID-2/PID-3[0] logic in adt-a01.ts and oru-r01.ts.
+//
+// Full spec: tasks/plans/2026-02-19-patient-encounter-identity.md
+// MpiClient and StubMpiClient: src/v2-to-fhir/mpi-client.ts
+// =============================================================================
+
+// DESIGN PROTOTYPE: Import MpiClient from mpi-client.ts when implemented
+// import type { MpiClient } from "./mpi-client";
+
+/**
+ * DESIGN PROTOTYPE: MatchRule
+ *
+ * Selects the first CX from the identifier pool where:
+ *   - CX.4.1 matches `authority` (if specified)
+ *   - CX.5 matches `type` (if specified)
+ * At least one of authority or type must be present (validated at config load time).
+ */
+// DESIGN PROTOTYPE:
+// export type MatchRule = {
+//   authority?: string; // match CX.4.1
+//   type?: string;      // match CX.5
+// };
+
+/**
+ * DESIGN PROTOTYPE: MpiLookupRule
+ *
+ * Queries an external MPI using a source identifier from the pool.
+ * Participates in the same ordered fallback chain as MatchRule.
+ *
+ * Behavior:
+ *   - No source identifier found in pool → skip to next rule
+ *   - MPI returns found → use returned value as Patient.id
+ *   - MPI returns not-found → skip to next rule
+ *   - MPI unavailable → HARD ERROR, does NOT fall through
+ */
+// DESIGN PROTOTYPE:
+// export type MpiLookupRule = {
+//   mpiLookup: {
+//     endpoint: {
+//       baseUrl: string;
+//       timeout?: number; // ms, default 5000
+//     };
+//     strategy: 'pix' | 'match';
+//     source?: MatchRule[];    // For 'pix': which identifier to send to MPI
+//     target: {
+//       system: string;        // FHIR system URI for PIXm targetSystem param
+//       authority: string;     // HL7v2 authority for the resulting Patient.id
+//       type?: string;
+//     };
+//     matchThreshold?: number; // For 'match' strategy, default 0.95
+//   };
+// };
+
+/**
+ * DESIGN PROTOTYPE: IdentifierPriorityRule
+ * Union of the two rule types. Config is an ordered array of these.
+ */
+// DESIGN PROTOTYPE:
+// export type IdentifierPriorityRule = MatchRule | MpiLookupRule;
+
+/**
+ * DESIGN PROTOTYPE: PatientIdResult
+ * Discriminated union result from selectPatientId.
+ */
+// DESIGN PROTOTYPE:
+// export type PatientIdResult =
+//   | { id: string }
+//   | { error: string };
+
+/**
+ * DESIGN PROTOTYPE: selectPatientId
+ *
+ * Selects Patient.id from a pool of CX identifiers (PID-3 after preprocessing)
+ * using an ordered list of IdentifierPriorityRule entries.
+ *
+ * Algorithm (executed top-to-bottom through rules):
+ *   1. Filter out CX entries with empty CX.1 — they are never candidates.
+ *   2. For each rule:
+ *      a. MatchRule { authority?, type? }:
+ *         - Find first CX where CX.4.1 === authority (if set) AND CX.5 === type (if set)
+ *         - Match: return { id: `${sanitize(cx4Authority)}-${sanitize(cx1Value)}` }
+ *         - No match: continue to next rule
+ *      b. MpiLookupRule { mpiLookup }:
+ *         - Find source CX using mpiLookup.source match rules
+ *         - No source: skip to next rule (fallthrough)
+ *         - Query mpiClient.crossReference (pix) or mpiClient.match (match strategy)
+ *         - status='found': return { id: `${sanitize(target.authority)}-${sanitize(result.value)}` }
+ *         - status='not-found': skip to next rule (fallthrough)
+ *         - status='unavailable': return { error: `MPI unavailable: ${result.error}` } (HARD ERROR)
+ *   3. All rules exhausted without match: return { error: 'No identifier priority rule matched ...' }
+ *
+ * Sanitization: `s.toLowerCase().replace(/[^a-z0-9-]/g, "-")` — same as Encounter.id.
+ *
+ * @param identifiers - CX[] from PID-3 after preprocessing (merge-pid2-into-pid3 has already run)
+ * @param rules       - ordered IdentifierPriorityRule[] from config.identifierPriority
+ * @param mpiClient   - injectable MpiClient; pass StubMpiClient when no MPI is configured
+ */
+// DESIGN PROTOTYPE:
+// export async function selectPatientId(
+//   identifiers: CX[],
+//   rules: IdentifierPriorityRule[],
+//   mpiClient: MpiClient,
+// ): Promise<PatientIdResult> {
+//   throw new Error('Not implemented — see 2026-02-19-patient-encounter-identity.md');
+// }
+
+// END DESIGN PROTOTYPE
+// =============================================================================
+
 export type EncounterIdentifierResult = {
   identifier?: Encounter["identifier"];
   error?: string;

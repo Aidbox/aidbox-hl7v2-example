@@ -10,6 +10,54 @@ import {
  * Config is keyed by message type strings (e.g., "ORU-R01", "ADT-A01").
  */
 
+// =============================================================================
+// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
+//
+// Config restructure: Hl7v2ToFhirConfig changes from a flat Record<messageType, config>
+// to a typed object with top-level `identifierPriority` and a `messages` record.
+//
+// NEW MessageTypeConfig: preprocess gains PID segment with fields "2" and "3".
+//
+// NEW Hl7v2ToFhirConfig shape:
+//   {
+//     identifierPriority: IdentifierPriorityRule[];  // global, deployment-level
+//     messages: Record<string, MessageTypeConfig | undefined>;
+//   }
+//
+// Migration impact:
+//   - config/hl7v2-to-fhir.json format changes (breaking — caught at startup by validation)
+//   - validatePreprocessorIds() must walk config.messages instead of top-level config
+//   - All callers of hl7v2ToFhirConfig() that access message configs must change from
+//     config["ADT-A01"] to config.messages["ADT-A01"]
+//
+// Import IdentifierPriorityRule from id-generation.ts when implementing.
+// =============================================================================
+
+// DESIGN PROTOTYPE: Updated MessageTypeConfig with PID preprocessing support:
+// export type MessageTypeConfig = {
+//   preprocess?: {
+//     PV1?: {
+//       "19"?: SegmentPreprocessorId[];
+//     };
+//     PID?: {
+//       "2"?: SegmentPreprocessorId[];  // merge-pid2-into-pid3
+//       "3"?: SegmentPreprocessorId[];  // inject-authority-from-msh
+//     };
+//   };
+//   converter?: {
+//     PV1?: { required?: boolean };
+//   };
+// };
+
+// DESIGN PROTOTYPE: New top-level config type:
+// export type Hl7v2ToFhirConfig = {
+//   identifierPriority: IdentifierPriorityRule[];
+//   messages: Record<string, MessageTypeConfig | undefined>;
+// };
+
+// END DESIGN PROTOTYPE
+// =============================================================================
+
 export type MessageTypeConfig = {
   preprocess?: {
     PV1?: {
