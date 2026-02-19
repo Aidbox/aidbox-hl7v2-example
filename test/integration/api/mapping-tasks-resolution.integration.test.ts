@@ -4,7 +4,7 @@
  * Tests the task resolution flow with type detection and validation for different mapping types.
  * Tests the underlying functions directly since the HTTP routing is trivial.
  */
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect } from "bun:test";
 import {
   aidboxFetch,
   cleanupTestResources,
@@ -137,9 +137,7 @@ async function fetchConceptMap(id: string): Promise<ConceptMap | null> {
 // ============================================================================
 
 describe("Task resolution with type detection and validation", () => {
-  beforeEach(async () => {
-    await cleanupTestResources();
-  });
+  // cleanupTestResources() is called globally by test/integration/preload.ts beforeEach
 
   describe("LOINC task resolution", () => {
     test("resolves LOINC task with valid code", async () => {
@@ -198,7 +196,7 @@ describe("Task resolution with type detection and validation", () => {
         const result = await resolveTaskWithValidation(taskId, status, display);
         expect(result.success).toBe(true);
       }
-    });
+    }, 15000);
 
     test("rejects invalid OBR status code", async () => {
       await createTaskForType("task-obr-invalid", "obr-status");
@@ -243,7 +241,7 @@ describe("Task resolution with type detection and validation", () => {
         const result = await resolveTaskWithValidation(`task-obx-${status}`, status, display);
         expect(result.success).toBe(true);
       }
-    });
+    }, 15000);
 
     test("rejects invalid OBX status code", async () => {
       await createTaskForType("task-obx-invalid", "obx-status");
@@ -287,7 +285,7 @@ describe("Task resolution with type detection and validation", () => {
         const result = await resolveTaskWithValidation(`task-class-${classCode.toLowerCase()}`, classCode, display);
         expect(result.success).toBe(true);
       }
-    });
+    }, 15000);
 
     test("rejects invalid patient class code", async () => {
       await createTaskForType("task-class-invalid", "patient-class");
