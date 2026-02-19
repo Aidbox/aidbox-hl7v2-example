@@ -26,7 +26,7 @@ import type { Encounter } from "../fhir/hl7-fhir-r4-core";
 // Patient ID priority-list algorithm for cross-EHR identity resolution.
 // Replaces ad-hoc PID-2/PID-3[0] logic in adt-a01.ts and oru-r01.ts.
 //
-// Full spec: tasks/plans/2026-02-19-patient-encounter-identity.md
+// Full spec: ai/tickets/awie_case/2026-02-19-patient-encounter-identity.md
 // MpiClient and StubMpiClient: src/v2-to-fhir/mpi-client.ts
 // =============================================================================
 

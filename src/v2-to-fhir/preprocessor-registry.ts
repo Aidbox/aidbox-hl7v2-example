@@ -91,7 +91,7 @@ function fixAuthorityWithMsh(
 
   if (!namespace) {
     // TODO: Handle missing namespaces by falling back to Universal ID (HD.2+HD.3)
-    // See tasks/drafts/2026-02-06-hd-universal-id-fallback.md
+    // See ai/tickets/drafts/2026-02-06-hd-universal-id-fallback.md
     return;
   }
 

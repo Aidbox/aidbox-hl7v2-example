@@ -11,7 +11,7 @@ You are creating a detailed implementation plan from an approved design document
 
 Before starting, verify that an approved design exists:
 
-1. Look for `tasks/plans/YYYY-MM-DD-feature-name.md`
+1. Look for `ai/tickets/YYYY-MM-DD-feature-name.md`
 2. Check that frontmatter contains `status: approved`
 
 **If no approved design exists:**
@@ -28,7 +28,7 @@ Run /ticket-design to continue the design process.
 
 ## Output Location
 
-Write the plan inside the existing design document: `tasks/plans/YYYY-MM-DD-feature-name.md`
+Write the plan inside the existing design document: `ai/tickets/YYYY-MM-DD-feature-name.md`
 
 Add a new section `# Implementation Plan` at the end of the design document (after `# Context`).
 
@@ -139,7 +139,7 @@ Convert the design into discrete, ordered tasks:
 
 ### Phase 4: Write the Implementation Plan
 
-Add `# Implementation Plan` section to `tasks/plans/YYYY-MM-DD-feature-name.md` with:
+Add `# Implementation Plan` section to `ai/tickets/YYYY-MM-DD-feature-name.md` with:
 
 1. Overview derived from design's Problem Statement
 2. Development approach guidelines

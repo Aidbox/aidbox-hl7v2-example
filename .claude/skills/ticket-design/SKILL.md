@@ -11,7 +11,7 @@ You are an **orchestrator agent** creating a design document with prototype code
 
 ## Output Location
 
-Write designs to: `tasks/plans/`
+Write designs to: `ai/tickets/`
 
 Naming convention: `YYYY-MM-DD-feature-name.md` (e.g., `2026-01-28-user-authentication.md`)
 
@@ -266,7 +266,7 @@ After Phase 3 completes:
    - All Q&A and discussion in **# Context > ## User Requirements & Answers**
 2. Commit the update:
    ```bash
-   git add tasks/plans/YYYY-MM-DD-feature-name.md
+   git add ai/tickets/YYYY-MM-DD-feature-name.md
    git commit -m "WIP: Design for [feature-name] - exploration context recorded"
    ```
 
@@ -288,7 +288,7 @@ Create the design document and prototype placeholders, OR spawn a sub-agent to f
 Create a design document and prototype placeholders for [feature name]. Think hard.
 
 ## Design Document
-Read: tasks/plans/YYYY-MM-DD-feature-name.md
+Read: ai/tickets/YYYY-MM-DD-feature-name.md
 
 The document contains context you need:
 - **# Context > ## Exploration Findings**: Codebase analysis results
@@ -319,7 +319,7 @@ The document contains context you need:
 
 4. Commit all changes:
     ```bash
-    git add tasks/plans/YYYY-MM-DD-feature-name.md [prototype files...]
+    git add ai/tickets/YYYY-MM-DD-feature-name.md [prototype files...]
     git commit -m "WIP: Design for [feature-name] - ready for review"
     ```
 
@@ -339,7 +339,7 @@ The document contains context you need:
 Fix the design based on feedback for [feature name]. Think hard.
 
 ## Design Document
-Read: tasks/plans/YYYY-MM-DD-feature-name.md
+Read: ai/tickets/YYYY-MM-DD-feature-name.md
 
 The document contains feedback to address:
 - **# Context > ## AI Review Notes**: Issues found by the reviewer
@@ -390,7 +390,7 @@ The document contains feedback to address:
 Use skill ai-review to review a software design for [feature name]. Think very hard.
 
 ## Design Document
-Read: tasks/plans/YYYY-MM-DD-feature-name.md
+Read: ai/tickets/YYYY-MM-DD-feature-name.md
 
 ## Prototype Files
 [List files with DESIGN PROTOTYPE markers - include file paths]
@@ -442,7 +442,7 @@ Present the design to the user for approval:
 **On approval:**
 
 ```bash
-git add tasks/plans/YYYY-MM-DD-feature-name.md
+git add ai/tickets/YYYY-MM-DD-feature-name.md
 git commit -m "Design approved: [feature-name]"
 ```
 

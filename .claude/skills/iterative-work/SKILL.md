@@ -31,4 +31,4 @@ Replace [N] and [current_task_document_path] with appropriate values.
 - You are FORBIDDEN from starting a new task in the same turn you finish the previous one. You MUST report a completion summary to the user and WAIT for a response.
 - NEVER skip running tests. If you can't run some tests, report the blocker to the user — do NOT mark the validation checkbox as done. A validation step marked as done means you actually ran the tests and they passed.
 
-If you finished the last task of the feature, and it's approved by the user, move the plan file to the /tasks/plans/completed folder. 
+If you finished the last task of the feature, and it's approved by the user, move the plan file to the ai/tickets/completed folder.

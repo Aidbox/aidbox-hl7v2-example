@@ -43,7 +43,7 @@ import {
 //     3. Each MatchRule has at least one of authority or type
 //     4. Each MpiLookupRule with strategy='pix' has a source array
 //   Throws descriptive Error at startup if any validation fails.
-//   Full spec: tasks/plans/2026-02-19-patient-encounter-identity.md (Technical Details)
+//   Full spec: ai/tickets/awie_case/2026-02-19-patient-encounter-identity.md (Technical Details)
 //
 // NEW: import { type PatientIdResolver } from "./id-generation";
 //   (Only needed if validateIdentitySystemRules type signature requires it)
