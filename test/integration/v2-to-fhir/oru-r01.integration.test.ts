@@ -904,3 +904,29 @@ describe("ORU_R01 E2E Integration", () => {
     });
   });
 });
+
+describe("patient identity system", () => {
+  test("MEDTEX without UNIPAT falls back to type-PE rule", async () => {
+    // MEDTEX messages have BMH/PE and BMH/MR identifiers in PID-3 but no UNIPAT.
+    // Rule {assigner: "UNIPAT"} skips → rule {type: "PE"} matches → Patient.id = bmh-{value}.
+    const hl7Message = await loadFixture("oru-r01/identity-system/medtex-type-pe.hl7");
+    const message = await submitAndProcessOruR01(hl7Message);
+
+    expect(message.status).toBe("processed");
+    expect(message.patient?.reference).toBe("Patient/bmh-11220762");
+
+    const patient = await getPatient("bmh-11220762");
+    expect(patient.name?.[0]?.family).toBe("MEDTEXPATIENT");
+  });
+
+  test("no-match error propagates to IncomingHL7v2Message status", async () => {
+    // PID-3 has CX with empty CX.1 value — filtered from pool.
+    // All rules exhausted on empty pool → error.
+    const hl7Message = await loadFixture("oru-r01/identity-system/no-match.hl7");
+    const message = await submitAndProcessOruR01(hl7Message);
+
+    expect(message.status).toBe("error");
+    expect(message.error).toMatch(/No identifier priority rule matched/i);
+    expect(message.patient).toBeUndefined();
+  });
+});

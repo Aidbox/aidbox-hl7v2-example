@@ -897,13 +897,13 @@ Replace ad-hoc Patient.id logic in all three converters. Depends on Tasks 2-3.
 
 Depends on all implementation tasks (1-5). Tests full message flow through converter.
 
-- [ ] Add `describe("patient identity system", ...)` block in `test/integration/v2-to-fhir/adt.integration.test.ts`:
+- [x] Add `describe("patient identity system", ...)` block in `test/integration/v2-to-fhir/adt.integration.test.ts`:
   - ADT-A01 end-to-end: ASTRA message with UNIPAT in PID-2 produces `unipat-{value}` Patient.id
   - Reprocessing idempotency: same message processed twice produces same Patient.id (upsert, not duplicate)
-- [ ] Add `describe("patient identity system", ...)` block in `test/integration/v2-to-fhir/oru-r01.integration.test.ts`:
+- [x] Add `describe("patient identity system", ...)` block in `test/integration/v2-to-fhir/oru-r01.integration.test.ts`:
   - ORU-R01 end-to-end: MEDTEX without UNIPAT falls back to type-PE rule
   - No-match error: message with unrecognized identifiers → IncomingHL7v2Message gets status=error
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` — must pass before next task
 
 ---
 

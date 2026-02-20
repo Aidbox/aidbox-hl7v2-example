@@ -355,3 +355,35 @@ describe("ADT_A08 E2E Integration", () => {
     });
   });
 });
+
+describe("patient identity system", () => {
+  test("ASTRA message: UNIPAT in PID-2 produces unipat-prefixed Patient.id", async () => {
+    // ASTRA puts the UNIPAT identifier in PID-2 (deprecated field).
+    // Preprocessor move-pid2-into-pid3 migrates it into PID-3.
+    // Rule {assigner: "UNIPAT"} matches → Patient.id = unipat-{value}.
+    const hl7Message = await loadFixture("adt-a01/identity-system/astra-unipat-pid2.hl7");
+    const message = await submitAndProcessAdtA01(hl7Message);
+
+    expect(message.status).toBe("processed");
+    expect(message.patient?.reference).toBe("Patient/unipat-11195429");
+
+    const patient = await getPatient("unipat-11195429");
+    expect(patient.resourceType).toBe("Patient");
+    expect(patient.name?.[0]?.family).toBe("ASTRAPATIENT");
+  });
+
+  test("reprocessing same ASTRA message produces same Patient.id (idempotent)", async () => {
+    const hl7Message = await loadFixture("adt-a01/identity-system/astra-unipat-pid2.hl7");
+
+    // Process first time
+    const message1 = await submitAndProcessAdtA01(hl7Message);
+    expect(message1.patient?.reference).toBe("Patient/unipat-11195429");
+
+    // Process second time — same Patient.id, upsert not duplicate
+    const message2 = await submitAndProcessAdtA01(hl7Message);
+    expect(message2.patient?.reference).toBe("Patient/unipat-11195429");
+
+    const patient = await getPatient("unipat-11195429");
+    expect(patient.id).toBe("unipat-11195429");
+  });
+});
