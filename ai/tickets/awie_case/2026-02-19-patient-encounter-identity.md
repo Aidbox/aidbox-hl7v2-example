@@ -828,7 +828,7 @@ Config foundation. All existing config consumers and tests must be migrated.
 
 Two new preprocessors in the registry. Depends on config supporting PID fields (Task 3).
 
-- [ ] In `src/v2-to-fhir/preprocessor-registry.ts`:
+- [x] In `src/v2-to-fhir/preprocessor-registry.ts`:
   - Remove all DESIGN PROTOTYPE comments
   - Register `"move-pid2-into-pid3": movePid2IntoPid3` and `"inject-authority-from-msh": injectAuthorityFromMsh` in `SEGMENT_PREPROCESSORS`
   - Implement `movePid2IntoPid3(context, segment)`:
@@ -841,8 +841,8 @@ Two new preprocessors in the registry. Depends on config supporting PID fields (
     - Derive namespace from MSH-3/MSH-4 (reuse `parseHdNamespace` pattern from `fixAuthorityWithMsh`)
     - For each CX repeat in PID-3: if CX.1 has value AND CX.4/9/10 all empty → inject derived namespace as CX.4.1
     - Never override existing authority. No-op if MSH has no usable namespace
-- [ ] Update `SegmentPreprocessorId` type: it's derived from `keyof typeof SEGMENT_PREPROCESSORS`, so registering new entries auto-updates it
-- [ ] Write unit tests in `test/unit/v2-to-fhir/preprocessor-pid.test.ts`:
+- [x] Update `SegmentPreprocessorId` type: it's derived from `keyof typeof SEGMENT_PREPROCESSORS`, so registering new entries auto-updates it
+- [x] Write unit tests in `test/unit/v2-to-fhir/preprocessor-pid.test.ts`:
   - `move-pid2-into-pid3`: PID-2 CX moved to PID-3, PID-2 cleared
   - `move-pid2-into-pid3`: PID-2 empty → no-op
   - `move-pid2-into-pid3`: PID-3 already has repeats → PID-2 appended as additional repeat
@@ -850,10 +850,10 @@ Two new preprocessors in the registry. Depends on config supporting PID fields (
   - `inject-authority-from-msh`: CX already has CX.4 → not overridden
   - `inject-authority-from-msh`: CX with CX.9 populated → not overridden
   - `inject-authority-from-msh`: MSH has no namespace → no-op
-- [ ] Add preprocessor tests to `test/unit/v2-to-fhir/preprocessor.test.ts`:
+- [x] Add preprocessor tests to `test/unit/v2-to-fhir/preprocessor.test.ts`:
   - Config with PID.2/PID.3 preprocessors and full message → verify both fire in order
   - Config with unknown PID preprocessor ID → throws at load time
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` — must pass before next task
 
 ---
 

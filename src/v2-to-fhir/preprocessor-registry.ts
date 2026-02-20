@@ -19,9 +19,8 @@ export type SegmentPreprocessorFn = (
 
 export const SEGMENT_PREPROCESSORS: Record<string, SegmentPreprocessorFn> = {
   "fix-authority-with-msh": fixAuthorityWithMsh,
-  // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-  //   "move-pid2-into-pid3": movePid2IntoPid3,
-  //   "inject-authority-from-msh": injectAuthorityFromMsh,
+  "move-pid2-into-pid3": movePid2IntoPid3,
+  "inject-authority-from-msh": injectAuthorityFromMsh,
 };
 
 export type SegmentPreprocessorId = keyof typeof SEGMENT_PREPROCESSORS;
@@ -112,28 +111,147 @@ function parseHdNamespace(
   };
 }
 
-// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-
 /**
  * Fired on PID field 2. If PID-2 has a non-empty CX.1, appends PID-2 CX
  * as a new repeat in PID-3, then clears PID-2. No-op if CX.1 is empty.
  */
-// function movePid2IntoPid3(
-//   context: PreprocessorContext,
-//   segment: HL7v2Segment,
-// ): void { /* Not implemented */ }
+function movePid2IntoPid3(
+  _context: PreprocessorContext,
+  segment: HL7v2Segment,
+): void {
+  if (segment.segment !== "PID") return;
+
+  const pid2 = segment.fields[2];
+  if (pid2 === undefined || pid2 === null) return;
+
+  // Extract CX.1 value from PID-2
+  const cx1Value = extractCx1(pid2);
+  if (!cx1Value) return;
+
+  // Append PID-2 into PID-3's repeat list
+  const pid3 = segment.fields[3];
+  if (pid3 === undefined || pid3 === null) {
+    // PID-3 absent — create with single entry
+    segment.fields[3] = [pid2];
+  } else if (Array.isArray(pid3)) {
+    // PID-3 is already a repeating array — append
+    pid3.push(pid2);
+  } else {
+    // PID-3 is a single CX — convert to array and append
+    segment.fields[3] = [pid3, pid2];
+  }
+
+  // Clear PID-2
+  delete segment.fields[2];
+}
 
 /**
  * Fired on PID field 3. For each CX repeat in PID-3 with CX.1 but no authority
  * (CX.4/9/10 all empty), injects MSH-3/4 derived namespace as CX.4.1.
  * Never overrides existing authority. No-op if MSH has no usable namespace.
  */
-// function injectAuthorityFromMsh(
-//   context: PreprocessorContext,
-//   segment: HL7v2Segment,
-// ): void { /* Not implemented */ }
+function injectAuthorityFromMsh(
+  context: PreprocessorContext,
+  segment: HL7v2Segment,
+): void {
+  if (segment.segment !== "PID") return;
 
-// END DESIGN PROTOTYPE
+  const mshSegment = findSegment(context.parsedMessage, "MSH");
+  if (!mshSegment) return;
+
+  const msh = fromMSH(mshSegment);
+  const namespace = deriveMshNamespace(msh);
+  if (!namespace) return;
+
+  const pid3 = segment.fields[3];
+  if (pid3 === undefined || pid3 === null) return;
+
+  if (Array.isArray(pid3)) {
+    for (let i = 0; i < pid3.length; i++) {
+      const cx = pid3[i]!;
+      const replaced = injectAuthorityIntoCx(cx, namespace);
+      if (replaced) pid3[i] = replaced;
+    }
+  } else {
+    const replaced = injectAuthorityIntoCx(pid3, namespace);
+    if (replaced) segment.fields[3] = replaced;
+  }
+}
+
+/** Extract CX.1 value from a raw FieldValue representing a single CX. */
+function extractCx1(fv: FieldValue): string | undefined {
+  if (typeof fv === "string") return fv.trim() || undefined;
+  if (Array.isArray(fv)) return undefined;
+  const v1 = fv[1];
+  if (v1 === undefined) return undefined;
+  if (typeof v1 === "string") return v1.trim() || undefined;
+  if (typeof v1 === "object" && !Array.isArray(v1)) {
+    const inner = (v1 as Record<number, FieldValue>)[1];
+    if (typeof inner === "string") return inner.trim() || undefined;
+  }
+  return undefined;
+}
+
+/** Derive MSH-3/MSH-4 namespace using the same logic as fixAuthorityWithMsh. */
+function deriveMshNamespace(msh: ReturnType<typeof fromMSH>): string | undefined {
+  const msh3 = parseHdNamespace(msh.$3_sendingApplication?.$1_namespace);
+  const msh4 = parseHdNamespace(msh.$4_sendingFacility?.$1_namespace);
+  const parts = [msh3.namespace, msh4.namespace].filter(Boolean);
+  return parts.length > 0 ? parts.join("-") : undefined;
+}
+
+/**
+ * Check if a raw CX FieldValue has any authority component (CX.4/9/10).
+ * Checks the same semantic subcomponents as fixAuthorityWithMsh:
+ * CX.4.1 (HD namespace), CX.4.2 (HD universal ID), CX.9.1 (CWE code),
+ * CX.9.3 (CWE system), CX.10.1 (CWE code), CX.10.3 (CWE system).
+ */
+function cxHasAuthority(fv: FieldValue): boolean {
+  if (typeof fv === "string" || Array.isArray(fv)) return false;
+  const obj = fv as Record<number, FieldValue>;
+
+  const hasCx4 = hasSubcomponent(obj[4], 1) || hasSubcomponent(obj[4], 2);
+  const hasCx9 = hasSubcomponent(obj[9], 1) || hasSubcomponent(obj[9], 3);
+  const hasCx10 = hasSubcomponent(obj[10], 1) || hasSubcomponent(obj[10], 3);
+
+  return hasCx4 || hasCx9 || hasCx10;
+}
+
+/** Check if a specific numbered subcomponent of a FieldValue is non-empty. */
+function hasSubcomponent(fv: FieldValue | undefined, key: number): boolean {
+  if (fv === undefined || fv === null) return false;
+  if (typeof fv === "string") {
+    // A string field has no subcomponents; for key 1 the string itself is the value
+    return key === 1 && fv.trim().length > 0;
+  }
+  if (Array.isArray(fv)) return false;
+  const sub = (fv as Record<number, FieldValue>)[key];
+  if (sub === undefined || sub === null) return false;
+  if (typeof sub === "string") return sub.trim().length > 0;
+  return false;
+}
+
+/**
+ * Inject authority namespace (CX.4.1) into a raw CX FieldValue. Only modifies bare CX entries.
+ * Returns a replacement FieldValue if the original was a string (cannot be modified in place),
+ * or undefined if the modification was done in place.
+ */
+function injectAuthorityIntoCx(fv: FieldValue, namespace: string): FieldValue | undefined {
+  const cx1 = extractCx1(fv);
+  if (!cx1) return undefined;
+  if (cxHasAuthority(fv)) return undefined;
+
+  if (typeof fv === "string") {
+    // String CX — convert to object form with authority
+    return { 1: fv, 4: { 1: namespace } } as FieldValue;
+  }
+
+  if (Array.isArray(fv)) return undefined;
+
+  // Complex object — set CX.4.1 (HD.1 = namespace) in place
+  (fv as Record<number, FieldValue>)[4] = { 1: namespace } as FieldValue;
+  return undefined;
+}
 
 /**
  * Insert authority (CX.4) into PV1-19 parsed segment field.
