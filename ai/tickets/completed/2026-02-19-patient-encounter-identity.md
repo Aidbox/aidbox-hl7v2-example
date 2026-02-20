@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 reviewer-iterations: 7
 prototype-files:
   - src/v2-to-fhir/id-generation.ts
@@ -909,10 +909,10 @@ Depends on all implementation tasks (1-5). Tests full message flow through conve
 
 ## Task 7: Cleanup design artifacts
 
-- [ ] Remove all `DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md` comments from all source files
-- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity" src/ config/`
-- [ ] Update design document status to `implemented`
-- [ ] Run `bun test:all` and `bun run typecheck` — final verification
+- [x] Remove all `DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md` comments from all source files
+- [x] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity" src/ config/`
+- [x] Update design document status to `implemented`
+- [x] Run `bun test:all` and `bun run typecheck` — final verification
 
 ---
 
