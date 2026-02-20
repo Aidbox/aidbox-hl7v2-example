@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { StubMpiClient } from "../../../src/v2-to-fhir/mpi-client";
+import { StubMpiClient } from "../../../src/v2-to-fhir/identity-system/mpi-lookup";
 
 describe("StubMpiClient", () => {
   const client = new StubMpiClient();

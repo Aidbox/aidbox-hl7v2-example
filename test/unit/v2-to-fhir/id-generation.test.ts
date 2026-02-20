@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { buildEncounterIdentifier } from "../../../src/v2-to-fhir/id-generation";
+import { buildEncounterIdentifier } from "../../../src/v2-to-fhir/identity-system/encounter-id";
 import type { CX } from "../../../src/hl7v2/generated/fields";
 
 describe("buildEncounterIdentifier", () => {

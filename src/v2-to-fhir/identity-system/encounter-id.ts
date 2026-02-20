@@ -17,60 +17,8 @@
  * Ref: https://www.hl7.eu/HL7v2x/v282/std282/ch02a.html#Heading158
  */
 
-import type { CX, HD, CWE } from "../hl7v2/generated/fields";
-import type { Encounter } from "../fhir/hl7-fhir-r4-core";
-
-// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// import type { MpiClient } from "./mpi-client";
-
-/** Resolves Patient.id from a pool of CX identifiers. Injected into converters by converter.ts. */
-// export type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>;
-
-/**
- * Selects first CX where authority and/or type match.
- * When `any` is true, matches first CX with non-empty CX.1 and derivable prefix.
- * At least one of authority, type, or any must be set (validated at config load time).
- */
-// export type MatchRule = {
-//   authority?: string;
-//   type?: string;
-//   any?: true;
-// };
-
-/** Queries external MPI using a source identifier from the pool. */
-// export type MpiLookupRule = {
-//   mpiLookup: {
-//     endpoint: { baseUrl: string; timeout?: number };
-//     strategy: 'pix' | 'match';
-//     source?: MatchRule[];
-//     target: { system: string; authority: string; type?: string };
-//     matchThreshold?: number;
-//   };
-// };
-
-// export type IdentifierPriorityRule = MatchRule | MpiLookupRule;
-
-// export type PatientIdResult =
-//   | { id: string }
-//   | { error: string };
-
-/**
- * Select Patient.id from CX identifiers using ordered priority rules.
- * Returns `{ id }` on match or `{ error }` when no rule matches or MPI is unavailable.
- *
- * @param identifiers - CX[] from PID-3 (after preprocessing)
- * @param rules - ordered IdentifierPriorityRule[] from config.identitySystem.patient.rules
- * @param mpiClient - injectable MpiClient (use StubMpiClient when MPI not configured)
- */
-// export async function selectPatientId(
-//   identifiers: CX[],
-//   rules: IdentifierPriorityRule[],
-//   mpiClient: MpiClient,
-// ): Promise<PatientIdResult> {
-//   throw new Error('Not implemented');
-// }
-
-// END DESIGN PROTOTYPE
+import type { CX, HD, CWE } from "../../hl7v2/generated/fields";
+import type { Encounter } from "../../fhir/hl7-fhir-r4-core";
 
 export type EncounterIdentifierResult = {
   identifier?: Encounter["identifier"];
@@ -143,10 +91,6 @@ export function buildEncounterIdentifier(
   };
 }
 
-/**
- * Extracts authority string from HD (Hierarchic Designator) type.
- * Returns null if empty/whitespace.
- */
 function extractHDAuthority(hd: HD | undefined): string | null {
   if (!hd) return null;
 
@@ -155,10 +99,6 @@ function extractHDAuthority(hd: HD | undefined): string | null {
   return value || null;
 }
 
-/**
- * Extracts authority string from CWE (Coded with Exceptions) type.
- * Returns null if empty/whitespace.
- */
 function extractCWEAuthority(cwe: CWE | undefined): string | null {
   if (!cwe) return null;
 

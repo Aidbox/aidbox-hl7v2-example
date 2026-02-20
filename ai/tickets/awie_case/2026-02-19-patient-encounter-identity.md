@@ -766,16 +766,16 @@ Foundation types used by `selectPatientId` and `converter.ts`. No existing code 
 
 Core algorithm. Depends on `MpiClient` from Task 1.
 
-- [ ] Replace commented-out prototype types in `src/v2-to-fhir/id-generation.ts` with real exports: `MatchRule`, `MpiLookupRule`, `IdentifierPriorityRule`, `PatientIdResult`, `PatientIdResolver`
-- [ ] Implement `selectPatientId(identifiers, rules, mpiClient)` following the algorithm in design Technical Details:
+- [x] Replace commented-out prototype types in `src/v2-to-fhir/id-generation.ts` with real exports: `MatchRule`, `MpiLookupRule`, `IdentifierPriorityRule`, `PatientIdResult`, `PatientIdResolver`
+- [x] Implement `selectPatientId(identifiers, rules, mpiClient)` following the algorithm in design Technical Details:
   - Skip CX entries with empty CX.1
   - For each rule in order: handle `{ any: true }` (match first CX with derivable prefix, skip bare CX), authority matching (CX.4.1 → CX.9.1 → CX.10.1), type matching (CX.5), combined authority+type
   - Authority-rule prefix: matched via CX.4.1 → CX.4 hierarchy, CX.9.1 → CX.9.1, CX.10.1 → CX.10.1
   - Type-only / `{ any: true }` prefix chain: CX.9.1 → CX.4.1 → CX.4.2 → CX.10.1 → raw CX.4 string
   - MpiLookupRule: find source CX, query MPI, handle found/not-found/unavailable
   - No rule matched → `{ error: "No identifier priority rule matched..." }`
-- [ ] Use same sanitization pattern as `buildEncounterIdentifier`: `s.toLowerCase().replace(/[^a-z0-9-]/g, "-")`
-- [ ] Write unit tests in `test/unit/v2-to-fhir/select-patient-id.test.ts` covering ALL test cases from design:
+- [x] Use same sanitization pattern as `buildEncounterIdentifier`: `s.toLowerCase().replace(/[^a-z0-9-]/g, "-")`
+- [x] Write unit tests in `test/unit/v2-to-fhir/select-patient-id.test.ts` covering ALL test cases from design:
   - ASTRA UNIPAT via CX.4.1 → `unipat-11195429`
   - MEDTEX UNIPAT directly in PID-3 → `unipat-11216032`
   - MEDTEX BMH/PE type-only → `bmh-11220762`
@@ -792,7 +792,7 @@ Core algorithm. Depends on `MpiClient` from Task 1.
   - `{ any: true }`: matches first CX with derivable prefix
   - `{ any: true }`: skips bare CX, matches next CX with authority
   - `{ any: true }`: all bare CX → falls through to next rule
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` — must pass before next task
 
 ---
 

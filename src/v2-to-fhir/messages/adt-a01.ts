@@ -287,7 +287,7 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  */
 // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
 // Signature gains resolvePatientId: PatientIdResolver parameter.
-// Import: import { type PatientIdResolver } from "../id-generation";
+// Import: import { type PatientIdResolver } from "../identity-system/patient-id";
 export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionResult> {
   // =========================================================================
   // Extract MSH
