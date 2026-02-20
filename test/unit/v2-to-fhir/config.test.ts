@@ -6,6 +6,9 @@ import {
   type Hl7v2ToFhirConfig,
 } from "../../../src/v2-to-fhir/config";
 
+/** Minimal valid identity rules for tests that don't focus on identity validation. */
+const minimalRules = [{ assigner: "UNIPAT" }];
+
 describe("hl7v2ToFhirConfig", () => {
   let readFileSyncSpy: ReturnType<typeof spyOn>;
 
@@ -40,13 +43,16 @@ describe("hl7v2ToFhirConfig", () => {
 
   test("valid config returns typed object with correct structure", () => {
     const validConfig: Hl7v2ToFhirConfig = {
-      "ORU-R01": {
-        preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
-        converter: { PV1: { required: false } },
-      },
-      "ADT-A01": {
-        preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
-        converter: { PV1: { required: true } },
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "ORU-R01": {
+          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+          converter: { PV1: { required: false } },
+        },
+        "ADT-A01": {
+          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+          converter: { PV1: { required: true } },
+        },
       },
     };
 
@@ -57,14 +63,17 @@ describe("hl7v2ToFhirConfig", () => {
     const config = hl7v2ToFhirConfig();
 
     expect(config).toEqual(validConfig);
-    expect(config["ORU-R01"]).toBeDefined();
-    expect(config["ADT-A01"]).toBeDefined();
+    expect(config.messages?.["ORU-R01"]).toBeDefined();
+    expect(config.messages?.["ADT-A01"]).toBeDefined();
   });
 
   test("config navigation works: ORU-R01 converter PV1 required is false", () => {
-    const validConfig = {
-      "ORU-R01": {
-        converter: { PV1: { required: false } },
+    const validConfig: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "ORU-R01": {
+          converter: { PV1: { required: false } },
+        },
       },
     };
 
@@ -74,13 +83,16 @@ describe("hl7v2ToFhirConfig", () => {
 
     const config = hl7v2ToFhirConfig();
 
-    expect(config["ORU-R01"]?.converter?.PV1?.required).toBe(false);
+    expect(config.messages?.["ORU-R01"]?.converter?.PV1?.required).toBe(false);
   });
 
   test("config navigation works: ADT-A01 preprocess PV1.19 has fix-authority-with-msh", () => {
-    const validConfig = {
-      "ADT-A01": {
-        preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+    const validConfig: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "ADT-A01": {
+          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+        },
       },
     };
 
@@ -90,13 +102,16 @@ describe("hl7v2ToFhirConfig", () => {
 
     const config = hl7v2ToFhirConfig();
 
-    expect(config["ADT-A01"]?.preprocess?.PV1?.["19"]?.[0]).toBe(
+    expect(config.messages?.["ADT-A01"]?.preprocess?.PV1?.["19"]?.[0]).toBe(
       "fix-authority-with-msh",
     );
   });
 
   test("config is cached after first load", () => {
-    const validConfig = { "ORU-R01": { converter: { PV1: { required: false } } } };
+    const validConfig: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: { "ORU-R01": { converter: { PV1: { required: false } } } },
+    };
 
     readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
       JSON.stringify(validConfig),
@@ -109,20 +124,26 @@ describe("hl7v2ToFhirConfig", () => {
   });
 
   test("clearConfigCache allows config to be reloaded", () => {
-    const config1 = { "ORU-R01": { converter: { PV1: { required: false } } } };
-    const config2 = { "ORU-R01": { converter: { PV1: { required: true } } } };
+    const config1: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: { "ORU-R01": { converter: { PV1: { required: false } } } },
+    };
+    const config2: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: { "ORU-R01": { converter: { PV1: { required: true } } } },
+    };
 
     readFileSyncSpy = spyOn(fs, "readFileSync")
       .mockReturnValueOnce(JSON.stringify(config1))
       .mockReturnValueOnce(JSON.stringify(config2));
 
     const result1 = hl7v2ToFhirConfig();
-    expect(result1["ORU-R01"]?.converter?.PV1?.required).toBe(false);
+    expect(result1.messages?.["ORU-R01"]?.converter?.PV1?.required).toBe(false);
 
     clearConfigCache();
 
     const result2 = hl7v2ToFhirConfig();
-    expect(result2["ORU-R01"]?.converter?.PV1?.required).toBe(true);
+    expect(result2.messages?.["ORU-R01"]?.converter?.PV1?.required).toBe(true);
   });
 
   test("config with null value throws error", () => {
@@ -142,7 +163,10 @@ describe("hl7v2ToFhirConfig", () => {
   });
 
   test("missing message type config returns undefined via navigation", () => {
-    const validConfig = { "ORU-R01": { converter: { PV1: { required: false } } } };
+    const validConfig: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: { "ORU-R01": { converter: { PV1: { required: false } } } },
+    };
 
     readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
       JSON.stringify(validConfig),
@@ -150,16 +174,128 @@ describe("hl7v2ToFhirConfig", () => {
 
     const config = hl7v2ToFhirConfig();
 
-    // ADT-A01 is not in config, should return undefined
-    expect(config["ADT-A01"]).toBeUndefined();
-    expect(config["ADT-A01"]?.converter?.PV1?.required).toBeUndefined();
+    expect(config.messages?.["ADT-A01"]).toBeUndefined();
+    expect(config.messages?.["ADT-A01"]?.converter?.PV1?.required).toBeUndefined();
+  });
+
+  describe("identitySystem validation", () => {
+    test("identitySystem.patient.rules missing from JSON throws at startup", () => {
+      const invalidConfig = {
+        messages: { "ORU-R01": { converter: { PV1: { required: false } } } },
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /identitySystem\.patient\.rules.*must be an array/,
+      );
+    });
+
+    test("empty rules array throws at startup", () => {
+      const invalidConfig = {
+        identitySystem: { patient: { rules: [] } },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /identitySystem\.patient\.rules.*must not be empty/,
+      );
+    });
+
+    test("MatchRule with neither assigner, type, nor any throws at startup", () => {
+      const invalidConfig = {
+        identitySystem: { patient: { rules: [{}] } },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /rules\[0\]: MatchRule must specify at least one of/,
+      );
+    });
+
+    test("valid MatchRule with assigner passes validation", () => {
+      const validConfig = {
+        identitySystem: { patient: { rules: [{ assigner: "UNIPAT" }] } },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(validConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).not.toThrow();
+    });
+
+    test("valid MatchRule with type passes validation", () => {
+      const validConfig = {
+        identitySystem: { patient: { rules: [{ type: "MR" }] } },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(validConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).not.toThrow();
+    });
+
+    test("valid MatchRule with any passes validation", () => {
+      const validConfig = {
+        identitySystem: { patient: { rules: [{ any: true }] } },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(validConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).not.toThrow();
+    });
+
+    test("MpiLookupRule passes validation (no field-level checks)", () => {
+      const validConfig = {
+        identitySystem: {
+          patient: {
+            rules: [
+              {
+                mpiLookup: {
+                  endpoint: { baseUrl: "http://mpi" },
+                  strategy: "pix",
+                  target: { system: "urn:oid:1.2.3", assigner: "MPI" },
+                },
+              },
+            ],
+          },
+        },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(validConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).not.toThrow();
+    });
   });
 
   describe("preprocessor ID validation", () => {
     test("unknown preprocessor ID throws startup error", () => {
       const invalidConfig = {
-        "ORU-R01": {
-          preprocess: { PV1: { "19": ["unknown-preprocessor"] } },
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ORU-R01": {
+            preprocess: { PV1: { "19": ["unknown-preprocessor"] } },
+          },
         },
       };
 
@@ -174,8 +310,11 @@ describe("hl7v2ToFhirConfig", () => {
 
     test("valid preprocessor ID passes validation", () => {
       const validConfig = {
-        "ORU-R01": {
-          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ORU-R01": {
+            preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+          },
         },
       };
 
@@ -188,8 +327,11 @@ describe("hl7v2ToFhirConfig", () => {
 
     test("multiple preprocessor IDs are all validated", () => {
       const invalidConfig = {
-        "ORU-R01": {
-          preprocess: { PV1: { "19": ["fix-authority-with-msh", "bad-one"] } },
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ORU-R01": {
+            preprocess: { PV1: { "19": ["fix-authority-with-msh", "bad-one"] } },
+          },
         },
       };
 
@@ -204,8 +346,11 @@ describe("hl7v2ToFhirConfig", () => {
 
     test("empty preprocessor list passes validation", () => {
       const validConfig = {
-        "ORU-R01": {
-          preprocess: { PV1: { "19": [] } },
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ORU-R01": {
+            preprocess: { PV1: { "19": [] } },
+          },
         },
       };
 
@@ -218,8 +363,11 @@ describe("hl7v2ToFhirConfig", () => {
 
     test("config without preprocess section passes validation", () => {
       const validConfig = {
-        "ORU-R01": {
-          converter: { PV1: { required: false } },
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ORU-R01": {
+            converter: { PV1: { required: false } },
+          },
         },
       };
 
@@ -232,8 +380,11 @@ describe("hl7v2ToFhirConfig", () => {
 
     test("non-array preprocessorIds throws startup error", () => {
       const invalidConfig = {
-        "ORU-R01": {
-          preprocess: { PV1: { "19": "fix-authority-with-msh" } },
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ORU-R01": {
+            preprocess: { PV1: { "19": "fix-authority-with-msh" } },
+          },
         },
       };
 
@@ -248,8 +399,11 @@ describe("hl7v2ToFhirConfig", () => {
 
     test("numeric preprocessorIds throws startup error", () => {
       const invalidConfig = {
-        "ORU-R01": {
-          preprocess: { PV1: { "19": 123 } },
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ORU-R01": {
+            preprocess: { PV1: { "19": 123 } },
+          },
         },
       };
 
@@ -264,8 +418,11 @@ describe("hl7v2ToFhirConfig", () => {
 
     test("null preprocessorIds is allowed (optional field)", () => {
       const validConfig = {
-        "ORU-R01": {
-          preprocess: { PV1: { "19": null } },
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ORU-R01": {
+            preprocess: { PV1: { "19": null } },
+          },
         },
       };
 

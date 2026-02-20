@@ -477,55 +477,5 @@ describe("selectPatientId", () => {
       expect((result as { error: string }).error).toContain("MPI unavailable");
     });
 
-    test("no source identifier in pool — skip MPI rule", async () => {
-      const identifiers: CX[] = [
-        {
-          $1_value: "11220762",
-          $4_system: { $1_namespace: "BMH" },
-          $5_type: "PE",
-        },
-      ];
-
-      const mpi = mockMpi(async () => {
-        throw new Error("Should not be called");
-      });
-
-      const result = await selectPatientId(
-        identifiers,
-        [mpiRule, { type: "PE" }],
-        mpi,
-      );
-      // MPI skipped (no ST01 in pool), falls to { type: "PE" }
-      expect(result).toEqual({ id: "bmh-11220762" });
-    });
-
-    test("source identifier matched via CX.9.1 — throws (found not implemented)", async () => {
-      const identifiers: CX[] = [
-        {
-          $1_value: "645541",
-          $4_system: { $1_namespace: "" },
-          $9_jurisdiction: { $1_code: "STATEX" },
-          $5_type: "MR",
-        },
-      ];
-
-      const ruleWithJurisdictionSource: MpiLookupRule = {
-        mpiLookup: {
-          endpoint: { baseUrl: "http://mpi.example.com" },
-          strategy: "pix",
-          source: [{ assigner: "STATEX" }],
-          target: { system: "urn:oid:1.2.3.4", assigner: "UNIPAT" },
-        },
-      };
-
-      const mpi = mockMpi(async () => ({
-        status: "found",
-        identifier: { value: "19624139" },
-      }));
-
-      expect(
-        selectPatientId(identifiers, [ruleWithJurisdictionSource], mpi),
-      ).rejects.toThrow("MPI 'found' result handling not implemented");
-    });
   });
 });

@@ -110,7 +110,7 @@ async function tryMpiLookupRule(
 
   let mpiResult: MpiResult | null;
   if (mpiLookup.strategy === "pix") {
-    mpiResult = await tryPixLookup(pool, mpiLookup, mpiClient);
+    mpiResult = await tryPixLookup(mpiLookup, mpiClient);
   } else {
     // 'match' strategy: demographics-based, deferred to MPI implementation ticket
     mpiResult = await mpiClient.match({}, mpiLookup.target.system);
@@ -121,11 +121,10 @@ async function tryMpiLookupRule(
 }
 
 async function tryPixLookup(
-  pool: CX[],
   mpiLookup: MpiLookupRule["mpiLookup"],
   mpiClient: MpiClient,
 ): Promise<MpiResult | null> {
-  // Source system/value extraction deferred to MPI implementation ticket
+  // Source selection and system/value extraction deferred to MPI implementation ticket
   return mpiClient.crossReference(
     { system: "", value: "" },
     mpiLookup.target.system,

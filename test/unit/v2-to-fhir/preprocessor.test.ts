@@ -4,25 +4,34 @@ import { preprocessMessage } from "../../../src/v2-to-fhir/preprocessor";
 import type { Hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
 import { fromPV1 } from "../../../src/hl7v2/generated/fields";
 
+/** Minimal valid identity rules for tests that don't focus on identity validation. */
+const minimalRules = [{ assigner: "UNIPAT" }];
+
 // Config with fix-authority-with-msh preprocessor enabled for both message types
 const configWithMshFallback: Hl7v2ToFhirConfig = {
-  "ORU-R01": {
-    preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
-    converter: { PV1: { required: false } },
-  },
-  "ADT-A01": {
-    preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
-    converter: { PV1: { required: true } },
+  identitySystem: { patient: { rules: minimalRules } },
+  messages: {
+    "ORU-R01": {
+      preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+      converter: { PV1: { required: false } },
+    },
+    "ADT-A01": {
+      preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+      converter: { PV1: { required: true } },
+    },
   },
 };
 
 // Config without preprocess section
 const configWithoutPreprocess: Hl7v2ToFhirConfig = {
-  "ORU-R01": {
-    converter: { PV1: { required: false } },
-  },
-  "ADT-A01": {
-    converter: { PV1: { required: true } },
+  identitySystem: { patient: { rules: minimalRules } },
+  messages: {
+    "ORU-R01": {
+      converter: { PV1: { required: false } },
+    },
+    "ADT-A01": {
+      converter: { PV1: { required: true } },
+    },
   },
 };
 
@@ -201,8 +210,11 @@ describe("preprocessMessage", () => {
   describe("preprocessor composition", () => {
     test("empty preprocessor list returns message unchanged", () => {
       const config: Hl7v2ToFhirConfig = {
-        "ORU-R01": {
-          preprocess: { PV1: { "19": [] } },
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ORU-R01": {
+            preprocess: { PV1: { "19": [] } },
+          },
         },
       };
 

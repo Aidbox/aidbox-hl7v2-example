@@ -633,7 +633,7 @@ async function handleEncounter(
   lookupEncounter: EncounterLookupFn,
 ): Promise<EncounterHandlingResult> {
   const config = hl7v2ToFhirConfig();
-  const pv1Required = config["ORU-R01"]?.converter?.PV1?.required ?? false;
+  const pv1Required = config.messages?.["ORU-R01"]?.converter?.PV1?.required ?? false;
 
   if (!pv1) {
     if (pv1Required) {

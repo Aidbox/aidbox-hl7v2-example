@@ -1,10 +1,23 @@
 {
-  "ORU-R01": {
-    "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
-    "converter": { "PV1": { "required": false } }
+  "identitySystem": {
+    "patient": {
+      "rules": [
+        { "assigner": "UNIPAT" },
+        { "type": "PE" },
+        { "assigner": "ST01" },
+        { "type": "MR" },
+        { "any": true }
+      ]
+    }
   },
-  "ADT-A01": {
-    "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
-    "converter": { "PV1": { "required": false } }
+  "messages": {
+    "ORU-R01": {
+      "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
+      "converter": { "PV1": { "required": false } }
+    },
+    "ADT-A01": {
+      "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
+      "converter": { "PV1": { "required": false } }
+    }
   }
 }

@@ -1,54 +1,24 @@
 {
-  "_DESIGN_PROTOTYPE": "2026-02-19-patient-encounter-identity.md — This file will be restructured. Current flat format (message type as top-level key) will be replaced with the shape shown below. Remove this comment block when implementing.",
-  "_DESIGN_PROTOTYPE_new_shape": {
-    "identitySystem": {
-      "patient": {
-        "rules": [
-          { "authority": "UNIPAT" },
-          { "type": "PE" },
-          { "authority": "ST01" },
-          { "type": "MR" },
-          { "any": true }
-        ]
-      }
-    },
-    "messages": {
-      "ADT-A01": {
-        "preprocess": {
-          "PID": {
-            "2": ["move-pid2-into-pid3"],
-            "3": ["inject-authority-from-msh"]
-          },
-          "PV1": { "19": ["fix-authority-with-msh"] }
-        },
-        "converter": { "PV1": { "required": true } }
-      },
-      "ADT-A08": {
-        "preprocess": {
-          "PID": {
-            "2": ["move-pid2-into-pid3"],
-            "3": ["inject-authority-from-msh"]
-          }
-        }
-      },
-      "ORU-R01": {
-        "preprocess": {
-          "PID": {
-            "2": ["move-pid2-into-pid3"],
-            "3": ["inject-authority-from-msh"]
-          },
-          "PV1": { "19": ["fix-authority-with-msh"] }
-        },
-        "converter": { "PV1": { "required": false } }
-      }
+  "identitySystem": {
+    "patient": {
+      "rules": [
+        { "assigner": "UNIPAT" },
+        { "type": "PE" },
+        { "assigner": "ST01" },
+        { "type": "MR" },
+        { "any": true }
+      ]
     }
   },
-  "ORU-R01": {
-    "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
-    "converter": { "PV1": { "required": false } }
-  },
-  "ADT-A01": {
-    "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
-    "converter": { "PV1": { "required": true } }
+  "messages": {
+    "ADT-A01": {
+      "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
+      "converter": { "PV1": { "required": true } }
+    },
+    "ADT-A08": {},
+    "ORU-R01": {
+      "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
+      "converter": { "PV1": { "required": false } }
+    }
   }
 }

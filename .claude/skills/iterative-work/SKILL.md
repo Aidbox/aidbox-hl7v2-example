@@ -12,7 +12,7 @@ You MUST follow this cycle:
 3. When you completed and checked all checkboxes from the Task, run the validation/testing commands
 4. After completing the task, spawn a sub-agent to review your changes. The sub-agent prompt is below
 5. Address all review findings
-6. Print the full review text and ask for the user review
+6. Print the full review text to the user (DO NOT skip addressed/ignored issues) and ask for the user review
 
 If the user instructed you to proceed to the next task, you start following the point 1 from the instruction above again.
 

@@ -368,7 +368,7 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   // Extract PV1 -> Encounter (config-driven PV1 policy)
   // =========================================================================
   const config = hl7v2ToFhirConfig();
-  const pv1Required = config["ADT-A01"]?.converter?.PV1?.required ?? true;
+  const pv1Required = config.messages?.["ADT-A01"]?.converter?.PV1?.required ?? true;
 
   let encounter: Encounter | undefined;
   let encounterWarning: string | undefined;

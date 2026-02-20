@@ -14,18 +14,12 @@
 
 import type { HL7v2Message, HL7v2Segment } from "../hl7v2/generated/types";
 import { fromMSH } from "../hl7v2/generated/fields";
-import type { Hl7v2ToFhirConfig } from "./config";
+import type { Hl7v2ToFhirConfig, MessageTypeConfig } from "./config";
 import { findSegment } from "./converter";
 import {
   getPreprocessor,
   type PreprocessorContext,
 } from "./preprocessor-registry";
-
-// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// After config restructure:
-//   config[configKey] -> config.messages[configKey]
-//   NonNullable<Hl7v2ToFhirConfig[string]>["preprocess"] -> NonNullable<MessageTypeConfig>["preprocess"]
-// END DESIGN PROTOTYPE
 
 /**
  * Preprocesses a parsed HL7v2 message based on config.
@@ -40,7 +34,7 @@ export function preprocessMessage(
     return parsed;
   }
 
-  const messageConfig = config[configKey];
+  const messageConfig = config.messages?.[configKey];
   if (!messageConfig?.preprocess) {
     return parsed;
   }
@@ -67,7 +61,7 @@ function extractMessageTypeKey(parsed: HL7v2Message): string | null {
 
 function applyPreprocessors(
   parsed: HL7v2Message,
-  preprocessConfig: NonNullable<Hl7v2ToFhirConfig[string]>["preprocess"],
+  preprocessConfig: NonNullable<MessageTypeConfig>["preprocess"],
 ): HL7v2Message {
   if (!preprocessConfig) {
     return parsed;
