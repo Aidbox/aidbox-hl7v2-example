@@ -534,7 +534,7 @@ describe("ORU_R01 E2E Integration", () => {
       const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
-      expect(message.error).toMatch(/Patient ID/i);
+      expect(message.error).toMatch(/No identifier priority rule matched/i);
     });
 
     test("extracts patient ID from PID-2", async () => {
@@ -542,7 +542,7 @@ describe("ORU_R01 E2E Integration", () => {
       const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
-      expect(message.patient?.reference).toBe("Patient/PAT-FROM-PID2");
+      expect(message.patient?.reference).toBe("Patient/lab-hospital-pat-from-pid2");
     });
 
     test("extracts patient ID from PID-3.1 when PID-2 is empty", async () => {
@@ -550,7 +550,7 @@ describe("ORU_R01 E2E Integration", () => {
       const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
-      expect(message.patient?.reference).toBe("Patient/PAT-FROM-PID3");
+      expect(message.patient?.reference).toBe("Patient/hospital-pat-from-pid3");
     });
 
     test("creates draft Patient with active=false when patient not found", async () => {

@@ -12,9 +12,7 @@ import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingH
 import { convertADT_A01 } from "./messages/adt-a01";
 import { convertADT_A08 } from "./messages/adt-a08";
 import { convertORU_R01 } from "./messages/oru-r01";
-// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// Create PatientIdResolver closure in convertToFHIR() and pass to all converters.
-// END DESIGN PROTOTYPE
+import { defaultPatientIdResolver } from "./identity-system/patient-id";
 
 // ============================================================================
 // Types
@@ -91,15 +89,17 @@ export async function convertToFHIR(
 ): Promise<ConversionResult> {
   const messageType = extractMessageType(parsed);
 
+  const resolvePatientId = defaultPatientIdResolver();
+
   switch (messageType) {
     case "ADT_A01":
-      return await convertADT_A01(parsed);
+      return await convertADT_A01(parsed, resolvePatientId);
 
     case "ADT_A08":
-      return convertADT_A08(parsed);
+      return await convertADT_A08(parsed, resolvePatientId);
 
     case "ORU_R01":
-      return await convertORU_R01(parsed);
+      return await convertORU_R01(parsed, undefined, undefined, resolvePatientId);
 
     default:
       throw new Error(`Unsupported message type: ${messageType}`);

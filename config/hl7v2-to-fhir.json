@@ -12,12 +12,31 @@
   },
   "messages": {
     "ADT-A01": {
-      "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
+      "preprocess": {
+        "PID": {
+          "2": ["move-pid2-into-pid3"],
+          "3": ["inject-authority-from-msh"]
+        },
+        "PV1": { "19": ["fix-authority-with-msh"] }
+      },
       "converter": { "PV1": { "required": true } }
     },
-    "ADT-A08": {},
+    "ADT-A08": {
+      "preprocess": {
+        "PID": {
+          "2": ["move-pid2-into-pid3"],
+          "3": ["inject-authority-from-msh"]
+        }
+      }
+    },
     "ORU-R01": {
-      "preprocess": { "PV1": { "19": ["fix-authority-with-msh"] } },
+      "preprocess": {
+        "PID": {
+          "2": ["move-pid2-into-pid3"],
+          "3": ["inject-authority-from-msh"]
+        },
+        "PV1": { "19": ["fix-authority-with-msh"] }
+      },
       "converter": { "PV1": { "required": false } }
     }
   }

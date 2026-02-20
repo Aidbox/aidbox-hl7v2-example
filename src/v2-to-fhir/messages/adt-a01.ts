@@ -57,6 +57,7 @@ import {
 } from "../../code-mapping/mapping-errors";
 import type { SenderContext } from "../../code-mapping/concept-map";
 import { hl7v2ToFhirConfig } from "../config";
+import type { PatientIdResolver } from "../identity-system/patient-id";
 
 // ============================================================================
 // Helper Functions
@@ -285,10 +286,10 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  * AL1 - Allergy Information (0..*)
  * IN1 - Insurance (0..*)
  */
-// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// Signature gains resolvePatientId: PatientIdResolver parameter.
-// Import: import { type PatientIdResolver } from "../identity-system/patient-id";
-export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionResult> {
+export async function convertADT_A01(
+  parsed: HL7v2Message,
+  resolvePatientId: PatientIdResolver,
+): Promise<ConversionResult> {
   // =========================================================================
   // Extract MSH
   // =========================================================================
@@ -330,16 +331,13 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   const patient = convertPIDToPatient(pid);
   const mappingErrors: MappingError[] = [];
 
-  // Set patient ID from PID-2 or generate one
-  if (pid.$2_patientId?.$1_value) {
-    patient.id = pid.$2_patientId.$1_value;
-  } else if (pid.$3_identifier?.[0]?.$1_value) {
-    patient.id = pid.$3_identifier[0].$1_value;
+  const patientIdResult = await resolvePatientId(pid.$3_identifier ?? []);
+  if ("error" in patientIdResult) {
+    return {
+      messageUpdate: { status: "error", error: patientIdResult.error },
+    };
   }
-  // DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-  // Replace the ad-hoc block above with resolvePatientId(pid.$3_identifier ?? []).
-  // Update config access: config["ADT-A01"] -> config.messages["ADT-A01"].
-  // END DESIGN PROTOTYPE
+  patient.id = patientIdResult.id;
 
   // Add meta tags
   patient.meta = { ...patient.meta, ...baseMeta };

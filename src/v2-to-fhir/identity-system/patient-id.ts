@@ -1,5 +1,7 @@
 import type { CX } from "../../hl7v2/generated/fields";
 import type { MpiClient, MpiResult } from "./mpi-lookup";
+import { StubMpiClient } from "./mpi-lookup";
+import { hl7v2ToFhirConfig } from "../config";
 
 export type MatchRule = {
   assigner?: string;
@@ -23,6 +25,13 @@ export type PatientIdResult = { id: string } | { error: string };
 
 /** Resolves Patient.id from a pool of CX identifiers. Injected into converters by converter.ts. */
 export type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>;
+
+/** Creates a PatientIdResolver using current config and StubMpiClient. */
+export function defaultPatientIdResolver(): PatientIdResolver {
+  const config = hl7v2ToFhirConfig();
+  const mpiClient = new StubMpiClient();
+  return (ids) => selectPatientId(ids, config.identitySystem!.patient!.rules, mpiClient);
+}
 
 const sanitizeForId = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9-]/g, "-");

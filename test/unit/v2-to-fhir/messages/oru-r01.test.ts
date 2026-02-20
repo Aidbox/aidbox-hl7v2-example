@@ -3,6 +3,7 @@ import { parseMessage } from "@atomic-ehr/hl7v2";
 import { convertORU_R01 } from "../../../../src/v2-to-fhir/messages/oru-r01";
 import type { Patient, Encounter } from "../../../../src/fhir/hl7-fhir-r4-core";
 import { clearConfigCache } from "../../../../src/v2-to-fhir/config";
+import { defaultPatientIdResolver } from "../../../../src/v2-to-fhir/identity-system/patient-id";
 
 afterEach(() => {
   clearConfigCache();
@@ -41,7 +42,7 @@ const oruWithInvalidAuthority = [
 describe("convertORU_R01 - config-driven PV1 policy", () => {
   test("ORU with valid PV1 creates Encounter with unified ID", async () => {
     const parsed = parseMessage(oruWithValidPV1);
-    const result = await convertORU_R01(parsed, noExistingPatient, noExistingEncounter);
+    const result = await convertORU_R01(parsed, noExistingPatient, noExistingEncounter, defaultPatientIdResolver());
 
     expect(result.messageUpdate.status).toBe("processed");
     expect(result.bundle).toBeDefined();
@@ -59,7 +60,7 @@ describe("convertORU_R01 - config-driven PV1 policy", () => {
 
   test("ORU without PV1 (config: required=false) creates clinical data, no Encounter", async () => {
     const parsed = parseMessage(oruWithoutPV1);
-    const result = await convertORU_R01(parsed, noExistingPatient, noExistingEncounter);
+    const result = await convertORU_R01(parsed, noExistingPatient, noExistingEncounter, defaultPatientIdResolver());
 
     // No warning for missing PV1 when not required (PV1 absence is normal for ORU)
     expect(result.messageUpdate.status).toBe("processed");
@@ -79,7 +80,7 @@ describe("convertORU_R01 - config-driven PV1 policy", () => {
 
   test("ORU with invalid PV1-19 authority (config: required=false) sets warning, preserves clinical data", async () => {
     const parsed = parseMessage(oruWithInvalidAuthority);
-    const result = await convertORU_R01(parsed, noExistingPatient, noExistingEncounter);
+    const result = await convertORU_R01(parsed, noExistingPatient, noExistingEncounter, defaultPatientIdResolver());
 
     expect(result.messageUpdate.status).toBe("warning");
     expect(result.messageUpdate.error).toBeDefined();
@@ -106,7 +107,7 @@ describe("convertORU_R01 - config-driven PV1 policy", () => {
 
   test("clinical data preserved when Encounter skipped due to warning", async () => {
     const parsed = parseMessage(oruWithInvalidAuthority);
-    const result = await convertORU_R01(parsed, noExistingPatient, noExistingEncounter);
+    const result = await convertORU_R01(parsed, noExistingPatient, noExistingEncounter, defaultPatientIdResolver());
 
     expect(result.bundle).toBeDefined();
 

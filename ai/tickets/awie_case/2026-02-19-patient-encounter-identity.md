@@ -861,7 +861,7 @@ Two new preprocessors in the registry. Depends on config supporting PID fields (
 
 Replace ad-hoc Patient.id logic in all three converters. Depends on Tasks 2-3.
 
-- [ ] Update `src/v2-to-fhir/converter.ts`:
+- [x] Update `src/v2-to-fhir/converter.ts`:
   - Remove DESIGN PROTOTYPE comments
   - Import `selectPatientId`, `type PatientIdResolver` from `./id-generation`
   - Import `StubMpiClient` from `./mpi-client`
@@ -869,18 +869,18 @@ Replace ad-hoc Patient.id logic in all three converters. Depends on Tasks 2-3.
   - In `convertToFHIR()`: instantiate `StubMpiClient`, load config, create closure `const resolvePatientId: PatientIdResolver = (ids) => selectPatientId(ids, config.identitySystem!.patient!.rules, mpiClient)`
   - Pass `resolvePatientId` to `convertADT_A01`, `convertADT_A08`, `convertORU_R01`
   - `convertADT_A08` call becomes `await convertADT_A08(parsed, resolvePatientId)`
-- [ ] Update `src/v2-to-fhir/messages/adt-a01.ts`:
+- [x] Update `src/v2-to-fhir/messages/adt-a01.ts`:
   - Remove DESIGN PROTOTYPE comments
   - Import `type PatientIdResolver` from `../id-generation`
   - Add `resolvePatientId: PatientIdResolver` parameter to `convertADT_A01`
   - Replace ad-hoc Patient.id block (lines 333-338) with: `const result = await resolvePatientId(pid.$3_identifier ?? []); if ('error' in result) { return { messageUpdate: { status: 'error', error: result.error } }; }; patient.id = result.id;`
   - Update config access: `config["ADT-A01"]` → `config.messages?.["ADT-A01"]`
-- [ ] Update `src/v2-to-fhir/messages/adt-a08.ts`:
+- [x] Update `src/v2-to-fhir/messages/adt-a08.ts`:
   - Remove DESIGN PROTOTYPE comments
   - Import `type PatientIdResolver` from `../id-generation`
   - Make `convertADT_A08` async: `export async function convertADT_A08(parsed, resolvePatientId: PatientIdResolver)`
   - Replace ad-hoc Patient.id block (lines 127-134) with `resolvePatientId()` call and error handling
-- [ ] Update `src/v2-to-fhir/messages/oru-r01.ts`:
+- [x] Update `src/v2-to-fhir/messages/oru-r01.ts`:
   - Remove DESIGN PROTOTYPE comments and `extractPatientId()` function
   - Import `selectPatientId`, `type PatientIdResolver` from `../id-generation`
   - Import `StubMpiClient` from `../mpi-client`
@@ -888,8 +888,8 @@ Replace ad-hoc Patient.id logic in all three converters. Depends on Tasks 2-3.
   - Add lazy default in `convertORU_R01`: `resolvePatientId = (ids) => selectPatientId(ids, hl7v2ToFhirConfig().identitySystem!.patient!.rules, new StubMpiClient())` — so existing unit tests that omit the parameter continue to work
   - Replace `extractPatientId(pid)` in `handlePatient()` with `const result = await resolvePatientId(pid.$3_identifier ?? [])` and handle `{ error }` case
   - Update config access in `handleEncounter`: `config["ORU-R01"]` → `config.messages?.["ORU-R01"]`
-- [ ] Remove `src/v2-to-fhir/preprocessor.ts` DESIGN PROTOTYPE comments
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass before next task
+- [x] Remove `src/v2-to-fhir/preprocessor.ts` DESIGN PROTOTYPE comments
+- [x] Run `bun test:all` and `bun run typecheck` — must pass before next task
 
 ---
 

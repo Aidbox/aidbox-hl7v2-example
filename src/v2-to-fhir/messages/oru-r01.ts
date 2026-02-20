@@ -61,6 +61,7 @@ import {
   composeTaskBundleEntry,
 } from "../../code-mapping/mapping-task";
 import { hl7v2ToFhirConfig } from "../config";
+import type { PatientIdResolver } from "../identity-system/patient-id";
 
 /**
  * Function type for looking up a Patient by ID.
@@ -108,24 +109,6 @@ export async function defaultEncounterLookup(
     }
     throw error;
   }
-}
-
-/**
- * Extract patient ID from PID segment.
- * Tries PID-2 first, then falls back to PID-3.1 (first identifier).
- *
- * DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
- * This function will be removed; replaced with resolvePatientId() call in handlePatient().
- * END DESIGN PROTOTYPE
- */
-function extractPatientId(pid: PID): string {
-  if (pid.$2_patientId?.$1_value) {
-    return pid.$2_patientId.$1_value;
-  }
-  if (pid.$3_identifier?.[0]?.$1_value) {
-    return pid.$3_identifier[0].$1_value;
-  }
-  throw new Error("Patient ID (PID-2 or PID-3) is required");
 }
 
 /**
@@ -510,10 +493,9 @@ function parsePID(message: HL7v2Message): PID {
   return fromPID(pidSegment);
 }
 
-interface PatientHandlingResult {
-  patientRef: Reference<"Patient">;
-  patientEntry: BundleEntry | null;
-}
+type PatientHandlingResult =
+  | { patientRef: Reference<"Patient">; patientEntry: BundleEntry | null }
+  | { error: string };
 
 /**
  * Create a conditional bundle entry for draft Patient creation.
@@ -538,7 +520,7 @@ function createConditionalPatientEntry(patient: Patient): BundleEntry {
 /**
  * Handle patient lookup and draft creation for ORU_R01.
  *
- * - Extracts patient ID from PID-2 or PID-3.1
+ * - Resolves patient ID via priority-list rules (identitySystem.patient.rules)
  * - Looks up existing patient (does NOT update - ADT is source of truth)
  * - Creates draft patient with active=false if not found
  *
@@ -546,17 +528,18 @@ function createConditionalPatientEntry(patient: Patient): BundleEntry {
  * draft patient is created even if multiple ORU messages for the same
  * non-existent patient arrive simultaneously.
  */
-// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// handlePatient() and convertORU_R01() gain resolvePatientId: PatientIdResolver parameter.
-// convertORU_R01 has a lazy default so existing unit tests continue to work.
-// END DESIGN PROTOTYPE
 async function handlePatient(
   pid: PID,
   baseMeta: Meta,
   lookupPatient: PatientLookupFn,
+  resolvePatientId: PatientIdResolver,
 ): Promise<PatientHandlingResult> {
-  // DESIGN PROTOTYPE: Replace with resolvePatientId(pid.$3_identifier ?? [])
-  const patientId = extractPatientId(pid);
+  const idResult = await resolvePatientId(pid.$3_identifier ?? []);
+  if ("error" in idResult) {
+    return { error: idResult.error };
+  }
+
+  const patientId = idResult.id;
   const patientRef = { reference: `Patient/${patientId}` } as Reference<"Patient">;
 
   const existingPatient = await lookupPatient(patientId);
@@ -919,7 +902,7 @@ async function processOBRGroup(
  * - Links all resources to Patient
  *
  * Encounter Handling (config-driven PV1 policy):
- * - PV1 required/optional determined by config["ORU-R01"].converter.PV1.required
+ * - PV1 required/optional determined by config.messages?.["ORU-R01"].converter.PV1.required
  * - If PV1 valid: creates/looks up Encounter with strict HL7 v2.8.2 authority validation
  * - If PV1 not required and missing/invalid: skip Encounter, set status=warning
  * - If PV1 required and missing/invalid: set status=error, no bundle submitted
@@ -929,6 +912,7 @@ export async function convertORU_R01(
   parsed: HL7v2Message,
   lookupPatient: PatientLookupFn = defaultPatientLookup,
   lookupEncounter: EncounterLookupFn = defaultEncounterLookup,
+  resolvePatientId: PatientIdResolver,
 ): Promise<ConversionResult> {
   const { senderContext, baseMeta } = parseMSH(parsed);
   validateOBRPresence(parsed);
@@ -939,11 +923,20 @@ export async function convertORU_R01(
   const senderTag = extractSenderTag(pid);
   addSenderTagToMeta(baseMeta, senderTag);
 
-  const { patientRef, patientEntry } = await handlePatient(
+  const patientResult = await handlePatient(
     pid,
     baseMeta,
     lookupPatient,
+    resolvePatientId,
   );
+
+  if ("error" in patientResult) {
+    return {
+      messageUpdate: { status: "error", error: patientResult.error },
+    };
+  }
+
+  const { patientRef, patientEntry } = patientResult;
 
   const pv1 = parsePV1(parsed);
   const encounterResult = await handleEncounter(

@@ -13,20 +13,16 @@ import {
   fromMSH,
   fromPID,
   type MSH,
-  type PID,
 } from "../../hl7v2/generated/fields";
 import type {
   Patient,
-  Identifier,
-  HumanName,
-  Address,
-  ContactPoint,
   Bundle,
   BundleEntry,
   Coding,
   Meta,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertPIDToPatient } from "../segments/pid-patient";
+import type { PatientIdResolver } from "../identity-system/patient-id";
 
 // ============================================================================
 // Helper Functions
@@ -80,11 +76,6 @@ function createBundleEntry(resource: Patient): BundleEntry {
 // Main Converter Function
 // ============================================================================
 
-// DESIGN PROTOTYPE: 2026-02-19-patient-encounter-identity.md
-// Gains resolvePatientId: PatientIdResolver parameter. Becomes async.
-// Replace ad-hoc Patient.id block with resolvePatientId(pid.$3_identifier ?? []).
-// END DESIGN PROTOTYPE
-
 /**
  * Convert HL7v2 ADT_A08 message to FHIR Transaction Bundle
  *
@@ -93,7 +84,10 @@ function createBundleEntry(resource: Patient): BundleEntry {
  * EVN - Event Type (1)
  * PID - Patient Identification (1)
  */
-export function convertADT_A08(parsed: HL7v2Message): ConversionResult {
+export async function convertADT_A08(
+  parsed: HL7v2Message,
+  resolvePatientId: PatientIdResolver,
+): Promise<ConversionResult> {
   // =========================================================================
   // Extract MSH
   // =========================================================================
@@ -124,14 +118,13 @@ export function convertADT_A08(parsed: HL7v2Message): ConversionResult {
   // =========================================================================
   const patient = convertPIDToPatient(pid);
 
-  // Set patient ID from PID-2 or PID-3[0]
-  if (pid.$2_patientId?.$1_value) {
-    patient.id = pid.$2_patientId.$1_value;
-  } else if (pid.$3_identifier?.[0]?.$1_value) {
-    patient.id = pid.$3_identifier[0].$1_value;
-  } else {
-    throw new Error("Patient ID (from PID-2 or PID-3) is required");
+  const patientIdResult = await resolvePatientId(pid.$3_identifier ?? []);
+  if ("error" in patientIdResult) {
+    return {
+      messageUpdate: { status: "error", error: patientIdResult.error },
+    };
   }
+  patient.id = patientIdResult.id;
 
   // Add meta tags to patient
   patient.meta = meta;

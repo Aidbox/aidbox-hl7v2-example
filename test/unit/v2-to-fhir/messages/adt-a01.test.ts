@@ -4,6 +4,7 @@ import { parseMessage } from "@atomic-ehr/hl7v2";
 import { convertADT_A01 } from "../../../../src/v2-to-fhir/messages/adt-a01";
 import type { Encounter } from "../../../../src/fhir/hl7-fhir-r4-core";
 import { clearConfigCache } from "../../../../src/v2-to-fhir/config";
+import { defaultPatientIdResolver } from "../../../../src/v2-to-fhir/identity-system/patient-id";
 
 const TEST_CONFIG = join(__dirname, "../../../fixtures/config/hl7v2-to-fhir.json");
 
@@ -37,7 +38,7 @@ const adtWithInvalidAuthority = [
 describe("convertADT_A01 - config-driven PV1 policy", () => {
   test("ADT with valid PV1 creates Encounter with unified ID", async () => {
     const parsed = parseMessage(adtWithValidPV1);
-    const result = await convertADT_A01(parsed);
+    const result = await convertADT_A01(parsed, defaultPatientIdResolver());
 
     expect(result.messageUpdate.status).toBe("processed");
     expect(result.bundle).toBeDefined();
@@ -73,7 +74,7 @@ describe("convertADT_A01 - config-driven PV1 policy", () => {
 
     test("ADT with missing PV1 returns warning, skips Encounter", async () => {
       const parsed = parseMessage(adtWithoutPV1);
-      const result = await convertADT_A01(parsed);
+      const result = await convertADT_A01(parsed, defaultPatientIdResolver());
 
       expect(result.messageUpdate.status).toBe("warning");
       expect(result.messageUpdate.error).toContain("PV1");
@@ -87,7 +88,7 @@ describe("convertADT_A01 - config-driven PV1 policy", () => {
 
     test("ADT with invalid PV1-19 authority returns warning, skips Encounter", async () => {
       const parsed = parseMessage(adtWithInvalidAuthority);
-      const result = await convertADT_A01(parsed);
+      const result = await convertADT_A01(parsed, defaultPatientIdResolver());
 
       expect(result.messageUpdate.status).toBe("warning");
       expect(result.messageUpdate.error).toContain("authority");
