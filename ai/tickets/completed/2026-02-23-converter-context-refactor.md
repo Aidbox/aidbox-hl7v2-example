@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 reviewer-iterations: 2
 prototype-files:
   - src/v2-to-fhir/converter-context.ts
@@ -465,21 +465,21 @@ This is the most involved converter change: three parameters collapse into one, 
 
 ## Task 8: Verify no regressions and final typecheck
 
-- [ ] Run `bun run typecheck` — must pass
-- [ ] Run `bun test:all` — all tests must pass (unit + integration)
-- [ ] Verify that `convertToFHIR()` in `converter.ts` correctly constructs context and passes it through — integration tests exercise this path via `processor-service.ts`
+- [x] Run `bun run typecheck` — passes
+- [x] Run `bun test:all` — 1329 unit + 167 integration tests pass (0 failures)
+- [x] Verify that `convertToFHIR()` in `converter.ts` correctly constructs context and passes it through — integration tests exercise this path via `processor-service.ts`
 
 ---
 
 ## Task 9: Cleanup design artifacts
 
-- [ ] Remove all `DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md` comments from codebase
-- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor" src/ test/`
-- [ ] Verify no stale `PatientLookupFn` / `EncounterLookupFn` type exports remain in `oru-r01.ts`
-- [ ] Verify no stale `defaultPatientLookup` / `defaultEncounterLookup` function exports remain in `oru-r01.ts`
-- [ ] Verify `oru-r01.ts` no longer imports from `../../aidbox` (unless something else in the file uses it — check)
-- [ ] Update design document frontmatter status to `implemented`
-- [ ] Run `bun test:all` and `bun run typecheck` — final verification
+- [x] Remove all `DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md` comments from codebase — none found (already cleaned in Tasks 1-5)
+- [x] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor" src/ test/` — confirmed clean
+- [x] Verify no stale `PatientLookupFn` / `EncounterLookupFn` type exports remain in `oru-r01.ts` — only imports from `aidbox-lookups.ts`
+- [x] Verify no stale `defaultPatientLookup` / `defaultEncounterLookup` function exports remain in `oru-r01.ts` — confirmed clean
+- [x] Verify `oru-r01.ts` no longer imports from `../../aidbox` — confirmed clean
+- [x] Update design document frontmatter status to `implemented`
+- [x] Run `bun test:all` and `bun run typecheck` — 1329 unit + 167 integration pass, typecheck passes
 
 ---
 
