@@ -453,13 +453,13 @@ This is the most involved converter change: three parameters collapse into one, 
 
 ## Task 7: Update ORU_R01 tests
 
-- [ ] In `test/unit/v2-to-fhir/messages/oru-r01.test.ts`:
+- [x] In `test/unit/v2-to-fhir/messages/oru-r01.test.ts`:
   - Add import: `import { makeTestContext } from "../helpers"`
   - Remove import: `import { defaultPatientIdResolver } from "../../../../src/v2-to-fhir/identity-system/patient-id"`
   - The existing `noExistingPatient` / `noExistingEncounter` mocks can be removed — `makeTestContext()` already provides `async () => null` defaults for both lookups
   - Replace 4 call sites: `convertORU_R01(parsed, noExistingPatient, noExistingEncounter, defaultPatientIdResolver())` → `convertORU_R01(parsed, makeTestContext())`
   - Keep `afterEach(() => clearConfigCache())` — still needed because `makeTestContext()` calls `hl7v2ToFhirConfig()` by default
-- [ ] Run `bun test:all` — must pass before next task
+- [x] Run `bun test:all` — 1329 unit + 167 integration tests pass (0 failures)
 
 ---
 
