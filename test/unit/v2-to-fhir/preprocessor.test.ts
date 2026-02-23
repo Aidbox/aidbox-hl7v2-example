@@ -2,27 +2,37 @@ import { describe, test, expect } from "bun:test";
 import { parseMessage } from "@atomic-ehr/hl7v2";
 import { preprocessMessage } from "../../../src/v2-to-fhir/preprocessor";
 import type { Hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
-import { fromPV1 } from "../../../src/hl7v2/generated/fields";
+import { clearConfigCache, hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
+import { fromPID, fromPV1 } from "../../../src/hl7v2/generated/fields";
+
+/** Minimal valid identity rules for tests that don't focus on identity validation. */
+const minimalRules = [{ assigner: "UNIPAT" }];
 
 // Config with fix-authority-with-msh preprocessor enabled for both message types
 const configWithMshFallback: Hl7v2ToFhirConfig = {
-  "ORU-R01": {
-    preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
-    converter: { PV1: { required: false } },
-  },
-  "ADT-A01": {
-    preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
-    converter: { PV1: { required: true } },
+  identitySystem: { patient: { rules: minimalRules } },
+  messages: {
+    "ORU-R01": {
+      preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+      converter: { PV1: { required: false } },
+    },
+    "ADT-A01": {
+      preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+      converter: { PV1: { required: true } },
+    },
   },
 };
 
 // Config without preprocess section
 const configWithoutPreprocess: Hl7v2ToFhirConfig = {
-  "ORU-R01": {
-    converter: { PV1: { required: false } },
-  },
-  "ADT-A01": {
-    converter: { PV1: { required: true } },
+  identitySystem: { patient: { rules: minimalRules } },
+  messages: {
+    "ORU-R01": {
+      converter: { PV1: { required: false } },
+    },
+    "ADT-A01": {
+      converter: { PV1: { required: true } },
+    },
   },
 };
 
@@ -201,8 +211,11 @@ describe("preprocessMessage", () => {
   describe("preprocessor composition", () => {
     test("empty preprocessor list returns message unchanged", () => {
       const config: Hl7v2ToFhirConfig = {
-        "ORU-R01": {
-          preprocess: { PV1: { "19": [] } },
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ORU-R01": {
+            preprocess: { PV1: { "19": [] } },
+          },
         },
       };
 
@@ -259,6 +272,76 @@ describe("preprocessMessage", () => {
 
       // Should have processed (config key is "ADT-A01")
       expect(getPv1_19Authority(result)).toBe("ADMISSIONS-HOSPITAL");
+    });
+  });
+
+  describe("PID preprocessors via preprocessMessage", () => {
+    test("PID.2 and PID.3 preprocessors fire in order on full message", () => {
+      const config: Hl7v2ToFhirConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "ADT-A01": {
+            preprocess: {
+              PID: {
+                "2": ["move-pid2-into-pid3"],
+                "3": ["inject-authority-from-msh"],
+              },
+            },
+          },
+        },
+      };
+
+      const rawMessage = [
+        "MSH|^~\\&|ASTRA|HOSP||DEST|20260105||ADT^A01|MSG001|P|2.5.1",
+        "PID|1|99999^^^UNIPAT^PI|12345^^^^MR",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, config);
+      const pidSeg = result.find((s) => s.segment === "PID");
+      const pid = fromPID(pidSeg!);
+
+      // PID-2 cleared by move-pid2-into-pid3
+      expect(pid.$2_patientId?.$1_value).toBeUndefined();
+
+      // PID-3 has 2 entries (original bare CX + moved PID-2)
+      expect(pid.$3_identifier).toHaveLength(2);
+
+      // Bare CX (12345^^^^MR) should have MSH authority injected
+      expect(pid.$3_identifier![0]!.$1_value).toBe("12345");
+      expect(pid.$3_identifier![0]!.$4_system?.$1_namespace).toBe("ASTRA-HOSP");
+
+      // Moved PID-2 (99999^^^UNIPAT^PI) should keep UNIPAT authority
+      expect(pid.$3_identifier![1]!.$1_value).toBe("99999");
+      expect(pid.$3_identifier![1]!.$4_system?.$1_namespace).toBe("UNIPAT");
+    });
+
+    test("unknown PID preprocessor ID throws at config load time", () => {
+      const tmpDir = require("os").tmpdir();
+      const tmpPath = `${tmpDir}/hl7v2-test-unknown-pid-preproc-${Date.now()}.json`;
+
+      const invalidConfig = {
+        identitySystem: { patient: { rules: [{ assigner: "UNIPAT" }] } },
+        messages: {
+          "ADT-A01": {
+            preprocess: {
+              PID: { "2": ["nonexistent-pid-preprocessor"] },
+            },
+          },
+        },
+      };
+
+      require("fs").writeFileSync(tmpPath, JSON.stringify(invalidConfig));
+      process.env.HL7V2_TO_FHIR_CONFIG = tmpPath;
+      clearConfigCache();
+
+      try {
+        expect(() => hl7v2ToFhirConfig()).toThrow("Unknown preprocessor ID");
+      } finally {
+        delete process.env.HL7V2_TO_FHIR_CONFIG;
+        clearConfigCache();
+        require("fs").unlinkSync(tmpPath);
+      }
     });
   });
 });

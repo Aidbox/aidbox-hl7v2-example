@@ -11,7 +11,7 @@ You are creating a detailed implementation plan from an approved design document
 
 Before starting, verify that an approved design exists:
 
-1. Look for `tasks/plans/YYYY-MM-DD-feature-name.md`
+1. Look for `ai/tickets/YYYY-MM-DD-feature-name.md`
 2. Check that frontmatter contains `status: approved`
 
 **If no approved design exists:**
@@ -28,7 +28,7 @@ Run /ticket-design to continue the design process.
 
 ## Output Location
 
-Write the plan inside the existing design document: `tasks/plans/YYYY-MM-DD-feature-name.md`
+Write the plan inside the existing design document: `ai/tickets/YYYY-MM-DD-feature-name.md`
 
 Add a new section `# Implementation Plan` at the end of the design document (after `# Context`).
 
@@ -60,6 +60,7 @@ Add the following section to the design document:
 - [ ] [Another action item]
 - [ ] Write/update tests for this task
 - [ ] Run `[validation command]` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
 
 ---
 
@@ -126,7 +127,7 @@ Convert the design into discrete, ordered tasks:
 1. **Group by component**: Changes to related files go in same task
 2. **Order by dependency**: Foundation tasks before tasks that depend on them
 3. **Include tests**: Every task must have test checkboxes
-4. **Add validation gates**: Every task ends with passing validation commands
+4. **Add validation gates**: Every task ends with passing validation commands and a "stop and request user feedback" checkpoint
 5. **Keep tasks focused**: 2-8 checkboxes per task is ideal
 
 **Task ordering principles:**
@@ -139,7 +140,7 @@ Convert the design into discrete, ordered tasks:
 
 ### Phase 4: Write the Implementation Plan
 
-Add `# Implementation Plan` section to `tasks/plans/YYYY-MM-DD-feature-name.md` with:
+Add `# Implementation Plan` section to `ai/tickets/YYYY-MM-DD-feature-name.md` with:
 
 1. Overview derived from design's Problem Statement
 2. Development approach guidelines
@@ -186,6 +187,7 @@ Change the design document status to `planned`.
 - [ ] Write unit tests in `src/middleware/validate-user.test.ts`
 - [ ] Write integration test for protected endpoint
 - [ ] Run `bun test` and `bun run typecheck` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
 ```
 
 ### Bad Task Structure (avoid)

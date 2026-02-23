@@ -534,7 +534,7 @@ describe("ORU_R01 E2E Integration", () => {
       const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("error");
-      expect(message.error).toMatch(/Patient ID/i);
+      expect(message.error).toMatch(/No identifier priority rule matched/i);
     });
 
     test("extracts patient ID from PID-2", async () => {
@@ -542,7 +542,7 @@ describe("ORU_R01 E2E Integration", () => {
       const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
-      expect(message.patient?.reference).toBe("Patient/PAT-FROM-PID2");
+      expect(message.patient?.reference).toBe("Patient/lab-hospital-pat-from-pid2");
     });
 
     test("extracts patient ID from PID-3.1 when PID-2 is empty", async () => {
@@ -550,7 +550,7 @@ describe("ORU_R01 E2E Integration", () => {
       const message = await submitAndProcessOruR01(hl7Message);
 
       expect(message.status).toBe("processed");
-      expect(message.patient?.reference).toBe("Patient/PAT-FROM-PID3");
+      expect(message.patient?.reference).toBe("Patient/hospital-pat-from-pid3");
     });
 
     test("creates draft Patient with active=false when patient not found", async () => {
@@ -902,5 +902,31 @@ describe("ORU_R01 E2E Integration", () => {
       const tasks = await getMappingTasks();
       expect(tasks.length).toBe(0);
     });
+  });
+});
+
+describe("patient identity system", () => {
+  test("MEDTEX without UNIPAT falls back to type-PE rule", async () => {
+    // MEDTEX messages have BMH/PE and BMH/MR identifiers in PID-3 but no UNIPAT.
+    // Rule {assigner: "UNIPAT"} skips → rule {type: "PE"} matches → Patient.id = bmh-{value}.
+    const hl7Message = await loadFixture("oru-r01/identity-system/medtex-type-pe.hl7");
+    const message = await submitAndProcessOruR01(hl7Message);
+
+    expect(message.status).toBe("processed");
+    expect(message.patient?.reference).toBe("Patient/bmh-11220762");
+
+    const patient = await getPatient("bmh-11220762");
+    expect(patient.name?.[0]?.family).toBe("MEDTEXPATIENT");
+  });
+
+  test("no-match error propagates to IncomingHL7v2Message status", async () => {
+    // PID-3 has CX with empty CX.1 value — filtered from pool.
+    // All rules exhausted on empty pool → error.
+    const hl7Message = await loadFixture("oru-r01/identity-system/no-match.hl7");
+    const message = await submitAndProcessOruR01(hl7Message);
+
+    expect(message.status).toBe("error");
+    expect(message.error).toMatch(/No identifier priority rule matched/i);
+    expect(message.patient).toBeUndefined();
   });
 });

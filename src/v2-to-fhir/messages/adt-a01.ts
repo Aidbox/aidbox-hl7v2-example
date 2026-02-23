@@ -56,7 +56,7 @@ import {
   type MappingError,
 } from "../../code-mapping/mapping-errors";
 import type { SenderContext } from "../../code-mapping/concept-map";
-import { hl7v2ToFhirConfig } from "../config";
+import type { ConverterContext } from "../converter-context";
 
 // ============================================================================
 // Helper Functions
@@ -285,7 +285,11 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  * AL1 - Allergy Information (0..*)
  * IN1 - Insurance (0..*)
  */
-export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionResult> {
+export async function convertADT_A01(
+  parsed: HL7v2Message,
+  context: ConverterContext,
+): Promise<ConversionResult> {
+  const { resolvePatientId, config } = context;
   // =========================================================================
   // Extract MSH
   // =========================================================================
@@ -327,12 +331,13 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   const patient = convertPIDToPatient(pid);
   const mappingErrors: MappingError[] = [];
 
-  // Set patient ID from PID-2 or generate one
-  if (pid.$2_patientId?.$1_value) {
-    patient.id = pid.$2_patientId.$1_value;
-  } else if (pid.$3_identifier?.[0]?.$1_value) {
-    patient.id = pid.$3_identifier[0].$1_value;
+  const patientIdResult = await resolvePatientId(pid.$3_identifier ?? []);
+  if ("error" in patientIdResult) {
+    return {
+      messageUpdate: { status: "error", error: patientIdResult.error },
+    };
   }
+  patient.id = patientIdResult.id;
 
   // Add meta tags
   patient.meta = { ...patient.meta, ...baseMeta };
@@ -360,8 +365,7 @@ export async function convertADT_A01(parsed: HL7v2Message): Promise<ConversionRe
   // =========================================================================
   // Extract PV1 -> Encounter (config-driven PV1 policy)
   // =========================================================================
-  const config = hl7v2ToFhirConfig();
-  const pv1Required = config["ADT-A01"]?.converter?.PV1?.required ?? true;
+  const pv1Required = config.messages?.["ADT-A01"]?.converter?.PV1?.required ?? true;
 
   let encounter: Encounter | undefined;
   let encounterWarning: string | undefined;

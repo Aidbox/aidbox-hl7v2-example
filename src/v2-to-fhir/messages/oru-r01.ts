@@ -40,7 +40,6 @@ import type {
   Resource,
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
-import { getResourceWithETag, NotFoundError } from "../../aidbox";
 import { convertPIDToPatient } from "../segments/pid-patient";
 import { convertPV1WithMappingSupport } from "../segments/pv1-encounter";
 import { convertOBRWithMappingSupport } from "../segments/obr-diagnosticreport";
@@ -60,73 +59,10 @@ import {
   composeMappingTask,
   composeTaskBundleEntry,
 } from "../../code-mapping/mapping-task";
-import { hl7v2ToFhirConfig } from "../config";
-
-/**
- * Function type for looking up a Patient by ID.
- * Returns the Patient if found, or null if not found.
- */
-export type PatientLookupFn = (patientId: string) => Promise<Patient | null>;
-
-/**
- * Default patient lookup function using Aidbox.
- * Returns null on 404 (not found), throws on other errors.
- */
-export async function defaultPatientLookup(
-  patientId: string,
-): Promise<Patient | null> {
-  try {
-    const { resource } = await getResourceWithETag<Patient>("Patient", patientId);
-    return resource;
-  } catch (error) {
-    if (error instanceof NotFoundError) {
-      return null;
-    }
-    throw error;
-  }
-}
-
-/**
- * Function type for looking up an Encounter by ID.
- * Returns the Encounter if found, or null if not found.
- */
-export type EncounterLookupFn = (encounterId: string) => Promise<Encounter | null>;
-
-/**
- * Default encounter lookup function using Aidbox.
- * Returns null on 404 (not found), throws on other errors.
- */
-export async function defaultEncounterLookup(
-  encounterId: string,
-): Promise<Encounter | null> {
-  try {
-    const { resource } = await getResourceWithETag<Encounter>("Encounter", encounterId);
-    return resource;
-  } catch (error) {
-    if (error instanceof NotFoundError) {
-      return null;
-    }
-    throw error;
-  }
-}
-
-/**
- * Extract patient ID from PID segment.
- * Tries PID-2 first, then falls back to PID-3.1 (first identifier).
- *
- * Design note: PID-2 was deprecated in HL7 v2.4+ in favor of PID-3, but many
- * legacy systems still use PID-2. We check PID-2 first for backward compatibility
- * with older message formats.
- */
-function extractPatientId(pid: PID): string {
-  if (pid.$2_patientId?.$1_value) {
-    return pid.$2_patientId.$1_value;
-  }
-  if (pid.$3_identifier?.[0]?.$1_value) {
-    return pid.$3_identifier[0].$1_value;
-  }
-  throw new Error("Patient ID (PID-2 or PID-3) is required");
-}
+import type { Hl7v2ToFhirConfig } from "../config";
+import type { PatientIdResolver } from "../identity-system/patient-id";
+import type { ConverterContext } from "../converter-context";
+import type { PatientLookupFn, EncounterLookupFn } from "../aidbox-lookups";
 
 /**
  * Create a draft patient from PID segment with active=false.
@@ -510,10 +446,9 @@ function parsePID(message: HL7v2Message): PID {
   return fromPID(pidSegment);
 }
 
-interface PatientHandlingResult {
-  patientRef: Reference<"Patient">;
-  patientEntry: BundleEntry | null;
-}
+type PatientHandlingResult =
+  | { patientRef: Reference<"Patient">; patientEntry: BundleEntry | null }
+  | { error: string };
 
 /**
  * Create a conditional bundle entry for draft Patient creation.
@@ -538,7 +473,7 @@ function createConditionalPatientEntry(patient: Patient): BundleEntry {
 /**
  * Handle patient lookup and draft creation for ORU_R01.
  *
- * - Extracts patient ID from PID-2 or PID-3.1
+ * - Resolves patient ID via priority-list rules (identitySystem.patient.rules)
  * - Looks up existing patient (does NOT update - ADT is source of truth)
  * - Creates draft patient with active=false if not found
  *
@@ -550,8 +485,14 @@ async function handlePatient(
   pid: PID,
   baseMeta: Meta,
   lookupPatient: PatientLookupFn,
+  resolvePatientId: PatientIdResolver,
 ): Promise<PatientHandlingResult> {
-  const patientId = extractPatientId(pid);
+  const idResult = await resolvePatientId(pid.$3_identifier ?? []);
+  if ("error" in idResult) {
+    return { error: idResult.error };
+  }
+
+  const patientId = idResult.id;
   const patientRef = { reference: `Patient/${patientId}` } as Reference<"Patient">;
 
   const existingPatient = await lookupPatient(patientId);
@@ -626,9 +567,9 @@ async function handleEncounter(
   baseMeta: Meta,
   senderContext: SenderContext,
   lookupEncounter: EncounterLookupFn,
+  config: Hl7v2ToFhirConfig,
 ): Promise<EncounterHandlingResult> {
-  const config = hl7v2ToFhirConfig();
-  const pv1Required = config["ORU-R01"]?.converter?.PV1?.required ?? false;
+  const pv1Required = config.messages?.["ORU-R01"]?.converter?.PV1?.required ?? false;
 
   if (!pv1) {
     if (pv1Required) {
@@ -914,7 +855,7 @@ async function processOBRGroup(
  * - Links all resources to Patient
  *
  * Encounter Handling (config-driven PV1 policy):
- * - PV1 required/optional determined by config["ORU-R01"].converter.PV1.required
+ * - PV1 required/optional determined by config.messages?.["ORU-R01"].converter.PV1.required
  * - If PV1 valid: creates/looks up Encounter with strict HL7 v2.8.2 authority validation
  * - If PV1 not required and missing/invalid: skip Encounter, set status=warning
  * - If PV1 required and missing/invalid: set status=error, no bundle submitted
@@ -922,9 +863,9 @@ async function processOBRGroup(
  */
 export async function convertORU_R01(
   parsed: HL7v2Message,
-  lookupPatient: PatientLookupFn = defaultPatientLookup,
-  lookupEncounter: EncounterLookupFn = defaultEncounterLookup,
+  context: ConverterContext,
 ): Promise<ConversionResult> {
+  const { resolvePatientId, lookupPatient, lookupEncounter, config } = context;
   const { senderContext, baseMeta } = parseMSH(parsed);
   validateOBRPresence(parsed);
 
@@ -934,11 +875,20 @@ export async function convertORU_R01(
   const senderTag = extractSenderTag(pid);
   addSenderTagToMeta(baseMeta, senderTag);
 
-  const { patientRef, patientEntry } = await handlePatient(
+  const patientResult = await handlePatient(
     pid,
     baseMeta,
     lookupPatient,
+    resolvePatientId,
   );
+
+  if ("error" in patientResult) {
+    return {
+      messageUpdate: { status: "error", error: patientResult.error },
+    };
+  }
+
+  const { patientRef, patientEntry } = patientResult;
 
   const pv1 = parsePV1(parsed);
   const encounterResult = await handleEncounter(
@@ -947,6 +897,7 @@ export async function convertORU_R01(
     baseMeta,
     senderContext,
     lookupEncounter,
+    config,
   );
 
   // PV1 required and invalid → hard error, no bundle

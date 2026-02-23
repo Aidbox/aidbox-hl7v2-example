@@ -1,7 +1,7 @@
 ---
 status: pending
 priority: low
-related: tasks/completed/2026-02-03-unified-encounter-id-generation.md
+related: ai/tickets/completed/2026-02-03-unified-encounter-id-generation.md
 ---
 
 # Improvement: Show warning alongside mapping_error status

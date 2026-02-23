@@ -4,16 +4,16 @@ import {
   SEGMENT_PREPROCESSORS,
   type SegmentPreprocessorId,
 } from "./preprocessor-registry";
-
-/**
- * Configuration for message-type-specific preprocessing and conversion behavior.
- * Config is keyed by message type strings (e.g., "ORU-R01", "ADT-A01").
- */
+import type { IdentifierPriorityRule } from "./identity-system/patient-id";
 
 export type MessageTypeConfig = {
   preprocess?: {
     PV1?: {
       "19"?: SegmentPreprocessorId[];
+    };
+    PID?: {
+      "2"?: SegmentPreprocessorId[];
+      "3"?: SegmentPreprocessorId[];
     };
   };
   converter?: {
@@ -21,7 +21,12 @@ export type MessageTypeConfig = {
   };
 };
 
-export type Hl7v2ToFhirConfig = Record<string, MessageTypeConfig | undefined>;
+export type Hl7v2ToFhirConfig = {
+  identitySystem?: {
+    patient?: { rules: IdentifierPriorityRule[] };
+  };
+  messages?: Record<string, MessageTypeConfig | undefined>;
+};
 
 const DEFAULT_CONFIG_PATH = join(process.cwd(), "config", "hl7v2-to-fhir.json");
 
@@ -71,11 +76,48 @@ export function hl7v2ToFhirConfig(): Hl7v2ToFhirConfig {
 
   const config = parsed as Hl7v2ToFhirConfig;
 
-  // Validate all preprocessor IDs at startup
+  validateIdentitySystemRules(config);
   validatePreprocessorIds(config);
 
   cachedConfig = config;
   return cachedConfig;
+}
+
+/**
+ * Validates identitySystem.patient.rules at startup.
+ * @throws Error if rules array is missing, empty, or contains invalid rules
+ */
+function validateIdentitySystemRules(config: Hl7v2ToFhirConfig): void {
+  const rules = config.identitySystem?.patient?.rules;
+
+  if (!Array.isArray(rules)) {
+    throw new Error(
+      `Invalid HL7v2-to-FHIR config: "identitySystem.patient.rules" must be an array. ` +
+        `Got: ${typeof rules}. ` +
+        `Add an "identitySystem": { "patient": { "rules": [...] } } section to the config file.`,
+    );
+  }
+
+  if (rules.length === 0) {
+    throw new Error(
+      `Invalid HL7v2-to-FHIR config: "identitySystem.patient.rules" must not be empty. ` +
+        `Add at least one MatchRule or MpiLookupRule.`,
+    );
+  }
+
+  for (let i = 0; i < rules.length; i++) {
+    const rule = rules[i]!;
+    if ("mpiLookup" in rule) {
+      // MpiLookupRule — MPI-specific validation deferred to MPI implementation ticket.
+    } else {
+      if (!rule.assigner && !rule.type && !rule.any) {
+        throw new Error(
+          `Invalid identitySystem.patient.rules[${i}]: MatchRule must specify at least one of: ` +
+            `"assigner", "type", or "any".`,
+        );
+      }
+    }
+  }
 }
 
 /**
@@ -84,8 +126,9 @@ export function hl7v2ToFhirConfig(): Hl7v2ToFhirConfig {
  */
 function validatePreprocessorIds(config: Hl7v2ToFhirConfig): void {
   const registeredIds = Object.keys(SEGMENT_PREPROCESSORS);
+  const messages = config.messages ?? {};
 
-  for (const [messageType, messageConfig] of Object.entries(config)) {
+  for (const [messageType, messageConfig] of Object.entries(messages)) {
     if (!messageConfig?.preprocess) continue;
 
     for (const [segment, segmentConfig] of Object.entries(

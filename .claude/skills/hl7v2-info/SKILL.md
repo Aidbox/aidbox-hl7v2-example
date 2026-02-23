@@ -37,4 +37,4 @@ This project has reference data for **two HL7v2 versions**: v2.5 and v2.8.2.
 
 Do NOT skip this skill and rely on codebase exploration or memory for HL7v2 specifications. The reference data is the authoritative source.
 
-Look up multiple codes in parallel when needed. Show the full script output to the user without modification.
+When looking up multiple codes, make **separate Bash tool calls** in the same response — do NOT use shell `&` or `&&` to chain commands. The script is allowlisted individually (`bun scripts/hl7v2-ref-lookup.ts:*`), and chained shell commands bypass the allowlist and trigger permission prompts. Show the full script output to the user without modification.

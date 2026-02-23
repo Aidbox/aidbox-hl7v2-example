@@ -16,7 +16,7 @@ import type {
   Extension,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertCXToIdentifier } from "../datatypes/cx-identifier";
-import { buildEncounterIdentifier } from "../id-generation";
+import { buildEncounterIdentifier } from "../identity-system/encounter-id";
 import { convertCWEToCodeableConcept, convertCWEToCoding } from "../datatypes/cwe-codeableconcept";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { convertXCNToPractitioner } from "../datatypes/xcn-practitioner";

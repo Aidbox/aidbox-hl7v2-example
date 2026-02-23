@@ -12,13 +12,14 @@ import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingH
 import { convertADT_A01 } from "./messages/adt-a01";
 import { convertADT_A08 } from "./messages/adt-a08";
 import { convertORU_R01 } from "./messages/oru-r01";
+import { createConverterContext } from "./converter-context";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 export interface ConversionResult {
-  /** FHIR Transaction Bundle. Absent when conversion fails (e.g., required PV1 invalid). */
+  /** Absent when conversion fails (e.g., required PV1 invalid). */
   bundle?: Bundle;
   messageUpdate: Partial<IncomingHL7v2Message>;
 }
@@ -41,10 +42,6 @@ export function findAllSegments(
   return message.filter((s) => s.segment === name);
 }
 
-/**
- * Extract message type from parsed HL7v2 message
- * Returns message type in format: ADT_A01, ADT_A08, etc.
- */
 function extractMessageType(parsed: HL7v2Message): string {
   const mshSegment = findSegment(parsed, "MSH");
   if (!mshSegment) {
@@ -87,16 +84,17 @@ export async function convertToFHIR(
   parsed: HL7v2Message,
 ): Promise<ConversionResult> {
   const messageType = extractMessageType(parsed);
+  const context = createConverterContext();
 
   switch (messageType) {
     case "ADT_A01":
-      return await convertADT_A01(parsed);
+      return await convertADT_A01(parsed, context);
 
     case "ADT_A08":
-      return convertADT_A08(parsed);
+      return await convertADT_A08(parsed, context);
 
     case "ORU_R01":
-      return await convertORU_R01(parsed);
+      return await convertORU_R01(parsed, context);
 
     default:
       throw new Error(`Unsupported message type: ${messageType}`);

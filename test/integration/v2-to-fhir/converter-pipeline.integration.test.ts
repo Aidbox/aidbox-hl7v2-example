@@ -42,7 +42,7 @@ describe("Converter Pipeline", () => {
       expect(message.status).toBe("processed");
 
       const patientRef = message.patient!.reference!;
-      expect(patientRef).toBe("Patient/P12345");
+      expect(patientRef).toBe("Patient/hospital-p12345");
 
       const encounters = await getEncounters(patientRef);
       expect(encounters).toHaveLength(1);
@@ -60,7 +60,7 @@ describe("Converter Pipeline", () => {
       expect(message.status).toBe("processed");
 
       const patientRef = message.patient!.reference!;
-      expect(patientRef).toBe("Patient/P-PREPROC");
+      expect(patientRef).toBe("Patient/hospital-p-preproc");
 
       const encounters = await getEncounters(patientRef);
       expect(encounters).toHaveLength(1);
@@ -79,7 +79,7 @@ describe("Converter Pipeline", () => {
       expect(message.status).toBe("warning");
 
       const patientRef = message.patient!.reference!;
-      expect(patientRef).toBe("Patient/P-NOPV1-DG1");
+      expect(patientRef).toBe("Patient/hospital-p-nopv1-dg1");
 
       const encounters = await getEncounters(patientRef);
       expect(encounters).toHaveLength(0);
@@ -102,9 +102,9 @@ describe("Converter Pipeline", () => {
         expect(message.status).toBe("processed");
 
         const patientRef = message.patient!.reference!;
-        expect(patientRef).toBe("Patient/TEST-0001");
+        expect(patientRef).toBe("Patient/hospital-test-0001");
 
-        const patient = await getPatient("TEST-0001");
+        const patient = await getPatient("hospital-test-0001");
         expect(patient.active).toBe(false);
 
         const diagnosticReports = await getDiagnosticReports(patientRef);
@@ -125,7 +125,7 @@ describe("Converter Pipeline", () => {
         expect(message.error).toContain("PV1-19");
 
         const patientRef = message.patient!.reference!;
-        expect(patientRef).toBe("Patient/TEST-0002");
+        expect(patientRef).toBe("Patient/hospital-test-0002");
 
         const diagnosticReports = await getDiagnosticReports(patientRef);
         expect(diagnosticReports).toHaveLength(1);
@@ -144,9 +144,9 @@ describe("Converter Pipeline", () => {
         expect(message.status).toBe("processed");
 
         const patientRef = message.patient!.reference!;
-        expect(patientRef).toBe("Patient/TEST-0003");
+        expect(patientRef).toBe("Patient/hospital-test-0003");
 
-        const patient = await getPatient("TEST-0003");
+        const patient = await getPatient("hospital-test-0003");
         expect(patient.active).toBe(false);
 
         const encounters = await getEncounters(patientRef);

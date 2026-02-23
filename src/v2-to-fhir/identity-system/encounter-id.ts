@@ -17,8 +17,8 @@
  * Ref: https://www.hl7.eu/HL7v2x/v282/std282/ch02a.html#Heading158
  */
 
-import type { CX, HD, CWE } from "../hl7v2/generated/fields";
-import type { Encounter } from "../fhir/hl7-fhir-r4-core";
+import type { CX, HD, CWE } from "../../hl7v2/generated/fields";
+import type { Encounter } from "../../fhir/hl7-fhir-r4-core";
 
 export type EncounterIdentifierResult = {
   identifier?: Encounter["identifier"];
@@ -91,10 +91,6 @@ export function buildEncounterIdentifier(
   };
 }
 
-/**
- * Extracts authority string from HD (Hierarchic Designator) type.
- * Returns null if empty/whitespace.
- */
 function extractHDAuthority(hd: HD | undefined): string | null {
   if (!hd) return null;
 
@@ -103,10 +99,6 @@ function extractHDAuthority(hd: HD | undefined): string | null {
   return value || null;
 }
 
-/**
- * Extracts authority string from CWE (Coded with Exceptions) type.
- * Returns null if empty/whitespace.
- */
 function extractCWEAuthority(cwe: CWE | undefined): string | null {
   if (!cwe) return null;
 

@@ -9,7 +9,7 @@ You are creating a comprehensive implementation plan for a software feature. The
 
 ## Output Location
 
-Write the plan to: `tasks/plans/`
+Write the plan to: `ai/tickets/`
 
 Use descriptive filenames: `YYYY-MM-DD-feature-name.md` (e.g., `2026-01-26-user-authentication.md`)
 

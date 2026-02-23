@@ -141,3 +141,7 @@ Example: if the choice is between "elegant internals with fragile config couplin
 - Don't add error handling, fallbacks, or validation for scenarios that can't happen
 - Always use static imports at the top of the file. Never use dynamic `await import()` inside functions or route handlers
 - Remove unused code immediately; do not keep dead code or commented-out code; do not keep code in src/ that is only used in tests
+
+## Code Style
+
+Don't leave `continue` or `return` statements on the same line with the `if` condition.

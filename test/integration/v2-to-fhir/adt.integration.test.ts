@@ -35,9 +35,9 @@ describe("ADT_A01 E2E Integration", () => {
       const message = await submitAndProcessAdtA01(hl7Message);
 
       expect(message.status).toBe("processed");
-      expect(message.patient?.reference).toBe("Patient/P12345");
+      expect(message.patient?.reference).toBe("Patient/hospital-p12345");
 
-      const patient = await getPatient("P12345");
+      const patient = await getPatient("hospital-p12345");
       expect(patient.resourceType).toBe("Patient");
       expect(patient.name?.[0]?.family).toBe("TESTPATIENT");
       expect(patient.gender).toBe("male");
@@ -53,9 +53,9 @@ describe("ADT_A01 E2E Integration", () => {
       const message = await submitAndProcessAdtA01(hl7Message);
 
       expect(message.status).toBe("processed");
-      expect(message.patient?.reference).toBe("Patient/P-MINIMAL");
+      expect(message.patient?.reference).toBe("Patient/hospital-p-minimal");
 
-      const patient = await getPatient("P-MINIMAL");
+      const patient = await getPatient("hospital-p-minimal");
       expect(patient.name?.[0]?.family).toBe("MINIMALPATIENT");
       expect(patient.gender).toBe("female");
     });
@@ -64,7 +64,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/base.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      const patient = await getPatient("P12345");
+      const patient = await getPatient("hospital-p12345");
       const tag = patient.meta?.tag?.find(
         (t) => t.system === "urn:aidbox:hl7v2:message-id",
       );
@@ -75,7 +75,7 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/base.hl7");
       await submitAndProcessAdtA01(hl7Message);
 
-      const patient = await getPatient("P12345");
+      const patient = await getPatient("hospital-p12345");
       const tag = patient.meta?.tag?.find(
         (t) => t.system === "urn:aidbox:hl7v2:message-type",
       );
@@ -307,9 +307,9 @@ describe("ADT_A08 E2E Integration", () => {
       const message = await submitAndProcessAdtA08(hl7Message);
 
       expect(message.status).toBe("processed");
-      expect(message.patient?.reference).toBe("Patient/P-UPDATE");
+      expect(message.patient?.reference).toBe("Patient/hospital-p-update");
 
-      const patient = await getPatient("P-UPDATE");
+      const patient = await getPatient("hospital-p-update");
       expect(patient.resourceType).toBe("Patient");
       expect(patient.name?.[0]?.family).toBe("UPDATEPATIENT");
     });
@@ -320,7 +320,7 @@ describe("ADT_A08 E2E Integration", () => {
 
       expect(message.status).toBe("processed");
 
-      const patient = await getPatient("P-DEMO-UPDATE");
+      const patient = await getPatient("hospital-p-demo-update");
       expect(patient.name?.[0]?.family).toBe("NEWLASTNAME");
       expect(patient.name?.[0]?.given).toContain("NEWFIRST");
       expect(patient.gender).toBe("female");
@@ -330,7 +330,7 @@ describe("ADT_A08 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a08/base.hl7");
       await submitAndProcessAdtA08(hl7Message);
 
-      const patient = await getPatient("P-UPDATE");
+      const patient = await getPatient("hospital-p-update");
       const tag = patient.meta?.tag?.find(
         (t) => t.system === "urn:aidbox:hl7v2:message-type",
       );
@@ -344,14 +344,46 @@ describe("ADT_A08 E2E Integration", () => {
 
       // Process first time
       await submitAndProcessAdtA08(hl7Message);
-      const patientAfterFirst = await getPatient("P-UPDATE");
+      const patientAfterFirst = await getPatient("hospital-p-update");
 
       // Process second time
       await submitAndProcessAdtA08(hl7Message);
-      const patientAfterSecond = await getPatient("P-UPDATE");
+      const patientAfterSecond = await getPatient("hospital-p-update");
 
       // Should be same patient (updated, not duplicated)
       expect(patientAfterSecond.id).toBe(patientAfterFirst.id);
     });
+  });
+});
+
+describe("patient identity system", () => {
+  test("ASTRA message: UNIPAT in PID-2 produces unipat-prefixed Patient.id", async () => {
+    // ASTRA puts the UNIPAT identifier in PID-2 (deprecated field).
+    // Preprocessor move-pid2-into-pid3 migrates it into PID-3.
+    // Rule {assigner: "UNIPAT"} matches → Patient.id = unipat-{value}.
+    const hl7Message = await loadFixture("adt-a01/identity-system/astra-unipat-pid2.hl7");
+    const message = await submitAndProcessAdtA01(hl7Message);
+
+    expect(message.status).toBe("processed");
+    expect(message.patient?.reference).toBe("Patient/unipat-11195429");
+
+    const patient = await getPatient("unipat-11195429");
+    expect(patient.resourceType).toBe("Patient");
+    expect(patient.name?.[0]?.family).toBe("ASTRAPATIENT");
+  });
+
+  test("reprocessing same ASTRA message produces same Patient.id (idempotent)", async () => {
+    const hl7Message = await loadFixture("adt-a01/identity-system/astra-unipat-pid2.hl7");
+
+    // Process first time
+    const message1 = await submitAndProcessAdtA01(hl7Message);
+    expect(message1.patient?.reference).toBe("Patient/unipat-11195429");
+
+    // Process second time — same Patient.id, upsert not duplicate
+    const message2 = await submitAndProcessAdtA01(hl7Message);
+    expect(message2.patient?.reference).toBe("Patient/unipat-11195429");
+
+    const patient = await getPatient("unipat-11195429");
+    expect(patient.id).toBe("unipat-11195429");
   });
 });
