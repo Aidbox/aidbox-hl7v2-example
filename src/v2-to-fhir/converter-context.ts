@@ -19,15 +19,17 @@ import type { PatientIdResolver } from "./identity-system/patient-id";
 import { defaultPatientIdResolver } from "./identity-system/patient-id";
 import type { Hl7v2ToFhirConfig } from "./config";
 import { hl7v2ToFhirConfig } from "./config";
-// NOTE: defaultPatientLookup / defaultEncounterLookup remain in oru-r01.ts
-// because they are Aidbox-specific network calls that live naturally alongside
-// the ORU converter. They are imported here only to wire up production defaults.
-// If this import feels uncomfortable (bidirectional coupling), extract them to
-// src/v2-to-fhir/aidbox-lookups.ts in a follow-up.
+// defaultPatientLookup / defaultEncounterLookup live in aidbox-lookups.ts
+// (not in oru-r01.ts) to prevent a circular import:
+//   oru-r01.ts imports ConverterContext/PatientLookupFn/EncounterLookupFn from here
+//   → importing back from oru-r01.ts would create a bidirectional cycle
+// aidbox-lookups.ts has no dependency on this file: the lookup implementations
+// use inline types and rely on TypeScript structural compatibility with
+// PatientLookupFn / EncounterLookupFn defined below.
 import {
   defaultPatientLookup,
   defaultEncounterLookup,
-} from "./messages/oru-r01";
+} from "./aidbox-lookups";
 
 // ============================================================================
 // Lookup function types (moved from oru-r01.ts)

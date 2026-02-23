@@ -72,6 +72,12 @@ import type { PatientIdResolver } from "../identity-system/patient-id";
  */
 export type PatientLookupFn = (patientId: string) => Promise<Patient | null>;
 
+// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+// defaultPatientLookup moves to src/v2-to-fhir/aidbox-lookups.ts.
+// It is extracted there (not kept here) to avoid the circular import:
+//   converter-context.ts imports from aidbox-lookups.ts;
+//   oru-r01.ts imports ConverterContext from converter-context.ts.
+// Remove this export after implementation.
 /**
  * Default patient lookup function using Aidbox.
  * Returns null on 404 (not found), throws on other errors.
@@ -99,6 +105,12 @@ export async function defaultPatientLookup(
  */
 export type EncounterLookupFn = (encounterId: string) => Promise<Encounter | null>;
 
+// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+// defaultEncounterLookup moves to src/v2-to-fhir/aidbox-lookups.ts.
+// It is extracted there (not kept here) to avoid the circular import:
+//   converter-context.ts imports from aidbox-lookups.ts;
+//   oru-r01.ts imports ConverterContext from converter-context.ts.
+// Remove this export after implementation.
 /**
  * Default encounter lookup function using Aidbox.
  * Returns null on 404 (not found), throws on other errors.
