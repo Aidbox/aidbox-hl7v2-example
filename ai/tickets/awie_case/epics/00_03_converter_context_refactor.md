@@ -1,6 +1,7 @@
 # Refactoring: Compose Converter Dependencies into ConverterContext
 
 **Discovered during:** Epic 0.1 (Cross-EHR Patient & Encounter Identity) design
+**Status:** Approved
 
 ---
 
@@ -62,3 +63,4 @@ All converters receive `(parsed: ParsedMessage, context: ConverterContext)`.
 - Adding new dependencies is a single-point change (interface + constructor in `converter.ts`)
 - Test setup is cleaner (one mock object instead of N parameters)
 - Parameter order errors become impossible
+
