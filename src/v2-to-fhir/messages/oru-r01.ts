@@ -40,7 +40,6 @@ import type {
   Resource,
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
-import { getResourceWithETag, NotFoundError } from "../../aidbox";
 import { convertPIDToPatient } from "../segments/pid-patient";
 import { convertPV1WithMappingSupport } from "../segments/pv1-encounter";
 import { convertOBRWithMappingSupport } from "../segments/obr-diagnosticreport";
@@ -60,74 +59,10 @@ import {
   composeMappingTask,
   composeTaskBundleEntry,
 } from "../../code-mapping/mapping-task";
-import { hl7v2ToFhirConfig } from "../config";
+import type { Hl7v2ToFhirConfig } from "../config";
 import type { PatientIdResolver } from "../identity-system/patient-id";
-
-// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
-// PatientLookupFn moves to src/v2-to-fhir/converter-context.ts.
-// Remove this export and import the type from converter-context.ts instead.
-/**
- * Function type for looking up a Patient by ID.
- * Returns the Patient if found, or null if not found.
- */
-export type PatientLookupFn = (patientId: string) => Promise<Patient | null>;
-
-// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
-// defaultPatientLookup moves to src/v2-to-fhir/aidbox-lookups.ts.
-// It is extracted there (not kept here) to avoid the circular import:
-//   converter-context.ts imports from aidbox-lookups.ts;
-//   oru-r01.ts imports ConverterContext from converter-context.ts.
-// Remove this export after implementation.
-/**
- * Default patient lookup function using Aidbox.
- * Returns null on 404 (not found), throws on other errors.
- */
-export async function defaultPatientLookup(
-  patientId: string,
-): Promise<Patient | null> {
-  try {
-    const { resource } = await getResourceWithETag<Patient>("Patient", patientId);
-    return resource;
-  } catch (error) {
-    if (error instanceof NotFoundError) {
-      return null;
-    }
-    throw error;
-  }
-}
-
-// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
-// EncounterLookupFn moves to src/v2-to-fhir/converter-context.ts.
-// Remove this export and import the type from converter-context.ts instead.
-/**
- * Function type for looking up an Encounter by ID.
- * Returns the Encounter if found, or null if not found.
- */
-export type EncounterLookupFn = (encounterId: string) => Promise<Encounter | null>;
-
-// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
-// defaultEncounterLookup moves to src/v2-to-fhir/aidbox-lookups.ts.
-// It is extracted there (not kept here) to avoid the circular import:
-//   converter-context.ts imports from aidbox-lookups.ts;
-//   oru-r01.ts imports ConverterContext from converter-context.ts.
-// Remove this export after implementation.
-/**
- * Default encounter lookup function using Aidbox.
- * Returns null on 404 (not found), throws on other errors.
- */
-export async function defaultEncounterLookup(
-  encounterId: string,
-): Promise<Encounter | null> {
-  try {
-    const { resource } = await getResourceWithETag<Encounter>("Encounter", encounterId);
-    return resource;
-  } catch (error) {
-    if (error instanceof NotFoundError) {
-      return null;
-    }
-    throw error;
-  }
-}
+import type { ConverterContext } from "../converter-context";
+import type { PatientLookupFn, EncounterLookupFn } from "../aidbox-lookups";
 
 /**
  * Create a draft patient from PID segment with active=false.
@@ -632,10 +567,8 @@ async function handleEncounter(
   baseMeta: Meta,
   senderContext: SenderContext,
   lookupEncounter: EncounterLookupFn,
+  config: Hl7v2ToFhirConfig,
 ): Promise<EncounterHandlingResult> {
-  // DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
-  // Replace hl7v2ToFhirConfig() call with: const { config } = context  (passed in from caller)
-  const config = hl7v2ToFhirConfig();
   const pv1Required = config.messages?.["ORU-R01"]?.converter?.PV1?.required ?? false;
 
   if (!pv1) {
@@ -928,17 +861,11 @@ async function processOBRGroup(
  * - If PV1 required and missing/invalid: set status=error, no bundle submitted
  * - Links DiagnosticReport and Observation to Encounter when present
  */
-// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
-// Signature changes to: convertORU_R01(parsed: HL7v2Message, context: ConverterContext)
-// Import ConverterContext from '../converter-context' and destructure
-// { resolvePatientId, lookupPatient, lookupEncounter, config } from context.
-// The three individual parameters below are removed.
 export async function convertORU_R01(
   parsed: HL7v2Message,
-  lookupPatient: PatientLookupFn = defaultPatientLookup,
-  lookupEncounter: EncounterLookupFn = defaultEncounterLookup,
-  resolvePatientId: PatientIdResolver,
+  context: ConverterContext,
 ): Promise<ConversionResult> {
+  const { resolvePatientId, lookupPatient, lookupEncounter, config } = context;
   const { senderContext, baseMeta } = parseMSH(parsed);
   validateOBRPresence(parsed);
 
@@ -970,6 +897,7 @@ export async function convertORU_R01(
     baseMeta,
     senderContext,
     lookupEncounter,
+    config,
   );
 
   // PV1 required and invalid → hard error, no bundle

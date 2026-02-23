@@ -60,6 +60,7 @@ Add the following section to the design document:
 - [ ] [Another action item]
 - [ ] Write/update tests for this task
 - [ ] Run `[validation command]` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
 
 ---
 
@@ -126,7 +127,7 @@ Convert the design into discrete, ordered tasks:
 1. **Group by component**: Changes to related files go in same task
 2. **Order by dependency**: Foundation tasks before tasks that depend on them
 3. **Include tests**: Every task must have test checkboxes
-4. **Add validation gates**: Every task ends with passing validation commands
+4. **Add validation gates**: Every task ends with passing validation commands and a "stop and request user feedback" checkpoint
 5. **Keep tasks focused**: 2-8 checkboxes per task is ideal
 
 **Task ordering principles:**
@@ -186,6 +187,7 @@ Change the design document status to `planned`.
 - [ ] Write unit tests in `src/middleware/validate-user.test.ts`
 - [ ] Write integration test for protected endpoint
 - [ ] Run `bun test` and `bun run typecheck` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
 ```
 
 ### Bad Task Structure (avoid)

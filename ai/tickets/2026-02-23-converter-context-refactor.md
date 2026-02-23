@@ -48,8 +48,8 @@ Introduce a `ConverterContext` interface that bundles all converter runtime depe
 - Provide a `makeTestContext(overrides?)` helper in `test/unit/v2-to-fhir/helpers.ts` (or inline in the test files) that fills in safe defaults (null-returning lookups, `defaultPatientIdResolver()`, test config). Keeps test boilerplate minimal.
 - `defaultPatientLookup` and `defaultEncounterLookup` are extracted to `src/v2-to-fhir/aidbox-lookups.ts` — they remain plain exported functions, testable in isolation, and the move eliminates the circular import.
 
-**Known limitation: `defaultPatientIdResolver()` config inconsistency**
-`defaultPatientIdResolver()` (in `identity-system/patient-id.ts`) calls `hl7v2ToFhirConfig()` internally to read `config.identitySystem.patient.rules` at construction time. As a result, when a test passes a custom `config` to `makeTestContext({ config: myConfig })`, the `resolvePatientId` field is still built from the cached global config — not from `myConfig`. The two can diverge if the config cache was cleared between calls. This inconsistency is unlikely to cause bugs in practice today because the identity rules and PV1 config are independent, but it is a known limitation. It will be resolved when `defaultPatientIdResolver` is refactored to accept config as a parameter (a natural follow-up to this ticket).
+**~~Known limitation~~ Resolved: `defaultPatientIdResolver()` config inconsistency**
+Resolved in Task 5: `defaultPatientIdResolver(config)` now accepts config as a parameter. `createConverterContext()` and `makeTestContext()` both pass config through, so `makeTestContext({ config: myConfig })` correctly builds the resolver from `myConfig`.
 
 ## Affected Components
 
@@ -358,37 +358,37 @@ The two new files already exist as design prototypes. Replace the prototype scaf
 
 Typecheck and tests will not pass until Tasks 3-5 update converter signatures. Proceed immediately to Tasks 3-5 after this task.
 
-- [ ] Add import: `import { createConverterContext } from "./converter-context"`
-- [ ] Remove import: `import { defaultPatientIdResolver } from "./identity-system/patient-id"`
-- [ ] In `convertToFHIR()`: replace `const resolvePatientId = defaultPatientIdResolver()` with `const context = createConverterContext()`
-- [ ] Update switch cases: pass `context` as second argument instead of `resolvePatientId` / `undefined, undefined, resolvePatientId`
+- [x] Add import: `import { createConverterContext } from "./converter-context"`
+- [x] Remove import: `import { defaultPatientIdResolver } from "./identity-system/patient-id"`
+- [x] In `convertToFHIR()`: replace `const resolvePatientId = defaultPatientIdResolver()` with `const context = createConverterContext()`
+- [x] Update switch cases: pass `context` as second argument instead of `resolvePatientId` / `undefined, undefined, resolvePatientId`
   - `convertADT_A01(parsed, context)`
   - `convertADT_A08(parsed, context)`
   - `convertORU_R01(parsed, context)`
-- [ ] Remove all `DESIGN PROTOTYPE` comments from this file
+- [x] Remove all `DESIGN PROTOTYPE` comments from this file
 
 ---
 
 ## Task 3: Update `convertADT_A01` to accept `ConverterContext`
 
-- [ ] Add import: `import type { ConverterContext } from "../converter-context"`
-- [ ] Remove import: `import { hl7v2ToFhirConfig } from "../config"`
-- [ ] Remove import: `import type { PatientIdResolver } from "../identity-system/patient-id"`
-- [ ] Change signature from `(parsed: HL7v2Message, resolvePatientId: PatientIdResolver)` to `(parsed: HL7v2Message, context: ConverterContext)`
-- [ ] Destructure at top of function: `const { resolvePatientId, config } = context`
-- [ ] Remove the line `const config = hl7v2ToFhirConfig()` (~line 375) — `config` now comes from destructuring
-- [ ] Verify `config.messages?.["ADT-A01"]?.converter?.PV1?.required` still works with the destructured `config`
-- [ ] Remove all `DESIGN PROTOTYPE` comments from this file
+- [x] Add import: `import type { ConverterContext } from "../converter-context"`
+- [x] Remove import: `import { hl7v2ToFhirConfig } from "../config"`
+- [x] Remove import: `import type { PatientIdResolver } from "../identity-system/patient-id"`
+- [x] Change signature from `(parsed: HL7v2Message, resolvePatientId: PatientIdResolver)` to `(parsed: HL7v2Message, context: ConverterContext)`
+- [x] Destructure at top of function: `const { resolvePatientId, config } = context`
+- [x] Remove the line `const config = hl7v2ToFhirConfig()` (~line 375) — `config` now comes from destructuring
+- [x] Verify `config.messages?.["ADT-A01"]?.converter?.PV1?.required` still works with the destructured `config`
+- [x] Remove all `DESIGN PROTOTYPE` comments from this file
 
 ---
 
 ## Task 4: Update `convertADT_A08` to accept `ConverterContext`
 
-- [ ] Add import: `import type { ConverterContext } from "../converter-context"`
-- [ ] Remove import: `import type { PatientIdResolver } from "../identity-system/patient-id"`
-- [ ] Change signature from `(parsed: HL7v2Message, resolvePatientId: PatientIdResolver)` to `(parsed: HL7v2Message, context: ConverterContext)`
-- [ ] Destructure at top of function: `const { resolvePatientId } = context`
-- [ ] Remove all `DESIGN PROTOTYPE` comments from this file
+- [x] Add import: `import type { ConverterContext } from "../converter-context"`
+- [x] Remove import: `import type { PatientIdResolver } from "../identity-system/patient-id"`
+- [x] Change signature from `(parsed: HL7v2Message, resolvePatientId: PatientIdResolver)` to `(parsed: HL7v2Message, context: ConverterContext)`
+- [x] Destructure at top of function: `const { resolvePatientId } = context`
+- [x] Remove all `DESIGN PROTOTYPE` comments from this file
 
 ---
 
@@ -396,26 +396,26 @@ Typecheck and tests will not pass until Tasks 3-5 update converter signatures. P
 
 This is the most involved converter change: three parameters collapse into one, lookup types move out, duplicate implementations are deleted.
 
-- [ ] Add import: `import type { ConverterContext } from "../converter-context"`
-- [ ] Add import: `import type { PatientLookupFn, EncounterLookupFn } from "../aidbox-lookups"`
-- [ ] Remove: the local `PatientLookupFn` type alias (line 73)
-- [ ] Remove: the local `EncounterLookupFn` type alias (line 106)
-- [ ] Remove: the `defaultPatientLookup` function (lines 85-97) — now lives in `aidbox-lookups.ts`
-- [ ] Remove: the `defaultEncounterLookup` function (lines 118-130) — now lives in `aidbox-lookups.ts`
-- [ ] Remove: the `import { getResourceWithETag, NotFoundError } from "../../aidbox"` if no longer used after removing the lookup functions. (Check: `getResourceWithETag` and `NotFoundError` were only used by the lookup functions; if no other code in this file references them, remove the import.)
-- [ ] Remove import: `import { hl7v2ToFhirConfig } from "../config"`
-- [ ] Change `convertORU_R01` signature from `(parsed, lookupPatient, lookupEncounter, resolvePatientId)` to `(parsed: HL7v2Message, context: ConverterContext)`
-- [ ] Destructure at top of function: `const { resolvePatientId, lookupPatient, lookupEncounter, config } = context`
-- [ ] In `handleEncounter()`: it currently calls `hl7v2ToFhirConfig()` internally (line 638). Either:
+- [x] Add import: `import type { ConverterContext } from "../converter-context"`
+- [x] Add import: `import type { PatientLookupFn, EncounterLookupFn } from "../aidbox-lookups"`
+- [x] Remove: the local `PatientLookupFn` type alias (line 73)
+- [x] Remove: the local `EncounterLookupFn` type alias (line 106)
+- [x] Remove: the `defaultPatientLookup` function (lines 85-97) — now lives in `aidbox-lookups.ts`
+- [x] Remove: the `defaultEncounterLookup` function (lines 118-130) — now lives in `aidbox-lookups.ts`
+- [x] Remove: the `import { getResourceWithETag, NotFoundError } from "../../aidbox"` if no longer used after removing the lookup functions. (Check: `getResourceWithETag` and `NotFoundError` were only used by the lookup functions; if no other code in this file references them, remove the import.)
+- [x] Remove import: `import { hl7v2ToFhirConfig } from "../config"`
+- [x] Change `convertORU_R01` signature from `(parsed, lookupPatient, lookupEncounter, resolvePatientId)` to `(parsed: HL7v2Message, context: ConverterContext)`
+- [x] Destructure at top of function: `const { resolvePatientId, lookupPatient, lookupEncounter, config } = context`
+- [x] In `handleEncounter()`: it currently calls `hl7v2ToFhirConfig()` internally (line 638). Either:
   - **(Preferred)** Add `config: Hl7v2ToFhirConfig` as a parameter to `handleEncounter()` and pass it from the caller, OR
   - Pass the whole `context` to `handleEncounter()`
 
   The design specifies the `config` approach. Update `handleEncounter` signature to accept `config` as an additional parameter. Replace `const config = hl7v2ToFhirConfig()` inside it with the parameter.
-- [ ] Update the call to `handleEncounter()` in `convertORU_R01` to pass `config`
-- [ ] Remove all `DESIGN PROTOTYPE` comments from this file (there are 6 comment blocks)
-- [ ] Remove the import of `hl7v2ToFhirConfig` from `"../config"` if no other code in this file uses it
-- [ ] Verify internal helper signatures (`handlePatient` at line 549 already accepts `lookupPatient` and `resolvePatientId` as params — these are now sourced from context but the helper interface stays the same)
-- [ ] Run `bun run typecheck` — must pass (all converter signatures now aligned)
+- [x] Update the call to `handleEncounter()` in `convertORU_R01` to pass `config`
+- [x] Remove all `DESIGN PROTOTYPE` comments from this file (there are 6 comment blocks)
+- [x] Remove the import of `hl7v2ToFhirConfig` from `"../config"` if no other code in this file uses it
+- [x] Verify internal helper signatures (`handlePatient` at line 549 already accepts `lookupPatient` and `resolvePatientId` as params — these are now sourced from context but the helper interface stays the same)
+- [x] Run `bun run typecheck` — source code passes; test files fail as expected (updated in Tasks 6-7)
 
 ---
 

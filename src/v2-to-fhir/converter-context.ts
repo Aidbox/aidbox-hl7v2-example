@@ -17,9 +17,10 @@ export interface ConverterContext {
 }
 
 export function createConverterContext(): ConverterContext {
+  const config = hl7v2ToFhirConfig();
   return {
-    config: hl7v2ToFhirConfig(),
-    resolvePatientId: defaultPatientIdResolver(),
+    config,
+    resolvePatientId: defaultPatientIdResolver(config),
     lookupPatient: defaultPatientLookup,
     lookupEncounter: defaultEncounterLookup,
   };
