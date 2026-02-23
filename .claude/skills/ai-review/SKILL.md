@@ -27,8 +27,8 @@ Evaluate against these criteria:
 - Is the design testable?
 
 ### 4. Best Practices
-- Does it follow SOLID principles where applicable?
-- Does it follow best practices from `code-style.md`?
+- Does it follow ALL guidelines from `code-style.md`?
+- Does it follow SOLID principles?
 - Is error handling appropriate?
 - Are edge cases considered?
 

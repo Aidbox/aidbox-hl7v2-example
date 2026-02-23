@@ -344,13 +344,13 @@ Compose all converter runtime dependencies (`config`, `resolvePatientId`, `looku
 
 The two new files already exist as design prototypes. Replace the prototype scaffolding with production code.
 
-- [ ] In `src/v2-to-fhir/aidbox-lookups.ts`: remove the `DESIGN PROTOTYPE` banner and all prototype comment blocks. Keep the implementation and JSDoc exactly as written (they are the final implementation).
-- [ ] In `src/v2-to-fhir/converter-context.ts`: remove the `DESIGN PROTOTYPE` banner and all prototype comment blocks. Keep the interface, types, factory function, and JSDoc exactly as written.
-- [ ] Verify: `PatientLookupFn`, `EncounterLookupFn` are exported from `converter-context.ts`
-- [ ] Verify: `defaultPatientLookup`, `defaultEncounterLookup` are exported from `aidbox-lookups.ts`
-- [ ] Verify: `createConverterContext()` returns an object with all four required fields
-- [ ] Run `bun run typecheck` — must pass
-- [ ] Run `bun test:all` — must pass before next task
+- [x] In `src/v2-to-fhir/aidbox-lookups.ts`: remove the `DESIGN PROTOTYPE` banner and all prototype comment blocks. Keep the implementation and JSDoc exactly as written (they are the final implementation).
+- [x] In `src/v2-to-fhir/converter-context.ts`: remove the `DESIGN PROTOTYPE` banner and all prototype comment blocks. Keep the interface, types, factory function, and JSDoc exactly as written.
+- [x] Verify: `PatientLookupFn`, `EncounterLookupFn` are exported from `converter-context.ts`
+- [x] Verify: `defaultPatientLookup`, `defaultEncounterLookup` are exported from `aidbox-lookups.ts`
+- [x] Verify: `createConverterContext()` returns an object with all four required fields
+- [x] Run `bun run typecheck` — must pass
+- [x] Run `bun test:all` — must pass before next task
 
 ---
 
@@ -396,7 +396,8 @@ Typecheck and tests will not pass until Tasks 3-5 update converter signatures. P
 
 This is the most involved converter change: three parameters collapse into one, lookup types move out, duplicate implementations are deleted.
 
-- [ ] Add import: `import type { ConverterContext, PatientLookupFn, EncounterLookupFn } from "../converter-context"`
+- [ ] Add import: `import type { ConverterContext } from "../converter-context"`
+- [ ] Add import: `import type { PatientLookupFn, EncounterLookupFn } from "../aidbox-lookups"`
 - [ ] Remove: the local `PatientLookupFn` type alias (line 73)
 - [ ] Remove: the local `EncounterLookupFn` type alias (line 106)
 - [ ] Remove: the `defaultPatientLookup` function (lines 85-97) — now lives in `aidbox-lookups.ts`
