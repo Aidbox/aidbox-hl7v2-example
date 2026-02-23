@@ -421,7 +421,7 @@ This is the most involved converter change: three parameters collapse into one, 
 
 ## Task 6: Create `makeTestContext` helper and update ADT_A01 tests
 
-- [ ] Create `test/unit/v2-to-fhir/helpers.ts` with `makeTestContext(overrides?)` function:
+- [x] Create `test/unit/v2-to-fhir/helpers.ts` with `makeTestContext(overrides?)` function:
   ```typescript
   import type { ConverterContext } from "../../../src/v2-to-fhir/converter-context";
   import { defaultPatientIdResolver } from "../../../src/v2-to-fhir/identity-system/patient-id";
@@ -437,7 +437,7 @@ This is the most involved converter change: three parameters collapse into one, 
     };
   }
   ```
-- [ ] In `test/unit/v2-to-fhir/messages/adt-a01.test.ts`:
+- [x] In `test/unit/v2-to-fhir/messages/adt-a01.test.ts`:
   - Add import: `import { makeTestContext } from "../helpers"`
   - Remove import: `import { defaultPatientIdResolver } from "../../../../src/v2-to-fhir/identity-system/patient-id"`
   - Replace 3 call sites: `convertADT_A01(parsed, defaultPatientIdResolver())` → `convertADT_A01(parsed, makeTestContext())`
@@ -447,7 +447,7 @@ This is the most involved converter change: three parameters collapse into one, 
     - Replace `beforeAll`/`afterAll` with a const: `const testConfig = JSON.parse(readFileSync(TEST_CONFIG, "utf-8"))`
     - Call: `convertADT_A01(parsed, makeTestContext({ config: testConfig }))`
   - The `afterEach(() => clearConfigCache())` at the top level can remain for safety (other test helpers may still call `hl7v2ToFhirConfig()`), but consider whether it's still needed. If `makeTestContext` is the only thing calling `hl7v2ToFhirConfig()`, the cache clear is still appropriate for test isolation.
-- [ ] Run `bun test:all` — must pass before next task
+- [x] Run `bun test:all` — ADT_A01 tests pass (3/3). 4 ORU_R01 failures are expected pre-existing from Task 5 signature change, fixed in Task 7.
 
 ---
 
