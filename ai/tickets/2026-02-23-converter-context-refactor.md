@@ -1,35 +1,214 @@
 ---
-status: explored
+status: ready-for-review
 reviewer-iterations: 0
-prototype-files: []
+prototype-files:
+  - src/v2-to-fhir/converter-context.ts
+  - src/v2-to-fhir/messages/oru-r01.ts
+  - src/v2-to-fhir/messages/adt-a01.ts
+  - src/v2-to-fhir/messages/adt-a08.ts
+  - src/v2-to-fhir/converter.ts
 ---
 
 # Design: Compose Converter Dependencies into ConverterContext
 
 ## Problem Statement
 
+Each converter function (`convertADT_A01`, `convertADT_A08`, `convertORU_R01`) receives its runtime dependencies as individual positional parameters, but the set of dependencies differs across converters — ORU_R01 takes four parameters while ADT converters take two. Adding a new dependency (e.g., an MPI client or a feature flag) requires changing every converter signature and every call site simultaneously. Additionally, config is not passed as a parameter at all: each converter calls `hl7v2ToFhirConfig()` internally in private helpers, coupling the converters to the global config singleton and making them harder to test with alternative configs.
+
 ## Proposed Approach
+
+Introduce a `ConverterContext` interface that bundles all converter runtime dependencies into a single object. All converter functions change to `(parsed: HL7v2Message, context: ConverterContext) => Promise<ConversionResult>`. The context is constructed once in `converter.ts` and passed through unchanged. The two FHIR lookup types (`PatientLookupFn`, `EncounterLookupFn`) move from `oru-r01.ts` to `converter-context.ts`. The `config` field replaces internal calls to `hl7v2ToFhirConfig()` inside converters. A `createConverterContext()` factory in `converter-context.ts` wires up production defaults so `converter.ts` remains a thin router.
 
 ## Key Decisions
 
 | Decision | Options Considered | Chosen | Rationale |
 |----------|-------------------|--------|-----------|
+| Context shape | Flat object vs. nested grouping (e.g., `context.identity.resolvePatientId`) | Flat object | Converters destructure what they need; nesting adds indirection without current benefit. Revisit when groups become large. |
+| Config in context vs. kept as internal singleton | Keep internal calls / add `config` to context | Add `config` to context | Makes config substitutable in unit tests without env-var tricks and `clearConfigCache()` calls. Removes the only reason converters import from `config.ts`. |
+| `lookupPatient` / `lookupEncounter` required vs. optional | Optional with defaults on the type / Required on the type | Required on the type, defaults provided by `createConverterContext()` | Keeps the interface honest — the context is always fully populated. ADT converters simply don't destructure the lookup fields; they are not burdened by them. |
+| Where to define lookup types | Stay in `oru-r01.ts` / Move to `converter-context.ts` | Move to `converter-context.ts` | The types are now part of the context contract, not ORU-specific. Avoids a cross-module import from a consumer (oru-r01) back to the type that describes its host. |
+| Factory function location | `converter.ts` / `converter-context.ts` | `converter-context.ts` | Co-locates the interface and its default wiring. `converter.ts` stays a thin router with no awareness of defaults. |
+| Test helper: pass context object vs. keep old positional args for tests | Keep old signature for tests / Update tests to pass context | Update tests to pass context | Tests should exercise the real call contract. A small `makeTestContext()` helper (or inline object literal) is sufficient and avoids keeping a parallel API alive. |
 
 ## Trade-offs
+
+**Pros**
+- Adding a new dependency requires one change: add field to `ConverterContext` and initialize it in `createConverterContext()`. No other call site changes.
+- Converter signatures are uniform: `(parsed, context)` everywhere — readable and predictable.
+- Config is now injected, removing the need for `clearConfigCache()` in unit tests and the env-var override pattern.
+- `PatientLookupFn` and `EncounterLookupFn` live in a central, stable location rather than leaking from an implementation file.
+
+**Cons / Risks**
+- Unit tests must be updated to pass a context object instead of positional arguments. This is mechanical but touches every test that calls a converter directly (7 call sites currently).
+- The context object is slightly more to type in tests compared to passing two values. Mitigated by a shared `makeTestContext()` helper in the test directory.
+- ADT converters receive `lookupPatient` and `lookupEncounter` fields they will never use. This is a mild violation of interface segregation. Accepted because the lookup functions are cheap no-ops, the context is still small, and splitting into subtypes would add complexity with no near-term benefit.
+
+**Mitigations**
+- Provide a `makeTestContext(overrides?)` helper in `test/helpers/` that fills in safe defaults (null-returning lookups, `defaultPatientIdResolver()`, test config). Keeps test boilerplate minimal.
+- Keep `defaultPatientLookup` and `defaultEncounterLookup` exported from their current location in `oru-r01.ts` as plain functions — they are network operations and stay testable in isolation.
 
 ## Affected Components
 
 | File | Change Type | Description |
 |------|-------------|-------------|
+| `src/v2-to-fhir/converter-context.ts` | New | `ConverterContext` interface, `PatientLookupFn`, `EncounterLookupFn`, `createConverterContext()` factory |
+| `src/v2-to-fhir/converter.ts` | Modify | Construct `ConverterContext` via `createConverterContext()`, pass it to each converter; remove `defaultPatientIdResolver()` call |
+| `src/v2-to-fhir/messages/adt-a01.ts` | Modify | Change signature to `(parsed, context)`, destructure `resolvePatientId` and `config` from context, remove `hl7v2ToFhirConfig()` call |
+| `src/v2-to-fhir/messages/adt-a08.ts` | Modify | Change signature to `(parsed, context)`, destructure `resolvePatientId` and `config` from context, remove `hl7v2ToFhirConfig()` call (currently implicit — adt-a08 does not call it yet, but should accept config for consistency) |
+| `src/v2-to-fhir/messages/oru-r01.ts` | Modify | Change signature to `(parsed, context)`, move `PatientLookupFn` / `EncounterLookupFn` types out, remove `hl7v2ToFhirConfig()` calls, use context fields |
+| `test/unit/v2-to-fhir/messages/adt-a01.test.ts` | Modify | Replace `convertADT_A01(parsed, defaultPatientIdResolver())` with `convertADT_A01(parsed, context)` |
+| `test/unit/v2-to-fhir/messages/oru-r01.test.ts` | Modify | Replace four-arg call with `convertORU_R01(parsed, context)` |
 
 ## Technical Details
 
+### ConverterContext interface
+
+```typescript
+// src/v2-to-fhir/converter-context.ts
+
+export interface ConverterContext {
+  /** Loaded HL7v2-to-FHIR config. Passed explicitly so converters are config-injection-friendly. */
+  config: Hl7v2ToFhirConfig;
+  /** Resolves Patient.id from a pool of PID-3 CX identifiers. */
+  resolvePatientId: PatientIdResolver;
+  /** Look up an existing Patient by ID; returns null when not found. */
+  lookupPatient: PatientLookupFn;
+  /** Look up an existing Encounter by ID; returns null when not found. */
+  lookupEncounter: EncounterLookupFn;
+}
+
+/** Construct a ConverterContext wired with production defaults. */
+export function createConverterContext(): ConverterContext {
+  return {
+    config: hl7v2ToFhirConfig(),
+    resolvePatientId: defaultPatientIdResolver(),
+    lookupPatient: defaultPatientLookup,
+    lookupEncounter: defaultEncounterLookup,
+  };
+}
+```
+
+### Updated converter signatures
+
+```typescript
+// adt-a01.ts
+export async function convertADT_A01(
+  parsed: HL7v2Message,
+  context: ConverterContext,
+): Promise<ConversionResult>
+
+// adt-a08.ts
+export async function convertADT_A08(
+  parsed: HL7v2Message,
+  context: ConverterContext,
+): Promise<ConversionResult>
+
+// oru-r01.ts
+export async function convertORU_R01(
+  parsed: HL7v2Message,
+  context: ConverterContext,
+): Promise<ConversionResult>
+```
+
+### Updated router (converter.ts)
+
+```typescript
+export async function convertToFHIR(
+  parsed: HL7v2Message,
+): Promise<ConversionResult> {
+  const messageType = extractMessageType(parsed);
+  const context = createConverterContext();
+
+  switch (messageType) {
+    case "ADT_A01": return await convertADT_A01(parsed, context);
+    case "ADT_A08": return await convertADT_A08(parsed, context);
+    case "ORU_R01": return await convertORU_R01(parsed, context);
+    default: throw new Error(`Unsupported message type: ${messageType}`);
+  }
+}
+```
+
+### Config usage inside converters (before vs. after)
+
+**Before** (adt-a01.ts, line ~368):
+```typescript
+const config = hl7v2ToFhirConfig();
+const pv1Required = config.messages?.["ADT-A01"]?.converter?.PV1?.required ?? true;
+```
+
+**After**:
+```typescript
+const { config, resolvePatientId } = context;
+const pv1Required = config.messages?.["ADT-A01"]?.converter?.PV1?.required ?? true;
+```
+
+### Test context helper (suggested)
+
+```typescript
+// test/helpers/converter-context.ts
+import type { ConverterContext } from "../../src/v2-to-fhir/converter-context";
+import { defaultPatientIdResolver } from "../../src/v2-to-fhir/identity-system/patient-id";
+import { hl7v2ToFhirConfig } from "../../src/v2-to-fhir/config";
+
+export function makeTestContext(overrides?: Partial<ConverterContext>): ConverterContext {
+  return {
+    config: hl7v2ToFhirConfig(),
+    resolvePatientId: defaultPatientIdResolver(),
+    lookupPatient: async () => null,
+    lookupEncounter: async () => null,
+    ...overrides,
+  };
+}
+```
+
+### Import chain after refactor
+
+```
+converter.ts
+  ← converter-context.ts (createConverterContext)
+      ← config.ts (hl7v2ToFhirConfig, Hl7v2ToFhirConfig)
+      ← identity-system/patient-id.ts (defaultPatientIdResolver, PatientIdResolver)
+      ← messages/oru-r01.ts (defaultPatientLookup, defaultEncounterLookup)
+
+messages/adt-a01.ts
+  ← converter-context.ts (ConverterContext)
+  [no longer imports config.ts directly]
+
+messages/adu-a08.ts
+  ← converter-context.ts (ConverterContext)
+  [no longer imports identity-system/patient-id.ts directly]
+
+messages/oru-r01.ts
+  ← converter-context.ts (ConverterContext, PatientLookupFn, EncounterLookupFn)
+  [no longer imports config.ts directly]
+  [PatientLookupFn, EncounterLookupFn removed from this file's exports]
+```
+
+Note: `converter-context.ts` imports `defaultPatientLookup` and `defaultEncounterLookup` from `oru-r01.ts`. This creates a mild coupling (context depends on oru-r01 for defaults). If this becomes awkward, the defaults can be moved to a separate `aidbox-lookups.ts` file. For now the coupling is acceptable since those functions are stable and Aidbox-specific wiring belongs together.
+
 ## Edge Cases and Error Handling
+
+| Edge Case | Handling |
+|-----------|----------|
+| `createConverterContext()` called before config is loaded | `hl7v2ToFhirConfig()` throws on invalid config; this surfaces at context creation time in `converter.ts`, which is the same failure point as before |
+| Test overrides `config` but not `resolvePatientId` | `makeTestContext()` fills remaining fields with safe defaults; partial overrides work via spread |
+| A future converter needs a field not in `ConverterContext` | Add the field to the interface and initialize it in `createConverterContext()`; existing converters are unaffected |
+| ADT converter accidentally destructures `lookupPatient` | TypeScript provides the field; it just goes unused. No runtime harm. |
+| `defaultPatientLookup` / `defaultEncounterLookup` imported by `converter-context.ts` from `oru-r01.ts` creates a circular dependency | Not circular: `oru-r01.ts` imports `ConverterContext` from `converter-context.ts`; `converter-context.ts` imports lookup functions from `oru-r01.ts`. This is a bidirectional import between two files in the same package — TypeScript/Bun handle this fine as long as there are no top-level side effects at import time (there are none). If this feels uncomfortable, extract the default implementations to `src/v2-to-fhir/aidbox-lookups.ts`. |
 
 ## Test Cases
 
 | Test Case | Type | Description |
 |-----------|------|-------------|
+| `createConverterContext()` returns all required fields | Unit | Assert that the returned object has `config`, `resolvePatientId`, `lookupPatient`, `lookupEncounter` as functions/objects |
+| ADT_A01 with valid PV1 processes correctly via context | Unit | Pass `makeTestContext()` to `convertADT_A01`; existing behavior unchanged |
+| ADT_A01 with missing PV1 returns warning via context | Unit | Same scenario, now with context-injected config where `PV1.required=false` |
+| ADT_A08 processes patient via context | Unit | Pass `makeTestContext()` to `convertADT_A08`; existing behavior unchanged |
+| ORU_R01 with valid PV1 via context | Unit | Pass `makeTestContext()` with custom `lookupPatient`/`lookupEncounter` (null-returning); existing behavior unchanged |
+| ORU_R01 with existing patient (context.lookupPatient returns resource) | Unit | Override `lookupPatient` in context to return a fixture Patient; verify no draft patient created |
+| ORU_R01 with existing encounter (context.lookupEncounter returns resource) | Unit | Override `lookupEncounter` in context to return a fixture Encounter; verify no draft encounter created |
+| Config injected via context is used (not global singleton) | Unit | Pass context with `config.messages["ADT-A01"].converter.PV1.required = false`; no env-var or `clearConfigCache()` needed |
+| Full message pipeline (processor-service → converter.ts → convertADT_A01) | Integration | End-to-end: MLLP receive → process → verify FHIR resources in Aidbox. Exercises `createConverterContext()` in production path. |
 
 # Context
 

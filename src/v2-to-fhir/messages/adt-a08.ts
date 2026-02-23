@@ -84,6 +84,11 @@ function createBundleEntry(resource: Patient): BundleEntry {
  * EVN - Event Type (1)
  * PID - Patient Identification (1)
  */
+// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+// Signature changes to: convertADT_A08(parsed: HL7v2Message, context: ConverterContext)
+// Import ConverterContext from '../converter-context' and destructure
+// { resolvePatientId, config } from context.
+// The PatientIdResolver import from identity-system/patient-id can be removed.
 export async function convertADT_A08(
   parsed: HL7v2Message,
   resolvePatientId: PatientIdResolver,

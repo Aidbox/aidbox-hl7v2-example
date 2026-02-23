@@ -89,16 +89,28 @@ export async function convertToFHIR(
 ): Promise<ConversionResult> {
   const messageType = extractMessageType(parsed);
 
+  // DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+  // Replace this block with:
+  //   const context = createConverterContext();
+  //   (import createConverterContext from './converter-context')
+  // Then pass context to each converter instead of individual arguments.
+  // Remove the defaultPatientIdResolver import from identity-system/patient-id.
   const resolvePatientId = defaultPatientIdResolver();
 
   switch (messageType) {
     case "ADT_A01":
+      // DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+      // Change to: return await convertADT_A01(parsed, context);
       return await convertADT_A01(parsed, resolvePatientId);
 
     case "ADT_A08":
+      // DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+      // Change to: return await convertADT_A08(parsed, context);
       return await convertADT_A08(parsed, resolvePatientId);
 
     case "ORU_R01":
+      // DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+      // Change to: return await convertORU_R01(parsed, context);
       return await convertORU_R01(parsed, undefined, undefined, resolvePatientId);
 
     default:

@@ -286,6 +286,11 @@ function hasValidAllergenInfo(al1: AL1): boolean {
  * AL1 - Allergy Information (0..*)
  * IN1 - Insurance (0..*)
  */
+// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+// Signature changes to: convertADT_A01(parsed: HL7v2Message, context: ConverterContext)
+// Import ConverterContext from '../converter-context' and destructure
+// { resolvePatientId, config } from context.
+// The PatientIdResolver import from identity-system/patient-id can be removed.
 export async function convertADT_A01(
   parsed: HL7v2Message,
   resolvePatientId: PatientIdResolver,
@@ -365,6 +370,8 @@ export async function convertADT_A01(
   // =========================================================================
   // Extract PV1 -> Encounter (config-driven PV1 policy)
   // =========================================================================
+  // DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+  // Replace hl7v2ToFhirConfig() call with: const { config } = context  (passed in from caller)
   const config = hl7v2ToFhirConfig();
   const pv1Required = config.messages?.["ADT-A01"]?.converter?.PV1?.required ?? true;
 

@@ -63,6 +63,9 @@ import {
 import { hl7v2ToFhirConfig } from "../config";
 import type { PatientIdResolver } from "../identity-system/patient-id";
 
+// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+// PatientLookupFn moves to src/v2-to-fhir/converter-context.ts.
+// Remove this export and import the type from converter-context.ts instead.
 /**
  * Function type for looking up a Patient by ID.
  * Returns the Patient if found, or null if not found.
@@ -87,6 +90,9 @@ export async function defaultPatientLookup(
   }
 }
 
+// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+// EncounterLookupFn moves to src/v2-to-fhir/converter-context.ts.
+// Remove this export and import the type from converter-context.ts instead.
 /**
  * Function type for looking up an Encounter by ID.
  * Returns the Encounter if found, or null if not found.
@@ -615,6 +621,8 @@ async function handleEncounter(
   senderContext: SenderContext,
   lookupEncounter: EncounterLookupFn,
 ): Promise<EncounterHandlingResult> {
+  // DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+  // Replace hl7v2ToFhirConfig() call with: const { config } = context  (passed in from caller)
   const config = hl7v2ToFhirConfig();
   const pv1Required = config.messages?.["ORU-R01"]?.converter?.PV1?.required ?? false;
 
@@ -908,6 +916,11 @@ async function processOBRGroup(
  * - If PV1 required and missing/invalid: set status=error, no bundle submitted
  * - Links DiagnosticReport and Observation to Encounter when present
  */
+// DESIGN PROTOTYPE: 2026-02-23-converter-context-refactor.md
+// Signature changes to: convertORU_R01(parsed: HL7v2Message, context: ConverterContext)
+// Import ConverterContext from '../converter-context' and destructure
+// { resolvePatientId, lookupPatient, lookupEncounter, config } from context.
+// The three individual parameters below are removed.
 export async function convertORU_R01(
   parsed: HL7v2Message,
   lookupPatient: PatientLookupFn = defaultPatientLookup,
