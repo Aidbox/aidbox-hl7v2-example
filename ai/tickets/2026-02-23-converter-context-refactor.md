@@ -1,6 +1,6 @@
 ---
-status: ready-for-review
-reviewer-iterations: 1
+status: ai-reviewed
+reviewer-iterations: 2
 prototype-files:
   - src/v2-to-fhir/converter-context.ts
   - src/v2-to-fhir/aidbox-lookups.ts
@@ -416,3 +416,94 @@ Corrected in the Import chain after refactor section.
 Updated the Test context helper code block to use `test/unit/v2-to-fhir/helpers.ts` and added a note explaining there is no `test/helpers/` directory. Updated the Mitigations section to reference the correct path.
 
 ## User Feedback
+
+---
+
+### AI Review Notes — Iteration 2
+
+#### Summary
+
+All three blockers and minor issues from iteration 1 have been correctly addressed. The circular import is genuinely resolved: `aidbox-lookups.ts` exists as a prototype file, its implementations use inline types (not importing from `converter-context.ts`), and the import chain diagram in the document reflects a clean acyclic graph. The two minor issues (config inconsistency documentation, PV1 env-var test clarification) are addressed in the document. No new structural problems were introduced.
+
+There are a small number of remaining observations, none of which are blockers.
+
+---
+
+#### Issue 1 — Minor: `aidbox-lookups.ts` prototype still duplicates implementations from `oru-r01.ts`
+
+**Severity: Minor / Informational**
+
+Both `src/v2-to-fhir/aidbox-lookups.ts` and `src/v2-to-fhir/messages/oru-r01.ts` currently contain identical implementations of `defaultPatientLookup` and `defaultEncounterLookup`. This is intentional for the prototype phase — `oru-r01.ts` retains the originals with DESIGN PROTOTYPE removal markers. The design correctly notes they must be removed from `oru-r01.ts` during implementation. This is not a design flaw but is worth flagging: during implementation, the implementer must delete the copies in `oru-r01.ts` rather than leaving them as dead code (code-style rule: remove unused code immediately).
+
+**No action needed in the design document.** Verified the markers in `oru-r01.ts` (lines 75-130) are clear and accurate.
+
+---
+
+#### Issue 2 — Minor: `oru-r01.ts` internal helpers still reference old `PatientLookupFn` / `EncounterLookupFn` types after refactor
+
+**Severity: Minor / Implementation reminder**
+
+After the refactor, `oru-r01.ts` will import `PatientLookupFn` and `EncounterLookupFn` from `converter-context.ts` and use them in internal helper signatures (`handlePatient` at line 552, `handleEncounter` at line 634). These internal functions are private (not exported). They will continue to accept the same types — the types just come from a different import. This is correct; the design covers it in the import chain section. Nothing needs to change in the document.
+
+---
+
+#### Issue 3 — Minor: `makeTestContext` calls `hl7v2ToFhirConfig()` — `afterEach(clearConfigCache)` in test files
+
+**Severity: Minor / Implementation reminder**
+
+The existing `oru-r01.test.ts` has `afterEach(() => clearConfigCache())` (line 8-10). After the refactor, if tests use `makeTestContext()` (which calls `hl7v2ToFhirConfig()` for its default `config`), the cache-clearing `afterEach` is still appropriate to maintain test isolation. However, tests that pass `makeTestContext({ config: myConfig })` with an explicit config object no longer depend on the cache for that field — though `defaultPatientIdResolver()` inside `makeTestContext` still calls `hl7v2ToFhirConfig()` internally (the documented known limitation). So `clearConfigCache()` in `afterEach` remains needed for full isolation. The test cases table and known limitation note in the document cover this correctly. No change needed.
+
+---
+
+#### Issue 4 — Minor: `converter.ts` affected component description could note removal of `defaultPatientIdResolver` import
+
+**Severity: Cosmetic**
+
+The Affected Components table entry for `converter.ts` says "remove `defaultPatientIdResolver()` call" which is accurate, but it will also require removing the import line `import { defaultPatientIdResolver } from "./identity-system/patient-id"`. The DESIGN PROTOTYPE marker in `converter.ts` (line 97) already calls this out explicitly, so the implementer will not miss it. The document is functionally correct; this is cosmetic only.
+
+---
+
+#### Dependency Graph Verification
+
+Verified the post-refactor import graph is acyclic:
+
+```
+converter.ts → converter-context.ts → aidbox-lookups.ts → aidbox.ts, fhir/
+                                     → config.ts
+                                     → identity-system/patient-id.ts → config.ts
+
+converter.ts → messages/adt-a01.ts → converter-context.ts (types only)
+converter.ts → messages/adt-a08.ts → converter-context.ts (types only)
+converter.ts → messages/oru-r01.ts → converter-context.ts (types only)
+```
+
+No cycle exists. `aidbox-lookups.ts` has zero imports from `converter-context.ts` or any message file. Confirmed by reading the prototype file directly.
+
+---
+
+#### Affected Components Completeness
+
+The affected components table lists 8 entries. Verified against codebase:
+- No other files import `PatientLookupFn`, `EncounterLookupFn`, `defaultPatientLookup`, or `defaultEncounterLookup` from `oru-r01.ts` outside of `converter.ts` and the test files. The `oru-r01.test.ts` only imports `convertORU_R01` from `oru-r01.ts` — not the lookup types.
+- `processor-service.ts` calls `convertToFHIR()` from `converter.ts` — unaffected.
+- No integration test files directly call converters. Table is complete.
+
+---
+
+#### Test Cases Completeness
+
+The 9 test cases in the table cover the critical paths:
+- Happy path for all three converter types via context
+- Lookup override for ORU (existing patient, existing encounter)
+- Config injection (PV1 required=false without env-var tricks)
+- Factory function smoke test
+- Integration end-to-end
+
+One gap worth noting (non-blocking): there is no test case for `createConverterContext()` failing when `hl7v2ToFhirConfig()` throws (invalid config file). This is the same behavior as today and is covered implicitly by existing config unit tests in `test/unit/v2-to-fhir/config.test.ts`. Acceptable omission.
+
+---
+
+#### Recommendation
+
+Approved for user review. No blockers. The design is clean, the circular import resolution is correct and complete, all issues from iteration 1 are addressed, and the implementation notes (DESIGN PROTOTYPE markers) in the prototype files are accurate and actionable.
+
