@@ -1,6 +1,6 @@
 ---
-status: ready-for-review
-reviewer-iterations: 0
+status: changes-requested
+reviewer-iterations: 1
 prototype-files:
   - src/v2-to-fhir/converter-context.ts
   - src/v2-to-fhir/messages/oru-r01.ts
@@ -304,5 +304,81 @@ src/v2-to-fhir/
 - `lookupPatient` and `lookupEncounter` are required fields (not optional) — ADT converters simply won't destructure them
 
 ## AI Review Notes
+
+### Summary
+
+The design is well-reasoned. The `ConverterContext` concept is the right abstraction, the motivations are clear, and the trade-offs are honestly acknowledged. However, there is one blocker: the design documents a circular (bidirectional) import between `converter-context.ts` and `oru-r01.ts`, dismisses it as "TypeScript/Bun handle this fine", and proposes extracting to `aidbox-lookups.ts` only as a future optional step. The project code-style rules explicitly prohibit circular imports with no exception clause. This must be resolved as part of this ticket, not deferred.
+
+There are also two smaller issues worth addressing.
+
+---
+
+### Issue 1 — BLOCKER: Circular import between `converter-context.ts` and `oru-r01.ts`
+
+**Severity: Blocker**
+
+The design import chain (Section "Import chain after refactor") has:
+
+```
+converter-context.ts  →  messages/oru-r01.ts  (imports defaultPatientLookup, defaultEncounterLookup)
+messages/oru-r01.ts   →  converter-context.ts  (imports ConverterContext, PatientLookupFn, EncounterLookupFn)
+```
+
+This is a direct bidirectional cycle. `.claude/code-style.md` is unambiguous: "Never create circular imports between modules." The document acknowledges this and suggests it is acceptable for now because "there are no top-level side effects at import time." That rationale does not override the project rule — the rule is unconditional.
+
+The document itself names the correct fix: extract `defaultPatientLookup` and `defaultEncounterLookup` to `src/v2-to-fhir/aidbox-lookups.ts`. This is a small, well-scoped change. It should not be deferred.
+
+**Required resolution:**
+- Create `src/v2-to-fhir/aidbox-lookups.ts` (or a similarly named file) exporting `defaultPatientLookup` and `defaultEncounterLookup`.
+- `converter-context.ts` imports from `aidbox-lookups.ts` (not from `oru-r01.ts`).
+- `oru-r01.ts` imports from `converter-context.ts` (for `ConverterContext`, `PatientLookupFn`, `EncounterLookupFn`). No back-import into `converter-context.ts`.
+- Update the "Import chain after refactor" section to reflect the corrected graph.
+
+Note: `defaultPatientLookup` and `defaultEncounterLookup` are currently also exported from `oru-r01.ts` for use in `converter-context.ts`. After the split they will live only in `aidbox-lookups.ts`. Any external references to these functions (check for direct imports outside of `oru-r01.ts` and `converter-context.ts`) must be updated.
+
+---
+
+### Issue 2 — Minor: `defaultPatientIdResolver()` still calls `hl7v2ToFhirConfig()` internally
+
+**Severity: Minor**
+
+The design's stated goal is that converters stop calling `hl7v2ToFhirConfig()` so config is injected and testable. `createConverterContext()` passes `config` explicitly in the returned object, which achieves this for the converters themselves. However, `defaultPatientIdResolver()` (in `identity-system/patient-id.ts`) still calls `hl7v2ToFhirConfig()` internally — it reads `config.identitySystem.patient.rules` at construction time.
+
+This is not a blocker for the current ticket (the resolver is a black box from the converters' perspective, and the factory already wires it in). But there is a subtle inconsistency: the `makeTestContext()` helper calls both `hl7v2ToFhirConfig()` (for `config`) and `defaultPatientIdResolver()` (which also calls `hl7v2ToFhirConfig()`), so tests that supply a custom `config` to `makeTestContext()` will have `config` and `resolvePatientId` built from potentially different config objects if the cache was cleared between the two calls. This is unlikely to cause bugs in practice today, but it is worth documenting.
+
+**Resolution:** Add a note to the "Trade-offs / Cons" section documenting this inconsistency. Mark it as a known limitation to be resolved when `defaultPatientIdResolver` is refactored to accept config as a parameter (a natural follow-up to this ticket).
+
+---
+
+### Issue 3 — Minor: `makeTestContext` calls `hl7v2ToFhirConfig()` — existing env-var tests still needed
+
+**Severity: Minor**
+
+The design claims: "Config is now injected, removing the need for `clearConfigCache()` in unit tests and the env-var override pattern." This is true for tests that construct an explicit config object and pass it via `makeTestContext({ config: myConfig })`. However, `makeTestContext()` as written calls `hl7v2ToFhirConfig()` as its `config` default, which still reads from the file system and is still cached. Any test that needs a non-default config will still need to either: (a) pass an explicit config object (the clean path), or (b) use the env-var + `clearConfigCache()` dance.
+
+Looking at the existing tests, the `adt-a01.test.ts` "PV1 required=false" describe block uses `process.env.HL7V2_TO_FHIR_CONFIG` + `beforeAll/afterAll` + `clearConfigCache()` because it needs the test config fixture. After this refactor, that block can instead pass `config: loadTestConfig()` to `makeTestContext()` — but only if the test is updated to construct the config object rather than relying on env-var. The design does not call this out explicitly.
+
+**Resolution:** Update the "Test Cases" table to include: "ADT_A01 with PV1 required=false: pass config object directly via makeTestContext — no env-var or clearConfigCache needed." Also verify that the existing `afterEach(() => clearConfigCache())` calls in both test files can be removed after the refactor (they probably can for the converter tests, but may still be needed if any helper in scope calls `hl7v2ToFhirConfig()` without injection).
+
+---
+
+### Additional Observations (non-blocking)
+
+**Typo in design document:** Section "Import chain after refactor" contains `messages/adu-a08.ts` — should be `messages/adt-a08.ts`.
+
+**`makeTestContext` location:** The design suggests `test/helpers/converter-context.ts`. There is no `test/helpers/` directory; the existing shared test infrastructure lives in `test/integration/helpers.ts`. For unit test helpers, placing `makeTestContext` inside the existing test file (or a new `test/unit/v2-to-fhir/helpers.ts`) is consistent with the pattern used elsewhere in unit tests. This is a style call, not a blocker.
+
+**Affected file list is complete:** The table covers all seven files correctly. No missing entries found.
+
+**`createConverterContext()` called once per message:** Confirmed correct — it is called inside `convertToFHIR()` per the prototype marker in `converter.ts`. This is the right scope: not once per process (would prevent config reloading if ever needed), not once per segment (wasteful).
+
+---
+
+### Required Changes Before Approval
+
+1. Resolve the circular import by extracting `defaultPatientLookup` / `defaultEncounterLookup` to `src/v2-to-fhir/aidbox-lookups.ts` and updating the import chain diagram.
+2. Fix the typo `adu-a08.ts` → `adt-a08.ts` in the import chain section.
+3. Add a note about the `defaultPatientIdResolver` config inconsistency to the Trade-offs section.
+4. Clarify in the Test Cases that the `PV1 required=false` test can use direct config injection instead of env-var tricks.
 
 ## User Feedback
