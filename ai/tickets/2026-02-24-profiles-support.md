@@ -11,25 +11,37 @@ prototype-files:
   - src/v2-to-fhir/profile-conformance/validator.ts
 ---
 
+# User description
+
+Goal: validate VXU fields against us-core.
+
+If you need additional guides for context, check fhir-profiles-guide.md, us-core-ig-guide.md and fhir-implementation-guides.md.
+
+What we have to support:
+- Configuration must support profiles and IGs. If the converted fhir resources conform to the respective profiles - meta.profiles will be added
+- Add a strict mode: if the converted resourced DON'T conform to the required profiles, it will fail the message with a validation error. Status will be "error".
+- Need flexibility to allow supporting some profiles, but enabling strict mode only for a part of them
+- Specifically, support us-core IG out of the box
+
 # Design: Profiles and IG Support for HL7v2 -> FHIR Conversion
 
 ## Problem Statement
-The conversion pipeline currently produces base FHIR resources but does not evaluate profile conformance or declare `meta.profile` based on verified conformance. This prevents reliable downstream use of profile-aware workflows and blocks US Core alignment for immunization (VXU) scenarios. We need a configurable profile-conformance layer that can validate converted resources against IG profiles, annotate conformant resources, and optionally fail messages when strict conformance is required.
+The conversion pipeline currently produces base FHIR resources but does not evaluate profile conformance or declare `meta.profile` based on verified conformance. This prevents reliable downstream use of profile-aware workflows across all conversion flows and makes profile claims non-deterministic. We need a configurable profile-conformance layer that can validate converted resources against any configured IG/profile set, annotate conformant resources, and optionally fail messages when strict conformance is required.
 
 ## Proposed Approach
-Introduce a post-conversion profile conformance stage in `processor-service.ts`, after HL7v2 parsing/preprocessing/conversion and before transaction bundle submission. The new stage evaluates each converted resource against configured profile rules (including US Core rules out of the box), adds profile URLs to `resource.meta.profile` for conformant resources, and aggregates validation issues.
+Introduce a post-conversion profile conformance stage in `processor-service.ts`, after HL7v2 parsing/preprocessing/conversion and before transaction bundle submission. The new stage evaluates each converted resource against configured profile rules, adds profile URLs to `resource.meta.profile` for conformant resources, and aggregates validation issues.
 
-Configuration is extended to support IGs, profile rules, and per-profile strictness. Strict failures mark `IncomingHL7v2Message.status = "error"` and store a detailed validation summary in `error`. Non-strict failures keep the message processable while skipping `meta.profile` for failing profiles.
+Configuration is extended to support arbitrary IGs, profile rules, and per-profile strictness. Strict failures mark `IncomingHL7v2Message.status = "error"` and store a detailed validation summary in `error`. Non-strict failures keep the message processable while skipping `meta.profile` for failing profiles.
 
 ## Key Decisions
 
 | Decision | Options Considered | Chosen | Rationale |
 |----------|-------------------|--------|-----------|
-| Validation scope | A) VXU-only implementation, B) Cross-message validation stage with VXU-first defaults | B | VXU-only is faster short-term but duplicates logic once ORU/ADT also need profiles. A shared stage keeps profile behavior uniform. |
+| Validation scope | A) Message-specific implementation, B) Cross-message validation stage | B | Message-specific logic would duplicate behavior and drift over time. A shared stage keeps profile behavior uniform and reusable. |
 | Strictness model | A) Global strict flag, B) Per-profile strict flag | B | Requirement explicitly needs strict enabled for only a subset of profiles. |
 | Profile assignment timing | A) Set `meta.profile` pre-validation, B) Set only after successful profile validation | B | Avoids false conformance claims and keeps profile declarations trustworthy. |
 | US Core support | A) Optional manual profile registration only, B) Provide out-of-the-box US Core preset in config + validator registry | B | Meets requirement for immediate US Core support while allowing additional IGs later. |
-| Dependency handling for VXU | A) Implement inside this ticket, B) Design as dependency on VXU converter ticket | B | VXU conversion has its own ticket; coupling implementation here would expand scope and blur ownership. |
+| Rollout strategy | A) Couple to one message-type ticket, B) Implement message-agnostic conformance layer and enable per message as converters mature | B | Decouples architecture from one use case and lets each message type adopt profiles independently. |
 
 ## Trade-offs
 - **Pro**: Profile conformance becomes explicit, auditable, and configurable per IG/profile.
@@ -41,10 +53,9 @@ Configuration is extended to support IGs, profile rules, and per-profile strictn
 | File | Change Type | Description |
 |------|-------------|-------------|
 | `src/v2-to-fhir/config.ts` | Modify | Extend config types to include IG/profile conformance policies and strictness controls. |
-| `src/v2-to-fhir/converter.ts` | Modify | Add planned route marker for VXU conversion and profile policy selection context. |
 | `src/v2-to-fhir/processor-service.ts` | Modify | Insert planned post-conversion profile validation stage before bundle submit. |
 | `src/v2-to-fhir/profile-conformance/types.ts` | Create | Define profile rule types, validation results, and strictness model. |
-| `src/v2-to-fhir/profile-conformance/us-core.ts` | Create | Define built-in US Core profile presets relevant to converted resources (VXU-first). |
+| `src/v2-to-fhir/profile-conformance/us-core.ts` | Create | Define built-in US Core IG preset container (generic profile policy list, no message-specific mapping logic). |
 | `src/v2-to-fhir/profile-conformance/validator.ts` | Create | Define validator contract and orchestration entry point for evaluating a converted bundle. |
 | `src/v2-to-fhir/profile-conformance/index.ts` | Create | Re-export profile conformance module public API. |
 
@@ -92,15 +103,13 @@ Validator strategy:
 - Treat `OperationOutcome` with validation failures as profile non-conformance.
 - Aggregate issues across all resources and profiles into one message-level summary.
 
-US Core out-of-the-box preset (initial focus for VXU):
-- `Patient` -> `us-core-patient`
-- `Immunization` -> `us-core-immunization`
-- `Encounter` -> `us-core-encounter` (if produced)
-- `Observation` -> selected US Core observation profiles when VXU mappings support them
+US Core out-of-the-box preset:
+- Provide a predefined IG entry (`hl7.fhir.us.core` + version) and a generic profile policy container.
+- Concrete profile selection for resource types is configuration-driven and out of scope for this ticket.
 - Deployment expectation: Aidbox must load the US Core package (`hl7.fhir.us.core`) so `$validate` resolves canonical profiles.
 
 ## Edge Cases and Error Handling
-- VXU message converted but no profile policy configured: skip profile stage, preserve existing behavior.
+- Message converted but no profile policy configured: skip profile stage, preserve existing behavior.
 - Profile policy configured for resource type not present in bundle: no failure; report as not-applicable.
 - Non-strict profile failure: do not add failing profile URL, keep processing.
 - Strict profile failure: set message to `error`, store summarized violations, skip submit.
@@ -118,7 +127,7 @@ US Core out-of-the-box preset (initial focus for VXU):
 | Conformant resource gets `meta.profile` | Integration | Resource passing configured profile validation has expected profile URL added. |
 | Mixed strict + non-strict profiles | Integration | Strict pass + non-strict fail still processes; strict fail blocks even if others pass. |
 | US Core preset loads by default | Unit | Built-in preset can be referenced by config without custom profile definitions. |
-| Unsupported message type policy isolation | Unit | Profile policy selection does not affect existing ADT/ORU routes when disabled. |
+| Message policy isolation | Unit | Profile policy selection for one message type does not affect others. |
 | Validation stage no-op when disabled | Unit | Existing pipeline behavior unchanged if `profileConformance.enabled` is false/missing. |
 
 # Context
@@ -138,11 +147,9 @@ US Core out-of-the-box preset (initial focus for VXU):
 - Requirement: strict mode must be selectively enabled for only some profiles.
 - Requirement: support US Core IG out of the box.
 - Clarification status: no additional Q&A provided in this ticket yet.
-- Assumption applied in this design: VXU conversion implementation remains a separate dependency (`ai/tickets/2026-02-23-vxu-support.md`); this ticket defines shared profile-conformance architecture and VXU-first policy defaults.
+- Assumption applied in this design: this ticket defines a shared profile-conformance architecture independent of message type; message-specific converters (including VXU) consume it when available.
 
 ## AI Review Notes
-- Review pass completed with no blockers.
-- Issue found and addressed: "US Core out of the box" was previously underspecified at runtime; design now explicitly requires Aidbox `$validate` plus loaded US Core package for canonical profile resolution.
-- Residual risk: this ticket depends on VXU conversion work (`ai/tickets/2026-02-23-vxu-support.md`) for end-to-end immunization validation coverage.
+
 
 ## User Feedback

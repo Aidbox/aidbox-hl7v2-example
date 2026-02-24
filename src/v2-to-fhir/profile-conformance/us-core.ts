@@ -11,16 +11,14 @@
 //   version: "6.1.0",
 //   profiles: [
 //     {
-//       profileUrl:
-//         "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient",
-//       resourceTypes: ["Patient"],
-//       strict: true,
+//       profileUrl: "http://hl7.org/fhir/us/core/StructureDefinition/...",
+//       resourceTypes: ["..."],
+//       strict: false,
 //     },
 //     {
-//       profileUrl:
-//         "http://hl7.org/fhir/us/core/StructureDefinition/us-core-immunization",
-//       resourceTypes: ["Immunization"],
-//       strict: true,
+//       profileUrl: "http://hl7.org/fhir/us/core/StructureDefinition/...",
+//       resourceTypes: ["..."],
+//       strict: false,
 //     },
 //   ],
 // } as const;
@@ -28,4 +26,3 @@
 // export function getUsCorePreset(version?: string): ImplementationGuidePolicy
 //
 // ============================================================================
-

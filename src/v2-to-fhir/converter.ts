@@ -13,9 +13,6 @@ import { convertADT_A01 } from "./messages/adt-a01";
 import { convertADT_A08 } from "./messages/adt-a08";
 import { convertORU_R01 } from "./messages/oru-r01";
 import { createConverterContext } from "./converter-context";
-// DESIGN PROTOTYPE: 2026-02-24-profiles-support.md
-// Planned extension:
-// import { convertVXU_V04 } from "./messages/vxu-v04";
 
 // ============================================================================
 // Types
@@ -98,10 +95,6 @@ export async function convertToFHIR(
 
     case "ORU_R01":
       return await convertORU_R01(parsed, context);
-
-    // DESIGN PROTOTYPE: 2026-02-24-profiles-support.md
-    // case "VXU_V04":
-    //   return await convertVXU_V04(parsed, context);
 
     default:
       throw new Error(`Unsupported message type: ${messageType}`);
