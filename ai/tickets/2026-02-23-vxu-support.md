@@ -1,5 +1,5 @@
 ---
-status: changes-requested
+status: ai-reviewed
 reviewer-iterations: 2
 prototype-files:
   - src/v2-to-fhir/messages/vxu-v04.ts
