@@ -3,6 +3,7 @@
  *
  * Routes HL7v2 messages to appropriate converters based on message type.
  * Supports: ADT_A01, ADT_A08, ORU_R01
+ * // DESIGN PROTOTYPE: 2026-02-23-vxu-support.md — Add VXU_V04 support
  */
 
 import type { HL7v2Message, HL7v2Segment } from "../hl7v2/generated/types";
@@ -12,6 +13,8 @@ import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingH
 import { convertADT_A01 } from "./messages/adt-a01";
 import { convertADT_A08 } from "./messages/adt-a08";
 import { convertORU_R01 } from "./messages/oru-r01";
+// DESIGN PROTOTYPE: 2026-02-23-vxu-support.md
+// import { convertVXU_V04 } from "./messages/vxu-v04";
 import { createConverterContext } from "./converter-context";
 
 // ============================================================================
@@ -75,6 +78,7 @@ function extractMessageType(parsed: HL7v2Message): string {
  * - ADT_A01 -> convertADT_A01
  * - ADT_A08 -> convertADT_A08
  * - ORU_R01 -> convertORU_R01
+ * - VXU_V04 -> convertVXU_V04 (DESIGN PROTOTYPE: 2026-02-23-vxu-support.md)
  *
  * @param parsed - Already-parsed HL7v2 message
  * @returns ConversionResult with FHIR Bundle and message update fields
@@ -95,6 +99,10 @@ export async function convertToFHIR(
 
     case "ORU_R01":
       return await convertORU_R01(parsed, context);
+
+    // DESIGN PROTOTYPE: 2026-02-23-vxu-support.md
+    // case "VXU_V04":
+    //   return await convertVXU_V04(parsed, context);
 
     default:
       throw new Error(`Unsupported message type: ${messageType}`);

@@ -15,6 +15,11 @@ export type MessageTypeConfig = {
       "2"?: SegmentPreprocessorId[];
       "3"?: SegmentPreprocessorId[];
     };
+    // DESIGN PROTOTYPE: 2026-02-23-vxu-support.md
+    // Add ORC preprocessing for authority injection into ORC-3 EI
+    ORC?: {
+      "3"?: SegmentPreprocessorId[];
+    };
   };
   converter?: {
     PV1?: { required?: boolean };

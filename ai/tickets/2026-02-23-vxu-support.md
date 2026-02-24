@@ -1,34 +1,357 @@
 ---
-status: explored
+status: ready-for-review
 reviewer-iterations: 0
-prototype-files: []
+prototype-files:
+  - src/v2-to-fhir/messages/vxu-v04.ts
+  - src/v2-to-fhir/segments/rxa-immunization.ts
+  - src/v2-to-fhir/ig-enrichment/ig-enrichment.ts
+  - src/v2-to-fhir/ig-enrichment/cdc-iis-enrichment.ts
+  - test/fixtures/hl7v2/vxu-v04/base.hl7
+  - test/fixtures/hl7v2/vxu-v04/not-administered.hl7
+  - test/fixtures/hl7v2/vxu-v04/with-person-observations.hl7
+  - test/fixtures/hl7v2/vxu-v04/historical.hl7
+  - test/fixtures/hl7v2/vxu-v04/entered-in-error.hl7
+  - test/fixtures/hl7v2/vxu-v04/multiple-orders.hl7
+  - test/fixtures/hl7v2/vxu-v04/error/missing-rxa.hl7
+  - test/fixtures/hl7v2/vxu-v04/error/missing-orc3.hl7
+  - test/fixtures/hl7v2/vxu-v04/error/unknown-order-obx.hl7
+  - test/unit/v2-to-fhir/messages/vxu-v04.test.ts
+  - test/unit/v2-to-fhir/segments/rxa-immunization.test.ts
+  - test/unit/v2-to-fhir/ig-enrichment/cdc-iis-enrichment.test.ts
+  - test/integration/v2-to-fhir/vxu-v04.integration.test.ts
 ---
 
 # Design: VXU_V04 Conversion — Immunizations
 
 ## Problem Statement
-[To be filled in Phase 4]
+
+The system currently supports incoming HL7v2 ADT and ORU messages but cannot process VXU_V04 (Unsolicited Vaccination Record Update) messages. Immunization registries and EHR systems send VXU messages to report administered and historical vaccinations. Without VXU support, immunization data must be manually entered or left unprocessed, creating gaps in patient records.
+
+This ticket implements the full VXU_V04-to-FHIR conversion pipeline, including CDC IIS Implementation Guide semantics (ORDER-level OBX interpretation, NIP001 source coding), which is how VXU is used in practice.
 
 ## Proposed Approach
-[To be filled in Phase 4]
+
+Follow the established converter pattern (ORU_R01 as primary reference) with these VXU-specific additions:
+
+1. **Core converter** (`vxu-v04.ts`): Extracts ORDER groups (ORC+RXA+RXR), converts each to a FHIR Immunization resource. Handles PID/PV1 using existing infrastructure (patient lookup/draft, config-driven PV1 policy). Converts PERSON_OBSERVATION OBX to standalone Observations.
+
+2. **Segment converter** (`rxa-immunization.ts`): Pure function mapping RXA+RXR+ORC fields to a base FHIR Immunization. Handles status derivation (RXA-20/21), dose quantity, lot number, expiration date, performer creation from XCN, and identifier generation from ORC-2/3.
+
+3. **IGEnrichment interface + CDC IIS implementation**: Defines a reusable contract (`IGEnrichment`) for IG-specific post-conversion logic. The CDC IIS enrichment maps ORDER-level OBX segments (known LOINC codes) to Immunization fields (programEligibility, fundingSource, education, protocolApplied) and interprets RXA-9 NIP001 source codes.
+
+4. **Preprocessor for ORC-3 authority**: Extends the existing preprocessor registry to inject MSH-3/MSH-4 into ORC-3 EI.2 when the authority is missing, ensuring deterministic ID generation.
+
+5. **HL7v2 type generation**: Run `bun run regenerate-hl7v2` to generate RXA/RXR types (currently missing from generated code). ORC already exists.
 
 ## Key Decisions
-[To be filled in Phase 4]
+
+| # | Decision | Options Considered | Chosen | Rationale |
+|---|----------|-------------------|--------|-----------|
+| 1 | CVX code handling | (a) ConceptMap lookup, (b) Pass-through | Pass-through | CVX is already a standard FHIR code system. No sender-specific translation needed. |
+| 2 | ORDER-level OBX handling | (a) mapping_error + Task, (b) Hard error, (c) Create Observation | Hard error | ORDER OBX in VXU has a well-defined set of LOINC codes per CDC IIS IG. Unknown codes indicate a programming error or unsupported sender, not a user-resolvable mapping issue. |
+| 3 | PERSON_OBSERVATION OBX | (a) Ignore, (b) Create Observation | Create Observation | Patient-level observations (e.g., disease history) are clinically relevant standalone resources. |
+| 4 | RXA-9 NIP001 interpretation | (a) Core converter, (b) CDC IIS enrichment | CDC IIS enrichment | NIP001 table (00=new, 01=historical) is CDC IIS-specific, not core HL7v2. Keep IG-specific logic in the enrichment layer. |
+| 5 | Immunization ID source | (a) ORC-3 only, (b) ORC-3 with fallback to ORC-2 | ORC-3 with ORC-2 fallback | Mirrors the OBR-3/OBR-2 pattern in ORU. ORC-3 (filler) is preferred; ORC-2 (placer) is fallback. Both need authority scoping. |
+| 6 | Performers (RXA-10, ORC-12) | (a) In scope, (b) Separate ticket | In scope | Performers are core to the Immunization resource. XCN converter already exists. |
+| 7 | Manufacturer (RXA-17) | (a) In scope, (b) Separate ticket | Separate ticket | Requires Organization resource creation from MVX codes -- different concern than Immunization conversion. |
+| 8 | PV1 policy | (a) Required, (b) Optional | Optional | VXU messages frequently omit PV1 or send minimal PV1 (e.g., `PV1\|1\|R`). Same policy as ORU. |
+| 9 | IGEnrichment pattern | (a) Post-processor at service level, (b) Inline in converter | Inline in converter | Single file shows the complete VXU pipeline. Splitting across service + converter hurts readability. |
+| 10 | VIS OBX grouping | (a) Flat list, (b) Group by OBX-4 sub-ID | Group by OBX-4 sub-ID | CDC IIS IG uses OBX-4 to group VIS document type with its publication/presentation dates. Required for correct `education[]` construction. |
 
 ## Trade-offs
-[To be filled in Phase 4]
+
+**Pros:**
+- Follows established converter patterns -- consistent architecture, reusable infrastructure (patient lookup, PV1 handling, preprocessors, meta tags)
+- IGEnrichment interface enables future IG-specific enrichments for other message types without changing the converter framework
+- Deterministic IDs with authority scoping (via ORC-3 preprocessor) prevent cross-sender collisions
+- Hard error on unknown ORDER OBX codes catches integration issues early rather than silently dropping data
+
+**Cons:**
+- Hard error on unknown ORDER OBX codes means a message with a single unexpected LOINC code fails entirely. **Mitigation:** The error message names the unknown code, and the "Mark for Retry" UI flow works once a developer adds support.
+- RXA/RXR types must be generated before implementation can start. **Mitigation:** `bun run regenerate-hl7v2` is a known workflow; if RXA/RXR aren't in the generator's scope, manual type definitions in the segment converter file are acceptable (small surface area, 2 types).
+- CDC IIS enrichment is hardcoded in the VXU converter (not dynamic). **Mitigation:** This is intentional -- VXU without CDC IIS is not a real use case. The IGEnrichment interface enables future dynamism when needed.
 
 ## Affected Components
-[To be filled in Phase 4]
+
+| File | Change Type | Description |
+|------|-------------|-------------|
+| `src/v2-to-fhir/messages/vxu-v04.ts` | **New** | VXU_V04 message converter |
+| `src/v2-to-fhir/segments/rxa-immunization.ts` | **New** | RXA+RXR+ORC → Immunization segment converter |
+| `src/v2-to-fhir/ig-enrichment/ig-enrichment.ts` | **New** | IGEnrichment interface definition |
+| `src/v2-to-fhir/ig-enrichment/cdc-iis-enrichment.ts` | **New** | CDC IIS enrichment: ORDER OBX → Immunization fields, RXA-9 NIP001 |
+| `src/v2-to-fhir/converter.ts` | **Modify** | Add `VXU_V04` case to switch, import `convertVXU_V04` |
+| `src/v2-to-fhir/config.ts` | **Modify** | Add `ORC` to `MessageTypeConfig.preprocess` type |
+| `src/v2-to-fhir/preprocessor-registry.ts` | **Modify** | Add `inject-authority-into-orc3` preprocessor |
+| `config/hl7v2-to-fhir.json` | **Modify** | Add `VXU-V04` message config entry |
+| `test/fixtures/hl7v2/vxu-v04/` | **New** | VXU test fixtures (9 files) |
+| `test/unit/v2-to-fhir/messages/vxu-v04.test.ts` | **New** | Unit tests for VXU converter |
+| `test/unit/v2-to-fhir/segments/rxa-immunization.test.ts` | **New** | Unit tests for RXA segment converter |
+| `test/unit/v2-to-fhir/ig-enrichment/cdc-iis-enrichment.test.ts` | **New** | Unit tests for CDC IIS enrichment |
+| `test/integration/v2-to-fhir/vxu-v04.integration.test.ts` | **New** | E2E integration tests for VXU processing |
 
 ## Technical Details
-[To be filled in Phase 4]
+
+### ORDER Group Extraction
+
+The VXU_V04 message has a flat segment list that must be grouped into ORDER groups. Each ORDER starts with ORC and contains RXA, optional RXR, and optional OBX segments:
+
+```typescript
+interface VXUOrderGroup {
+  orc: HL7v2Segment;
+  rxa: HL7v2Segment;
+  rxr?: HL7v2Segment;
+  observations: Array<{ obx: HL7v2Segment; ntes: HL7v2Segment[] }>;
+}
+
+function groupVXUOrders(message: HL7v2Message): VXUOrderGroup[]
+```
+
+PERSON_OBSERVATION OBX segments (before the first ORC) are extracted separately.
+
+### Immunization ID Generation
+
+```typescript
+// From ORC-3 (Filler Order Number) with authority scoping:
+// ID = sanitize("{authority}-{value}")
+// where authority = EI.2 (namespace) or EI.3 (universal ID)
+// Preprocessor injects MSH-3/MSH-4 into EI.2 when missing
+
+function generateImmunizationId(orc: ORC): string {
+  const filler = orc.$3_fillerOrderNumber;
+  const placer = orc.$2_placerOrderNumber;
+  const ei = filler ?? placer;
+  // ei.$2_namespace or ei.$3_system is authority (required after preprocessing)
+  // ei.$1_value is the order number
+  const authority = ei.$2_namespace || ei.$3_system;
+  const value = ei.$1_value;
+  return sanitize(`${authority}-${value}`);
+}
+```
+
+### RXA-20/21 Status Derivation
+
+```typescript
+function deriveImmunizationStatus(
+  completionStatus: string | undefined,  // RXA-20
+  actionCode: string | undefined,        // RXA-21
+): Immunization["status"] {
+  // RXA-21=D overrides everything
+  if (actionCode?.toUpperCase() === "D") {
+    return "entered-in-error";
+  }
+  // RXA-20 mapping
+  switch (completionStatus?.toUpperCase()) {
+    case "RE":
+    case "NA":
+      return "not-done";
+    case "CP":
+    case "PA":
+    case undefined:
+    case "":
+      return "completed";
+    default:
+      return "completed";
+  }
+}
+```
+
+### RXA-9 NIP001 Source Interpretation (CDC IIS enrichment)
+
+```typescript
+// NIP001 Administration Notes table:
+// "00" = New immunization record (primarySource: true)
+// "01" = Historical information (primarySource: false, reportOrigin populated)
+function interpretRXA9Source(
+  administrationNotes: CE[] | undefined,
+): { primarySource: boolean; reportOrigin?: CodeableConcept } {
+  const nip001Entry = administrationNotes?.find(
+    (ce) => ce.$3_system === "NIP001" || ce.$3_system?.toUpperCase().includes("NIP001")
+  );
+  if (!nip001Entry) return { primarySource: true }; // default
+
+  if (nip001Entry.$1_code === "00") {
+    return { primarySource: true };
+  }
+  if (nip001Entry.$1_code === "01") {
+    return {
+      primarySource: false,
+      reportOrigin: { coding: [{ code: "01", display: "Historical", system: "urn:oid:2.16.840.1.114222.4.5.274" }] },
+    };
+  }
+  return { primarySource: true }; // unknown codes default to new
+}
+```
+
+### IGEnrichment Interface
+
+```typescript
+// src/v2-to-fhir/ig-enrichment/ig-enrichment.ts
+import type { HL7v2Message } from "../../hl7v2/generated/types";
+import type { ConversionResult } from "../converter";
+import type { SenderContext } from "../../code-mapping/concept-map";
+
+export interface IGEnrichment {
+  name: string;
+  enrich(
+    parsedMessage: HL7v2Message,
+    result: ConversionResult,
+    context: SenderContext,
+  ): ConversionResult;
+}
+```
+
+### CDC IIS Enrichment: ORDER OBX Mapping
+
+```typescript
+// Known LOINC codes mapped to Immunization fields
+const ORDER_OBX_HANDLERS: Record<string, (immunization, obxValue) => void> = {
+  "64994-7": (imm, val) => { imm.programEligibility = [toCodeableConcept(val)]; },
+  "30963-3": (imm, val) => { imm.fundingSource = toCodeableConcept(val); },
+  "69764-9": (imm, val) => { /* VIS doc type — group by OBX-4 sub-ID */ },
+  "29768-9": (imm, val) => { /* VIS pub date — group by OBX-4 sub-ID */ },
+  "29769-7": (imm, val) => { /* VIS presentation date — group by OBX-4 sub-ID */ },
+  "30973-2": (imm, val) => { imm.protocolApplied = [{ doseNumberString: val }]; },
+};
+```
+
+VIS OBX segments (69764-9, 29768-9, 29769-7) share the same OBX-4 sub-ID to form a single `education[]` entry. The enrichment groups them by sub-ID before populating the Immunization.
+
+### Performer Creation
+
+```typescript
+// RXA-10 → Immunization.performer with function=AP (Administering Provider)
+// ORC-12 → Immunization.performer with function=OP (Ordering Provider)
+function createPerformer(
+  xcn: XCN,
+  functionCode: "AP" | "OP",
+): { performer: ImmunizationPerformer; practitionerEntry?: BundleEntry } {
+  const practitioner = convertXCNToPractitioner(xcn);
+  // Generate deterministic Practitioner ID from XCN.1 + XCN.9
+  // Return both the performer reference and a bundle entry for the Practitioner
+}
+```
+
+### ORC-3 Authority Preprocessor
+
+```typescript
+// New preprocessor: "inject-authority-into-orc3"
+// Triggered on ORC field 3
+// If ORC-3.1 (Entity Identifier) is present but ORC-3.2/3 (authority) are missing,
+// inject MSH-3/MSH-4 derived namespace into ORC-3.2
+function injectAuthorityIntoOrc3(
+  context: PreprocessorContext,
+  segment: HL7v2Segment,
+): void {
+  // Same MSH namespace derivation as existing inject-authority-from-msh
+  // Sets EI.2 on the ORC segment's field 3
+}
+```
+
+### Config Entry
+
+```json
+{
+  "VXU-V04": {
+    "preprocess": {
+      "PID": {
+        "2": ["move-pid2-into-pid3"],
+        "3": ["inject-authority-from-msh"]
+      },
+      "PV1": { "19": ["fix-authority-with-msh"] },
+      "ORC": { "3": ["inject-authority-into-orc3"] }
+    },
+    "converter": { "PV1": { "required": false } }
+  }
+}
+```
+
+### Conversion Flow (vxu-v04.ts)
+
+```
+convertVXU_V04(parsed, context)
+    |
+    +-> parseMSH()                    // Sender context, meta tags
+    +-> parsePID()                    // Required
+    +-> handlePatient()               // Lookup or draft (reuse from ORU)
+    +-> parsePV1()                    // Optional
+    +-> handleEncounter()             // Config-driven (reuse from ORU)
+    |
+    +-> extractPersonObservations()   // OBX before first ORC -> standalone Observations
+    +-> groupVXUOrders()              // ORC+RXA+RXR+OBX grouping
+    |
+    +-> for each ORDER group:
+    |       +-> convertOrderToImmunization()
+    |       |       +-> convertRXAToImmunization()    // Core fields
+    |       |       +-> applyRXR()                     // Route + site
+    |       |       +-> applyORC()                     // Identifiers + ordering provider
+    |       |       +-> createPerformers()             // Practitioner resources
+    |       +-> Collect entries
+    |
+    +-> cdcIisEnrichment.enrich()     // ORDER OBX -> Immunization fields, RXA-9 NIP001
+    |
+    +-> Build transaction bundle
+    +-> Return ConversionResult
+```
 
 ## Edge Cases and Error Handling
-[To be filled in Phase 4]
+
+| Condition | Handling |
+|-----------|----------|
+| Missing ORC in message | Error: "ORDER group requires ORC segment" |
+| Missing RXA in ORDER group | Error: "ORDER group requires RXA segment" |
+| ORC-3 and ORC-2 both missing | Error: "Either ORC-3 or ORC-2 required for Immunization ID" |
+| ORC-3 authority missing after preprocessing | Error: "ORC-3 authority required for deterministic ID" |
+| RXA-20 with unknown value | Default to `completed` (spec says field is optional; unknown values treated as omitted) |
+| RXA-21=D (deleted) | Set status=`entered-in-error`, override RXA-20 |
+| RXA-20=PA (partially administered) | Set status=`completed`, set `isSubpotent=true` |
+| RXA-20=RE (refused) with RXA-18 | Set status=`not-done`, populate `statusReason` from RXA-18 |
+| RXA-20=NA (not administered) without RXA-18 | Set status=`not-done`, `statusReason` omitted (no reason given) |
+| Unknown LOINC code in ORDER OBX | Hard error: "Unknown OBX code {code} in VXU ORDER context" |
+| Missing LOINC in ORDER OBX (OBX-3.3 not "LN") | Hard error: "ORDER OBX-3 must use LOINC coding system" |
+| VIS OBX with mismatched sub-IDs | Group by sub-ID; partial VIS entries (e.g., doc type without dates) are still valid |
+| PERSON_OBSERVATION OBX without LOINC | Same as ORU: use existing LOINC resolution (mapping_error + Task) |
+| Multiple RXA-9 entries | Find the NIP001-coded one; ignore non-NIP001 entries |
+| RXA-10 with empty XCN | Skip performer (no practitioner created) |
+| PV1 with `PV1\|1\|R` (minimal) | Valid: patient class R maps to IMP (inpatient), Encounter created |
+| Multiple ORDER groups in one message | Each produces a separate Immunization + associated resources |
+| RXA-15 (lot number) repeating | Use first value (FHIR Immunization.lotNumber is singular string) |
+| RXA-16 (expiration date) repeating | Use first value (FHIR Immunization.expirationDate is singular) |
 
 ## Test Cases
-[To be filled in Phase 4]
+
+| # | Type | Description |
+|---|------|-------------|
+| 1 | Unit | Base VXU: single ORDER with ORC+RXA+RXR produces Immunization with correct vaccineCode, status=completed, occurrenceDateTime, doseQuantity, lotNumber, route, site |
+| 2 | Unit | Status: RXA-20=RE produces status=not-done, statusReason from RXA-18 |
+| 3 | Unit | Status: RXA-20=NA produces status=not-done without statusReason |
+| 4 | Unit | Status: RXA-21=D overrides RXA-20=CP, produces status=entered-in-error |
+| 5 | Unit | Status: RXA-20=PA produces status=completed with isSubpotent=true |
+| 6 | Unit | Status: RXA-20 empty/missing defaults to status=completed |
+| 7 | Unit | Historical: RXA-9 with NIP001 code "01" produces primarySource=false, reportOrigin populated |
+| 8 | Unit | New record: RXA-9 with NIP001 code "00" produces primarySource=true |
+| 9 | Unit | Performers: RXA-10 creates performer with function=AP, ORC-12 with function=OP |
+| 10 | Unit | Identifiers: ORC-3 produces identifier with type=FILL, ORC-2 produces type=PLAC |
+| 11 | Unit | ID generation: Immunization.id derived from ORC-3 with authority scoping |
+| 12 | Unit | ID generation: fallback to ORC-2 when ORC-3 missing |
+| 13 | Unit | Error: missing ORC-3 and ORC-2 returns error status |
+| 14 | Unit | Error: missing RXA returns error status |
+| 15 | Unit | RXR: route and site correctly mapped to Immunization.route and Immunization.site |
+| 16 | Unit | ORC-9: maps to Immunization.recorded |
+| 17 | Unit | Multiple ORDER groups: produces multiple Immunization resources with distinct IDs |
+| 18 | Unit | PERSON_OBSERVATION: OBX before first ORC creates standalone Observation |
+| 19 | Unit | CDC IIS: OBX 64994-7 maps to programEligibility |
+| 20 | Unit | CDC IIS: OBX 30963-3 maps to fundingSource |
+| 21 | Unit | CDC IIS: VIS OBX group (69764-9 + 29768-9 + 29769-7) grouped by OBX-4 into education[] |
+| 22 | Unit | CDC IIS: OBX 30973-2 maps to protocolApplied.doseNumber |
+| 23 | Unit | CDC IIS: unknown ORDER OBX LOINC code returns hard error |
+| 24 | Unit | PV1 optional: missing PV1 produces processed status, no Encounter |
+| 25 | Unit | PV1 present: valid PV1 creates/links Encounter |
+| 26 | Unit | Patient handling: unknown patient creates draft with active=false |
+| 27 | Integration | E2E: submit VXU via MLLP, process, verify Immunization + Patient created in Aidbox |
+| 28 | Integration | E2E: VXU with CDC IIS OBX, verify programEligibility and education on Immunization |
+| 29 | Integration | E2E: VXU with PERSON_OBSERVATION, verify standalone Observation created |
+| 30 | Integration | E2E: multiple ORDER groups, verify multiple Immunizations with distinct IDs |
+| 31 | Integration | E2E: idempotent reprocessing -- same VXU processed twice produces same resources |
 
 # Context
 
