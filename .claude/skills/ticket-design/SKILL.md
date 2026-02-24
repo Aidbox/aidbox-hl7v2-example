@@ -24,6 +24,10 @@ reviewer-iterations: 0
 prototype-files: []
 ---
 
+# User Description (Verbatim)
+
+[User's description stays here unchanged]
+
 # Design: [Feature Name]
 
 ## Problem Statement
