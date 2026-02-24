@@ -1,5 +1,5 @@
 ---
-status: changes-requested
+status: ready-for-review
 reviewer-iterations: 1
 prototype-files:
   - src/v2-to-fhir/messages/vxu-v04.ts
@@ -336,7 +336,7 @@ convertVXU_V04(parsed, context)
 | 13 | Unit | Error: missing ORC-3 and ORC-2 returns error status |
 | 14 | Unit | Error: missing RXA returns error status |
 | 15 | Unit | RXR: route and site correctly mapped to Immunization.route and Immunization.site |
-| 16 | Unit | ORC-9: maps to Immunization.recorded |
+| 16 | Unit | ORC-9: maps to Immunization.recorded (primary); RXA-22 fallback when ORC-9 empty and RXA-21=A |
 | 17 | Unit | Multiple ORDER groups: produces multiple Immunization resources with distinct IDs |
 | 18 | Unit | PERSON_OBSERVATION: OBX before first ORC creates standalone Observation |
 | 19 | Unit | CDC IIS: OBX 64994-7 maps to programEligibility |
@@ -441,7 +441,7 @@ VXU_V04:
 | RXA-19 | `reasonCode` | |
 | RXA-20 | `status` | CP/PA→completed, RE/NA→not-done |
 | RXA-21 | `status` override | D→entered-in-error (overrides RXA-20) |
-| RXA-22 | `recorded` | When RXA-21=A |
+| RXA-22 | `recorded` | Fallback only: used when ORC-9 is empty and RXA-21=A |
 
 **RXA-20 Completion Status → FHIR Immunization.status:**
 
@@ -460,7 +460,7 @@ VXU_V04:
 |-----------|----------------------|-------|
 | ORC-2 | `identifier` (type=PLAC) | |
 | ORC-3 | `identifier` (type=FILL) + ID generation | |
-| ORC-9 | `recorded` | |
+| ORC-9 | `recorded` | Primary source; fallback to RXA-22 when ORC-9 empty and RXA-21=A |
 | ORC-12 | `performer.actor` (function=OP) | Ordering Provider |
 
 ### RXR → FHIR Immunization Mapping
