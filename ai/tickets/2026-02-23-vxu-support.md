@@ -1,6 +1,6 @@
 ---
-status: ready-for-review
-reviewer-iterations: 0
+status: changes-requested
+reviewer-iterations: 1
 prototype-files:
   - src/v2-to-fhir/messages/vxu-v04.ts
   - src/v2-to-fhir/segments/rxa-immunization.ts
@@ -621,7 +621,112 @@ OBX|5|DT|29769-7^VIS PRESENTATION DATE^LN|3|20160701||||||F
 16. **Manufacturer (RXA-17):** Out of scope for this ticket. Separate ticket for Organization creation from MVX codes.
 
 ## AI Review Notes
-[To be filled in Phase 5]
+
+**Reviewer:** Claude Opus 4.6 (ai-review skill)
+**Date:** 2026-02-24
+**Verdict:** BLOCKERS FOUND (fixture correctness issues)
+
+### BLOCKERS
+
+#### B1. Fixture RXA field positions are wrong (off by 3 pipes)
+
+**Affected fixtures:** `entered-in-error.hl7`, `not-administered.hl7`, `with-person-observations.hl7`, `historical.hl7`, `multiple-orders.hl7`
+
+The Completion Status (table 0322) appears at field 17 instead of field 20, and Action Code appears shifted correspondingly. This is because there are only 8 pipes between RXA-9 and the Completion Status value, but 11 pipes are needed (fields 10-19 must each have a separator even when empty).
+
+**Example (entered-in-error.hl7):**
+```
+Current:  RXA|0|1|20160701||08^...^CVX|999|||00^NEW RECORD^NIP001||||||||CP||D|A
+                                                                  ^^^^^^^^ 8 pipes (CP lands at field 17)
+Expected: RXA|0|1|20160701||08^...^CVX|999|||00^NEW RECORD^NIP001|||||||||||CP||D|A
+                                                                  ^^^^^^^^^^^ 11 pipes (CP lands at field 20)
+```
+
+**Verification:** The `base.hl7` fixture is correct because populated RXA-15 (lot number) and RXA-17 (manufacturer) implicitly account for the intermediate fields. The CDC reference example in the design's Context section (line 500) also counts correctly.
+
+**Impact:** All tests relying on RXA-20 (Completion Status), RXA-21 (Action Code), or intermediate fields will parse wrong values. Every fixture except `base.hl7` needs 3 additional pipes between RXA-9 and RXA-20.
+
+**Fix:** Add 3 pipes after RXA-9's value in each affected fixture to correctly pad fields 10-19 before the Completion Status at field 20.
+
+#### B2. `not-administered.hl7` — RE is at field 18 instead of field 20
+
+Same root cause as B1 but slightly different pipe count. The fixture has:
+```
+RXA|0|1|20160701||998^NO VACCINE ADMINISTERED^CVX|999||||||||||||RE
+```
+RE appears at field 18 (12 pipes after field 6, 10 empty fields 7-16, then 2 more for 17-18). Needs 2 additional pipes so RE lands at field 20.
+
+### ISSUES (non-blocking)
+
+#### I1. RXA type uses CE instead of CWE for v2.8.2 target
+
+The prototype `RXA` interface in `rxa-immunization.ts` declares `$5_administeredCode: CE`, `$9_administrationNotes?: CE[]`, etc. Per v2.8.2 spec (confirmed via hl7v2-info), these fields are CWE, not CE. Since the project targets v2.8.2 and types will be generated via `bun run regenerate-hl7v2`, the generated types will use CWE.
+
+**Resolution:** Noted in prototype as placeholder types. The TODO comment already says "Replace with generated types." Implementation must use CWE-compatible conversion (or the existing `convertCEToCodeableConcept` which works for CWE since CWE extends CE's component structure). No design change needed, but the implementer should be aware.
+
+#### I2. CVX/MVX system URI normalization missing
+
+`convertCEToCodeableConcept` passes through the raw system string (e.g., "CVX"). The V2-to-FHIR IG specifies the FHIR system URI `http://hl7.org/fhir/sid/cvx`. The `normalizeSystem` function in `coding-systems.ts` does not include CVX or MVX mappings.
+
+**Resolution:** The design says "CVX is already a standard FHIR code system" which is true at the conceptual level, but the system *URI* needs normalization. Two options: (a) add CVX/NCIT/HL70163 to `normalizeSystem`, or (b) do it in the RXA converter. Option (a) is better since it benefits all converters. This is a minor implementation detail, not a design blocker — note it as a TODO for the implementer.
+
+#### I3. RXR prototype declares `$1_route: CE` but v2.8.2 says CWE; table number discrepancy
+
+The RXR interface comment says `table 0163` for RXR.2, but v2.8.2 uses table 0550 (Body Parts). Table 0163 is the v2.5 table. Same as I1 — prototype placeholder types will be replaced by generated types.
+
+**Resolution:** No design change needed. Implementer should use generated types which will have the correct table references.
+
+#### I4. PERSON_OBSERVATION group doesn't exist in v2.5.1
+
+The fixtures declare `MSH|...|2.5.1` but the design handles PERSON_OBSERVATION OBX (a v2.8.2 group). In v2.5.1 spec, the VXU_V04 structure has no PERSON_OBSERVATION group — OBX before ORC is not formally part of the message structure.
+
+**Resolution:** This is acceptable. The CDC IIS IG (which targets v2.5.1) does use OBX before ORC for patient-level observations. The design correctly follows CDC IIS IG practice rather than base v2.5.1 structure. The code handles this by position (OBX before first ORC) rather than by named group, which works regardless of version. No change needed.
+
+#### I5. Design says "RXA-21 table 0323" but v2.8.2 uses table 0206
+
+The design's Context section says RXA-21 uses table 0323 (Action Code). Per v2.8.2 spec (confirmed), RXA-21 uses table 0206 (Segment Action Code). Table 0323 is the v2.5 table. Both tables have the same values (A, D, U, X), so this has no functional impact.
+
+**Resolution:** Minor documentation inaccuracy. The deriveImmunizationStatus function handles the correct values regardless. No code change needed.
+
+#### I6. RXA-10 is "Backward compatible" [B] in v2.8.2, not Optional [O]
+
+The design labels RXA-10 as `[O]` (Optional) but v2.8.2 marks it as `[B]` (Backward compatible / retained for backward compatibility). This means RXA-10 is deprecated in favor of PRT (Participation) segments. The prototype correctly uses RXA-10, which is appropriate for v2.5.1 messages from CDC IIS senders.
+
+**Resolution:** No design change needed. The code is pragmatically correct for real-world VXU messages which still use RXA-10. If PRT segment support is needed later, it can be added.
+
+#### I7. Shared helper extraction (ORU/VXU code duplication)
+
+The VXU prototype has TODO comments about extracting shared helpers (parseMSH, extractMetaTags, createBundleEntry, handlePatient, handleEncounter) from oru-r01.ts. This duplication is acknowledged but not resolved in the design.
+
+**Resolution:** The design correctly identifies this as implementation work. The TODO comments in the prototype provide clear guidance. Extracting to `src/v2-to-fhir/shared/converter-helpers.ts` during implementation is straightforward. No design change needed.
+
+#### I8. `recorded` field has two potential sources (ORC-9 and RXA-22) without explicit precedence
+
+The design maps both ORC-9 and RXA-22 to `Immunization.recorded`, with RXA-22 conditional on RXA-21=A. The prototype code (step 11) says "ORC-9 (or RXA-22 when RXA-21=A)" but doesn't clarify precedence when both are present.
+
+**Resolution:** Suggest specifying: "Use ORC-9 as primary source for `recorded`. If ORC-9 is empty and RXA-21=A, use RXA-22 as fallback." This matches the V2-to-FHIR IG mapping which maps ORC-9 to Immunization.recorded in the ORC->Immunization ConceptMap. Minor implementation detail.
+
+### OBSERVATIONS (informational)
+
+#### O1. Design completeness is strong
+
+All sections are filled out. Mappings cover the key RXA, RXR, ORC, and ORDER OBX fields. Edge cases table is comprehensive with 19 scenarios. Test cases cover 31 items across unit and integration. Key decisions are well-documented with rationale.
+
+#### O2. Pattern consistency with ORU is good
+
+The VXU converter follows the established pattern: parseMSH -> parsePID -> handlePatient -> parsePV1 -> handleEncounter -> extract groups -> convert -> build bundle. The config entry structure matches existing patterns. The IGEnrichment interface is a clean addition that doesn't disrupt existing code.
+
+#### O3. Prototype quality is appropriate for design phase
+
+Prototypes are correctly marked as "DESIGN PROTOTYPE" with clear TODO comments. They provide enough structure to guide implementation without being premature implementations. The modified files (converter.ts, config.ts, preprocessor-registry.ts) have inline markers that are easy to find and uncomment.
+
+#### O4. CDC IIS enrichment re-parsing concern
+
+The enrichment's `enrich()` method receives the full parsed message and must re-extract ORDER groups to find OBX segments. This means the grouping logic runs twice (once in the converter, once in the enrichment). Consider passing pre-grouped data to avoid re-parsing. However, since the enrichment interface operates on `ConversionResult` (which doesn't include parsed groups), this is an acceptable tradeoff — the enrichment only needs the OBX segments and can walk the flat segment list efficiently.
+
+#### O5. Test fixtures cover the key scenarios well
+
+The 9 fixture files cover: base case, not-administered, person observations, historical, entered-in-error, multiple orders, and 3 error cases. Once the pipe count issues (B1, B2) are fixed, these will be solid test data.
 
 ## User Feedback
 [To be filled in Phase 6]
