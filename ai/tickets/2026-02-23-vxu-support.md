@@ -1,6 +1,6 @@
 ---
-status: ready-for-review
-reviewer-iterations: 1
+status: changes-requested
+reviewer-iterations: 2
 prototype-files:
   - src/v2-to-fhir/messages/vxu-v04.ts
   - src/v2-to-fhir/segments/rxa-immunization.ts
@@ -727,6 +727,59 @@ The enrichment's `enrich()` method receives the full parsed message and must re-
 #### O5. Test fixtures cover the key scenarios well
 
 The 9 fixture files cover: base case, not-administered, person observations, historical, entered-in-error, multiple orders, and 3 error cases. Once the pipe count issues (B1, B2) are fixed, these will be solid test data.
+
+### Iteration 2
+
+**Reviewer:** Claude Opus 4.6 (ai-review skill)
+**Date:** 2026-02-24
+**Verdict:** BLOCKERS FOUND (1 missed error fixture)
+
+#### Blocker verification results
+
+**B1 (fixture pipe counts) -- 5 of 6 affected fixtures FIXED:**
+
+Verified via manual field-by-field counting against HL7v2 v2.5 RXA spec (26 fields, field 20 = Completion Status, field 21 = Action Code):
+
+| Fixture | Field 20 | Field 21 | Status |
+|---------|----------|----------|--------|
+| `base.hl7` | (empty) | A | CORRECT (was already correct) |
+| `entered-in-error.hl7` | CP | D | FIXED -- 11 pipes after field 9, CP at 20, D at 21 |
+| `not-administered.hl7` | RE | (absent) | FIXED -- 13 pipes after field 6, RE at 20 |
+| `with-person-observations.hl7` | CP | A | FIXED -- 11 pipes after field 9, CP at 20, A at 21 |
+| `historical.hl7` | CP | A | FIXED -- 11 pipes after field 9, CP at 20, A at 21 |
+| `multiple-orders.hl7` (both RXA lines) | CP | A | FIXED -- 11 pipes after field 9, CP at 20, A at 21 |
+
+**B2 (not-administered.hl7 RE position) -- FIXED:** RE now at field 20 with 13 empty pipes between field 6 and RE.
+
+**I8 (recorded field precedence) -- FIXED:** Design now explicitly states in three locations (test case 16, RXA mapping table line 444, ORC mapping table line 463): "ORC-9 is primary source; RXA-22 is fallback when ORC-9 empty and RXA-21=A."
+
+#### NEW BLOCKER
+
+##### B3. `error/unknown-order-obx.hl7` -- RXA Completion Status at wrong position
+
+This error fixture was not in the iteration 1 B1 fix scope but has the same bug. The RXA line:
+```
+RXA|0|1|20160701||08^HEPB-ADOLESCENT OR PEDIATRIC^CVX|999|||00^NEW RECORD^NIP001||||||||CP|||A
+```
+
+Field-by-field analysis: 8 pipes between field 9 and CP places CP at field 17 (Substance Manufacturer Name), not field 20 (Completion Status). A lands at field 20 instead of field 21.
+
+**Fix:** Add 3 pipes between field 9 and CP:
+```
+RXA|0|1|20160701||08^HEPB-ADOLESCENT OR PEDIATRIC^CVX|999|||00^NEW RECORD^NIP001|||||||||||CP|||A
+```
+This gives 11 pipes after field 9: fields 10-19 empty, CP at field 20, empty at 21, empty at 22, A at... wait, that's wrong too. The intent is CP at 20 and A at 21. Current has `CP|||A` which is CP, empty, empty, A. After fixing the position of CP to field 20, the trailing `|||A` would put A at field 23.
+
+The correct fix should be: `|||||||||||CP|A` (11 pipes, CP at 20, A at 21) -- matching the pattern in the other fixed fixtures. The `|||A` in the original was compensating for the wrong CP position, and the fix should normalize both.
+
+**Correct RXA line:**
+```
+RXA|0|1|20160701||08^HEPB-ADOLESCENT OR PEDIATRIC^CVX|999|||00^NEW RECORD^NIP001|||||||||||CP|A
+```
+
+#### Remaining non-blocking issues from iteration 1
+
+I1 through I7: No changes needed, all correctly dispositioned. Confirmed the prototype placeholder types (I1, I3) have clear TODO markers. I2 (CVX system URI normalization) remains an implementation TODO.
 
 ## User Feedback
 [To be filled in Phase 6]
