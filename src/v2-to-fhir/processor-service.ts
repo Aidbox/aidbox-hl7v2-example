@@ -16,6 +16,9 @@ import type { Bundle } from "../fhir/hl7-fhir-r4-core/Bundle";
 import { convertToFHIR, type ConversionResult } from "./converter";
 import { preprocessMessage } from "./preprocessor";
 import { hl7v2ToFhirConfig } from "./config";
+// DESIGN PROTOTYPE: 2026-02-24-profiles-support.md
+// Planned extension:
+// import { validateBundleProfiles } from "./profile-conformance";
 
 // ============================================================================
 // Constants
@@ -117,6 +120,20 @@ export async function processNextMessage(): Promise<boolean> {
 
   try {
     const { bundle, messageUpdate } = await convertMessage(message);
+
+    // DESIGN PROTOTYPE: 2026-02-24-profiles-support.md
+    // if (bundle) {
+    //   const profileResult = await validateBundleProfiles(bundle, message.type);
+    //   if (profileResult.strictFailure) {
+    //     await applyMessageUpdate(message, {
+    //       status: "error",
+    //       error: profileResult.summary,
+    //     });
+    //     return true;
+    //   }
+    //   bundle = profileResult.bundle;
+    // }
+
     if (bundle) {
       await submitBundle(bundle);
     }

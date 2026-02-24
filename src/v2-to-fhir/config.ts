@@ -25,6 +25,9 @@ export type Hl7v2ToFhirConfig = {
   identitySystem?: {
     patient?: { rules: IdentifierPriorityRule[] };
   };
+  // DESIGN PROTOTYPE: 2026-02-24-profiles-support.md
+  // Add profile/IG conformance configuration for post-conversion validation.
+  // profileConformance?: ProfileConformanceConfig;
   messages?: Record<string, MessageTypeConfig | undefined>;
 };
 
