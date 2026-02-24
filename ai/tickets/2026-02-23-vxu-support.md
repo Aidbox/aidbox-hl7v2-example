@@ -251,9 +251,42 @@ OBX|5|DT|29769-7^VIS PRESENTATION DATE^LN|3|20160701||||||F
 
 9. **DiagnosticReport ID collision:** Separate ticket created at `ai/tickets/2026-02-24-diagnosticreport-id-collision.md` — same pattern needs fixing for OBR-3 in existing ORU conversion.
 
-### Open Questions (in discussion)
+### Architecture Decisions
 
-10. **Core vs. Implementation Guide separation:** The ORDER-level OBX→Immunization field mappings come from the CDC IIS Implementation Guide, not the base HL7v2 spec. How should we separate core VXU conversion from IG-specific logic? Discussion ongoing.
+10. **Single ticket, includes CDC IIS logic:** VXU is effectively only used with CDC IIS — splitting core/IG into separate tickets doesn't make practical sense. The CDC IIS OBX handling and NIP001 interpretation are inherent to VXU conversion.
+
+11. **ConversionProfile interface — pattern for IG enrichment:**
+    ```typescript
+    interface ConversionProfile {
+      name: string;
+      enrich(
+        parsedMessage: HL7v2Message,
+        result: ConversionResult,
+        context: SenderContext,
+      ): ConversionResult;
+    }
+    ```
+    This is a **code pattern/contract**, not a framework. No registry, no config-driven selection, no applied-profiles tracking. The interface exists so that:
+    - Future message types can reuse the same pattern
+    - Future dynamic profile selection can be added trivially (add registry + config) because the interface already exists
+    - The pattern is discoverable and consistent across converters
+
+12. **VXU converter directly imports and calls CDC IIS profile:**
+    The VXU converter imports `cdcIisProfile` and calls `enrich()` explicitly. This is NOT dynamic — VXU without CDC IIS is a broken converter, not a valid configuration. The IG enrichment is part of the conversion spec, not a deployment-time choice.
+
+    The conversion flow in `vxu-v04.ts`:
+    1. Core conversion: RXA/RXR/ORC → base Immunization (standard V2-to-FHIR IG mappings)
+    2. CDC IIS enrichment: ORDER OBX → Immunization fields + RXA-9 NIP001 interpretation
+    3. Both steps are visible in one file — reading the converter shows the complete VXU pipeline
+
+    What's dynamic (per-sender): preprocessing, ConceptMaps — already handled by existing infrastructure.
+    What's NOT dynamic: which IG defines VXU semantics — hardcoded direct import.
+
+13. **Profile validation:** Separate future ticket. Validates that converted resources conform to the IG's expected FHIR profiles.
+
+14. **Performers (RXA-10, ORC-12):** Include in core converter. Create Practitioner resources from XCN and link via Immunization.performer with function codes AP/OP.
+
+15. **Manufacturer (RXA-17):** Out of scope for this ticket. Separate ticket for Organization creation from MVX codes.
 
 ## AI Review Notes
 [To be filled in Phase 5]
