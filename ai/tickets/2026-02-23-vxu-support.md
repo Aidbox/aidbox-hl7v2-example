@@ -255,9 +255,9 @@ OBX|5|DT|29769-7^VIS PRESENTATION DATE^LN|3|20160701||||||F
 
 10. **Single ticket, includes CDC IIS logic:** VXU is effectively only used with CDC IIS — splitting core/IG into separate tickets doesn't make practical sense. The CDC IIS OBX handling and NIP001 interpretation are inherent to VXU conversion.
 
-11. **ConversionProfile interface — pattern for IG enrichment:**
+11. **IGEnrichment interface — pattern for IG-specific conversion logic:**
     ```typescript
-    interface ConversionProfile {
+    interface IGEnrichment {
       name: string;
       enrich(
         parsedMessage: HL7v2Message,
@@ -266,13 +266,18 @@ OBX|5|DT|29769-7^VIS PRESENTATION DATE^LN|3|20160701||||||F
       ): ConversionResult;
     }
     ```
-    This is a **code pattern/contract**, not a framework. No registry, no config-driven selection, no applied-profiles tracking. The interface exists so that:
-    - Future message types can reuse the same pattern
-    - Future dynamic profile selection can be added trivially (add registry + config) because the interface already exists
-    - The pattern is discoverable and consistent across converters
+    Design principles:
+    - **Code pattern/contract**, not a framework. No registry, no config-driven selection. The interface enables future dynamic use by defining the contract now.
+    - **Sync, not async.** IG enrichment is pure data transformation (reads segments, adds fields). No Aidbox lookups.
+    - **Operates on whole ConversionResult.** Not per-resource, because some enrichments need cross-resource context (e.g., grouping VIS OBX by sub-ID).
+    - **Correlation via IDs.** The enrichment matches ORDER OBX to Immunization resources in the bundle using deterministic IDs derived from ORC-3.
+    - **Error handling.** On hard error (unknown OBX code), sets `messageUpdate.status = "error"` and `messageUpdate.error`.
+    - **Deliberately minimal.** No `supportedMessageTypes`, `requiredPackages`, or `validate()` — add as properties later when registry/infra needs them.
 
-12. **VXU converter directly imports and calls CDC IIS profile:**
-    The VXU converter imports `cdcIisProfile` and calls `enrich()` explicitly. This is NOT dynamic — VXU without CDC IIS is a broken converter, not a valid configuration. The IG enrichment is part of the conversion spec, not a deployment-time choice.
+    Note: renamed from "ConversionProfile" to "IGEnrichment" to avoid confusion with FHIR profiles (StructureDefinitions). An IG contains profiles, terminology, and capability statements — the enrichment is a conversion-time concept, not any of those.
+
+12. **VXU converter directly imports and calls CDC IIS enrichment:**
+    The VXU converter imports `cdcIisEnrichment` and calls `enrich()` explicitly. This is NOT dynamic — VXU without CDC IIS is a broken converter, not a valid configuration. The IG enrichment is part of the conversion spec, not a deployment-time choice.
 
     The conversion flow in `vxu-v04.ts`:
     1. Core conversion: RXA/RXR/ORC → base Immunization (standard V2-to-FHIR IG mappings)
@@ -282,11 +287,15 @@ OBX|5|DT|29769-7^VIS PRESENTATION DATE^LN|3|20160701||||||F
     What's dynamic (per-sender): preprocessing, ConceptMaps — already handled by existing infrastructure.
     What's NOT dynamic: which IG defines VXU semantics — hardcoded direct import.
 
-13. **Profile validation:** Separate future ticket. Validates that converted resources conform to the IG's expected FHIR profiles.
+    Why NOT post-processing at processor-service level: splitting conversion logic across converter + distant post-processor hurts readability and debugging. The converter should be the single place to understand the full VXU pipeline.
 
-14. **Performers (RXA-10, ORC-12):** Include in core converter. Create Practitioner resources from XCN and link via Immunization.performer with function codes AP/OP.
+13. **No extensions needed for CDC IIS VXU.** All CDC IIS OBX codes map to standard FHIR R4 Immunization fields (programEligibility, fundingSource, education, protocolApplied.doseNumber). No custom extensions required. IG package loading, extension registration, and profile validation are the profiles-support ticket's scope.
 
-15. **Manufacturer (RXA-17):** Out of scope for this ticket. Separate ticket for Organization creation from MVX codes.
+14. **Profile/IG validation:** Separate future ticket (`2026-02-24-profiles-support.md`). Validates converted resources conform to IG expectations.
+
+15. **Performers (RXA-10, ORC-12):** Include in core converter. Create Practitioner resources from XCN and link via Immunization.performer with function codes AP/OP.
+
+16. **Manufacturer (RXA-17):** Out of scope for this ticket. Separate ticket for Organization creation from MVX codes.
 
 ## AI Review Notes
 [To be filled in Phase 5]
