@@ -29,7 +29,9 @@ describe("convertVXU_V04", () => {
     test.todo("expirationDate from RXA-16 (first value)", TODO);
     test.todo("route from RXR-1, site from RXR-2", TODO);
     test.todo("identifiers: ORC-3 -> type=FILL, ORC-2 -> type=PLAC", TODO);
-    test.todo("recorded from ORC-9", TODO);
+    test.todo("recorded from ORC-9 (primary), RXA-22 fallback when RXA-21=A", TODO);
+    test.todo("RXA-19 with indication maps to Immunization.reasonCode[]", TODO);
+    test.todo("valid PV1 creates Encounter, Immunization.encounter references it", TODO);
   });
 
   describe("status derivation", () => {
@@ -55,12 +57,13 @@ describe("convertVXU_V04", () => {
     test.todo("OBX 30963-3 maps to fundingSource", TODO);
     test.todo("VIS OBX group (69764-9 + 29768-9 + 29769-7) grouped by OBX-4 into education[]", TODO);
     test.todo("OBX 30973-2 maps to protocolApplied.doseNumber", TODO);
-    test.todo("unknown ORDER OBX LOINC code returns hard error", TODO);
-    test.todo("ORDER OBX without LOINC coding system returns hard error", TODO);
+    test.todo("unknown ORDER OBX LOINC code produces warning status, OBX skipped", TODO);
+    test.todo("ORDER OBX without LOINC coding system produces warning", TODO);
+    test.todo("enrichment works for ORC-less ORDER group with OBX via positional matching", TODO);
   });
 
   describe("PERSON_OBSERVATION", () => {
-    test.todo("OBX before first ORC creates standalone Observation with subject=Patient", TODO);
+    test.todo("OBX before first ORC/RXA creates standalone Observation with subject=Patient", TODO);
     test.todo("PERSON_OBSERVATION OBX uses normal LOINC resolution pipeline", TODO);
   });
 
@@ -77,18 +80,31 @@ describe("convertVXU_V04", () => {
 
   describe("encounter handling", () => {
     test.todo("PV1 optional: missing PV1 produces processed status, no Encounter", TODO);
-    test.todo("valid PV1 creates Encounter linked to Immunization", TODO);
+    test.todo("valid PV1 creates Encounter linked to Immunization via Immunization.encounter", TODO);
     test.todo("minimal PV1 (PV1|1|R) creates valid Encounter", TODO);
+    test.todo("PV1 absent: Immunization.encounter omitted", TODO);
   });
 
   describe("error conditions", () => {
     test.todo("missing RXA in ORDER group returns error", TODO);
-    test.todo("missing ORC-3 and ORC-2 returns error", TODO);
-    test.todo("missing ORC-3 authority after preprocessing returns error", TODO);
     test.todo("missing MSH-3/MSH-4 returns error", TODO);
+    test.todo("missing RXA-3 (administration date) returns error", TODO);
   });
 
-  describe("ID generation fallback", () => {
+  describe("ID generation", () => {
+    test.todo("ORC-3 with authority produces scoped Immunization ID", TODO);
     test.todo("ORC-2 used when ORC-3 is missing", TODO);
+    test.todo("ORC present but ORC-3/ORC-2 both empty uses fallback ID", TODO);
+    test.todo("ORDER group without ORC uses fallback ID from MSH-10 + order index", TODO);
+    test.todo("ORDER group without ORC: no FILL/PLAC identifiers, no ordering provider", TODO);
+    test.todo("ORDER group without ORC: recorded from RXA-22 fallback if RXA-21=A", TODO);
+  });
+
+  describe("preprocessors", () => {
+    test.todo("RXA-6 preprocessor: '999' cleared, no doseQuantity", TODO);
+    test.todo("RXA-6 preprocessor: '0.3 mL' extracts value=0.3, unit=mL in RXA-7", TODO);
+    test.todo("RXA-6 preprocessor: '0' preserved, doseQuantity.value=0", TODO);
+    test.todo("RXA-9 preprocessor: bare '00' gets NIP001 system injected", TODO);
+    test.todo("RXR with empty RXR-1: route omitted, site preserved", TODO);
   });
 });

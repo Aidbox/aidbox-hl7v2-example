@@ -215,22 +215,25 @@ export interface RXAConversionResult {
  * This is the core segment converter. CDC IIS-specific enrichment
  * (ORDER OBX mapping, RXA-9 NIP001) is applied separately.
  *
+ * ID generation is the message converter's responsibility (matches ORU pattern
+ * where getOrderNumber() lives in oru-r01.ts, not obr-diagnosticreport.ts).
+ * The message converter computes the ID from ORC-3/ORC-2 or the MSH fallback
+ * and passes it here.
+ *
  * @param rxa - Pharmacy/Treatment Administration segment
  * @param rxr - Optional: Pharmacy/Treatment Route segment
- * @param orc - Common Order segment
+ * @param orc - Optional: Common Order segment (absent in some real-world senders per C1)
+ * @param immunizationId - Pre-computed deterministic ID from the message converter
  */
 export function convertRXAToImmunization(
   rxa: RXA,
   rxr: RXR | undefined,
-  orc: ORC,
+  orc: ORC | undefined,
+  immunizationId: string,
 ): RXAConversionResult | { error: string } {
   // TODO: Implementation steps:
   //
-  // 1. Generate ID from ORC
-  const idResult = generateImmunizationId(orc);
-  if (typeof idResult === "object" && "error" in idResult) {
-    return idResult;
-  }
+  // 1. ID is pre-computed by message converter (no longer generated here)
 
   // 2. Derive status from RXA-20/21
   const status = deriveImmunizationStatus(rxa.$20_completionStatus, rxa.$21_actionCode);
@@ -244,7 +247,7 @@ export function convertRXAToImmunization(
   // 4. Build base Immunization
   const immunization: Immunization = {
     resourceType: "Immunization",
-    id: idResult,
+    id: immunizationId,
     status,
     vaccineCode,
     patient: { reference: "Patient/placeholder" } as Reference<"Patient">,
@@ -278,10 +281,12 @@ export function convertRXAToImmunization(
   //   immunization.isSubpotent = true;
   // }
 
-  // 11. Recorded date from ORC-9 (or RXA-22 when RXA-21=A)
-  // TODO: if (orc.$9_transactionDateTime) {
-  //   immunization.recorded = convertDTMToDateTime(orc.$9_transactionDateTime);
-  // }
+  // 11. Recorded date: ORC-9 primary, RXA-22 fallback when RXA-21=A
+  //     Authoritative rule: ORC-9 ?? (RXA-21=A ? RXA-22 : undefined)
+  //     Works uniformly regardless of ORC presence (ORC-9 simply unavailable when ORC absent)
+  // TODO: const recorded = orc?.$9_transactionDateTime
+  //   ?? (rxa.$21_actionCode?.toUpperCase() === "A" ? rxa.$22_systemEntryDateTime : undefined);
+  // if (recorded) immunization.recorded = convertDTMToDateTime(recorded);
 
   // 12. Route from RXR-1
   // TODO: if (rxr?.$1_route) {
@@ -293,8 +298,8 @@ export function convertRXAToImmunization(
   //   immunization.site = convertCWEToCodeableConcept(rxr.$2_administrationSite);
   // }
 
-  // 14. Identifiers from ORC-2/3
-  // TODO: immunization.identifier = createOrderIdentifiers(orc);
+  // 14. Identifiers from ORC-2/3 (only when ORC present)
+  // TODO: if (orc) immunization.identifier = createOrderIdentifiers(orc);
 
   // 15. Performers from RXA-10 (AP) and ORC-12 (OP)
   const performerEntries: BundleEntry[] = [];

@@ -61,7 +61,7 @@ import { cdcIisEnrichment } from "../ig-enrichment/cdc-iis-enrichment";
 // ============================================================================
 
 interface VXUOrderGroup {
-  orc: HL7v2Segment;
+  orc?: HL7v2Segment; // Optional per C1: real-world senders may omit ORC
   rxa: HL7v2Segment;
   rxr?: HL7v2Segment;
   observations: Array<{ obx: HL7v2Segment; ntes: HL7v2Segment[] }>;
@@ -104,31 +104,35 @@ function createBundleEntry(
 /**
  * Group VXU_V04 segments into ORDER groups.
  *
- * Each ORDER starts with ORC and contains RXA (required), optional RXR,
- * and optional OBX segments.
+ * Each ORDER starts with ORC or RXA (whichever appears first in the group).
+ * Per C1: real-world senders may omit ORC entirely. RXA without preceding
+ * ORC is a valid group.
  *
- * Segments before the first ORC are not part of any ORDER group
+ * Contains RXA (required), optional ORC, optional RXR, and optional OBX.
+ *
+ * Segments before the first ORC or RXA are not part of any ORDER group
  * (PERSON_OBSERVATION OBX are handled separately).
  */
 function groupVXUOrders(_message: HL7v2Message): VXUOrderGroup[] {
   // TODO: Implement:
   // Walk through segments sequentially:
-  // - On ORC: start new group
-  // - On RXA: attach to current group (required, error if missing)
+  // - On ORC: start new group (or attach to current if no RXA yet)
+  // - On RXA: start new group if no current group, or attach to current
   // - On RXR: attach to current group (optional)
   // - On OBX after RXA: start observation entry in current group
   // - On NTE after OBX: attach to current observation
-  // - Segments before first ORC are PERSON_OBSERVATION (handled separately)
+  // - Segments before first ORC/RXA are PERSON_OBSERVATION (handled separately)
   return [];
 }
 
 /**
- * Extract PERSON_OBSERVATION OBX segments (before first ORC).
+ * Extract PERSON_OBSERVATION OBX segments (before first ORC or RXA).
  * These are patient-level observations, not order-specific.
+ * Per C1: first ORDER may start with RXA instead of ORC.
  */
 function extractPersonObservations(_message: HL7v2Message): HL7v2Segment[] {
   // TODO: Implement:
-  // Collect OBX segments that appear before the first ORC segment
+  // Collect OBX segments that appear before the first ORC or RXA segment
   return [];
 }
 
@@ -171,12 +175,12 @@ function extractPersonObservations(_message: HL7v2Message): HL7v2Segment[] {
  * PERSON_OBSERVATION (0..*):
  *   OBX - Observation (1) -> standalone Observation
  * ORDER (0..*):
- *   ORC - Common Order (1) - required
+ *   ORC - Common Order (0..1) - optional per C1 (real-world senders may omit)
  *   RXA - Administration (1) - required
  *   RXR - Route (0..1) - optional
  *   OBSERVATION (0..*):
  *     OBX - Observation (1) -> enriched into Immunization fields (CDC IIS)
- *     NTE - Notes (0..*)
+ *     NTE - Notes (0..*) - not mapped (informational only)
  */
 export async function convertVXU_V04(
   parsed: HL7v2Message,

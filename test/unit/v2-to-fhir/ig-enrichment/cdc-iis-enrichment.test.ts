@@ -15,8 +15,8 @@ describe("CDC IIS Enrichment", () => {
     test.todo("64994-7 (Vaccine funding program eligibility) maps to programEligibility", TODO);
     test.todo("30963-3 (Vaccine funding source) maps to fundingSource", TODO);
     test.todo("30973-2 (Dose number in series) maps to protocolApplied.doseNumber", TODO);
-    test.todo("unknown LOINC code returns error result", TODO);
-    test.todo("OBX without LOINC coding system returns error result", TODO);
+    test.todo("unknown LOINC code produces warning, OBX skipped", TODO);
+    test.todo("OBX without LOINC coding system produces warning", TODO);
   });
 
   describe("VIS OBX grouping by OBX-4 sub-ID", () => {
@@ -35,7 +35,9 @@ describe("CDC IIS Enrichment", () => {
   });
 
   describe("enrichment correlation", () => {
-    test.todo("matches ORDER OBX to correct Immunization by ORC-3 derived ID", TODO);
-    test.todo("multiple ORDER groups enrich their respective Immunizations", TODO);
+    test.todo("matches ORDER OBX to correct Immunization by positional index", TODO);
+    test.todo("multiple ORDER groups enrich their respective Immunizations positionally", TODO);
+    test.todo("ORC-less ORDER group with OBX enriched correctly via positional matching", TODO);
+    test.todo("ORDER group count != Immunization count warns on shape mismatch", TODO);
   });
 });

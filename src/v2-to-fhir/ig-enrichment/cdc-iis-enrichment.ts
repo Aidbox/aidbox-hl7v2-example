@@ -90,23 +90,24 @@ export const cdcIisEnrichment: IGEnrichment = {
     //    - Reuse the same grouping logic from vxu-v04.ts
     //    - Or receive pre-grouped data via a shared structure
     //
-    // 2. For each ORDER group:
-    //    a. Find the corresponding Immunization in result.bundle
-    //       by matching deterministic ID derived from ORC-3
-    //    b. For each OBX in the ORDER:
+    // 2. Collect Immunization resources from result.bundle in order of appearance
+    //
+    // 3. For each ORDER group N, match to Nth Immunization (positional correlation):
+    //    - Warn if ORDER group count != Immunization count (shape mismatch)
+    //    a. For each OBX in the ORDER:
     //       - Extract LOINC code from OBX-3
     //       - If code is in KNOWN_ORDER_OBX_LOINC_CODES:
     //         Apply the corresponding handler to the Immunization
     //       - If code is NOT known:
-    //         Return error result with messageUpdate.status = "error"
-    //    c. Interpret RXA-9 for NIP001 source coding:
+    //         Set messageUpdate.status = "warning", log code, skip OBX (per C6)
+    //    b. Interpret RXA-9 for NIP001 source coding:
     //       - Set primarySource / reportOrigin on the Immunization
     //
-    // 3. Group VIS OBX entries by OBX-4 sub-ID:
+    // 4. Group VIS OBX entries by OBX-4 sub-ID:
     //    - Collect 69764-9, 29768-9, 29769-7 entries per sub-ID
     //    - Build ImmunizationEducation[] from groups
     //
-    // 4. Return modified result (or error result on unknown OBX code)
+    // 5. Return modified result (or warning result on unknown OBX code)
 
     return result;
   },

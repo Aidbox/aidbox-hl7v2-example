@@ -12,8 +12,9 @@ prototype-files:
   - test/fixtures/hl7v2/vxu-v04/historical.hl7
   - test/fixtures/hl7v2/vxu-v04/entered-in-error.hl7
   - test/fixtures/hl7v2/vxu-v04/multiple-orders.hl7
+  - test/fixtures/hl7v2/vxu-v04/no-orc.hl7
+  - test/fixtures/hl7v2/vxu-v04/no-orc-identifiers.hl7
   - test/fixtures/hl7v2/vxu-v04/error/missing-rxa.hl7
-  - test/fixtures/hl7v2/vxu-v04/error/missing-orc3.hl7
   - test/fixtures/hl7v2/vxu-v04/error/unknown-order-obx.hl7
   - test/unit/v2-to-fhir/messages/vxu-v04.test.ts
   - test/unit/v2-to-fhir/segments/rxa-immunization.test.ts
@@ -45,6 +46,8 @@ Follow the established converter pattern (ORU_R01 as primary reference) with the
 
 ## Key Decisions
 
+> **⚠ Decisions #2 and #5 are superseded by C6 (warning + skip) and C1 (MSH fallback) in "Correction for Real-World Data Handling".**
+
 | # | Decision | Options Considered | Chosen | Rationale |
 |---|----------|-------------------|--------|-----------|
 | 1 | CVX code handling | (a) ConceptMap lookup, (b) Pass-through | Pass-through | CVX is already a standard FHIR code system. No sender-specific translation needed. |
@@ -60,6 +63,8 @@ Follow the established converter pattern (ORU_R01 as primary reference) with the
 
 ## Trade-offs
 
+> **⚠ "Hard error on unknown ORDER OBX" is superseded by C6 (warning + skip).**
+
 **Pros:**
 - Follows established converter patterns -- consistent architecture, reusable infrastructure (patient lookup, PV1 handling, preprocessors, meta tags)
 - IGEnrichment interface enables future IG-specific enrichments for other message types without changing the converter framework
@@ -72,6 +77,8 @@ Follow the established converter pattern (ORU_R01 as primary reference) with the
 - CDC IIS enrichment is hardcoded in the VXU converter (not dynamic). **Mitigation:** This is intentional -- VXU without CDC IIS is not a real use case. The IGEnrichment interface enables future dynamism when needed.
 
 ## Affected Components
+
+> **⚠ Incomplete. Two additional preprocessors (`normalize-rxa6-dose`, `normalize-rxa9-nip001`) and RXA config type support needed per C2/C3.**
 
 | File | Change Type | Description |
 |------|-------------|-------------|
@@ -93,6 +100,8 @@ Follow the established converter pattern (ORU_R01 as primary reference) with the
 
 ### ORDER Group Extraction
 
+> **⚠ Per C1: ORC is optional. ORDER group starts with ORC or RXA. `orc` field is optional in the interface. See C1.**
+
 The VXU_V04 message has a flat segment list that must be grouped into ORDER groups. Each ORDER starts with ORC and contains RXA, optional RXR, and optional OBX segments:
 
 ```typescript
@@ -109,6 +118,8 @@ function groupVXUOrders(message: HL7v2Message): VXUOrderGroup[]
 PERSON_OBSERVATION OBX segments (before the first ORC) are extracted separately.
 
 ### Immunization ID Generation
+
+> **⚠ Shows ORC-only path. Per C1, fallback ID `{mshNamespace}-{msh10}-imm-{orderIndex}` is used when ORC absent. ID generation is the message converter's responsibility (B4d fix).**
 
 ```typescript
 // From ORC-3 (Filler Order Number) with authority scoping:
@@ -249,6 +260,8 @@ function injectAuthorityIntoOrc3(
 
 ### Config Entry
 
+> **⚠ Superseded by updated config in "Correction for Real-World Data Handling" (adds RXA preprocessors).**
+
 ```json
 {
   "VXU-V04": {
@@ -266,6 +279,8 @@ function injectAuthorityIntoOrc3(
 ```
 
 ### Conversion Flow (vxu-v04.ts)
+
+> **⚠ Per C1: `extractPersonObservations` detects OBX before first ORC or RXA. `groupVXUOrders` starts groups on ORC or RXA. Enrichment uses positional correlation (Fix 1). ID generation is in the message converter (B4d fix).**
 
 ```
 convertVXU_V04(parsed, context)
@@ -295,6 +310,8 @@ convertVXU_V04(parsed, context)
 
 ## Edge Cases and Error Handling
 
+> ⚠ "Missing ORC → Error" and "Unknown OBX → Hard error" are superseded by C1 and C6. See "Updated Edge Cases" in corrections.
+
 | Condition | Handling |
 |-----------|----------|
 | Missing ORC in message | Error: "ORDER group requires ORC segment" |
@@ -318,6 +335,8 @@ convertVXU_V04(parsed, context)
 | RXA-16 (expiration date) repeating | Use first value (FHIR Immunization.expirationDate is singular) |
 
 ## Test Cases
+
+> ⚠ Test #13 (missing ORC-3/ORC-2 → error) is now a valid fallback path per C1. Test #23 (unknown OBX → hard error) is now warning per C6. See "New Test Cases" in corrections.
 
 | # | Type | Description |
 |---|------|-------------|
@@ -957,7 +976,7 @@ Existing preprocessors normalize data the sender actually sent (fix authority, m
 **Change:** ORC becomes optional in ORDER groups. The converter handles both paths:
 
 - ORC present → ORC-3 for Immunization ID + FILL identifier, ORC-9 for recorded, ORC-12 for ordering provider (original design)
-- ORC absent → fallback ID from `{mshNamespace}-{msh10}-imm-{orderIndex}`, no FILL/PLAC identifiers, no recorded date, no ordering provider
+- ORC absent → fallback ID from `{mshNamespace}-{msh10}-imm-{orderIndex}`, no FILL/PLAC identifiers, no ordering provider. For `recorded`: standard fallback applies (RXA-22 when RXA-21=A), since ORC-9 is simply unavailable.
 
 **Why not a preprocessor:** Synthesizing an ORC segment crosses the fabrication boundary. A `{msh10}-imm-0` value is not a filler order number — it's a fabricated identifier that doesn't exist in the sender's system. If someone sees `identifier[type=FILL]`, they'd search the sender's system for an order number that doesn't exist. The converter's fallback is honest: when ORC was missing, the Immunization has fewer fields, and that correctly reflects the source data.
 
@@ -979,9 +998,10 @@ interface VXUOrderGroup {
 
 **Change:** New config-driven preprocessor `normalize-rxa6-dose`:
 
-1. `"999"` → clear field (CDC IIS sentinel for unknown amount; converter omits doseQuantity)
-2. Non-numeric with parseable prefix (e.g., `"0.3 mL"`) → extract numeric value into RXA-6, move unit string to RXA-7 if RXA-7 is empty
-3. Completely unparseable → clear field (converter omits doseQuantity)
+1. `"999"` → clear field (CDC IIS sentinel for unknown amount; converter omits doseQuantity). No warning — this is expected.
+2. `"0"` → preserve (zero dose administered is a valid amount, not a sentinel). Must NOT be cleared.
+3. Non-numeric with parseable prefix (e.g., `"0.3 mL"`) → extract numeric value into RXA-6, move unit string to RXA-7 if RXA-7 is empty. Log warning with original value.
+4. Completely unparseable → clear field (converter omits doseQuantity). Log warning with original value so silent data loss is observable.
 
 **Why preprocessor:** The sender sent data — it's just in the wrong format for an NM field. This is data normalization, same category as `move-pid2-into-pid3`. Cross-field modification (RXA-6 → RXA-7) has precedent.
 
@@ -1052,7 +1072,7 @@ No new `messagePreprocess` framework needed. RXA preprocessors use the existing 
 | #  | Type        | Description                                                                              |
 |----|-------------|------------------------------------------------------------------------------------------|
 | 32 | Unit        | ORDER group without ORC: produces Immunization with fallback ID from MSH-10              |
-| 33 | Unit        | ORDER group without ORC: no recorded date, no ordering provider, no FILL/PLAC identifiers |
+| 33 | Unit        | ORDER group without ORC: no ordering provider, no FILL/PLAC identifiers, recorded from RXA-22 fallback if RXA-21=A |
 | 34 | Unit        | RXA-6 preprocessor: "999" cleared, no doseQuantity                                       |
 | 35 | Unit        | RXA-6 preprocessor: "0.3 mL" extracts value=0.3, unit=mL in RXA-7                       |
 | 36 | Unit        | RXA-9 preprocessor: bare "00" gets NIP001 system injected                                |
@@ -1247,13 +1267,13 @@ Proposed fixes for all open blockers (B4a-B4e, B5) and significant issues (S1-S3
 2. Collects Immunization resources from the bundle in order of appearance
 3. Matches ORDER group N → Nth Immunization
 
-**Guard for ORC-less groups with OBX:** Real-world data (F6) shows ORC-less messages don't include ORDER OBX. If an ORC-less group has OBX, log warning and skip enrichment for that group.
+**No ORC-dependent guard needed:** Positional matching works regardless of ORC presence — the enrichment uses OBX codes/values, not ORC data. Real-world data (F6) suggests ORC-less messages rarely include ORDER OBX, but if they do, positional mapping handles them correctly. Only warn on shape mismatch (ORDER group count ≠ Immunization count in bundle).
 
 **Updates:**
 - Architecture decision #11: replace "Correlation via IDs derived from ORC-3" with "Correlation via position. ORDER group N → Nth Immunization in bundle."
 - `cdc-iis-enrichment.ts` TODO (line 95): replace "matching deterministic ID derived from ORC-3" with "matching by positional index"
 - `cdc-iis-enrichment.test.ts` (line 38): replace "by ORC-3 derived ID" with "by positional index"
-- Add test: "ORDER group without ORC but with OBX logs warning and skips enrichment"
+- Add test: "enrichment works for ORC-less ORDER group with OBX via positional matching"
 
 #### Fix 2: Stale Original Sections — Supersedence Notes (B4e, S2)
 
@@ -1331,7 +1351,7 @@ Add test case #41: "RXA-6 preprocessor: '0' preserved, doseQuantity.value=0"
 
 **I12 (MSH-3 empty vs parseMSH):** This is intentional behavior — sender-specific mapping requires sender identification. A sender without MSH-3 can't be identified for ConceptMap lookups. The message will error at parseMSH. Document explicitly: "F8-style senders (empty MSH-3) will fail at parseMSH. This is correct — sender identification is required for code mapping."
 
-**I14 (recorded when ORC absent):** Specify: when ORC is absent, use RXA-22 as `recorded` fallback if RXA-21=A (same logic, ORC-9 is simply unavailable). When ORC is absent AND RXA-21 is not A, `recorded` is omitted.
+**I14 (recorded when ORC absent):** Authoritative rule for `Immunization.recorded`: `ORC-9 ?? (RXA-21=A ? RXA-22 : undefined)`. When ORC is absent, ORC-9 is simply unavailable and the RXA-22 fallback applies. C1 updated to match — removed "no recorded date" from ORC-absent loss list.
 
 #### Updated Open Items Summary
 
@@ -1351,7 +1371,7 @@ After applying these fixes:
 | M1-M7 | FIXED by Fixes 3, 5 | Various prototype/doc updates |
 | I9-I15 | Noted | Implementation details, Fix 6 |
 
-Total test cases after all corrections: 41 (31 original + 8 from C1-C6 + 2 from Fixes 4-5).
+Total test cases after all corrections: 42 (31 original + 8 from C1-C6 + 3 from Fixes 1, 4, 5).
 
 ### Iteration 4 (Codex review, real-world-first)
 
@@ -1393,6 +1413,8 @@ Iteration 3 Corrections closes most major contradictions introduced by C1/C6 and
 
 **Recommendation:** Add a degraded sender-context path (e.g., fallback sender key + warning) and continue conversion; unresolved mappings can still flow through Task-based remediation.
 
+**User feedback**: missing MSH-3 is invalid. We can make a preprocessor to fix it up, but it's not a critical thing.
+
 ##### Minor
 
 **M8. Test count summary is stale once all proposed additions are included**
@@ -1415,6 +1437,66 @@ Iteration 3 Corrections closes most major contradictions introduced by C1/C6 and
 2. Remove ORC-dependent skip logic from enrichment now that positional correlation is adopted.
 3. Add a real-world-tolerant fallback for empty MSH-3 with explicit warning semantics.
 4. Align and lock the final test matrix/count after adding real-world fallback cases.
+
+### Iteration 4 Corrections
+
+Resolutions for all Iteration 4 findings. Applied inline to the relevant sections above where noted.
+
+#### Resolution B6: `recorded` contradiction — C1 updated
+
+**Decision:** The authoritative rule for `Immunization.recorded` is: `ORC-9 ?? (RXA-21=A ? RXA-22 : undefined)`. This applies uniformly regardless of ORC presence. When ORC is absent, ORC-9 is unavailable, so the evaluation starts at the RXA-22 fallback.
+
+C1's original statement said "no recorded date" when ORC is absent. This was incorrect — it conflated "no ORC-9" with "no recorded date source." RXA-22 exists independently of ORC. C1 text updated above to remove this from the loss list.
+
+**Applied to:** C1 bullet 2 (ORC absent path), test case #33, Fix 6/I14 text.
+
+#### Resolution S4: Enrichment processes all ORDER groups positionally
+
+**Decision:** Remove the ORC-dependent skip guard from Fix 1. Positional enrichment works for all ORDER groups because it uses OBX codes and values, not ORC data. The guard was based on assumption F6 (ORC-less messages don't have ORDER OBX), but enforcing this assumption as a hard skip drops valid data if the assumption is ever violated.
+
+Warn only on shape mismatch (ORDER group count ≠ Immunization count in bundle), which indicates a converter or grouping bug rather than a sender issue.
+
+**Applied to:** Fix 1 text updated above.
+
+#### Resolution S5: MSH-3 empty — documented as known limitation
+
+**Decision:** Out of scope for VXU ticket. This is a cross-cutting sender identification concern shared by ADT, ORU, and VXU converters.
+
+Rationale:
+- `SenderContext` requires both `sendingApplication` and `sendingFacility` for ConceptMap lookups
+- Changing this affects all converters and the code mapping system
+- The VXU ticket is already complex; redesigning sender identification adds uncontrolled scope
+
+**Documented behavior:** Senders with empty MSH-3 (finding F8) will fail at `parseMSH`. This is intentional — sender-specific code mapping requires sender identification. Workaround options for F8-style senders:
+1. Fix sender configuration to populate MSH-3
+2. Future ticket: add MSH-level preprocessor to inject a configured default application name when MSH-3 is empty (extends preprocessor framework to support MSH segments)
+
+#### Resolution M8: Final test count — 42
+
+31 original + 8 from C1-C6 corrections + 1 from Fix 1 (positional enrichment for ORC-less group with OBX) + 1 from Fix 4 (RXA-19 reasonCode) + 1 from Fix 5 (RXA-6 = "0") = 42 test cases.
+
+Updated in Iteration 3 Corrections summary.
+
+#### Resolution M9: RXA-6 preprocessor observability
+
+**Decision:** Added to C2 above. The preprocessor logs a warning when clearing non-sentinel, non-empty values. "999" is expected (no warning). `"0"` is preserved (valid amount). Unparseable values (e.g., "20-40 mg") emit a warning with the original value so silent data loss is observable.
+
+### Updated Open Items (final)
+
+| # | Status | Summary |
+|---|--------|---------|
+| B1-B3 | FIXED | Fixture pipe counts |
+| B4a-B4e | FIXED by Iter 3 Corrections | Prototype/stub/section contradictions |
+| B5 | FIXED by Iter 3 Fix 1 | Enrichment correlation — positional matching |
+| B6 | FIXED by Iter 4 Resolution | `recorded` contradiction — C1 updated, authoritative rule defined |
+| S1-S3 | FIXED by Iter 3 Corrections | Enrichment correlation, stale sections, RXA-19 |
+| S4 | FIXED by Iter 4 Resolution | ORC-dependent skip guard removed from enrichment |
+| S5 | Documented limitation | MSH-3 empty — out of scope, cross-cutting concern |
+| M8 | FIXED | Test count = 42 |
+| M9 | FIXED by Iter 4 Resolution | C2 updated with observability requirements |
+| I1-I7 | Noted | Implementation details from Iter 1 (see individual dispositions) |
+| I8 | FIXED | `recorded` precedence explicit |
+| I9-I15 | Noted | Implementation details from Iter 3 (see individual dispositions) |
 
 ## User Feedback
 [To be filled in Phase 6]
