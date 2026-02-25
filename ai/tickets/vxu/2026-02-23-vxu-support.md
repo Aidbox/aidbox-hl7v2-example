@@ -851,5 +851,127 @@ RXA|0|1|20160701||08^HEPB-ADOLESCENT OR PEDIATRIC^CVX|999|||00^NEW RECORD^NIP001
 
 I1 through I7: No changes needed, all correctly dispositioned. Confirmed the prototype placeholder types (I1, I3) have clear TODO markers. I2 (CVX system URI normalization) remains an implementation TODO.
 
+## Correction for Real-World Data Handling
+
+The initial design assumed spec-compliant senders. Analysis of 3 real-world VXU samples (in `data/local/vxu/`) revealed that 2 of 3 senders deviate significantly from the spec. This section corrects the design to handle real-world messages.
+
+### Architectural Principle: Preprocessors Normalize, Converter Stays Honest
+
+Existing preprocessors normalize data the sender actually sent (fix authority, move fields, inject metadata). They never fabricate data that doesn't exist. This boundary must be preserved:
+
+- **Preprocessors** fix data representation (sender sent data in wrong format/location)
+- **Converter** handles structural variation (data doesn't exist) with honest fallback logic
+- The FHIR output accurately reflects what was actually sent — no fabricated identifiers or dates
+
+### Corrections by Finding
+
+#### C1. ORC Optional — Converter Fallback ID (was: F1)
+
+**Change:** ORC becomes optional in ORDER groups. The converter handles both paths:
+
+- ORC present → ORC-3 for Immunization ID + FILL identifier, ORC-9 for recorded, ORC-12 for ordering provider (original design)
+- ORC absent → fallback ID from `{mshNamespace}-{msh10}-imm-{orderIndex}`, no FILL/PLAC identifiers, no recorded date, no ordering provider
+
+**Why not a preprocessor:** Synthesizing an ORC segment crosses the fabrication boundary. A `{msh10}-imm-0` value is not a filler order number — it's a fabricated identifier that doesn't exist in the sender's system. If someone sees `identifier[type=FILL]`, they'd search the sender's system for an order number that doesn't exist. The converter's fallback is honest: when ORC was missing, the Immunization has fewer fields, and that correctly reflects the source data.
+
+**Interface change:**
+```typescript
+interface VXUOrderGroup {
+  orc?: HL7v2Segment;  // Changed from required to optional
+  rxa: HL7v2Segment;
+  rxr?: HL7v2Segment;
+  observations: Array<{ obx: HL7v2Segment; ntes: HL7v2Segment[] }>;
+}
+```
+
+**Grouping change:** `groupVXUOrders()` starts a new ORDER group on either ORC or RXA (whichever appears). RXA without preceding ORC is a valid group.
+
+**Edge case removed:** "Error: Either ORC-3 or ORC-2 required" is no longer an error — it's a valid path that uses the fallback ID.
+
+#### C2. RXA-6 Dose Normalization — Preprocessor (was: F2)
+
+**Change:** New config-driven preprocessor `normalize-rxa6-dose`:
+
+1. `"999"` → clear field (CDC IIS sentinel for unknown amount; converter omits doseQuantity)
+2. Non-numeric with parseable prefix (e.g., `"0.3 mL"`) → extract numeric value into RXA-6, move unit string to RXA-7 if RXA-7 is empty
+3. Completely unparseable → clear field (converter omits doseQuantity)
+
+**Why preprocessor:** The sender sent data — it's just in the wrong format for an NM field. This is data normalization, same category as `move-pid2-into-pid3`. Cross-field modification (RXA-6 → RXA-7) has precedent.
+
+#### C3. RXA-9 NIP001 System Injection — Preprocessor (was: F3)
+
+**Change:** New config-driven preprocessor `normalize-rxa9-nip001`:
+
+If any RXA-9 CE/CWE repeat has code `"00"` or `"01"` but no coding system (CWE.3 empty), inject `"NIP001"` as the system.
+
+**Why preprocessor:** The sender sent the code — just without the system identifier. Same pattern as `inject-authority-from-msh` (adding missing coding metadata to existing data). After preprocessing, the converter's NIP001 lookup works without special cases.
+
+#### C4. RXR-1 Optional in Practice (was: F4)
+
+**Change:** Converter treats RXR-1 as optional. If empty, skip `Immunization.route`. RXR-2 (site) is processed independently.
+
+**Why converter, not preprocessor:** No data exists to normalize. This is a mapping decision: FHIR `Immunization.route` is optional even though HL7v2 RXR-1 is spec-Required.
+
+#### C5. RXA-3 Empty → Error (was: F9)
+
+**Change:** Missing RXA-3 is a converter error for that ORDER group.
+
+**Why not a fallback chain:** Using ORC-9 (transaction date), RXA-22 (system entry date), or MSH-7 (message timestamp) as `occurrenceDateTime` would be clinically misleading. A provider would trust the date as "when the vaccine was given." Wrong dates are invisible; missing dates are visible and actionable. Error is correct.
+
+#### C6. Unknown ORDER OBX — Warning Instead of Hard Error (was: decision #2)
+
+**Change:** Unknown LOINC code in ORDER-level OBX produces a warning, not a hard error. The unknown OBX is skipped (no Observation created — ORDER OBX has Immunization-specific semantics, not standalone observation semantics). Message status set to `warning`. The unknown code is logged for developer attention.
+
+**Rationale:** A sender might include a valid OBX that we haven't mapped yet. Hard-erroring the entire message for one unmapped enrichment field is disproportionate. Known CDC IIS codes still get mapped correctly.
+
+### Updated Config
+
+```json
+{
+  "VXU-V04": {
+    "preprocess": {
+      "PID": {
+        "2": ["move-pid2-into-pid3"],
+        "3": ["inject-authority-from-msh"]
+      },
+      "PV1": { "19": ["fix-authority-with-msh"] },
+      "ORC": { "3": ["inject-authority-into-orc3"] },
+      "RXA": {
+        "6": ["normalize-rxa6-dose"],
+        "9": ["normalize-rxa9-nip001"]
+      }
+    },
+    "converter": { "PV1": { "required": false } }
+  }
+}
+```
+
+No new `messagePreprocess` framework needed. RXA preprocessors use the existing field-level framework. ORC handling is in the converter.
+
+### Updated Edge Cases
+
+| Condition                      | Original Handling              | Corrected Handling                                        |
+|--------------------------------|--------------------------------|-----------------------------------------------------------|
+| Missing ORC in ORDER group     | Error                          | Valid: fallback ID from MSH-10 + order index              |
+| ORC-3 and ORC-2 both missing   | Error                          | Valid (same as missing ORC): fallback ID                   |
+| RXA-6 = "999"                  | Parse as number                | Preprocessor clears field, converter omits doseQuantity    |
+| RXA-6 = "0.3 mL"              | Parse as number (fail)         | Preprocessor extracts 0.3 to RXA-6, "mL" to RXA-7        |
+| RXA-9 bare "00"/"01"          | NIP001 lookup fails, default   | Preprocessor injects NIP001 system, lookup succeeds        |
+| RXR-1 empty                   | Implicit error                 | Skip route, process site independently                     |
+| Unknown ORDER OBX LOINC       | Hard error                     | Warning + skip (no Observation created)                    |
+
+### New Test Cases (additions to existing list)
+
+| #  | Type        | Description                                                                              |
+|----|-------------|------------------------------------------------------------------------------------------|
+| 32 | Unit        | ORDER group without ORC: produces Immunization with fallback ID from MSH-10              |
+| 33 | Unit        | ORDER group without ORC: no recorded date, no ordering provider, no FILL/PLAC identifiers |
+| 34 | Unit        | RXA-6 preprocessor: "999" cleared, no doseQuantity                                       |
+| 35 | Unit        | RXA-6 preprocessor: "0.3 mL" extracts value=0.3, unit=mL in RXA-7                       |
+| 36 | Unit        | RXA-9 preprocessor: bare "00" gets NIP001 system injected                                |
+| 37 | Unit        | RXR with empty RXR-1: route omitted, site preserved                                     |
+| 38 | Unit        | Unknown ORDER OBX LOINC: warning status, OBX skipped, known OBX still mapped             |
+| 39 | Integration | E2E: VXU without ORC (real-world pattern), verify Immunization created with fallback ID  |
+
 ## User Feedback
 [To be filled in Phase 6]
