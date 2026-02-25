@@ -1234,5 +1234,124 @@ Both follow the existing pattern (modify segment in place, config-driven). The R
 | I14 | Issue | OPEN | recorded field when ORC absent — fallback not specified |
 | I15 | Issue | OPEN | Preprocessor config type doesn't include RXA yet |
 
+### Iteration 3 Corrections
+
+Proposed fixes for all open blockers (B4a-B4e, B5) and significant issues (S1-S3) from Iteration 3 and Iteration 3.2. Minor issues (M1-M7, I9-I15) addressed where they overlap with blockers.
+
+#### Fix 1: Enrichment Correlation — Positional Matching (B5, S1)
+
+**Problem:** Enrichment correlates ORDER OBX to Immunization via ORC-3 IDs. With ORC optional, this fails.
+
+**Fix:** Switch to positional correlation. The converter processes ORDER groups sequentially; the Nth Immunization in the bundle corresponds to the Nth ORDER group. The enrichment:
+1. Extracts ORDER groups from the parsed message (same grouping logic)
+2. Collects Immunization resources from the bundle in order of appearance
+3. Matches ORDER group N → Nth Immunization
+
+**Guard for ORC-less groups with OBX:** Real-world data (F6) shows ORC-less messages don't include ORDER OBX. If an ORC-less group has OBX, log warning and skip enrichment for that group.
+
+**Updates:**
+- Architecture decision #11: replace "Correlation via IDs derived from ORC-3" with "Correlation via position. ORDER group N → Nth Immunization in bundle."
+- `cdc-iis-enrichment.ts` TODO (line 95): replace "matching deterministic ID derived from ORC-3" with "matching by positional index"
+- `cdc-iis-enrichment.test.ts` (line 38): replace "by ORC-3 derived ID" with "by positional index"
+- Add test: "ORDER group without ORC but with OBX logs warning and skips enrichment"
+
+#### Fix 2: Stale Original Sections — Supersedence Notes (B4e, S2)
+
+**Problem:** Original Key Decisions, Edge Cases, etc. contradict C1/C6 corrections.
+
+**Fix:** Add blockquote supersedence notes before each stale section. Do NOT rewrite the originals (they document design evolution). Notes to add:
+
+- Before Key Decisions table: `> ⚠ Decisions #2 and #5 are superseded by C6 (warning + skip) and C1 (MSH fallback) in "Correction for Real-World Data Handling".`
+- Before Trade-offs: `> ⚠ "Hard error on unknown ORDER OBX" is superseded by C6 (warning + skip).`
+- Before VXUOrderGroup interface: `> ⚠ orc is now optional per C1. Grouping starts on ORC or RXA. See C1.`
+- Before generateImmunizationId: `> ⚠ Shows ORC-only path. Per C1, fallback ID {mshNamespace}-{msh10}-imm-{orderIndex} is used when ORC absent. See C1.`
+- Before Config Entry: `> ⚠ Superseded by updated config in "Correction for Real-World Data Handling" (adds RXA preprocessors).`
+- Before Conversion Flow: `> ⚠ Per C1: extractPersonObservations detects OBX before first ORC or RXA (not just ORC). groupVXUOrders starts groups on ORC or RXA.`
+- Before Edge Cases table: `> ⚠ "Missing ORC → Error" and "Unknown OBX → Hard error" are superseded by C1 and C6. See "Updated Edge Cases" in corrections.`
+- Before Test Cases table: `> ⚠ Test #13 (missing ORC-3/ORC-2 → error) is now a valid fallback path per C1. Test #23 (unknown OBX → hard error) is now warning per C6. See "New Test Cases" in corrections.`
+- Before Affected Components: `> ⚠ Incomplete. Two more preprocessors (normalize-rxa6-dose, normalize-rxa9-nip001) and RXA config support needed per C2/C3.`
+
+#### Fix 3: Prototype Updates (B4a-B4d, M1-M6)
+
+**B4a. Fixture rename:**
+- Move `error/missing-orc3.hl7` → `no-orc-identifiers.hl7` (tests fallback ID path, not error)
+- Update front matter prototype-files list
+- Update test stub (line 86): "ORC present but ORC-3 and ORC-2 both empty uses fallback ID"
+
+**B4b. Test stubs — hard error → warning:**
+- `cdc-iis-enrichment.test.ts` line 57: "hard error" → "warning status, OBX skipped"
+- `cdc-iis-enrichment.test.ts` line 58: "hard error" → "warning"
+- `vxu-v04.test.ts` test case 23 reference: "hard error" → "warning + skip"
+
+**B4c. Prototype interface:**
+- `vxu-v04.ts` line 64: `orc: HL7v2Segment` → `orc?: HL7v2Segment`
+- `groupVXUOrders` comment: "Each ORDER starts with ORC" → "Each ORDER starts with ORC or RXA"
+- `extractPersonObservations` comment: "before the first ORC" → "before the first ORC or RXA"
+
+**B4d. Segment converter signature:**
+- ID generation moves to the message converter (matches ORU pattern where `getOrderNumber()` is in oru-r01.ts, not obr-diagnosticreport.ts)
+- `convertRXAToImmunization(rxa, rxr, orc: ORC)` → `convertRXAToImmunization(rxa, rxr, orc: ORC | undefined, immunizationId: string)`
+- Message converter computes ID: ORC-3 → ORC-2 → `{mshNamespace}-{msh10}-imm-{orderIndex}`
+- Passes pre-computed ID to segment converter
+
+**M3. New fixture:**
+- Add `test/fixtures/hl7v2/vxu-v04/no-orc.hl7` to front matter
+- Based on real-world pattern (F1): MSH+PID+PV1+RXA+RXR, no ORC, no ORDER OBX
+
+**M5. Immunization.encounter:**
+- Add to conversion flow after `applyORC()`: `+-> linkEncounter() // Immunization.encounter = encounterRef`
+- Confirmed: FHIR Immunization has `encounter?: Reference<"Encounter">` (line 54 of Immunization.ts)
+- Update test case #25: "valid PV1 creates Encounter, sets Immunization.encounter reference"
+- Add edge case: "PV1 absent → Immunization.encounter omitted"
+
+**M6. ORC present, ORC-3/ORC-2 empty:**
+- Uses fallback ID (same as no ORC), no FILL/PLAC identifiers
+- BUT: ORC-9 (recorded) and ORC-12 (ordering provider) still used if populated
+- Add comment to `generateImmunizationId` documenting this distinction
+
+#### Fix 4: Missing RXA-19 Mapping (S3)
+
+**Problem:** RXA-19 (Indication, CWE [0..*]) maps to `Immunization.reasonCode` per V2-to-FHIR IG. Listed in mapping table but absent from flow, edge cases, and tests.
+
+**Fix:**
+- Prototype `rxa-immunization.ts` step 9: expand TODO to map `rxa.$19_indication` repeats → `immunization.reasonCode[]` via `convertCWEToCodeableConcept`
+- Add edge case: "RXA-19 present → map each CWE to reasonCode[]; RXA-19 empty → reasonCode omitted"
+- Add test case #40: "RXA-19 with indication maps to Immunization.reasonCode[]"
+
+#### Fix 5: RXA-6 = "0" Preserved (M7)
+
+**Fix:** Update C2 step 1: add "Note: `0` is a valid amount (zero dose administered) and must NOT be cleared."
+Add test case #41: "RXA-6 preprocessor: '0' preserved, doseQuantity.value=0"
+
+#### Fix 6: Non-Blocking Issues (I9, I10, I12, I14)
+
+**I9 (handleEncounter hardcodes ORU-R01 key):** When extracting shared helpers, parameterize with `messageTypeKey: string`. Implementation detail — no design change needed.
+
+**I10 (convertOBXToObservationResolving in oru-r01.ts):** Extract to shared module alongside other helpers (I7). Implementation detail.
+
+**I12 (MSH-3 empty vs parseMSH):** This is intentional behavior — sender-specific mapping requires sender identification. A sender without MSH-3 can't be identified for ConceptMap lookups. The message will error at parseMSH. Document explicitly: "F8-style senders (empty MSH-3) will fail at parseMSH. This is correct — sender identification is required for code mapping."
+
+**I14 (recorded when ORC absent):** Specify: when ORC is absent, use RXA-22 as `recorded` fallback if RXA-21=A (same logic, ORC-9 is simply unavailable). When ORC is absent AND RXA-21 is not A, `recorded` is omitted.
+
+#### Updated Open Items Summary
+
+After applying these fixes:
+
+| # | Status | Resolution |
+|---|--------|------------|
+| B4a | FIXED by Fix 3 | Fixture renamed, test stub updated |
+| B4b | FIXED by Fix 3 | Test stubs updated to "warning" |
+| B4c | FIXED by Fix 3 | Prototype interface updated |
+| B4d | FIXED by Fix 3 | ID generation moved to message converter |
+| B4e | FIXED by Fix 2 | Supersedence notes added |
+| B5 | FIXED by Fix 1 | Positional correlation |
+| S1 | FIXED by Fix 1 | Same as B5 |
+| S2 | FIXED by Fix 2 | Same as B4e |
+| S3 | FIXED by Fix 4 | RXA-19 mapping added |
+| M1-M7 | FIXED by Fixes 3, 5 | Various prototype/doc updates |
+| I9-I15 | Noted | Implementation details, Fix 6 |
+
+Total test cases after all corrections: 41 (31 original + 8 from C1-C6 + 2 from Fixes 4-5).
+
 ## User Feedback
 [To be filled in Phase 6]
