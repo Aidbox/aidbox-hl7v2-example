@@ -612,7 +612,7 @@ OBX|5|DT|29769-7^VIS PRESENTATION DATE^LN|3|20160701||||||F
 
     Why NOT post-processing at processor-service level: splitting conversion logic across converter + distant post-processor hurts readability and debugging. The converter should be the single place to understand the full VXU pipeline.
 
-13. **No extensions needed for CDC IIS VXU.** All CDC IIS OBX codes map to standard FHIR R4 Immunization fields (programEligibility, fundingSource, education, protocolApplied.doseNumber). No custom extensions required. IG package loading, extension registration, and profile validation are the profiles-support ticket's scope.
+13. **No extensions needed for the Immunization resource.** All CDC IIS OBX codes map to standard FHIR R4 Immunization fields (programEligibility, fundingSource, education, protocolApplied.doseNumber). The US Core Immunization Profile also defines no extensions. However, PID-10 (Race) and PID-22 (Ethnic Group) require US Core extensions (`us-core-race`, `us-core-ethnicity`) on Patient — this is a cross-cutting concern shared with ADT/ORU, tracked separately in `ai/tickets/2026-02-25-us-core-patient-extensions.md`.
 
 14. **Profile/IG validation:** Separate future ticket (`2026-02-24-profiles-support.md`). Validates converted resources conform to IG expectations.
 
