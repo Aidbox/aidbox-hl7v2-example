@@ -1,7 +1,6 @@
 ---
 status: ai-reviewed
 reviewer-iterations: 4
-consolidated-from: 2026-02-23-vxu-support.md
 prototype-files:
   - src/v2-to-fhir/messages/vxu-v04.ts
   - src/v2-to-fhir/segments/rxa-immunization.ts
@@ -23,9 +22,7 @@ prototype-files:
   - test/integration/v2-to-fhir/vxu-v04.integration.test.ts
 ---
 
-# Design: VXU_V04 Conversion — Immunizations (Consolidated)
-
-> This is the consolidated final design, produced from the original `2026-02-23-vxu-support.md` after 4 review iterations and real-world data corrections. All superseded decisions and review history have been removed. For design evolution and review notes, see the original document.
+# Design: VXU_V04 Conversion — Immunizations
 
 ## Problem Statement
 
