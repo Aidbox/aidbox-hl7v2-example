@@ -257,6 +257,14 @@ Do NOT rely on assumptions, existing code patterns, or memory of the spec. The c
 
 **Spec completeness rule:** You must handle ALL components/fields defined in the spec — not just those present in current sample data or example messages. Never skip a field or component solely because the example senders don't populate it.
 
+## V2-to-FHIR IG Mapping Compliance Rule
+
+Before designing, implementing, or reviewing ANY HL7v2→FHIR conversion, you MUST consult the V2-to-FHIR IG mapping CSVs in `docs/v2-to-fhir-spec/mappings/`. These are the authoritative mapping references for this project:
+
+- **Message mappings**: `mappings/messages/` — which FHIR resources each message type produces
+- **Segment mappings**: `mappings/segments/` — field-level mappings
+- **Vocabulary mappings**: `mappings/codesystems/` — code translations between HL7v2 and FHIR systems
+
 ### HL7v2 Message Inspection
 
 Hl7v2 message analysis requires exact pipe counting — easy to miscount for an AI agent.
