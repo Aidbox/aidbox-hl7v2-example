@@ -544,6 +544,76 @@ OBX|5|DT|29769-7^VIS PRESENTATION DATE^LN|3|20160701||||||F
 - CVX Code System: https://terminology.hl7.org/NamingSystem-CVX.html
 - FHIR R4 Immunization: https://hl7.org/fhir/R4/immunization.html
 
+### Real-World Sample Analysis
+
+**Source:** `data/local/vxu/` (2 files). WARNING: these files may contain confidential data — do not quote any identifiers, names, or dates from them in this document.
+
+Two real VXU messages from production senders were analyzed. Both declare v2.5.1. Key findings that diverge from our design assumptions:
+
+#### F1. No ORC segment (BOTH samples)
+
+Neither sender includes an ORC segment. Messages go straight from PV1 to RXA. The spec says ORC is [1..1] in the ORDER group, but real senders omit it entirely. This **breaks our ID generation strategy** (decision #8 depends entirely on ORC-3).
+
+Also lost without ORC: identifiers (ORC-2/ORC-3), recorded date (ORC-9), ordering provider (ORC-12).
+
+#### F2. RXA-6 (Administered Amount) has embedded units
+
+- Sample 1: `20-40 mg` (range string + units in a numeric field)
+- Sample 2: `0.3 mL` (value + units, RXA-7 is empty)
+
+Spec says RXA-6 is NM (numeric) with separate CWE units in RXA-7. Real senders stuff everything into field 6.
+
+Additionally, "999" appears in CDC IIS as a sentinel value meaning "unknown amount" — doseQuantity should be omitted when RXA-6=999.
+
+#### F3. RXA-9 bare code without NIP001 system
+
+Sample 2 sends `00` instead of `00^NEW RECORD^NIP001`. No coding system declared. The primarySource derivation logic must handle bare codes.
+
+#### F4. RXR-1 (Route) empty despite spec-Required
+
+Sample 2: `RXR||RD^Right Deltoid^HL70163` — route is empty, only site (RXR-2) populated. The spec says RXR-1 is Required.
+
+#### F5. RXA-5 dual coding: CVX + NDC
+
+Sample 2: `309^PVT Pfizer 12+^CVX^00069239201^^NDC` — primary CVX coding in CWE components 1-3, alternate NDC coding in components 4-6. Design only discusses CVX pass-through; CWE→CodeableConcept conversion must preserve alternate codings.
+
+#### F6. No ORDER-level OBX in either sample
+
+Neither sender includes CDC IIS OBX (no program eligibility, funding source, or VIS documents). CDC IIS enrichment is a no-op for these senders. This confirms not all senders follow the full CDC IIS pattern.
+
+#### F7. PV1 minimal — no PV1-19 (Visit Number)
+
+Both samples: `PV1|1|R|...|<admit-date-at-PV1-44>`. Only patient class and admit date. No visit number means no Encounter ID generation possible.
+
+#### F8. MSH-3 (Sending Application) empty
+
+Sample 1 has empty MSH-3, only MSH-4 (Sending Facility) populated. The `deriveMshNamespace` function handles this correctly (filters empty parts), producing just the facility name.
+
+#### F9. RXA-3 (Date/Time Start) empty
+
+Sample 1 has empty RXA-3. This is spec-Required and maps to FHIR Immunization.occurrenceDateTime (also Required). Missing administration date must be an error.
+
+#### F10. RXA-17 (Manufacturer) text-only, no MVX code
+
+Both samples: `^Pfizer`, `^Generic` — component 1 (code) empty, component 2 (text) has manufacturer name but no MVX code. Manufacturer is already out of scope (decision #16).
+
+#### Preprocessor Feasibility Analysis
+
+| Finding | Preprocessor can fix? | Rationale |
+|---------|----------------------|-----------|
+| F1. Missing ORC | **No** | Current preprocessors modify existing segments; can't create segments that don't exist. Converter must have fallback ID strategy. |
+| F2. RXA-6 embedded units | **Yes** | Parse numeric prefix, move units to RXA-7 if empty. Sender-specific — config-driven. |
+| F3. RXA-9 bare code | **Better in converter** | Preprocessor could wrap bare code into CWE, but converter can just check bare string "00"/"01" directly — simpler. |
+| F4. RXR-1 empty | **No** | Nothing to fix — no data exists. Converter must treat as optional. |
+| F5. RXA-5 dual coding | **Not needed** | Standard CWE behavior — converter should already handle components 4-6. |
+| F6. No ORDER OBX | **Not needed** | CDC IIS enrichment is already a no-op when no OBX found. |
+| F7. PV1 no PV1-19 | **Not needed** | PV1 handling already supports missing visit number. |
+| F8. MSH-3 empty | **Not needed** | `deriveMshNamespace` already handles this. |
+| F9. RXA-3 empty | **No** | Can't invent administration date. Must be error. |
+| F10. RXA-17 text-only | **Not needed** | Manufacturer out of scope. |
+
+**Summary:** Only F2 (embedded units) is a good preprocessor candidate. The biggest issue (F1, missing ORC) requires a converter-level fallback — preprocessors can't synthesize absent segments.
+
 ## User Requirements & Answers
 
 **Original requirement:** Implement conversion of VXU messages (immunizations).
