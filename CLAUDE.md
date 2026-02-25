@@ -268,13 +268,13 @@ Before designing, implementing, or reviewing ANY HL7v2→FHIR conversion, you MU
 ### HL7v2 Message Inspection
 
 Hl7v2 message analysis requires exact pipe counting — easy to miscount for an AI agent.
-Always use the `hl7v2-info` skill or `scripts/hl7v2-inspect.py` script to verify field positions:
+Always use the `hl7v2-info` skill or `scripts/hl7v2-inspect.sh` script to verify field positions:
 ```sh
-python3 scripts/hl7v2-inspect.py <file>                # Structure overview (no PHI)
-python3 scripts/hl7v2-inspect.py <file> --values        # Show field values (may contain PHI!)
-python3 scripts/hl7v2-inspect.py <file> --segment RXA   # Filter to segment type
-python3 scripts/hl7v2-inspect.py <file> --field RXA.6   # Specific field with components
-python3 scripts/hl7v2-inspect.py <file> --verify RXA.20 # Verify field position by pipe count
+scripts/hl7v2-inspect.sh <file>                # Structure overview (no PHI)
+scripts/hl7v2-inspect.sh <file> --values        # Show field values (may contain PHI!)
+scripts/hl7v2-inspect.sh <file> --segment RXA   # Filter to segment type
+scripts/hl7v2-inspect.sh <file> --field RXA.6   # Specific field with components
+scripts/hl7v2-inspect.sh <file> --verify RXA.20 # Verify field position by pipe count
 ```
 Handles RTF wrappers, multi-message files, and repeating fields. Use `--verify` to catch pipe count errors in fixtures.
 Reference: working fixture `test/fixtures/hl7v2/oru-r01/encounter/with-visit.hl7` has correct PV1-19.
