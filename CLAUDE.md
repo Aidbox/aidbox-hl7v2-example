@@ -257,10 +257,16 @@ Do NOT rely on assumptions, existing code patterns, or memory of the spec. The c
 
 **Spec completeness rule:** You must handle ALL components/fields defined in the spec — not just those present in current sample data or example messages. Never skip a field or component solely because the example senders don't populate it.
 
-### HL7v2 Pipes Count
+### HL7v2 Message Inspection
 
-Hl7v2 message analysis/building requires exact pipe count — easy to miscount for an AI agent. Always use the `hl7v2-info` skill or Python to verify field positions:
+Hl7v2 message analysis requires exact pipe counting — easy to miscount for an AI agent.
+Always use the `hl7v2-info` skill or `scripts/hl7v2-inspect.py` script to verify field positions:
 ```sh
-python3 -c "parts=line.split('|'); [print(f'Field {i}: {v}') for i,v in enumerate(parts[1:], 1) if v]"
+python3 scripts/hl7v2-inspect.py <file>                # Structure overview (no PHI)
+python3 scripts/hl7v2-inspect.py <file> --values        # Show field values (may contain PHI!)
+python3 scripts/hl7v2-inspect.py <file> --segment RXA   # Filter to segment type
+python3 scripts/hl7v2-inspect.py <file> --field RXA.6   # Specific field with components
+python3 scripts/hl7v2-inspect.py <file> --verify RXA.20 # Verify field position by pipe count
 ```
+Handles RTF wrappers, multi-message files, and repeating fields. Use `--verify` to catch pipe count errors in fixtures.
 Reference: working fixture `test/fixtures/hl7v2/oru-r01/encounter/with-visit.hl7` has correct PV1-19.
