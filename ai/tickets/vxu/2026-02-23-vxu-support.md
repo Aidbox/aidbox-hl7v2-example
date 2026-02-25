@@ -1353,5 +1353,68 @@ After applying these fixes:
 
 Total test cases after all corrections: 41 (31 original + 8 from C1-C6 + 2 from Fixes 4-5).
 
+### Iteration 4 (Codex review, real-world-first)
+
+**Reviewer:** Codex (GPT-5, ai-review skill)
+**Date:** 2026-02-25
+**Verdict:** ISSUES FOUND (1 blocker, 2 significant, 2 minor)
+
+#### Descriptive review
+
+Iteration 3 Corrections closes most major contradictions introduced by C1/C6 and materially improves the design for production-like VXU traffic. The remaining risks are practical rather than spec-theoretical: one unresolved rule conflict and two behaviors that can still drop or reject real sender data.
+
+#### Issues sorted by severity
+
+##### Blocker
+
+**B6. Contradictory `recorded` behavior when ORC is absent**
+
+- C1 says ORC-absent groups have "no recorded date."
+- Fix 6 (I14) says when ORC is absent and RXA-21=A, use RXA-22 as `recorded`.
+- This contradiction will produce inconsistent implementation and tests.
+
+**Recommendation:** Choose one normative rule and remove the other. Real-world-first choice is to keep RXA-22 fallback when RXA-21=A and omit `recorded` otherwise.
+
+##### Significant
+
+**S4. Positional correlation fix still drops ORC-less ORDER OBX data**
+
+- Fix 1 correctly switches enrichment correlation to positional matching.
+- The added guard says ORC-less group with OBX should be warned and skipped.
+- If a sender omits ORC but sends ORDER OBX, enrichment data is lost even though positional mapping can still correlate safely.
+
+**Recommendation:** Keep positional enrichment for ORC-less groups too; warn only on count/shape mismatch.
+
+**S5. Known real-world MSH-3-empty sender pattern still hard-fails**
+
+- Fix 6 documents empty MSH-3 as intentional failure at `parseMSH`.
+- Finding F8 already observed this sender shape in real messages.
+- Current behavior rejects the whole message instead of degrading safely.
+
+**Recommendation:** Add a degraded sender-context path (e.g., fallback sender key + warning) and continue conversion; unresolved mappings can still flow through Task-based remediation.
+
+##### Minor
+
+**M8. Test count summary is stale once all proposed additions are included**
+
+- Fix 1 adds a new enrichment guard test, and Fixes 4/5 add #40 and #41.
+- The "total 41" summary is likely under-counted if the guard test is implemented as a separate case.
+
+**Recommendation:** Reconcile the final case count and keep one authoritative test matrix.
+
+**M9. RXA-6 normalization lacks observability when non-empty values are cleared**
+
+- C2 clears unparseable RXA-6 values to avoid incorrect doseQuantity.
+- This is safe, but silent data loss from sender format errors can go unnoticed.
+
+**Recommendation:** Emit a warning (or structured log marker) when a non-empty RXA-6 value is cleared.
+
+#### Recommendations
+
+1. Resolve the ORC-absent `recorded` contradiction in a single authoritative section.
+2. Remove ORC-dependent skip logic from enrichment now that positional correlation is adopted.
+3. Add a real-world-tolerant fallback for empty MSH-3 with explicit warning semantics.
+4. Align and lock the final test matrix/count after adding real-world fallback cases.
+
 ## User Feedback
 [To be filled in Phase 6]
