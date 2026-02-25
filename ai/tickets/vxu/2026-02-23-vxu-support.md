@@ -851,6 +851,93 @@ RXA|0|1|20160701||08^HEPB-ADOLESCENT OR PEDIATRIC^CVX|999|||00^NEW RECORD^NIP001
 
 I1 through I7: No changes needed, all correctly dispositioned. Confirmed the prototype placeholder types (I1, I3) have clear TODO markers. I2 (CVX system URI normalization) remains an implementation TODO.
 
+### Iteration 3.2 (independent Opus 4.6 agent)
+
+**Reviewer:** Claude Opus 4.6 (independent agent, post-correction review)
+**Date:** 2026-02-25
+**Scope:** Full document review including the "Correction for Real-World Data Handling" section
+**Verdict:** ISSUES FOUND (no blockers, 3 significant gaps, 7 minor issues)
+
+#### Significant Issues
+
+##### S1. CDC IIS Enrichment Correlation Breaks with No-ORC
+
+Architecture decision #11 (line 666) states: "Correlation via IDs. The enrichment matches ORDER OBX to Immunization resources in the bundle using deterministic IDs derived from ORC-3."
+
+With correction C1 (ORC optional), the Immunization ID may be MSH-10 based, not ORC-3 based. The enrichment needs a different correlation strategy. Options:
+- Positional: ORDER group index N → Nth Immunization in bundle (requires filtering non-Immunization entries)
+- Pass the ORDER group → Immunization association through to the enrichment
+- Tag Immunizations with ORDER index in meta
+
+The design doesn't address how enrichment correlates with fallback-ID Immunizations.
+
+##### S2. Stale Original Sections Contradict the Corrections
+
+The original design sections haven't been updated to reflect C1-C6. An implementer reading top-to-bottom sees contradictions:
+
+| Location | Still says | Correction says |
+|----------|-----------|-----------------|
+| Key Decision #2 (line 51) | Hard error for unknown ORDER OBX | C6: warning + skip |
+| Trade-offs (lines 67-70) | Hard error as a "pro" | C6 reverses this |
+| VXUOrderGroup (lines 99-100) | `orc: HL7v2Segment` (required) | C1: `orc?` (optional) |
+| ID generation (lines 111-129) | ORC-only path | C1: MSH-10 fallback |
+| Config (lines 250-266) | No RXA preprocessors | C2/C3: two new preprocessors |
+| Flow (line 279) | "OBX before first ORC" | C1: "before first ORC or RXA" |
+| Edge case (line 300) | "Missing ORC → Error" | C1: valid path |
+| Edge case (line 309) | "Unknown OBX → Hard error" | C6: warning + skip |
+| Test #13 (line 336) | Error on missing ORC-3/ORC-2 | C1: valid fallback path |
+| Test #23 (line 346) | Hard error on unknown OBX | C6: warning + skip |
+
+Not a functional bug, but confusing for implementers who must mentally merge two sections.
+
+##### S3. Missing Field: RXA-19 (Indication) → `Immunization.reasonCode`
+
+The design's RXA mapping table (line 441) lists `RXA-19 → reasonCode` but the converter flow, edge cases, and test cases never mention it. No test covers a VXU with an indication. Per CLAUDE.md spec-completeness rule: "handle ALL fields defined in the spec, not just those in current samples." RXA-19 is Optional [0..*] and maps to `Immunization.reasonCode` (CWE → CodeableConcept).
+
+#### Minor Issues
+
+##### M1. PERSON_OBSERVATION Detection Rule Not Updated
+
+Design says "OBX before first ORC → PERSON_OBSERVATION." With ORC optional, the first ORDER may start with RXA. Detection rule should be "OBX before first ORC **or RXA**." C1 mentions grouping changes but doesn't explicitly update this rule.
+
+##### M2. `error/missing-orc3.hl7` Fixture Is Now Invalid
+
+Line 17 lists this as an error fixture. C1 makes "missing ORC-3" a valid path (fallback ID), not an error. Fixture should be repurposed (test fallback behavior) or replaced.
+
+##### M3. No Fixture for ORC-less Messages
+
+Corrections add test cases #32, #33, #39 for no-ORC scenarios, but no fixture file is listed in `prototype-files`. Need `test/fixtures/hl7v2/vxu-v04/no-orc.hl7`.
+
+##### M4. Affected Components Table Incomplete
+
+Line 84 only mentions `inject-authority-into-orc3` for `preprocessor-registry.ts`. Two more preprocessors (`normalize-rxa6-dose`, `normalize-rxa9-nip001`) need to be listed. `config.ts` also needs `RXA` in the preprocess type, not just `ORC`.
+
+##### M5. `Immunization.encounter` Reference Not Mentioned
+
+Converter flow shows `handleEncounter()` but never says the Encounter gets linked to Immunization via `Immunization.encounter`. ORU links DiagnosticReport to Encounter; VXU should similarly link Immunization. No edge case or test case covers this.
+
+##### M6. ORC Present But ORC-3/ORC-2 Both Empty
+
+C1's edge case table treats this as "same as missing ORC" (fallback ID). Fine, but converter should also skip FILL/PLAC identifiers in this case. "ORC exists but both EI fields empty" is subtly different from "no ORC at all" and worth being explicit about.
+
+##### M7. RXA-6 = "0" vs "999"
+
+C2 says preprocessor clears "999" (unknown amount sentinel). Zero (`"0"`) is a valid amount (dose attempt, zero administered). Preprocessor must NOT clear `"0"`. Not stated.
+
+#### Observations (informational)
+
+##### O6. RXA-4 (Date/Time End) — Not a Gap
+
+RXA-4 is spec-Required but the spec itself says "If null, RXA-3 is assumed." FHIR Immunization has no end time field. Nothing to map. Confirmed via hl7v2-info lookup.
+
+##### O7. VXU_V04 ORDER Group Is [0..*]
+
+Both v2.5 and v2.8.2 say ORDER is optional and repeating. A VXU with zero ORDER groups is spec-valid (though clinically useless). The converter should handle this gracefully — currently no edge case for empty ORDER list. Low priority since such messages are unlikely in practice.
+
+##### O8. PERSON_OBSERVATION Only in v2.8.2
+
+v2.5 VXU_V04 has no PERSON_OBSERVATION group. The design correctly handles this per CDC IIS IG practice (OBX before ORC by position, not by named group). AI review I4 already noted this. Confirmed.
+
 ## Correction for Real-World Data Handling
 
 The initial design assumed spec-compliant senders. Analysis of 3 real-world VXU samples (in `data/local/vxu/`) revealed that 2 of 3 senders deviate significantly from the spec. This section corrects the design to handle real-world messages.
@@ -972,6 +1059,180 @@ No new `messagePreprocess` framework needed. RXA preprocessors use the existing 
 | 37 | Unit        | RXR with empty RXR-1: route omitted, site preserved                                     |
 | 38 | Unit        | Unknown ORDER OBX LOINC: warning status, OBX skipped, known OBX still mapped             |
 | 39 | Integration | E2E: VXU without ORC (real-world pattern), verify Immunization created with fallback ID  |
+
+### Iteration 3
+
+**Reviewer:** Claude Opus 4.6 (ai-review skill)
+**Date:** 2026-02-25
+**Verdict:** BLOCKERS FOUND (design/prototype internal contradictions from C1/C6 corrections)
+
+#### Blocker verification results
+
+**B3 (unknown-order-obx.hl7 RXA pipe count) -- VERIFIED FIXED:**
+
+Confirmed via `hl7v2-inspect.py --field RXA.20 --values`: RXA-20=CP, RXA-21=A. Both at correct positions.
+
+All fixture field positions are now correct across all 9 fixtures.
+
+#### NEW BLOCKERS
+
+##### B4. Prototypes and test stubs contradict C1/C6 corrections — 5 internal inconsistencies
+
+The "Correction for Real-World Data Handling" section (C1, C6) changes fundamental behavior, but the prototypes, test stubs, original design sections, and fixtures were not updated to match. An implementer reading top-to-bottom gets contradictory instructions.
+
+**B4a. `error/missing-orc3.hl7` is no longer a valid error case**
+
+C1 explicitly states: "Edge case removed: 'Error: Either ORC-3 or ORC-2 required' is no longer an error — it's a valid path that uses the fallback ID." And the updated edge cases table says: "ORC-3 and ORC-2 both missing → Valid (same as missing ORC): fallback ID."
+
+But the fixture lives in `error/` directory, and test stub line 86 says `"missing ORC-3 and ORC-2 returns error"`. This fixture should produce a successful Immunization with fallback ID, not an error.
+
+**Fix:** Move `error/missing-orc3.hl7` to `vxu-v04/no-orc-identifiers.hl7` (or similar). Update test stub to expect fallback ID behavior. Add a new test case for the success path.
+
+**B4b. Test stubs for CDC IIS still say "hard error" for unknown OBX**
+
+C6 changed unknown ORDER OBX from hard error to warning. But test stub line 57 says `"unknown ORDER OBX LOINC code returns hard error"` and line 58 says `"ORDER OBX without LOINC coding system returns hard error"`. Test case #23 in the design also says "hard error."
+
+**Fix:** Update test stubs and test case #23 to say "warning" instead of "hard error."
+
+**B4c. Prototype `VXUOrderGroup.orc` is still required**
+
+C1 shows `orc?: HL7v2Segment` but the prototype at `vxu-v04.ts:64` has `orc: HL7v2Segment` (required). The `groupVXUOrders` function comment (line 107) says "Each ORDER starts with ORC" — should say "starts with ORC or RXA."
+
+**Fix:** Update prototype interface and function comment to match C1.
+
+**B4d. `convertRXAToImmunization` signature requires ORC — incompatible with C1**
+
+The segment converter at `rxa-immunization.ts:222-226` has signature `convertRXAToImmunization(rxa, rxr, orc: ORC)` — ORC is required. With C1, ORC is optional. Additionally, the fallback ID (`{mshNamespace}-{msh10}-imm-{orderIndex}`) requires MSH data and order index, which are not available to the segment converter.
+
+**Impact:** The segment converter's responsibility boundary is unclear. Either:
+- (a) Segment converter accepts `orc?: ORC` and pre-computed fallback ID
+- (b) ID generation moves entirely to the message converter, segment converter receives a pre-computed ID
+- (c) Segment converter accepts additional context parameters (MSH namespace, message control ID, order index)
+
+Option (b) is cleanest — it matches the ORU pattern where `getOrderNumber()` is called in the message converter, not the segment converter. The design should specify this.
+
+**Fix:** Design should specify that the message converter (vxu-v04.ts) computes the Immunization ID — either from ORC-3/ORC-2 or from the MSH fallback — and passes it to the segment converter. Update `convertRXAToImmunization` signature to accept `immunizationId: string` instead of computing it internally.
+
+**B4e. Original "Key Decisions" and "Edge Cases" sections not updated**
+
+A reader who stops at the "Key Decisions" table gets wrong information:
+- Decision #2 says "Hard error" for unknown ORDER OBX (C6 says warning)
+- Decision #5 says "ORC-3 with ORC-2 fallback" (C1 adds MSH-based fallback as third option)
+- Edge case "Missing ORC in message → Error" (C1 says valid)
+- Edge case "ORC-3 and ORC-2 both missing → Error" (C1 says valid)
+- Edge case "Unknown LOINC code in ORDER OBX → Hard error" (C6 says warning)
+
+**Fix:** Either update the original sections to reflect corrections, or add clear cross-references (e.g., "⚠ Superseded by C1/C6 in 'Correction for Real-World Data Handling'").
+
+##### B5. CDC IIS enrichment correlation undefined when ORC is absent
+
+The enrichment design says it correlates ORDER OBX to Immunization resources "by matching deterministic ID derived from ORC-3" (cdc-iis-enrichment.ts line 95). With C1, when ORC is absent, the Immunization ID uses `{mshNamespace}-{msh10}-imm-{orderIndex}` — a completely different derivation.
+
+The enrichment would need to either:
+1. Replicate the fallback ID logic (coupling between converter and enrichment)
+2. Use positional matching (Immunization index in bundle = ORDER group index)
+3. Skip enrichment when ORC is absent
+
+Practically, finding F6 shows real-world ORC-less messages don't have ORDER OBX, so the enrichment is a no-op. But the design doesn't make this assumption explicit, and there's no guard.
+
+**Fix:** Specify one of: (a) enrichment matches by position rather than by ID, (b) enrichment skips ORDER groups without ORC, or (c) document the assumption that ORC-less messages won't have ORDER OBX and add a guard that logs a warning if this assumption is violated.
+
+#### ISSUES (non-blocking)
+
+##### I9. `handleEncounter` hardcodes "ORU-R01" config key — must be parameterized for sharing
+
+The ORU converter's `handleEncounter` at `oru-r01.ts:572` reads `config.messages?.["ORU-R01"]?.converter?.PV1?.required`. The VXU converter needs the same function but with `"VXU-V04"` config key. The design says to "reuse handleEncounter from ORU" but doesn't mention this parameterization need.
+
+**Impact:** The shared extraction (I7 from iteration 1) requires passing the message type key as a parameter to `handleEncounter`. Same applies to `parseMSH` error messages (currently say "ORU_R01 message").
+
+**Resolution:** Note as implementation detail — when extracting shared helpers, `handleEncounter` needs a `messageTypeKey: string` parameter. This is straightforward but should be documented so the implementer doesn't miss it.
+
+##### I10. `convertOBXToObservationResolving` lives in oru-r01.ts — inappropriate dependency
+
+For PERSON_OBSERVATION handling, the VXU converter needs `convertOBXToObservationResolving` (exported from `oru-r01.ts:102`). Importing from one message converter into another is an inappropriate dependency.
+
+**Resolution:** Extract to shared module alongside the other helpers (I7). The function is already self-contained.
+
+##### I11. RXA-7 in `multiple-orders.hl7` fixture is bare string, not CWE format
+
+The fixture has `|0.5|mL||` where RXA-7 is just `mL`. Per v2.8.2, RXA-7 is CWE type. Should be `mL^milliliter^UCUM` (or at minimum `mL^^UCUM`). The bare string will parse as CWE.1 (code only, no system), which produces a `doseQuantity.unit` without a `system` — technically valid FHIR but less useful than having the UCUM system URI.
+
+**Resolution:** Consider updating to `mL^^UCUM` for a more realistic fixture. Minor — the converter should handle bare CWE codes regardless.
+
+##### I12. MSH-3 empty in real-world data (F8) vs parseMSH requiring both MSH-3 and MSH-4
+
+Finding F8 shows a real VXU sender with empty MSH-3. The ORU `parseMSH` throws: `if (!sendingApplication || !sendingFacility)`. The design says to reuse this pattern but also says F8 needs no fix because `deriveMshNamespace` handles it.
+
+`deriveMshNamespace` and `parseMSH` are different functions with different concerns. `parseMSH` populates `SenderContext` (used for ConceptMap lookups) which requires both fields. A sender without MSH-3 can't be identified for sender-specific code mapping.
+
+**Resolution:** This is arguably correct behavior — if a sender doesn't identify their application, sender-specific mapping can't work and the message should error. But the design should explicitly acknowledge that F8-style senders will fail at parseMSH and document this as intentional (or plan a graceful degradation path). Currently the design says "Not needed" for F8 without explaining why parseMSH won't fail.
+
+##### I13. NTE segments in ORDER OBSERVATION groups silently dropped
+
+The `VXUOrderGroup.observations` array includes `ntes: HL7v2Segment[]`, and the VXU_V04 message structure shows `NTE [0..*]` under OBSERVATION. But neither the converter nor the enrichment processes them. For CDC IIS ORDER OBX, NTEs are rarely clinically relevant (they're informational notes on program eligibility, etc.).
+
+**Resolution:** Document explicitly that ORDER-level NTEs are not mapped. Consider adding a comment in the converter.
+
+##### I14. `recorded` field when ORC is absent — fallback not specified
+
+Test case #16 and the design specify: "ORC-9 primary; RXA-22 fallback when ORC-9 empty and RXA-21=A." When ORC is absent (C1), ORC-9 doesn't exist. The design says "no recorded date" for ORC-absent case (C1), but doesn't clarify whether RXA-22 should still be used as a fallback.
+
+**Resolution:** Specify: when ORC is absent, use RXA-22 as `recorded` if RXA-21=A (same fallback logic, just ORC-9 is always "empty"). Or explicitly state that `recorded` is omitted when ORC is absent. Either is reasonable.
+
+##### I15. Preprocessor framework doesn't support RXA segments yet
+
+The `MessageTypeConfig.preprocess` type in `config.ts` allows `PID`, `PV1`, and `ORC` (the ORC was added by the VXU prototype). But `RXA` is not in the type yet. The updated config (C2, C3) adds `"RXA": { "6": [...], "9": [...] }`. The config type needs to be extended to support RXA.
+
+Additionally, the preprocessor (`preprocessor.ts`) iterates segments and applies preprocessors for configured fields. It currently handles PID, PV1, and ORC segments. Adding RXA support requires extending the iteration logic.
+
+**Resolution:** Implementation detail — extend `MessageTypeConfig.preprocess` type to include `RXA` and ensure `preprocessor.ts` iterates RXA segments.
+
+#### OBSERVATIONS (informational)
+
+##### O6. Real-world data analysis is the strongest part of this design
+
+The analysis of 3 production VXU samples (findings F1-F10) with corresponding corrections (C1-C6) demonstrates excellent engineering practice. The "Preprocessors Normalize, Converter Stays Honest" principle is well-articulated and applied consistently. This section alone justifies the 2-iteration review process — the corrections catch issues that would have been bugs in production.
+
+##### O7. The scope of shared helper extraction is larger than the design suggests
+
+The design's TODO comments mention 5 functions to extract (parseMSH, extractMetaTags, createBundleEntry, handlePatient, handleEncounter). Actual count based on ORU inspection: 12 functions need extraction (add: extractSenderTag, addSenderTagToMeta, createDraftPatient, createConditionalPatientEntry, createConditionalEncounterEntry, convertDTMToDateTime, convertDTMToDate). This is significant refactoring that should be planned as a prerequisite task.
+
+##### O8. Two new preprocessors (normalize-rxa6-dose, normalize-rxa9-nip001) are well-scoped
+
+Both follow the existing pattern (modify segment in place, config-driven). The RXA-6 preprocessor's 3-step logic (sentinel → extract → clear) is clearly specified. The RXA-9 preprocessor is a clean analog of `inject-authority-from-msh` (adding missing system metadata to existing codes).
+
+##### O9. Test case count is comprehensive: 39 cases total
+
+31 original + 8 from corrections = 39 test cases covering unit and integration scenarios. The integration tests (#27-31, #39) cover the key E2E paths including idempotent reprocessing.
+
+### Summary of all open items across iterations
+
+| # | Severity | Status | Summary |
+|---|----------|--------|---------|
+| B1 | Blocker | FIXED (iter 2) | Fixture RXA field positions |
+| B2 | Blocker | FIXED (iter 2) | not-administered.hl7 RE position |
+| B3 | Blocker | FIXED (iter 2→verified iter 3) | unknown-order-obx.hl7 pipe count |
+| B4a | Blocker | OPEN | error/missing-orc3.hl7 is no longer error case per C1 |
+| B4b | Blocker | OPEN | Test stubs say "hard error" for unknown OBX, should be "warning" per C6 |
+| B4c | Blocker | OPEN | Prototype VXUOrderGroup.orc still required, should be optional per C1 |
+| B4d | Blocker | OPEN | convertRXAToImmunization requires ORC, incompatible with C1 |
+| B4e | Blocker | OPEN | Original Key Decisions/Edge Cases contradict C1/C6 corrections |
+| B5 | Blocker | OPEN | Enrichment correlation undefined when ORC absent |
+| I1 | Issue | Noted (iter 1) | RXA uses CE not CWE — prototype placeholder, will use generated types |
+| I2 | Issue | Noted (iter 1) | CVX system URI normalization missing — implementation TODO |
+| I3 | Issue | Noted (iter 1) | RXR prototype table discrepancy — will use generated types |
+| I4 | Issue | Noted (iter 1) | PERSON_OBSERVATION not in v2.5.1 — acceptable (follows CDC IIS IG) |
+| I5 | Issue | Noted (iter 1) | Table 0323 vs 0206 — documentation inaccuracy, no functional impact |
+| I6 | Issue | Noted (iter 1) | RXA-10 is [B] not [O] — pragmatically correct |
+| I7 | Issue | Noted (iter 1) | Shared helper extraction — implementation work, scope clarified in O7 |
+| I8 | Issue | FIXED (iter 2) | recorded field precedence — now explicit |
+| I9 | Issue | OPEN | handleEncounter hardcodes "ORU-R01" config key |
+| I10 | Issue | OPEN | convertOBXToObservationResolving lives in oru-r01.ts |
+| I11 | Issue | OPEN | RXA-7 fixture bare string, not CWE format |
+| I12 | Issue | OPEN | MSH-3 empty (F8) vs parseMSH requiring both MSH-3/MSH-4 |
+| I13 | Issue | OPEN | ORDER NTE segments silently dropped |
+| I14 | Issue | OPEN | recorded field when ORC absent — fallback not specified |
+| I15 | Issue | OPEN | Preprocessor config type doesn't include RXA yet |
 
 ## User Feedback
 [To be filled in Phase 6]
