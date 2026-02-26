@@ -145,3 +145,5 @@ Example: if the choice is between "elegant internals with fragile config couplin
 ## Code Style
 
 Don't leave `continue` or `return` statements on the same line with the `if` condition.
+
+Line length limit is 120 characters. Don't split a statement across lines if it fits within 120 chars.

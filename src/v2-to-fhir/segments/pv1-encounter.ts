@@ -3,15 +3,19 @@
  * Based on: HL7 Segment - FHIR R4_ PV1[Encounter] - PV1.csv
  */
 
-import type { PV1, XCN, PL, CWE, CE } from "../../hl7v2/generated/fields";
+import type { HL7v2Message } from "../../hl7v2/generated/types";
+import { findSegment } from "../converter";
+import { fromPV1, type PV1, type XCN, type PL, type CWE, type CE } from "../../hl7v2/generated/fields";
 import type {
   Encounter,
   EncounterParticipant,
   EncounterLocation,
   EncounterHospitalization,
+  BundleEntry,
   Coding,
   CodeableConcept,
   Identifier,
+  Meta,
   Reference,
   Extension,
 } from "../../fhir/hl7-fhir-r4-core";
@@ -28,6 +32,9 @@ import {
   translateCode,
   type SenderContext,
 } from "../../code-mapping/concept-map";
+import { composeMappingTask, composeTaskBundleEntry } from "../../code-mapping/mapping-task";
+import type { Hl7v2ToFhirConfig } from "../config";
+import type { EncounterLookupFn } from "../aidbox-lookups";
 
 // ============================================================================
 // Code Systems
@@ -805,4 +812,115 @@ export function extractPatientClass(pv1: PV1): string {
   }
 
   return "U";
+}
+
+// ============================================================================
+// Encounter Lookup and Draft Creation (non-ADT converters)
+// ============================================================================
+
+export interface EncounterHandlingResult {
+  encounterRef: Reference<"Encounter"> | null;
+  encounterEntry: BundleEntry | null;
+  patientClassTaskEntry?: BundleEntry;
+  warning?: string;
+  error?: string;
+}
+
+export function parsePV1(message: HL7v2Message): PV1 | undefined {
+  const pv1Segment = findSegment(message, "PV1");
+  if (!pv1Segment) {
+    return undefined;
+  }
+  return fromPV1(pv1Segment);
+}
+
+/**
+ * Create a conditional bundle entry for draft Encounter creation.
+ * Uses POST with If-None-Exist to prevent race conditions when multiple
+ * messages for the same non-existent encounter arrive simultaneously.
+ */
+function createConditionalEncounterEntry(encounter: Encounter): BundleEntry {
+  const encounterId = encounter.id;
+  return {
+    resource: encounter,
+    request: {
+      method: "POST",
+      url: "Encounter",
+      ifNoneExist: `_id=${encounterId}`,
+    },
+  };
+}
+
+/**
+ * Handle encounter lookup and draft creation.
+ *
+ * Shared by ORU and VXU converters. ADT handles encounters differently
+ * (creates full encounters, not drafts).
+ *
+ * Config-driven PV1 policy:
+ * - If PV1 required (config) and missing/invalid -> error, processing stops
+ * - If PV1 not required and missing/invalid -> warning, skip Encounter, continue clinical data
+ * - If PV1 present and valid -> create/lookup Encounter with strict identifier
+ *
+ * Patient class mapping errors:
+ * - Do NOT block the message (clinical data is prioritized)
+ * - Create Task for tracking, use fallback class (AMB)
+ *
+ * Race condition handling: Uses POST with If-None-Exist to ensure only one
+ * draft encounter is created even if multiple messages for the same
+ * non-existent encounter arrive simultaneously.
+ */
+export async function handleEncounter(
+  pv1: PV1 | undefined,
+  patientRef: Reference<"Patient">,
+  baseMeta: Meta,
+  senderContext: SenderContext,
+  lookupEncounter: EncounterLookupFn,
+  config: Hl7v2ToFhirConfig,
+  messageTypeKey: string,
+): Promise<EncounterHandlingResult> {
+  const pv1Required = config.messages?.[messageTypeKey]?.converter?.PV1?.required ?? false;
+
+  if (!pv1) {
+    if (pv1Required) {
+      return {
+        encounterRef: null,
+        encounterEntry: null,
+        error: `PV1 segment is required for ${messageTypeKey} but missing`,
+      };
+    }
+    return { encounterRef: null, encounterEntry: null };
+  }
+
+  const result = await convertPV1WithMappingSupport(pv1, senderContext);
+
+  if (result.identifierError) {
+    if (pv1Required) {
+      return { encounterRef: null, encounterEntry: null, error: result.identifierError };
+    }
+    return { encounterRef: null, encounterEntry: null, warning: result.identifierError };
+  }
+
+  const encounter = result.encounter;
+  const encounterId = encounter.id!;
+  const encounterRef = { reference: `Encounter/${encounterId}` } as Reference<"Encounter">;
+
+  const existingEncounter = await lookupEncounter(encounterId);
+  if (existingEncounter) {
+    return { encounterRef, encounterEntry: null };
+  }
+
+  encounter.status = "unknown";
+  encounter.subject = patientRef;
+  encounter.meta = { ...encounter.meta, ...baseMeta };
+
+  const encounterEntry = createConditionalEncounterEntry(encounter);
+
+  let patientClassTaskEntry: BundleEntry | undefined;
+  if (result.mappingError) {
+    const task = composeMappingTask(senderContext, result.mappingError);
+    patientClassTaskEntry = composeTaskBundleEntry(task);
+  }
+
+  return { encounterRef, encounterEntry, patientClassTaskEntry };
 }

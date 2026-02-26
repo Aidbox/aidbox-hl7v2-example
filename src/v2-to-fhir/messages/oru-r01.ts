@@ -12,18 +12,12 @@
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
 import { findSegment, findAllSegments, type ConversionResult } from "../converter";
 import {
-  fromMSH,
   fromPID,
-  fromPV1,
   fromOBR,
   fromNTE,
   fromSPM,
-  type MSH,
   type PID,
-  type PV1,
   type OBR,
-  type OBX,
-  type NTE,
   type SPM,
 } from "../../hl7v2/generated/fields";
 import { fromOBX } from "../../hl7v2/wrappers";
@@ -33,114 +27,27 @@ import type {
   DiagnosticReport,
   Observation,
   Specimen,
-  Patient,
-  Encounter,
-  Coding,
   Meta,
-  Resource,
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
-import { convertPIDToPatient } from "../segments/pid-patient";
-import { convertPV1WithMappingSupport } from "../segments/pv1-encounter";
-import { convertOBRWithMappingSupport } from "../segments/obr-diagnosticreport";
-import { convertOBXWithMappingSupportAsync } from "../segments/obx-observation";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
-import {
-  buildCodeableConcept,
-  LoincResolutionError,
-  resolveToLoinc,
-  type SenderContext,
-} from "../../code-mapping/concept-map";
 import {
   buildMappingErrorResult,
   type MappingError,
 } from "../../code-mapping/mapping-errors";
-import {
-  composeMappingTask,
-  composeTaskBundleEntry,
-} from "../../code-mapping/mapping-task";
-import type { Hl7v2ToFhirConfig } from "../config";
-import type { PatientIdResolver } from "../identity-system/patient-id";
+import type { SenderContext } from "../../code-mapping/concept-map";
+import { convertOBRWithMappingSupport } from "../segments/obr-diagnosticreport";
 import type { ConverterContext } from "../converter-context";
-import type { PatientLookupFn, EncounterLookupFn } from "../aidbox-lookups";
 
-/**
- * Create a draft patient from PID segment with active=false.
- * Draft patients are unverified and will be updated when ADT message arrives.
- *
- * Note: If a patient was previously created via ADT and then deleted, receiving
- * an ORU message will recreate them as a new draft patient. This is intentional -
- * we treat it as a new patient since the previous record no longer exists.
- */
-function createDraftPatient(pid: PID, patientId: string, baseMeta: Meta): Patient {
-  const patient = convertPIDToPatient(pid);
-  patient.id = patientId;
-  patient.active = false;
-  patient.meta = { ...patient.meta, ...baseMeta };
-  return patient;
-}
+import { parseMSH, addSenderTagToMeta } from "../segments/msh-parsing";
+import { handlePatient, extractSenderTag } from "../segments/pid-patient";
+import { parsePV1, handleEncounter } from "../segments/pv1-encounter";
+import { createBundleEntry } from "../fhir-bundle";
+import { convertOBXToObservationResolving } from "../segments/obx-observation";
+import { convertDTMToDateTime } from "../datatypes/dtm-datetime";
 
-/**
- * Result type for OBX conversion with both status and LOINC resolution.
- * Can return an Observation or mapping errors (both status and/or LOINC).
- */
-export type OBXResolutionResult =
-  | { observation: Observation; errors?: never }
-  | { observation?: never; errors: MappingError[] };
-
-/**
- * Convert OBX to Observation with both status mapping and LOINC resolution.
- *
- * This function:
- * 1. Attempts to resolve OBX-11 status using ConceptMap lookup
- * 2. Attempts to resolve LOINC code from OBX-3
- * 3. Collects all errors from both operations
- * 4. Returns observation only if BOTH succeed, otherwise returns all errors
- *
- * @returns Either an Observation (on success) or an array of mapping errors
- */
-export async function convertOBXToObservationResolving(
-  obx: OBX,
-  orderNumber: string,
-  senderContext: SenderContext,
-): Promise<OBXResolutionResult> {
-  const errors: MappingError[] = [];
-
-  // Try OBX-11 status resolution
-  const obxResult = await convertOBXWithMappingSupportAsync(obx, orderNumber, senderContext);
-  if (obxResult.error) {
-    errors.push(obxResult.error);
-  }
-
-  // TODO refactor: probably, it should happen inside convertOBXWithMappingSupportAsync, because it already returns an object with an error field
-  // Try LOINC code resolution
-  let loincResolution: Awaited<ReturnType<typeof resolveToLoinc>> | undefined;
-  try {
-    loincResolution = await resolveToLoinc(obx.$3_observationIdentifier, senderContext);
-  } catch (error) {
-    if (error instanceof LoincResolutionError) {
-      errors.push({
-        localCode: error.localCode || "",
-        localDisplay: error.localDisplay,
-        localSystem: error.localSystem,
-        mappingType: "observation-code-loinc",
-      });
-    } else {
-      throw error;
-    }
-  }
-
-  // If any errors occurred, return them all
-  if (errors.length > 0) {
-    return { errors };
-  }
-
-  // Both succeeded - build the final observation
-  const observation = obxResult.observation!;
-  observation.code = buildCodeableConcept(loincResolution!);
-
-  return { observation };
-}
+// Re-export for backwards compatibility (OBXResolutionResult was exported from this module)
+export type { OBXResolutionResult } from "../segments/obx-observation";
 
 interface OBRGroup {
   obr: HL7v2Segment;
@@ -150,90 +57,6 @@ interface OBRGroup {
   }>;
   specimens: HL7v2Segment[];
 }
-
-interface ParsedMSH {
-  msh: MSH;
-  senderContext: SenderContext;
-  baseMeta: Meta;
-}
-
-/**
- * Extract meta tags from MSH segment
- */
-function extractMetaTags(msh: MSH): Coding[] {
-  const tags: Coding[] = [];
-
-  if (msh.$10_messageControlId) {
-    tags.push({
-      code: msh.$10_messageControlId,
-      system: "urn:aidbox:hl7v2:message-id",
-    });
-  }
-
-  if (msh.$9_messageType) {
-    const code = msh.$9_messageType.$1_code;
-    const event = msh.$9_messageType.$2_event;
-    if (code && event) {
-      tags.push({
-        code: `${code}_${event}`,
-        system: "urn:aidbox:hl7v2:message-type",
-      });
-    }
-  }
-
-  return tags;
-}
-
-/**
- * Extract sender tag from PID-3 (MR identifier's assigning authority).
- * Returns undefined if no MR identifier with assigning authority is found.
- */
-function extractSenderTag(pid: PID): Coding | undefined {
-  if (!pid.$3_identifier) return undefined;
-
-  for (const cx of pid.$3_identifier) {
-    if (cx.$5_type === "MR" && cx.$4_system?.$1_namespace) {
-      return {
-        code: cx.$4_system.$1_namespace.toLowerCase(),
-        system: "urn:aidbox:hl7v2:sender",
-      };
-    }
-  }
-
-  return undefined;
-}
-
-/**
- * Add sender tag to meta if not already present.
- */
-function addSenderTagToMeta(meta: Meta, senderTag: Coding | undefined): void {
-  if (!senderTag || !meta.tag) return;
-
-  const hasSenderTag = meta.tag.some((t) => t.system === senderTag.system);
-  if (!hasSenderTag) {
-    meta.tag.push(senderTag);
-  }
-}
-
-/**
- * Create a bundle entry for a resource
- */
-function createBundleEntry(
-  resource: Resource,
-  method: "PUT" | "POST" = "PUT",
-): BundleEntry {
-  const resourceType = resource.resourceType;
-  const id = (resource as { id?: string }).id;
-
-  return {
-    resource,
-    request: {
-      method,
-      url: id ? `${resourceType}/${id}` : `${resourceType}`,
-    },
-  };
-}
-
 
 /**
  * Group segments by OBR parent
@@ -381,60 +204,6 @@ function createSpecimenFromOBR15(
 }
 
 /**
- * Convert HL7v2 DTM to FHIR dateTime
- */
-function convertDTMToDateTime(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
-
-  const year = dtm.substring(0, 4);
-  const month = dtm.substring(4, 6);
-  const day = dtm.substring(6, 8);
-  const hour = dtm.substring(8, 10) || "00";
-  const minute = dtm.substring(10, 12) || "00";
-  const second = dtm.substring(12, 14) || "00";
-
-  if (dtm.length <= 4) return year;
-  if (dtm.length <= 6) return `${year}-${month}`;
-  if (dtm.length <= 8) return `${year}-${month}-${day}`;
-
-  return `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
-}
-
-function parseMSH(message: HL7v2Message): ParsedMSH {
-  const mshSegment = findSegment(message, "MSH");
-  if (!mshSegment) {
-    throw new Error("MSH segment not found in ORU_R01 message");
-  }
-
-  const msh = fromMSH(mshSegment);
-
-  const sendingApplication = msh.$3_sendingApplication?.$1_namespace;
-  const sendingFacility = msh.$4_sendingFacility?.$1_namespace;
-
-  if (!sendingApplication || !sendingFacility) {
-    throw new Error(
-      `MSH-3 (sending application) and MSH-4 (sending facility) are required. ` +
-        `Got: MSH-3="${sendingApplication || ""}", MSH-4="${sendingFacility || ""}"`,
-    );
-  }
-
-  const senderContext: SenderContext = { sendingApplication, sendingFacility };
-
-  const baseMeta: Meta = {
-    tag: extractMetaTags(msh),
-  };
-
-  return { msh, senderContext, baseMeta };
-}
-
-function validateOBRPresence(message: HL7v2Message): void {
-  const obrSegments = findAllSegments(message, "OBR");
-  if (obrSegments.length === 0) {
-    throw new Error("OBR segment not found in ORU_R01 message");
-  }
-}
-
-/**
  * Parse and validate PID segment from ORU_R01 message.
  * PID is required for ORU_R01 - throws if missing.
  */
@@ -446,173 +215,11 @@ function parsePID(message: HL7v2Message): PID {
   return fromPID(pidSegment);
 }
 
-type PatientHandlingResult =
-  | { patientRef: Reference<"Patient">; patientEntry: BundleEntry | null }
-  | { error: string };
-
-/**
- * Create a conditional bundle entry for draft Patient creation.
- * Uses POST with If-None-Exist to prevent race conditions when multiple
- * ORU messages for the same non-existent patient arrive simultaneously.
- *
- * If the patient already exists (created by a concurrent message), the
- * server will return the existing patient instead of creating a duplicate.
- */
-function createConditionalPatientEntry(patient: Patient): BundleEntry {
-  const patientId = patient.id;
-  return {
-    resource: patient,
-    request: {
-      method: "POST",
-      url: "Patient",
-      ifNoneExist: `_id=${patientId}`,
-    },
-  };
-}
-
-/**
- * Handle patient lookup and draft creation for ORU_R01.
- *
- * - Resolves patient ID via priority-list rules (identitySystem.patient.rules)
- * - Looks up existing patient (does NOT update - ADT is source of truth)
- * - Creates draft patient with active=false if not found
- *
- * Race condition handling: Uses POST with If-None-Exist to ensure only one
- * draft patient is created even if multiple ORU messages for the same
- * non-existent patient arrive simultaneously.
- */
-async function handlePatient(
-  pid: PID,
-  baseMeta: Meta,
-  lookupPatient: PatientLookupFn,
-  resolvePatientId: PatientIdResolver,
-): Promise<PatientHandlingResult> {
-  const idResult = await resolvePatientId(pid.$3_identifier ?? []);
-  if ("error" in idResult) {
-    return { error: idResult.error };
+function validateOBRPresence(message: HL7v2Message): void {
+  const obrSegments = findAllSegments(message, "OBR");
+  if (obrSegments.length === 0) {
+    throw new Error("OBR segment not found in ORU_R01 message");
   }
-
-  const patientId = idResult.id;
-  const patientRef = { reference: `Patient/${patientId}` } as Reference<"Patient">;
-
-  const existingPatient = await lookupPatient(patientId);
-
-  if (existingPatient) {
-    return { patientRef, patientEntry: null };
-  }
-
-  const draftPatient = createDraftPatient(pid, patientId, baseMeta);
-  const patientEntry = createConditionalPatientEntry(draftPatient);
-
-  return { patientRef, patientEntry };
-}
-
-/**
- * Parse PV1 segment from ORU_R01 message.
- * PV1 is optional for ORU_R01 - returns undefined if missing.
- */
-function parsePV1(message: HL7v2Message): PV1 | undefined {
-  const pv1Segment = findSegment(message, "PV1");
-  if (!pv1Segment) {
-    return undefined;
-  }
-  return fromPV1(pv1Segment);
-}
-
-
-interface EncounterHandlingResult {
-  encounterRef: Reference<"Encounter"> | null;
-  encounterEntry: BundleEntry | null;
-  patientClassTaskEntry?: BundleEntry;
-  warning?: string;
-  error?: string;
-}
-
-/**
- * Create a conditional bundle entry for draft Encounter creation.
- * Uses POST with If-None-Exist to prevent race conditions when multiple
- * ORU messages for the same non-existent encounter arrive simultaneously.
- */
-function createConditionalEncounterEntry(encounter: Encounter): BundleEntry {
-  const encounterId = encounter.id;
-  return {
-    resource: encounter,
-    request: {
-      method: "POST",
-      url: "Encounter",
-      ifNoneExist: `_id=${encounterId}`,
-    },
-  };
-}
-
-/**
- * Handle encounter lookup and draft creation for ORU_R01.
- *
- * Config-driven PV1 policy:
- * - If PV1 required (config) and missing/invalid → error, processing stops
- * - If PV1 not required and missing/invalid → warning, skip Encounter, continue clinical data
- * - If PV1 present and valid → create/lookup Encounter with strict identifier
- *
- * Patient class mapping errors:
- * - Do NOT block the message (ORU clinical data is prioritized)
- * - Create Task for tracking, use fallback class (AMB)
- *
- * Race condition handling: Uses POST with If-None-Exist to ensure only one
- * draft encounter is created even if multiple ORU messages for the same
- * non-existent encounter arrive simultaneously.
- */
-async function handleEncounter(
-  pv1: PV1 | undefined,
-  patientRef: Reference<"Patient">,
-  baseMeta: Meta,
-  senderContext: SenderContext,
-  lookupEncounter: EncounterLookupFn,
-  config: Hl7v2ToFhirConfig,
-): Promise<EncounterHandlingResult> {
-  const pv1Required = config.messages?.["ORU-R01"]?.converter?.PV1?.required ?? false;
-
-  if (!pv1) {
-    if (pv1Required) {
-      return {
-        encounterRef: null,
-        encounterEntry: null,
-        error: "PV1 segment is required for ORU-R01 but missing",
-      };
-    }
-    return { encounterRef: null, encounterEntry: null };
-  }
-
-  const result = await convertPV1WithMappingSupport(pv1, senderContext);
-
-  if (result.identifierError) {
-    if (pv1Required) {
-      return { encounterRef: null, encounterEntry: null, error: result.identifierError };
-    }
-    return { encounterRef: null, encounterEntry: null, warning: result.identifierError };
-  }
-
-  const encounter = result.encounter;
-  const encounterId = encounter.id!;
-  const encounterRef = { reference: `Encounter/${encounterId}` } as Reference<"Encounter">;
-
-  const existingEncounter = await lookupEncounter(encounterId);
-  if (existingEncounter) {
-    return { encounterRef, encounterEntry: null };
-  }
-
-  encounter.status = "unknown";
-  encounter.subject = patientRef;
-  encounter.meta = { ...encounter.meta, ...baseMeta };
-
-  const encounterEntry = createConditionalEncounterEntry(encounter);
-
-  let patientClassTaskEntry: BundleEntry | undefined;
-  if (result.mappingError) {
-    const task = composeMappingTask(senderContext, result.mappingError);
-    patientClassTaskEntry = composeTaskBundleEntry(task);
-  }
-
-  return { encounterRef, encounterEntry, patientClassTaskEntry };
 }
 
 function getOrderNumber(obr: OBR): string {
@@ -655,7 +262,6 @@ async function processObservations(
       senderContext,
     );
 
-    // Check for mapping errors (can be multiple: status + LOINC)
     if (result.errors) {
       mappingErrors.push(...result.errors);
       continue;
@@ -792,12 +398,9 @@ async function processOBRGroup(
 
   const obrResult = await convertOBRWithMappingSupport(obr, senderContext);
 
-  // Collect OBR status mapping error if present
   const mappingErrors: MappingError[] = [];
   if (obrResult.error) {
     mappingErrors.push(obrResult.error);
-    // Cannot proceed without a valid DiagnosticReport status
-    // Return empty entries with the mapping error
     return { entries: [], mappingErrors };
   }
 
@@ -805,12 +408,13 @@ async function processOBRGroup(
   diagnosticReport.meta = { ...diagnosticReport.meta, ...baseMeta };
   diagnosticReport.result = [];
 
-  const { observations, mappingErrors: obxMappingErrors } = await processObservations(
-    group.observations,
-    orderNumber,
-    senderContext,
-    baseMeta,
-  );
+  const { observations, mappingErrors: obxMappingErrors } =
+    await processObservations(
+      group.observations,
+      orderNumber,
+      senderContext,
+      baseMeta,
+    );
 
   mappingErrors.push(...obxMappingErrors);
 
@@ -866,12 +470,11 @@ export async function convertORU_R01(
   context: ConverterContext,
 ): Promise<ConversionResult> {
   const { resolvePatientId, lookupPatient, lookupEncounter, config } = context;
-  const { senderContext, baseMeta } = parseMSH(parsed);
+  const { senderContext, baseMeta } = parseMSH(parsed, "ORU_R01");
   validateOBRPresence(parsed);
 
   const pid = parsePID(parsed);
 
-  // Add sender tag from PID-3 (MR identifier's assigning authority)
   const senderTag = extractSenderTag(pid);
   addSenderTagToMeta(baseMeta, senderTag);
 
@@ -898,9 +501,9 @@ export async function convertORU_R01(
     senderContext,
     lookupEncounter,
     config,
+    "ORU-R01",
   );
 
-  // PV1 required and invalid → hard error, no bundle
   if (encounterResult.error) {
     return {
       messageUpdate: {
@@ -934,17 +537,14 @@ export async function convertORU_R01(
     return buildMappingErrorResult(senderContext, allMappingErrors);
   }
 
-  // Include draft patient in bundle if created
   if (patientEntry) {
     entries.unshift(patientEntry);
   }
 
-  // Include draft encounter in bundle if created
   if (encounterEntry) {
     entries.unshift(encounterEntry);
   }
 
-  // Include patient class mapping task for tracking (does not block message)
   if (patientClassTaskEntry) {
     entries.push(patientClassTaskEntry);
   }
@@ -955,7 +555,6 @@ export async function convertORU_R01(
     entry: entries,
   };
 
-  // PV1 not required but invalid → warning, submit clinical data without Encounter
   if (encounterResult.warning) {
     return {
       bundle,

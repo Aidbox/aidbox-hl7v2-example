@@ -773,8 +773,8 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Extract ~12 reusable functions from `src/v2-to-fhir/messages/oru-r01.ts` into shared module(s) so VXU can reuse them without duplication. Pure mechanical extraction — no behavior change.
 
-- [ ] Read `src/v2-to-fhir/messages/oru-r01.ts` completely to identify all functions that VXU needs
-- [ ] Create `src/v2-to-fhir/messages/shared.ts` (or similar — check code style preferences) with extracted functions:
+- [x] Read `src/v2-to-fhir/messages/oru-r01.ts` completely to identify all functions that VXU needs
+- [x] Create `src/v2-to-fhir/messages/shared.ts` (or similar — check code style preferences) with extracted functions:
   - `parseMSH()` — extract sender context + meta tags
   - `extractMetaTags()` — MSH → Coding[] meta tags
   - `extractSenderTag()` — PID → sender Coding tag
@@ -788,11 +788,11 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - `convertDTMToDateTime()` — DTM string → FHIR dateTime
   - `convertDTMToDate()` — DTM string → FHIR date (if it exists)
   - `convertOBXToObservationResolving()` — OBX with LOINC resolution (needed for PERSON_OBSERVATION)
-- [ ] **Parameterize `handleEncounter()`:** Currently hardcodes `"ORU-R01"` config key. Add `messageTypeKey: string` parameter so VXU can pass `"VXU-V04"`
-- [ ] **Parameterize `parseMSH()` error messages** if they contain ORU-specific text
-- [ ] Update `oru-r01.ts` to import from shared module instead of defining locally
-- [ ] Verify that `oru-r01.ts` has no remaining local copies of extracted functions
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass with zero behavior change (pure refactor)
+- [x] **Parameterize `handleEncounter()`:** Currently hardcodes `"ORU-R01"` config key. Add `messageTypeKey: string` parameter so VXU can pass `"VXU-V04"`
+- [x] **Parameterize `parseMSH()` error messages** if they contain ORU-specific text
+- [x] Update `oru-r01.ts` to import from shared module instead of defining locally
+- [x] Verify that `oru-r01.ts` has no remaining local copies of extracted functions
+- [x] Run `bun test:all` and `bun run typecheck` — must pass with zero behavior change (pure refactor)
 - [ ] Stop and request user feedback before proceeding
 
 ---

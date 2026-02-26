@@ -11,12 +11,22 @@ You MUST follow this cycle:
 2. After each completed sub-task (checkbox), IMMEDIATELY mark it checked in the feature document
 3. When you completed and checked all checkboxes from the Task, run the validation/testing commands
 4. After completing the task, spawn a sub-agent to review your changes. The sub-agent prompt is below
-5. Address all review findings
+5. Address all review findings, then re-run the FULL validation/testing commands (same as step 3)
 6. Print the full review text to the user (DO NOT skip addressed/ignored issues) and ask for the user review
 
 If the user instructed you to proceed to the next task, you start following the point 1 from the instruction above again.
 
-### Review Agent Prompt (sub-agent)
+### Review Agent Spawning
+
+IMPORTANT: the initial prompt specifies which type of agent you use. If the user said you need to use codex, use this command to spawn a reviewer:
+
+```
+codex exec --model gpt-5.3-codex --sandbox workspace-write --full-auto <prompt>
+```
+
+If user didn't say anything about the reviewer, you just spawn your sub-agent.
+
+The prompt:
 
 ```
 Use skill ai-review to review implementation of Task [N] from [current_task_document_path]. Think hard. The changes are uncommited. Return your review output as your response, do not change any files. 

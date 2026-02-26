@@ -15,7 +15,10 @@ import { normalizeSystem } from "../code-mapping/coding-systems";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import type { MappingError } from "../../code-mapping/mapping-errors";
 import {
+  buildCodeableConcept,
   generateConceptMapId,
+  LoincResolutionError,
+  resolveToLoinc,
   translateCode,
   type SenderContext,
 } from "../../code-mapping/concept-map";
@@ -749,6 +752,64 @@ export async function convertOBXWithMappingSupportAsync(
 
     observation.referenceRange = [refRangeItem];
   }
+
+  return { observation };
+}
+
+// ============================================================================
+// OBX Conversion with Full Resolution (Status + LOINC)
+// ============================================================================
+
+export type OBXResolutionResult =
+  | { observation: Observation; errors?: never }
+  | { observation?: never; errors: MappingError[] };
+
+/**
+ * Convert OBX to Observation with both status mapping and LOINC resolution.
+ *
+ * Used by ORU for order-level OBX and by VXU for PERSON_OBSERVATION OBX.
+ * ORDER-level OBX in VXU is handled by CDC IIS enrichment, not this function.
+ *
+ * 1. Attempts to resolve OBX-11 status using ConceptMap lookup
+ * 2. Attempts to resolve LOINC code from OBX-3
+ * 3. Collects all errors from both operations
+ * 4. Returns observation only if BOTH succeed, otherwise returns all errors
+ */
+export async function convertOBXToObservationResolving(
+  obx: OBX,
+  orderNumber: string,
+  senderContext: SenderContext,
+): Promise<OBXResolutionResult> {
+  const errors: MappingError[] = [];
+
+  const obxResult = await convertOBXWithMappingSupportAsync(obx, orderNumber, senderContext);
+  if (obxResult.error) {
+    errors.push(obxResult.error);
+  }
+
+  // TODO refactor: probably, it should happen inside convertOBXWithMappingSupportAsync, because it already returns an object with an error field
+  let loincResolution: Awaited<ReturnType<typeof resolveToLoinc>> | undefined;
+  try {
+    loincResolution = await resolveToLoinc(obx.$3_observationIdentifier, senderContext);
+  } catch (error) {
+    if (error instanceof LoincResolutionError) {
+      errors.push({
+        localCode: error.localCode || "",
+        localDisplay: error.localDisplay,
+        localSystem: error.localSystem,
+        mappingType: "observation-code-loinc",
+      });
+    } else {
+      throw error;
+    }
+  }
+
+  if (errors.length > 0) {
+    return { errors };
+  }
+
+  const observation = obxResult.observation!;
+  observation.code = buildCodeableConcept(loincResolution!);
 
   return { observation };
 }

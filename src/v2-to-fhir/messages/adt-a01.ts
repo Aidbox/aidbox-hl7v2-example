@@ -41,7 +41,6 @@ import type {
   Coverage,
   Coding,
   Meta,
-  Resource,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertPIDToPatient } from "../segments/pid-patient";
 import { convertPV1WithMappingSupport } from "../segments/pv1-encounter";
@@ -57,6 +56,7 @@ import {
 } from "../../code-mapping/mapping-errors";
 import type { SenderContext } from "../../code-mapping/concept-map";
 import type { ConverterContext } from "../converter-context";
+import { createBundleEntry } from "../fhir-bundle";
 
 // ============================================================================
 // Helper Functions
@@ -97,24 +97,6 @@ function extractMetaTags(msh: MSH): Coding[] {
   return tags;
 }
 
-/**
- * Create a bundle entry for a resource
- */
-function createBundleEntry(
-  resource: Resource,
-  method: "PUT" | "POST" = "PUT",
-): BundleEntry {
-  const resourceType = resource.resourceType;
-  const id = (resource as { id?: string }).id;
-
-  return {
-    resource,
-    request: {
-      method,
-      url: id ? `/${resourceType}/${id}` : `/${resourceType}`,
-    },
-  };
-}
 
 /**
  * Deduplicate DG1 segments by diagnosis code+display

@@ -44,7 +44,6 @@ import type {
   Encounter,
   Coding,
   Meta,
-  Resource,
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertPIDToPatient } from "../segments/pid-patient";
@@ -56,6 +55,7 @@ import type { Hl7v2ToFhirConfig } from "../config";
 import type { PatientLookupFn, EncounterLookupFn } from "../aidbox-lookups";
 import type { PatientIdResolver } from "../identity-system/patient-id";
 import { cdcIisEnrichment } from "../ig-enrichment/cdc-iis-enrichment";
+import { createBundleEntry } from "../fhir-bundle";
 
 // ============================================================================
 // Types
@@ -66,36 +66,6 @@ interface VXUOrderGroup {
   rxa: HL7v2Segment;
   rxr?: HL7v2Segment;
   observations: Array<{ obx: HL7v2Segment; ntes: HL7v2Segment[] }>;
-}
-
-// ============================================================================
-// MSH Parsing (shared with ORU -- TODO: extract to shared module)
-// ============================================================================
-
-// TODO: The parseMSH, extractMetaTags, extractSenderTag, addSenderTagToMeta,
-// createBundleEntry functions are duplicated from oru-r01.ts.
-// Extract to a shared module (e.g., src/v2-to-fhir/shared/converter-helpers.ts)
-// as part of implementation.
-
-function extractMetaTags(msh: MSH): Coding[] {
-  // TODO: Same as oru-r01.ts extractMetaTags
-  return [];
-}
-
-function createBundleEntry(
-  resource: Resource,
-  method: "PUT" | "POST" = "PUT",
-): BundleEntry {
-  // TODO: Same as oru-r01.ts createBundleEntry
-  const resourceType = resource.resourceType;
-  const id = (resource as { id?: string }).id;
-  return {
-    resource,
-    request: {
-      method,
-      url: id ? `${resourceType}/${id}` : `${resourceType}`,
-    },
-  };
 }
 
 // ============================================================================
