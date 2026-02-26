@@ -1,5 +1,5 @@
 ---
-status: ai-reviewed
+status: planned
 reviewer-iterations: 4
 prototype-files:
   - src/v2-to-fhir/messages/vxu-v04.ts
@@ -727,3 +727,539 @@ This design was reviewed through 4 iterations (2 by Claude Opus 4.6, 1 by indepe
 - **`recorded` field:** Single authoritative rule defined
 
 Open implementation notes (I1-I15) are non-blocking and documented in the Implementation Notes section above.
+
+# Implementation Plan
+
+## Overview
+
+Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, including ORDER group extraction, RXA→Immunization mapping, CDC IIS enrichment (ORDER OBX → Immunization fields, NIP001 source interpretation), and three new preprocessors. Follows established ORU_R01 converter patterns with shared helper extraction.
+
+## Development Approach
+- Complete each task fully before moving to the next
+- Make small, focused changes
+- **CRITICAL: run `bun test:all` after every change — never skip integration tests**
+- **CRITICAL: run `bun run typecheck` alongside tests**
+- **CRITICAL: update this plan when scope changes**
+- **CRITICAL: read `.claude/code-style.md` before writing code**
+- **CRITICAL: use `hl7v2-info` skill and V2-to-FHIR IG CSVs before writing any HL7v2→FHIR mapping code**
+- **CRITICAL: verify all test fixtures with `scripts/hl7v2-inspect.sh --verify` before using them**
+
+## Validation Commands
+- `bun test:all` — Run all tests (unit + integration). **Always use this, never `bun test:unit` alone.**
+- `bun run typecheck` — TypeScript type checking
+- `scripts/hl7v2-inspect.sh <file> --verify RXA.6` — Verify fixture field positions
+
+---
+
+## Task 1: Generate HL7v2 types for VXU_V04
+
+**Goal:** Get generated TypeScript types for RXA, RXR, and VXU_V04 message structure. These are prerequisites for all subsequent tasks.
+
+- [ ] Run `bun run regenerate-hl7v2` and check if VXU_V04, RXA, and RXR types are generated in `src/hl7v2/generated/types.ts`
+- [ ] If RXA/RXR types were NOT generated (generator scope may be limited to BAR_P01+ORU_R01+ADT_A01): check generator config and add VXU_V04 to scope, then re-run
+- [ ] If generator cannot produce VXU_V04 types: create manual type definitions for RXA and RXR segments based on HL7v2 v2.8.2 spec (use `hl7v2-info` skill). These are small: RXA ~27 fields, RXR ~6 fields. Follow the generated type naming convention (`$N_fieldName`)
+- [ ] Verify the generated/manual types include all fields referenced in the design: RXA-3, RXA-5, RXA-6, RXA-7, RXA-9, RXA-10, RXA-15, RXA-16, RXA-17, RXA-18, RXA-19, RXA-20, RXA-21, RXA-22; RXR-1, RXR-2
+- [ ] Verify ORC type already exists (it should — used by ORU) and includes ORC-2, ORC-3, ORC-9, ORC-12
+- [ ] Remove the manual RXA/RXR/ORC type stubs from `src/v2-to-fhir/segments/rxa-immunization.ts` (lines 39-62) — these will be replaced by generated types
+- [ ] Run `bun run typecheck` and `bun test:all` — must pass (no behavior change, only type generation)
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 2: Extract shared helpers from ORU converter
+
+**Goal:** Extract ~12 reusable functions from `src/v2-to-fhir/messages/oru-r01.ts` into shared module(s) so VXU can reuse them without duplication. Pure mechanical extraction — no behavior change.
+
+- [ ] Read `src/v2-to-fhir/messages/oru-r01.ts` completely to identify all functions that VXU needs
+- [ ] Create `src/v2-to-fhir/messages/shared.ts` (or similar — check code style preferences) with extracted functions:
+  - `parseMSH()` — extract sender context + meta tags
+  - `extractMetaTags()` — MSH → Coding[] meta tags
+  - `extractSenderTag()` — PID → sender Coding tag
+  - `addSenderTagToMeta()` — add sender tag to resource meta
+  - `createBundleEntry()` — create transaction bundle entry
+  - `handlePatient()` — patient lookup/draft creation
+  - `createDraftPatient()` — draft patient with active=false
+  - `createConditionalPatientEntry()` — POST with ifNoneExist
+  - `handleEncounter()` — encounter lookup/creation
+  - `createConditionalEncounterEntry()` — POST with ifNoneExist
+  - `convertDTMToDateTime()` — DTM string → FHIR dateTime
+  - `convertDTMToDate()` — DTM string → FHIR date (if it exists)
+  - `convertOBXToObservationResolving()` — OBX with LOINC resolution (needed for PERSON_OBSERVATION)
+- [ ] **Parameterize `handleEncounter()`:** Currently hardcodes `"ORU-R01"` config key. Add `messageTypeKey: string` parameter so VXU can pass `"VXU-V04"`
+- [ ] **Parameterize `parseMSH()` error messages** if they contain ORU-specific text
+- [ ] Update `oru-r01.ts` to import from shared module instead of defining locally
+- [ ] Verify that `oru-r01.ts` has no remaining local copies of extracted functions
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass with zero behavior change (pure refactor)
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 3: Config and type extensions for VXU-V04
+
+**Goal:** Add VXU-V04 config entry and extend the preprocessor type system to support RXA segments.
+
+- [ ] Add `VXU-V04` entry to `config/hl7v2-to-fhir.json` matching the design:
+  ```json
+  "VXU-V04": {
+    "preprocess": {
+      "PID": { "2": ["move-pid2-into-pid3"], "3": ["inject-authority-from-msh"] },
+      "PV1": { "19": ["fix-authority-with-msh"] },
+      "ORC": { "3": ["inject-authority-into-orc3"] },
+      "RXA": { "6": ["normalize-rxa6-dose"], "9": ["normalize-rxa9-nip001"] }
+    },
+    "converter": { "PV1": { "required": false } }
+  }
+  ```
+- [ ] Extend `MessageTypeConfig.preprocess` type in `src/v2-to-fhir/config.ts` to include `RXA` alongside existing PID/PV1/ORC
+- [ ] Verify `preprocessor.ts` iteration logic handles RXA segments (it iterates all segments generically, so adding the type should be sufficient — verify)
+- [ ] Run `bun run typecheck` and `bun test:all` — must pass (config validation will fail until preprocessors exist, so may need stub IDs temporarily or add config + preprocessors together)
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 4: Preprocessor — `inject-authority-into-orc3`
+
+**Goal:** Add preprocessor that injects MSH-3/MSH-4 derived namespace into ORC-3 when authority is missing. Enables deterministic Immunization ID generation.
+
+- [ ] Add `inject-authority-into-orc3` to `src/v2-to-fhir/preprocessor-registry.ts`:
+  - If ORC-3.1 (Entity Identifier) present but ORC-3.2 (Namespace ID) and ORC-3.3 (Universal ID) both missing → inject MSH-3/MSH-4 derived namespace into ORC-3.2
+  - Same MSH namespace derivation pattern as existing `inject-authority-from-msh`
+- [ ] Write unit tests:
+  - ORC-3 with value but no authority → authority injected from MSH
+  - ORC-3 with value and existing authority → no change
+  - ORC-3 empty (no value) → no change
+  - ORC absent → no error
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 5: Preprocessor — `normalize-rxa6-dose`
+
+**Goal:** Normalize RXA-6 (Administered Amount) to handle CDC IIS sentinel "999", embedded units, and unparseable values.
+
+- [ ] Add `normalize-rxa6-dose` to `src/v2-to-fhir/preprocessor-registry.ts`:
+  - `"999"` → clear field (no warning — expected CDC IIS sentinel for unknown amount)
+  - `"0"` → preserve (valid zero dose administered)
+  - Non-numeric with parseable prefix (e.g., `"0.3 mL"`) → extract numeric value to RXA-6, move unit string to RXA-7 if RXA-7 empty; log warning with original value
+  - Completely unparseable → clear field; log warning with original value
+- [ ] Write unit tests:
+  - `"999"` → field cleared, no doseQuantity
+  - `"0"` → preserved, doseQuantity.value=0
+  - `"0.3 mL"` → RXA-6="0.3", RXA-7="mL" (if empty)
+  - `"0.3 mL"` with existing RXA-7 → RXA-6="0.3", RXA-7 unchanged
+  - `"0.3"` → preserved as-is (already numeric)
+  - `"abc"` → field cleared
+  - Empty → no change
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 6: Preprocessor — `normalize-rxa9-nip001`
+
+**Goal:** Inject "NIP001" coding system when bare "00"/"01" codes lack a system identifier.
+
+- [ ] Add `normalize-rxa9-nip001` to `src/v2-to-fhir/preprocessor-registry.ts`:
+  - If any RXA-9 CWE repeat has code `"00"` or `"01"` but empty CWE.3 (coding system) → inject `"NIP001"` as the system
+- [ ] Write unit tests:
+  - Bare `"00"` without system → NIP001 injected
+  - Bare `"01"` without system → NIP001 injected
+  - `"00"` with NIP001 already set → no change
+  - `"02"` without system → no change (not a NIP001 code)
+  - Empty RXA-9 → no error
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 7: CVX coding system support + converter routing
+
+**Goal:** Add CVX/NCIT/HL70163 to normalizeSystem and wire VXU_V04 into the converter switch.
+
+- [ ] Add CVX to `normalizeSystem()` in `src/v2-to-fhir/code-mapping/coding-systems.ts`:
+  - `"CVX"` → `"http://hl7.org/fhir/sid/cvx"`
+- [ ] Add NCIT: `"NCIT"` → appropriate FHIR URI (verify via V2-to-FHIR IG vocabulary mappings in `docs/v2-to-fhir-spec/mappings/codesystems/`)
+- [ ] Add HL70163: `"HL70163"` → appropriate FHIR URI (check V2-to-FHIR IG vocabulary mappings)
+- [ ] Add `VXU_V04` case to switch in `src/v2-to-fhir/converter.ts` + import `convertVXU_V04`
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 8: RXA segment converter — core fields
+
+**Goal:** Implement the core RXA→Immunization mapping: status, vaccineCode, occurrenceDateTime, doseQuantity, lotNumber, expirationDate.
+
+**Before writing code:** Use `hl7v2-info` skill to verify RXA field positions. Consult `docs/v2-to-fhir-spec/mappings/segments/` for RXA→Immunization CSV.
+
+- [ ] Replace prototype scaffold in `src/v2-to-fhir/segments/rxa-immunization.ts` with real implementation
+- [ ] Implement `convertRXAToImmunization()` — receives pre-computed Immunization ID from message converter. Core fields:
+  - RXA-3 → `occurrenceDateTime` (required — error if empty)
+  - RXA-5 → `vaccineCode` via CWE→CodeableConcept (CVX primary coding, alternate codings preserved)
+  - RXA-6/7 → `doseQuantity` (value from RXA-6, unit from RXA-7; omit if RXA-6 cleared by preprocessor)
+  - RXA-15 → `lotNumber` (first value if repeating)
+  - RXA-16 → `expirationDate` (first value if repeating)
+  - RXA-20/21 → `status` via `deriveImmunizationStatus()` (prototype has this — verify/keep)
+  - RXA-20=PA → additionally set `isSubpotent=true`
+- [ ] Write unit tests (design test cases #1, #2-6, #34, #41):
+  - Base fields: vaccineCode, status=completed, occurrenceDateTime, doseQuantity, lotNumber
+  - Status: RE→not-done, NA→not-done, D→entered-in-error, PA→completed+isSubpotent, empty→completed
+  - Dose: "999" cleared (no doseQuantity), "0" preserved (value=0)
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 9: RXA segment converter — statusReason, reasonCode, recorded
+
+**Goal:** Add conditional fields: statusReason (when not-done), reasonCode, and recorded date (ORC-9 primary, RXA-22 fallback).
+
+- [ ] Implement in `rxa-immunization.ts`:
+  - RXA-18 → `statusReason` (only when status=not-done)
+  - RXA-19 → `reasonCode[]` (CWE → CodeableConcept, repeating; empty → omitted)
+  - `recorded` field: `ORC-9 ?? (RXA-21=A ? RXA-22 : undefined)` — uniform rule regardless of ORC presence
+- [ ] Write unit tests (design test cases #16, #40):
+  - RXA-20=RE with RXA-18 → status=not-done, statusReason populated
+  - RXA-20=NA without RXA-18 → status=not-done, no statusReason
+  - RXA-19 with indications → reasonCode[] populated
+  - ORC-9 → recorded (primary)
+  - ORC-9 empty + RXA-21=A → recorded from RXA-22
+  - ORC-9 empty + RXA-21≠A → no recorded
+  - ORC absent + RXA-21=A + RXA-22 present → recorded from RXA-22
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 10: RXR handling — route and site
+
+**Goal:** Map RXR-1→route and RXR-2→site on the Immunization resource.
+
+**Before writing code:** Use `hl7v2-info` skill to verify RXR field positions. Consult `docs/v2-to-fhir-spec/mappings/segments/` for RXR→Immunization CSV.
+
+- [ ] Implement RXR handling in `rxa-immunization.ts` (inline function or separate):
+  - RXR-1 → `Immunization.route` (optional — skip if empty)
+  - RXR-2 → `Immunization.site` (processed independently of RXR-1)
+  - Both use CWE→CodeableConcept conversion
+- [ ] Write unit tests (design test cases #15, #37):
+  - RXR with route and site → both mapped
+  - RXR with empty RXR-1 → route omitted, site preserved
+  - RXR absent → no route, no site
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 11: ORC fields — identifiers
+
+**Goal:** Map ORC-2→PLAC identifier and ORC-3→FILL identifier on the Immunization.
+
+- [ ] Implement ORC identifier application in `rxa-immunization.ts` (when ORC present):
+  - ORC-2 → `identifier` with type=PLAC (placer order number)
+  - ORC-3 → `identifier` with type=FILL (filler order number)
+  - When ORC absent → no identifiers
+  - When ORC present but ORC-2/ORC-3 empty → no identifiers for that field
+- [ ] Write unit tests (design test cases #10, #13, #33):
+  - ORC-3 → FILL identifier
+  - ORC-2 → PLAC identifier
+  - ORC present but ORC-3 and ORC-2 both empty → no identifiers
+  - ORC absent → no identifiers
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 12: Performers — RXA-10 and ORC-12
+
+**Goal:** Create Practitioner from RXA-10 (administering provider) and PractitionerRole from ORC-12 (ordering provider), link via Immunization.performer with function codes.
+
+- [ ] Implement performer creation in `rxa-immunization.ts`:
+  - RXA-10 → `performer` with function=AP (`http://terminology.hl7.org/CodeSystem/v2-0443`), actor=`Practitioner/{id}` via `convertXCNToPractitioner()`
+  - ORC-12 → `performer` with function=OP (`http://terminology.hl7.org/CodeSystem/v2-0443`), actor=`PractitionerRole/{id}` via `convertXCNToPractitionerRole()`
+  - Return Practitioner/PractitionerRole resources as additional bundle entries
+  - Skip performer when XCN is empty
+  - When ORC absent → no ordering provider performer
+- [ ] Write unit tests (design test cases #9, #33, #45, #46):
+  - RXA-10 creates Practitioner + performer with function=AP
+  - ORC-12 creates PractitionerRole + performer with function=OP
+  - Function coding includes system URI
+  - RXA-10 empty → no administering performer
+  - ORC absent → no ordering performer
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 13: IGEnrichment interface
+
+**Goal:** Define the IGEnrichment contract — a minimal interface for IG-specific post-conversion enrichments.
+
+- [ ] Finalize `src/v2-to-fhir/ig-enrichment/ig-enrichment.ts`:
+  ```typescript
+  export interface IGEnrichment {
+    name: string;
+    enrich(parsedMessage: HL7v2Message, result: ConversionResult, context: SenderContext): ConversionResult;
+  }
+  ```
+- [ ] Verify imports are correct (HL7v2Message, ConversionResult, SenderContext types)
+- [ ] Run `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 14: CDC IIS enrichment — RXA-9 NIP001 interpretation
+
+**Goal:** Implement NIP001 source code interpretation (00=new/primary, 01=historical).
+
+- [ ] Implement `interpretRXA9Source()` in `src/v2-to-fhir/ig-enrichment/cdc-iis-enrichment.ts`:
+  - Find NIP001-coded entry in RXA-9 repeats (CWE.3 = "NIP001" or contains "NIP001")
+  - `"00"` → `{ primarySource: true }`
+  - `"01"` → `{ primarySource: false, reportOrigin: { coding: [{ code: "01", display: "Historical", system: "urn:oid:2.16.840.1.114222.4.5.274" }] } }`
+  - No NIP001 entry → default `{ primarySource: true }`
+  - Unknown NIP001 code → default `{ primarySource: true }`
+  - Multiple RXA-9 entries → find the NIP001-coded one, ignore others
+- [ ] Write unit tests (design test cases #7, #8):
+  - NIP001 "01" → primarySource=false, reportOrigin populated
+  - NIP001 "00" → primarySource=true
+  - No NIP001 entry → primarySource=true
+  - Unknown NIP001 code → primarySource=true
+  - Multiple RXA-9 entries with one NIP001 → correct one found
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 15: CDC IIS enrichment — simple ORDER OBX handlers
+
+**Goal:** Implement the non-VIS ORDER OBX handlers: programEligibility, fundingSource, protocolApplied, note.
+
+- [ ] Implement ORDER OBX handlers in `cdc-iis-enrichment.ts` for:
+  - `64994-7` → `Immunization.programEligibility` (CWE → CodeableConcept)
+  - `30963-3` → `Immunization.fundingSource` (CWE → CodeableConcept)
+  - `30973-2` → `Immunization.protocolApplied[].doseNumberString`
+  - `48767-8` → `Immunization.note[].text` (annotation comment)
+- [ ] Implement positional correlation: ORDER group N → Nth Immunization in bundle
+- [ ] Implement hard error on unknown LOINC code in ORDER OBX: set `messageUpdate.status = "error"` and `messageUpdate.error` naming the unknown code
+- [ ] Implement hard error when ORDER OBX-3.3 is not `"LN"` (LOINC)
+- [ ] Write unit tests (design test cases #19, #20, #22, #23, #38, #42, #44):
+  - OBX 64994-7 → programEligibility
+  - OBX 30963-3 → fundingSource
+  - OBX 30973-2 → protocolApplied.doseNumber
+  - OBX 48767-8 → note.text
+  - Unknown LOINC → hard error
+  - Non-LOINC OBX-3 → hard error
+  - Positional matching works for ORC-less ORDER group
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 16: CDC IIS enrichment — VIS OBX grouping
+
+**Goal:** Implement VIS (Vaccine Information Statement) OBX grouping by OBX-4 sub-ID into `education[]` entries.
+
+- [ ] Implement VIS OBX handlers in `cdc-iis-enrichment.ts`:
+  - `69764-9` → `education[].documentType` (VIS document type)
+  - `29768-9` → `education[].publicationDate` (VIS publication date)
+  - `29769-7` → `education[].presentationDate` (VIS presentation date)
+  - `30956-7` → `education[].reference` (VIS document URI)
+- [ ] Implement grouping by OBX-4 sub-ID: entries sharing same sub-ID form a single `education[]` entry
+- [ ] Handle partial VIS entries (e.g., doc type without dates) — still valid
+- [ ] Write unit tests (design test cases #21, #43):
+  - VIS OBX group (69764-9 + 29768-9 + 29769-7) with same OBX-4 → single education[] entry
+  - VIS OBX 30956-7 → education.reference
+  - Multiple VIS groups with different OBX-4 → multiple education[] entries
+  - Partial VIS (doc type without dates) → education entry with only documentType
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 17: VXU message converter — ORDER group extraction
+
+**Goal:** Implement `groupVXUOrders()` and `extractPersonObservations()` — the segment grouping logic that splits the flat VXU segment list into structured groups.
+
+- [ ] Implement `groupVXUOrders()` in `src/v2-to-fhir/messages/vxu-v04.ts`:
+  - Start new ORDER group on ORC or RXA (whichever appears)
+  - RXA without preceding ORC is a valid group (ORC optional)
+  - Collect optional RXR and OBX+NTE for each group
+  - Error if an ORDER group has no RXA
+  - Return `VXUOrderGroup[]`
+- [ ] Implement `extractPersonObservations()`:
+  - Collect OBX (+ optional NTE) segments before the first ORC or RXA
+  - These are PERSON_OBSERVATION (patient-level, not order-level)
+- [ ] Write unit tests:
+  - Single ORC+RXA+RXR+OBX → one group with all parts
+  - RXA without ORC → valid group with orc=undefined
+  - Multiple ORDER groups → correct count and contents
+  - ORC without following RXA → error
+  - OBX before first ORC/RXA → extracted as person observations
+  - No ORDER segments → empty array
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 18: VXU message converter — Immunization ID generation
+
+**Goal:** Implement `generateImmunizationId()` — deterministic ID from ORC-3/ORC-2/MSH fallback.
+
+- [ ] Implement `generateImmunizationId()` in `vxu-v04.ts`:
+  - Path 1: ORC present with ORC-3 (filler) → `sanitize(${authority}-${value})`
+  - Path 2: ORC present with ORC-2 (placer), ORC-3 empty → `sanitize(${authority}-${value})`
+  - Path 3: ORC absent or both empty → `sanitize(${mshNamespace}-${messageControlId}-imm-${orderIndex})`
+  - `sanitize()`: lowercase, replace non-alphanumeric with hyphens
+- [ ] Write unit tests (design test cases #11, #12, #13, #32):
+  - ORC-3 with authority → authority-scoped ID
+  - ORC-3 empty, ORC-2 with authority → placer-based ID
+  - ORC present, both empty → MSH fallback ID
+  - ORC absent → MSH fallback ID with orderIndex
+  - Sanitization: special characters replaced
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 19: VXU message converter — main conversion flow
+
+**Goal:** Wire everything together in `convertVXU_V04()` — the main entry point.
+
+- [ ] Implement `convertVXU_V04()` in `vxu-v04.ts` following the design's conversion flow:
+  1. `parseMSH()` → sender context + meta tags (from shared module)
+  2. Parse PID → `handlePatient()` → Patient resource (from shared module)
+  3. Parse PV1 (optional) → `handleEncounter()` with `"VXU-V04"` key (from shared module)
+  4. `extractPersonObservations()` → convert each to standalone Observation via `convertOBXToObservationResolving()`. Handle mapping errors.
+  5. `groupVXUOrders()` → iterate ORDER groups
+  6. For each ORDER: `generateImmunizationId()` → `convertRXAToImmunization()` → collect Immunization + performer resources
+  7. `cdcIisEnrichment.enrich()` → post-process with ORDER OBX + RXA-9 NIP001
+  8. Link Encounter references to Immunizations (if Encounter exists)
+  9. Build transaction bundle with all entries
+  10. Return `ConversionResult` with bundle + messageUpdate
+- [ ] Handle mapping errors from PERSON_OBSERVATION OBX (same pattern as ORU)
+- [ ] Write unit tests (design test cases #14, #17, #24-26):
+  - Missing RXA → error status
+  - Multiple ORDER groups → multiple Immunizations with distinct IDs
+  - PV1 missing → no Encounter, Immunization.encounter omitted
+  - PV1 present → Encounter created, Immunization.encounter reference set
+  - Unknown patient → draft Patient with active=false
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 20: VXU message converter — PERSON_OBSERVATION and ORC-less orders
+
+**Goal:** Cover remaining message-level test cases: PERSON_OBSERVATION handling, ORC-less orders, and preprocessor integration.
+
+- [ ] Write unit tests (design test cases #18, #32-33, #34-36, #41):
+  - PERSON_OBSERVATION OBX before first ORC/RXA → standalone Observation with subject=Patient
+  - ORDER without ORC → Immunization with fallback ID, no FILL/PLAC identifiers, no ordering provider
+  - ORDER without ORC + RXA-21=A + RXA-22 → recorded from RXA-22 fallback
+  - Preprocessor integration: RXA-6 "999" → no doseQuantity
+  - Preprocessor integration: RXA-6 "0.3 mL" → extracted value
+  - Preprocessor integration: RXA-9 bare "00" → NIP001 injected, primarySource=true
+  - RXA-6 "0" → doseQuantity.value=0
+- [ ] Fix any issues discovered during testing
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 21: Verify test fixtures
+
+**Goal:** Verify all 10 VXU test fixtures have correct field positions before integration tests.
+
+- [ ] Run `scripts/hl7v2-inspect.sh` on each fixture to verify field positions:
+  - `test/fixtures/hl7v2/vxu-v04/base.hl7` — verify RXA-5 (vaccineCode), RXA-6 (dose), RXA-20 (status), ORC-3 (filler), ORC-12 (ordering provider), RXR-1 (route), RXR-2 (site)
+  - `test/fixtures/hl7v2/vxu-v04/not-administered.hl7` — verify RXA-20=RE, RXA-18 (statusReason)
+  - `test/fixtures/hl7v2/vxu-v04/historical.hl7` — verify RXA-9 (NIP001 "01")
+  - `test/fixtures/hl7v2/vxu-v04/entered-in-error.hl7` — verify RXA-21=D
+  - `test/fixtures/hl7v2/vxu-v04/with-person-observations.hl7` — verify OBX before ORC/RXA
+  - `test/fixtures/hl7v2/vxu-v04/multiple-orders.hl7` — verify 2 ORDER groups
+  - `test/fixtures/hl7v2/vxu-v04/no-orc.hl7` — verify no ORC present
+  - `test/fixtures/hl7v2/vxu-v04/no-orc-identifiers.hl7` — verify ORC present but empty fields
+  - `test/fixtures/hl7v2/vxu-v04/error/missing-rxa.hl7` — verify ORC without RXA
+  - `test/fixtures/hl7v2/vxu-v04/error/unknown-order-obx.hl7` — verify unknown LOINC code
+- [ ] Fix any field position errors discovered
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 22: Integration tests — happy path
+
+**Goal:** E2E test: submit VXU via processing pipeline, verify Immunization + Patient created in Aidbox.
+
+- [ ] Read existing integration test patterns in `test/integration/v2-to-fhir/oru-r01.integration.test.ts`
+- [ ] Implement in `test/integration/v2-to-fhir/vxu-v04.integration.test.ts`:
+  - #27: Happy path — submit `base.hl7`, verify Immunization resource in Aidbox with correct vaccineCode, status, occurrenceDateTime, route, site, performers
+  - #31: Idempotent reprocessing — same VXU processed twice produces same resources (deterministic IDs)
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 23: Integration tests — CDC IIS, PERSON_OBS, multiple orders
+
+**Goal:** E2E tests for CDC IIS enrichment, person observations, and multiple ORDER groups.
+
+- [ ] Implement in `vxu-v04.integration.test.ts`:
+  - #28: Submit message with CDC IIS OBX → verify programEligibility and education on Immunization
+  - #29: Submit `with-person-observations.hl7` → verify standalone Observation created
+  - #30: Submit `multiple-orders.hl7` → verify multiple Immunizations with distinct IDs
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 24: Integration tests — edge cases and errors
+
+**Goal:** E2E tests for no-ORC, not-administered, and error conditions.
+
+- [ ] Implement in `vxu-v04.integration.test.ts`:
+  - #39: Submit `no-orc.hl7` → verify Immunization created with fallback ID
+  - Not-administered: submit `not-administered.hl7` → verify status=not-done
+  - Error: submit `error/unknown-order-obx.hl7` → verify message gets error status
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 25: Documentation
+
+- [ ] Update CLAUDE.md:
+  - Add VXU_V04 to the "Workflows" section alongside ORU/ADT
+  - Add `rxa-immunization.ts` to segment converters list in Project Structure
+  - Add `ig-enrichment/` directory to Project Structure
+  - Mention VXU in the "ORU Processing" section title (rename to "Incoming Message Processing" or similar if appropriate)
+- [ ] Record the ADR for "Unknown ORDER OBX LOINC Codes → Hard Error" in project documentation (the design specifies `docs/developer-guide/adr/` or equivalent)
+- [ ] Add inline documentation for complex functions:
+  - `groupVXUOrders()` — explain grouping algorithm
+  - `generateImmunizationId()` — explain 3-level fallback
+  - VIS OBX grouping by sub-ID — explain correlation logic
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 26: Cleanup design artifacts
+
+- [ ] Remove all `DESIGN PROTOTYPE: 2026-02-23-vxu-design-final.md` comments from codebase
+- [ ] Delete any empty scaffold files that were replaced
+- [ ] Update design document status to `implemented`
+- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-23-vxu-design-final" src/ test/`
+- [ ] Run `bun test:all` and `bun run typecheck` — final verification
+
+---
+
+## Post-Completion Verification
+
+1. **Functional test**: Submit the `base.hl7` fixture through the processing pipeline (via `/process-incoming-messages`). Verify Immunization resource appears in Aidbox with correct vaccineCode, status, occurrenceDateTime, route, site, performers.
+2. **CDC IIS test**: Submit a message with ORDER OBX (64994-7, 30963-3, VIS group). Verify programEligibility, fundingSource, and education[] populated on Immunization.
+3. **Edge case — no ORC**: Submit `no-orc.hl7`. Verify Immunization created with MSH-derived fallback ID, no identifiers, no ordering provider.
+4. **Edge case — historical**: Submit `historical.hl7`. Verify primarySource=false and reportOrigin populated.
+5. **Edge case — entered-in-error**: Submit `entered-in-error.hl7`. Verify status=entered-in-error.
+6. **Error case**: Submit `error/unknown-order-obx.hl7`. Verify message gets error status naming the unknown LOINC code.
+7. **Idempotency**: Submit `base.hl7` twice. Verify same Immunization ID, no duplicates.
+8. **No regressions**: All existing ADT and ORU tests pass unchanged.
+9. **Cleanup verified**: No DESIGN PROTOTYPE comments remain in codebase.
