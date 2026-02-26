@@ -1,6 +1,5 @@
-// @ts-nocheck
 // AUTO-GENERATED - HL7v2 Table Value Types
-// Generated for: BAR_P01, ORU_R01
+// Generated for: BAR_P01, ORU_R01, VXU_V04
 
 /** Table 0001 - AdministrativeSex */
 export const AdministrativeSex = {
@@ -1036,6 +1035,153 @@ export const AcceptApplicationAcknowledgmentConditions = {
 } as const;
 export type AcceptApplicationAcknowledgmentConditions = typeof AcceptApplicationAcknowledgmentConditions[keyof typeof AcceptApplicationAcknowledgmentConditions];
 
+/** Table 0162 - RouteOfAdministration */
+export const RouteOfAdministration = {
+  ApplyExternally: "AP",
+  Buccal: "B",
+  Dental: "DT",
+  Epidural: "EP",
+  EndotrachialTube: "ET", // Endotrachial Tube*
+  GastrostomyTube: "GTT",
+  GuIrrigant: "GU",
+  ImmerseSoakBodyPart: "IMR",
+  IntraArterial: "IA",
+  Intrabursal: "IB",
+  Intracardiac: "IC",
+  IntracervicalUterus: "ICV",
+  Intradermal: "ID",
+  Inhalation: "IH",
+  IntrahepaticArtery: "IHA",
+  Intramuscular: "IM",
+  Intranasal: "IN",
+  Intraocular: "IO",
+  Intraperitoneal: "IP",
+  Intrasynovial: "IS",
+  Intrathecal: "IT",
+  Intrauterine: "IU",
+  Intravenous: "IV",
+  MouthThroat: "MTH",
+  MucousMembrane: "MM",
+  Nasal: "NS",
+  Nasogastric: "NG",
+  NasalProngs: "NP", // Nasal Prongs*
+  NasotrachialTube: "NT",
+  Ophthalmic: "OP",
+  Otic: "OT",
+  OtherMiscellaneous: "OTH",
+  Perfusion: "PF",
+  Oral: "PO",
+  Rectal: "PR",
+  RebreatherMask: "RM", // Rebreather Mask*
+  SoakedDressing: "SD",
+  Subcutaneous: "SC",
+  Sublingual: "SL",
+  Topical: "TP",
+  Tracheostomy: "TRA", // Tracheostomy*
+  Transdermal: "TD",
+  Translingual: "TL",
+  Urethral: "UR",
+  Vaginal: "VG",
+  Ventimask: "VM",
+  Wound: "WND",
+} as const;
+export type RouteOfAdministration = typeof RouteOfAdministration[keyof typeof RouteOfAdministration];
+
+/** Table 0163 - BodySite */
+export const BodySite = {
+  Nebulized: "LNB",
+  LeftVastusLateralis: "LV",
+  BilateralEars: "BE",
+  BilateralEyes: "OU",
+  BilateralNares: "BN",
+  Buttock: "BU",
+  ChestTube: "CT",
+  LeftArm: "LA",
+  LeftAnteriorChest: "LAC",
+  LeftAntecubitalFossa: "LACF",
+  LeftDeltoid: "LD",
+  LeftEar: "LE",
+  LeftExternalJugular: "LEJ",
+  LeftEye: "OS",
+  LeftFoot: "LF",
+  LeftGluteusMedius: "LG",
+  LeftHand: "LH",
+  LeftInternalJugular: "LIJ",
+  LeftLowerAbdQuadrant: "LLAQ",
+  LeftLowerForearm: "LLFA",
+  LeftMidForearm: "LMFA",
+  LeftNaris: "LN",
+  LeftPosteriorChest: "LPC",
+  LeftSubclavian: "LSC",
+  LeftThigh: "LT",
+  LeftUpperArm: "LUA",
+  LeftUpperAbdQuadrant: "LUAQ",
+  LeftUpperForearm: "LUFA",
+  LeftVentragluteal: "LVG",
+  LeftVastusLateralis_LVL: "LVL",
+  Nebulized_NB: "NB",
+  Perianal: "PA",
+  Perineal: "PERIN",
+  RightArm: "RA",
+  RightAnteriorChest: "RAC",
+  RightAntecubitalFossa: "RACF",
+  RightDeltoid: "RD",
+  RightEar: "RE",
+  RightExternalJugular: "REJ",
+  RightEye: "OD",
+  RightFoot: "RF",
+  RightGluteusMedius: "RG",
+  RightHand: "RH",
+  RightInternalJugular: "RIJ",
+  RtLowerAbdQuadrant: "RLAQ",
+  RightLowerForearm: "RLFA",
+  RightMidForearm: "RMFA",
+  RightNaris: "RN",
+  RightPosteriorChest: "RPC",
+  RightSubclavian: "RSC",
+  RightThigh: "RT",
+  RightUpperArm: "RUA",
+  RightUpperAbdQuadrant: "RUAQ",
+  RightUpperForearm: "RUFA",
+  RightVastusLateralis: "RVL",
+  RightVentragluteal: "RVG",
+} as const;
+export type BodySite = typeof BodySite[keyof typeof BodySite];
+
+/** Table 0164 - AdministrationDevice */
+export const AdministrationDevice = {
+  Applicator: "AP",
+  Buretrol: "BT",
+  HeparinLock: "HL",
+  Ippb: "IPPB",
+  IvPump: "IVP",
+  IvSoluset: "IVS",
+  MeteredInhaler: "MI",
+  Nebulizer: "NEB",
+  PcaPump: "PCA",
+} as const;
+export type AdministrationDevice = typeof AdministrationDevice[keyof typeof AdministrationDevice];
+
+/** Table 0165 - AdministrationMethod */
+export const AdministrationMethod = {
+  Chew: "CH",
+  Dissolve: "DI",
+  Dust: "DU",
+  Infiltrate: "IF",
+  Insert: "IS",
+  Irrigate: "IR",
+  IvPiggyback: "IVPB",
+  IvPush: "IVP",
+  Nebulized: "NB",
+  Paint: "PT",
+  Perfuse: "PF",
+  Shampoo: "SH",
+  Soak: "SO",
+  Wash: "WA",
+  Wipe: "WI",
+} as const;
+export type AdministrationMethod = typeof AdministrationMethod[keyof typeof AdministrationMethod];
+
 /** Table 0173 - CoordinationOfBenefits */
 export const CoordinationOfBenefits = {
   Coordination: "CO",
@@ -1441,6 +1587,24 @@ export const OrganDonorCodes = {
   Unknown: "U",
 } as const;
 export type OrganDonorCodes = typeof OrganDonorCodes[keyof typeof OrganDonorCodes];
+
+/** Table 0322 - CompletionStatus */
+export const CompletionStatus = {
+  Complete: "CP",
+  Refused: "RE",
+  NotAdministered: "NA",
+  PartiallyAdministered: "PA",
+} as const;
+export type CompletionStatus = typeof CompletionStatus[keyof typeof CompletionStatus];
+
+/** Table 0323 - ActionCodes */
+export const ActionCodes = {
+  AddInsert: "A",
+  Delete: "D",
+  Update: "U",
+  NoChange: "X",
+} as const;
+export type ActionCodes = typeof ActionCodes[keyof typeof ActionCodes];
 
 /** Table 0326 - VisitIndicator */
 export const VisitIndicator = {
@@ -1874,6 +2038,14 @@ export const IdentityReliability = {
   PatientPersonNameIsAnAlias: "AL",
 } as const;
 export type IdentityReliability = typeof IdentityReliability[keyof typeof IdentityReliability];
+
+/** Table 0480 - PharmacyOrderTypes */
+export const PharmacyOrderTypes = {
+  Medication: "M",
+  IvLargeVolumeSolutions: "S",
+  OtherSolutionAsMedicationOrders: "O",
+} as const;
+export type PharmacyOrderTypes = typeof PharmacyOrderTypes[keyof typeof PharmacyOrderTypes];
 
 /** Table 0482 - OrderType */
 export const OrderType = {
@@ -2357,6 +2529,27 @@ export const SpecimenChildRole = {
   ModifiedFromOriginalSpecimen: "M",
 } as const;
 export type SpecimenChildRole = typeof SpecimenChildRole[keyof typeof SpecimenChildRole];
+
+/** Table 0495 - BodySiteModifier */
+export const BodySiteModifier = {
+  Anterior: "ANT",
+  Bilateral: "BIL",
+  Distal: "DIS",
+  External: "EXT",
+  Lateral: "LAT",
+  Left: "L",
+  Lower: "LOW",
+  Medial: "MED",
+  Posterior: "POS",
+  Proximal: "PRO",
+  QuadrantLeftLower: "LLQ",
+  QuadrantLeftUpper: "LUQ",
+  QuadrantRightLower: "RLQ",
+  QuadrantRightUpper: "RUQ",
+  Right: "R",
+  Upper: "UPP",
+} as const;
+export type BodySiteModifier = typeof BodySiteModifier[keyof typeof BodySiteModifier];
 
 /** Table 0503 - SequenceResultsFlag */
 export const SequenceResultsFlag = {

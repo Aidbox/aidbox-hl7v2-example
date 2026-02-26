@@ -115,6 +115,7 @@ Existing preprocessors normalize data the sender actually sent (fix authority, m
 
 | File | Change Type | Description |
 |------|-------------|-------------|
+| `src/hl7v2/wrappers/vxu-v04.ts` | **New** | VXU_V04 message structure wrapper: VXUOrderGroup, groupVXUOrders(), extractPersonObservations() |
 | `src/v2-to-fhir/messages/vxu-v04.ts` | **New** | VXU_V04 message converter |
 | `src/v2-to-fhir/segments/rxa-immunization.ts` | **New** | RXA+RXR+ORC → Immunization segment converter |
 | `src/v2-to-fhir/ig-enrichment/ig-enrichment.ts` | **New** | IGEnrichment interface definition |
@@ -553,6 +554,8 @@ These are non-blocking items identified during review that implementers should b
 
 7. **RXA-10 is "Backward compatible" [B] in v2.8.2**, deprecated in favor of PRT segments. Using RXA-10 is pragmatically correct for real-world v2.5.1 senders.
 
+8. **`@atomic-ehr/hl7v2` uses v2.5 message structures, not v2.8.2.** Two gaps for VXU_V04: (a) PERSON_OBSERVATION group is missing (added in v2.8.2), (b) ORC is marked required in ORDER (v2.5 spec says [1..1], but real-world senders omit it). Both are corrected via a wrapper in `src/hl7v2/wrappers/vxu-v04.ts` that provides `VXUOrderGroup` (with optional ORC), `groupVXUOrders()`, and `extractPersonObservations()`. The library's stable release (0.0.1) has a breaking field naming convention change, so upgrading is not currently viable.
+
 ## Known Limitations
 
 1. **MSH-3 empty senders will fail.** Senders with empty MSH-3 (observed in real-world data, finding F8) will fail at `parseMSH`. This is intentional — sender-specific code mapping requires sender identification. Workarounds: fix sender configuration, or future ticket to add MSH-level preprocessor for default application name injection. This is a cross-cutting concern shared by ADT, ORU, and VXU converters.
@@ -755,13 +758,13 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Get generated TypeScript types for RXA, RXR, and VXU_V04 message structure. These are prerequisites for all subsequent tasks.
 
-- [ ] Run `bun run regenerate-hl7v2` and check if VXU_V04, RXA, and RXR types are generated in `src/hl7v2/generated/types.ts`
-- [ ] If RXA/RXR types were NOT generated (generator scope may be limited to BAR_P01+ORU_R01+ADT_A01): check generator config and add VXU_V04 to scope, then re-run
-- [ ] If generator cannot produce VXU_V04 types: create manual type definitions for RXA and RXR segments based on HL7v2 v2.8.2 spec (use `hl7v2-info` skill). These are small: RXA ~27 fields, RXR ~6 fields. Follow the generated type naming convention (`$N_fieldName`)
-- [ ] Verify the generated/manual types include all fields referenced in the design: RXA-3, RXA-5, RXA-6, RXA-7, RXA-9, RXA-10, RXA-15, RXA-16, RXA-17, RXA-18, RXA-19, RXA-20, RXA-21, RXA-22; RXR-1, RXR-2
-- [ ] Verify ORC type already exists (it should — used by ORU) and includes ORC-2, ORC-3, ORC-9, ORC-12
-- [ ] Remove the manual RXA/RXR/ORC type stubs from `src/v2-to-fhir/segments/rxa-immunization.ts` (lines 39-62) — these will be replaced by generated types
-- [ ] Run `bun run typecheck` and `bun test:all` — must pass (no behavior change, only type generation)
+- [x] Run `bun run regenerate-hl7v2` and check if VXU_V04, RXA, and RXR types are generated in `src/hl7v2/generated/types.ts`
+- [x] If RXA/RXR types were NOT generated (generator scope may be limited to BAR_P01+ORU_R01+ADT_A01): check generator config and add VXU_V04 to scope, then re-run
+- [x] If generator cannot produce VXU_V04 types: create manual type definitions for RXA and RXR segments based on HL7v2 v2.8.2 spec (use `hl7v2-info` skill). These are small: RXA ~27 fields, RXR ~6 fields. Follow the generated type naming convention (`$N_fieldName`)
+- [x] Verify the generated/manual types include all fields referenced in the design: RXA-3, RXA-5, RXA-6, RXA-7, RXA-9, RXA-10, RXA-15, RXA-16, RXA-17, RXA-18, RXA-19, RXA-20, RXA-21, RXA-22; RXR-1, RXR-2
+- [x] Verify ORC type already exists (it should — used by ORU) and includes ORC-2, ORC-3, ORC-9, ORC-12
+- [x] Remove the manual RXA/RXR/ORC type stubs from `src/v2-to-fhir/segments/rxa-immunization.ts` (lines 39-62) — these will be replaced by generated types
+- [x] Run `bun run typecheck` and `bun test:all` — must pass (no behavior change, only type generation)
 - [ ] Stop and request user feedback before proceeding
 
 ---
@@ -1078,9 +1081,13 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 ## Task 17: VXU message converter — ORDER group extraction
 
-**Goal:** Implement `groupVXUOrders()` and `extractPersonObservations()` — the segment grouping logic that splits the flat VXU segment list into structured groups.
+**Goal:** Implement `groupVXUOrders()` and `extractPersonObservations()` — the segment grouping logic that splits the flat VXU segment list into structured groups. These are HL7v2 message structure concerns (correcting library gaps), so they live in `src/hl7v2/wrappers/vxu-v04.ts`.
 
-- [ ] Implement `groupVXUOrders()` in `src/v2-to-fhir/messages/vxu-v04.ts`:
+- [ ] Create `src/hl7v2/wrappers/vxu-v04.ts` with `VXUOrderGroup` interface and grouping functions:
+  - `VXUOrderGroup`: interface with `orc?` (optional — library marks ORC required per v2.5 spec, but real-world senders omit it)
+  - `groupVXUOrders()`: groups flat segment list into ORDER groups
+  - `extractPersonObservations()`: extracts OBX before first ORC/RXA (PERSON_OBSERVATION — v2.8.2 addition not in library's v2.5 schema)
+- [ ] Implement `groupVXUOrders()`:
   - Start new ORDER group on ORC or RXA (whichever appears)
   - RXA without preceding ORC is a valid group (ORC optional)
   - Collect optional RXR and OBX+NTE for each group
@@ -1089,6 +1096,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 - [ ] Implement `extractPersonObservations()`:
   - Collect OBX (+ optional NTE) segments before the first ORC or RXA
   - These are PERSON_OBSERVATION (patient-level, not order-level)
+- [ ] Remove the `VXUOrderGroup` interface and stub functions from `src/v2-to-fhir/messages/vxu-v04.ts`, import from wrapper instead
 - [ ] Write unit tests:
   - Single ORC+RXA+RXR+OBX → one group with all parts
   - RXA without ORC → valid group with orc=undefined

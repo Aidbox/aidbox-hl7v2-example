@@ -1,6 +1,5 @@
-// @ts-nocheck
 // AUTO-GENERATED - HL7v2 Message Builders
-// Generated for: BAR_P01, ORU_R01
+// Generated for: BAR_P01, ORU_R01, VXU_V04
 
 import type { HL7v2Segment, HL7v2Message } from "./types";
 import {
@@ -31,6 +30,8 @@ import {
   type PV1,
   type PV2,
   type ROL,
+  type RXA,
+  type RXR,
   type SFT,
   type SPM,
   type TQ1,
@@ -650,6 +651,270 @@ export class ORU_R01Builder {
   }
 }
 
+export interface VXU_V04_PATIENT {
+  pv1: HL7v2Segment;
+  pv2?: HL7v2Segment;
+}
+
+export class VXU_V04_PATIENTBuilder {
+  private group: Partial<VXU_V04_PATIENT> = {};
+
+  pv1(segment: PV1): this {
+    this.group.pv1 = toSegment("PV1", segment);
+    return this;
+  }
+
+  pv2(segment: PV2): this {
+    this.group.pv2 = toSegment("PV2", segment);
+    return this;
+  }
+
+  build(): VXU_V04_PATIENT {
+    return this.group as VXU_V04_PATIENT;
+  }
+}
+
+export interface VXU_V04_INSURANCE {
+  in1: HL7v2Segment;
+  in2?: HL7v2Segment;
+  in3?: HL7v2Segment;
+}
+
+export class VXU_V04_INSURANCEBuilder {
+  private group: Partial<VXU_V04_INSURANCE> = {};
+
+  in1(segment: IN1): this {
+    this.group.in1 = toSegment("IN1", segment);
+    return this;
+  }
+
+  in2(segment: IN2): this {
+    this.group.in2 = toSegment("IN2", segment);
+    return this;
+  }
+
+  in3(segment: IN3): this {
+    this.group.in3 = toSegment("IN3", segment);
+    return this;
+  }
+
+  build(): VXU_V04_INSURANCE {
+    return this.group as VXU_V04_INSURANCE;
+  }
+}
+
+export interface VXU_V04_TIMING {
+  tq1: HL7v2Segment;
+  tq2?: HL7v2Segment[];
+}
+
+export class VXU_V04_TIMINGBuilder {
+  private group: Partial<VXU_V04_TIMING> = {};
+
+  tq1(segment: TQ1): this {
+    this.group.tq1 = toSegment("TQ1", segment);
+    return this;
+  }
+
+  addTQ2(segment: TQ2): this {
+    if (!this.group.tq2) this.group.tq2 = [];
+    this.group.tq2.push(toSegment("TQ2", segment));
+    return this;
+  }
+
+  build(): VXU_V04_TIMING {
+    return this.group as VXU_V04_TIMING;
+  }
+}
+
+export interface VXU_V04_OBSERVATION {
+  obx: HL7v2Segment;
+  nte?: HL7v2Segment[];
+}
+
+export class VXU_V04_OBSERVATIONBuilder {
+  private group: Partial<VXU_V04_OBSERVATION> = {};
+
+  obx(segment: OBX): this {
+    this.group.obx = toSegment("OBX", segment);
+    return this;
+  }
+
+  addNTE(segment: NTE): this {
+    if (!this.group.nte) this.group.nte = [];
+    this.group.nte.push(toSegment("NTE", segment));
+    return this;
+  }
+
+  build(): VXU_V04_OBSERVATION {
+    return this.group as VXU_V04_OBSERVATION;
+  }
+}
+
+export interface VXU_V04_ORDER {
+  orc: HL7v2Segment;
+  timing?: VXU_V04_TIMING[];
+  rxa: HL7v2Segment;
+  rxr?: HL7v2Segment;
+  observation?: VXU_V04_OBSERVATION[];
+}
+
+export class VXU_V04_ORDERBuilder {
+  private group: Partial<VXU_V04_ORDER> = {};
+
+  orc(segment: ORC): this {
+    this.group.orc = toSegment("ORC", segment);
+    return this;
+  }
+
+  addTIMING(group: VXU_V04_TIMING | ((builder: VXU_V04_TIMINGBuilder) => VXU_V04_TIMINGBuilder)): this {
+    let g: VXU_V04_TIMING;
+    if (typeof group === "function") g = group(new VXU_V04_TIMINGBuilder()).build();
+    else g = group;
+    if (!this.group.timing) this.group.timing = [];
+    this.group.timing.push(g);
+    return this;
+  }
+
+  rxa(segment: RXA): this {
+    this.group.rxa = toSegment("RXA", segment);
+    return this;
+  }
+
+  rxr(segment: RXR): this {
+    this.group.rxr = toSegment("RXR", segment);
+    return this;
+  }
+
+  addOBSERVATION(group: VXU_V04_OBSERVATION | ((builder: VXU_V04_OBSERVATIONBuilder) => VXU_V04_OBSERVATIONBuilder)): this {
+    let g: VXU_V04_OBSERVATION;
+    if (typeof group === "function") g = group(new VXU_V04_OBSERVATIONBuilder()).build();
+    else g = group;
+    if (!this.group.observation) this.group.observation = [];
+    this.group.observation.push(g);
+    return this;
+  }
+
+  build(): VXU_V04_ORDER {
+    return this.group as VXU_V04_ORDER;
+  }
+}
+
+/**
+ * VXU_V04 Message Structure
+ */
+export interface VXU_V04_Message {
+  msh: HL7v2Segment;
+  sft?: HL7v2Segment[];
+  pid: HL7v2Segment;
+  pd1?: HL7v2Segment;
+  nk1?: HL7v2Segment[];
+  patient?: VXU_V04_PATIENT;
+  gt1?: HL7v2Segment[];
+  insurance?: VXU_V04_INSURANCE[];
+  order?: VXU_V04_ORDER[];
+}
+
+/**
+ * Builder for VXU_V04 messages
+ */
+export class VXU_V04Builder {
+  private msg: Partial<VXU_V04_Message> = {};
+
+  msh(segment: MSH): this {
+    this.msg.msh = toSegment("MSH", segment);
+    return this;
+  }
+
+  addSFT(segment: SFT): this {
+    if (!this.msg.sft) this.msg.sft = [];
+    this.msg.sft.push(toSegment("SFT", segment));
+    return this;
+  }
+
+  pid(segment: PID): this {
+    this.msg.pid = toSegment("PID", segment);
+    return this;
+  }
+
+  pd1(segment: PD1): this {
+    this.msg.pd1 = toSegment("PD1", segment);
+    return this;
+  }
+
+  addNK1(segment: NK1): this {
+    if (!this.msg.nk1) this.msg.nk1 = [];
+    this.msg.nk1.push(toSegment("NK1", segment));
+    return this;
+  }
+
+  patient(group: VXU_V04_PATIENT | ((builder: VXU_V04_PATIENTBuilder) => VXU_V04_PATIENTBuilder)): this {
+    if (typeof group === "function") this.msg.patient = group(new VXU_V04_PATIENTBuilder()).build();
+    else this.msg.patient = group;
+    return this;
+  }
+
+  addGT1(segment: GT1): this {
+    if (!this.msg.gt1) this.msg.gt1 = [];
+    this.msg.gt1.push(toSegment("GT1", segment));
+    return this;
+  }
+
+  addINSURANCE(group: VXU_V04_INSURANCE | ((builder: VXU_V04_INSURANCEBuilder) => VXU_V04_INSURANCEBuilder)): this {
+    let g: VXU_V04_INSURANCE;
+    if (typeof group === "function") g = group(new VXU_V04_INSURANCEBuilder()).build();
+    else g = group;
+    if (!this.msg.insurance) this.msg.insurance = [];
+    this.msg.insurance.push(g);
+    return this;
+  }
+
+  addORDER(group: VXU_V04_ORDER | ((builder: VXU_V04_ORDERBuilder) => VXU_V04_ORDERBuilder)): this {
+    let g: VXU_V04_ORDER;
+    if (typeof group === "function") g = group(new VXU_V04_ORDERBuilder()).build();
+    else g = group;
+    if (!this.msg.order) this.msg.order = [];
+    this.msg.order.push(g);
+    return this;
+  }
+
+  build(): HL7v2Message {
+    if (!this.msg.msh) throw new Error("VXU_V04: msh is required");
+    if (!this.msg.pid) throw new Error("VXU_V04: pid is required");
+    const segments: HL7v2Message = [];
+    if (this.msg.msh) segments.push(this.msg.msh);
+    if (this.msg.sft) for (const seg of this.msg.sft) segments.push(seg);
+    if (this.msg.pid) segments.push(this.msg.pid);
+    if (this.msg.pd1) segments.push(this.msg.pd1);
+    if (this.msg.nk1) for (const seg of this.msg.nk1) segments.push(seg);
+    if (this.msg.patient) {
+      const group = this.msg.patient;
+      if (group.pv1) segments.push(group.pv1);
+      if (group.pv2) segments.push(group.pv2);
+    }
+    if (this.msg.gt1) for (const seg of this.msg.gt1) segments.push(seg);
+    if (this.msg.insurance) for (const group of this.msg.insurance) {
+      if (group.in1) segments.push(group.in1);
+      if (group.in2) segments.push(group.in2);
+      if (group.in3) segments.push(group.in3);
+    }
+    if (this.msg.order) for (const group of this.msg.order) {
+      if (group.orc) segments.push(group.orc);
+      if (group.timing) for (const subgroup of group.timing) {
+        if (subgroup.tq1) segments.push(subgroup.tq1);
+        if (subgroup.tq2) for (const seg of subgroup.tq2) segments.push(seg);
+      }
+      if (group.rxa) segments.push(group.rxa);
+      if (group.rxr) segments.push(group.rxr);
+      if (group.observation) for (const subgroup of group.observation) {
+        if (subgroup.obx) segments.push(subgroup.obx);
+        if (subgroup.nte) for (const seg of subgroup.nte) segments.push(seg);
+      }
+    }
+    return segments;
+  }
+}
+
 // ====== Typed Input Interfaces ======
 
 export interface BAR_P01_PROCEDURE_Input {
@@ -716,17 +981,17 @@ export function toBAR_P01(input: BAR_P01_Input): HL7v2Message {
     if (group.AL1) for (const seg of group.AL1) segments.push(toSegment("AL1", seg));
     if (group.DG1) for (const seg of group.DG1) segments.push(toSegment("DG1", seg));
     if (group.DRG) segments.push(toSegment("DRG", group.DRG));
-    if (group.PROCEDURE) for (const procGroup of group.PROCEDURE) {
-      if (procGroup.PR1) segments.push(toSegment("PR1", procGroup.PR1));
-      if (procGroup.ROL) for (const seg of procGroup.ROL) segments.push(toSegment("ROL", seg));
+    if (group.PROCEDURE) for (const group of group.PROCEDURE) {
+      if (group.PR1) segments.push(toSegment("PR1", group.PR1));
+      if (group.ROL) for (const seg of group.ROL) segments.push(toSegment("ROL", seg));
     }
     if (group.GT1) for (const seg of group.GT1) segments.push(toSegment("GT1", seg));
     if (group.NK1) for (const seg of group.NK1) segments.push(toSegment("NK1", seg));
-    if (group.INSURANCE) for (const insGroup of group.INSURANCE) {
-      if (insGroup.IN1) segments.push(toSegment("IN1", insGroup.IN1));
-      if (insGroup.IN2) segments.push(toSegment("IN2", insGroup.IN2));
-      if (insGroup.IN3) for (const seg of insGroup.IN3) segments.push(toSegment("IN3", seg));
-      if (insGroup.ROL) for (const seg of insGroup.ROL) segments.push(toSegment("ROL", seg));
+    if (group.INSURANCE) for (const group of group.INSURANCE) {
+      if (group.IN1) segments.push(toSegment("IN1", group.IN1));
+      if (group.IN2) segments.push(toSegment("IN2", group.IN2));
+      if (group.IN3) for (const seg of group.IN3) segments.push(toSegment("IN3", seg));
+      if (group.ROL) for (const seg of group.ROL) segments.push(toSegment("ROL", seg));
     }
     if (group.ACC) segments.push(toSegment("ACC", group.ACC));
     if (group.UB1) segments.push(toSegment("UB1", group.UB1));
@@ -833,5 +1098,87 @@ export function toORU_R01(input: ORU_R01_Input): HL7v2Message {
     }
   }
   if (input.DSC) segments.push(toSegment("DSC", input.DSC));
+  return segments;
+}
+
+export interface VXU_V04_PATIENT_Input {
+  PV1: PV1;
+  PV2?: PV2;
+}
+
+export interface VXU_V04_INSURANCE_Input {
+  IN1: IN1;
+  IN2?: IN2;
+  IN3?: IN3;
+}
+
+export interface VXU_V04_TIMING_Input {
+  TQ1: TQ1;
+  TQ2?: TQ2[];
+}
+
+export interface VXU_V04_OBSERVATION_Input {
+  OBX: OBX;
+  NTE?: NTE[];
+}
+
+export interface VXU_V04_ORDER_Input {
+  ORC: ORC;
+  TIMING?: VXU_V04_TIMING_Input[];
+  RXA: RXA;
+  RXR?: RXR;
+  OBSERVATION?: VXU_V04_OBSERVATION_Input[];
+}
+
+/**
+ * VXU_V04 Input - typed segment data
+ */
+export interface VXU_V04_Input {
+  type: "VXU_V04";
+  MSH: MSH;
+  SFT?: SFT[];
+  PID: PID;
+  PD1?: PD1;
+  NK1?: NK1[];
+  PATIENT?: VXU_V04_PATIENT_Input;
+  GT1?: GT1[];
+  INSURANCE?: VXU_V04_INSURANCE_Input[];
+  ORDER?: VXU_V04_ORDER_Input[];
+}
+
+/**
+ * Convert VXU_V04_Input to HL7v2Message
+ */
+export function toVXU_V04(input: VXU_V04_Input): HL7v2Message {
+  const segments: HL7v2Message = [];
+  if (input.MSH) segments.push(toSegment("MSH", input.MSH));
+  if (input.SFT) for (const seg of input.SFT) segments.push(toSegment("SFT", seg));
+  if (input.PID) segments.push(toSegment("PID", input.PID));
+  if (input.PD1) segments.push(toSegment("PD1", input.PD1));
+  if (input.NK1) for (const seg of input.NK1) segments.push(toSegment("NK1", seg));
+  if (input.PATIENT) {
+    const group = input.PATIENT;
+    if (group.PV1) segments.push(toSegment("PV1", group.PV1));
+    if (group.PV2) segments.push(toSegment("PV2", group.PV2));
+  }
+  if (input.GT1) for (const seg of input.GT1) segments.push(toSegment("GT1", seg));
+  if (input.INSURANCE) for (const group of input.INSURANCE) {
+    if (group.IN1) segments.push(toSegment("IN1", group.IN1));
+    if (group.IN2) segments.push(toSegment("IN2", group.IN2));
+    if (group.IN3) segments.push(toSegment("IN3", group.IN3));
+  }
+  if (input.ORDER) for (const group of input.ORDER) {
+    if (group.ORC) segments.push(toSegment("ORC", group.ORC));
+    if (group.TIMING) for (const group of group.TIMING) {
+      if (group.TQ1) segments.push(toSegment("TQ1", group.TQ1));
+      if (group.TQ2) for (const seg of group.TQ2) segments.push(toSegment("TQ2", seg));
+    }
+    if (group.RXA) segments.push(toSegment("RXA", group.RXA));
+    if (group.RXR) segments.push(toSegment("RXR", group.RXR));
+    if (group.OBSERVATION) for (const group of group.OBSERVATION) {
+      if (group.OBX) segments.push(toSegment("OBX", group.OBX));
+      if (group.NTE) for (const seg of group.NTE) segments.push(toSegment("NTE", seg));
+    }
+  }
   return segments;
 }

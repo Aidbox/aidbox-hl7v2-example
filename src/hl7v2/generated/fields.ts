@@ -1,10 +1,9 @@
-// @ts-nocheck
 // AUTO-GENERATED - HL7v2 DataType Interfaces and Segment Builders
-// Generated for: BAR_P01, ORU_R01
+// Generated for: BAR_P01, ORU_R01, VXU_V04
 
 import type { HL7v2Segment, FieldValue } from "./types";
 import { getComponent } from "./types";
-import { AcceptApplicationAcknowledgmentConditions, AdditivePreservative, AdministrativeSex, AdmissionLevelOfCare, AdmissionType, AdvanceDirective, AdvancedBeneficiaryNotice, AllergenType, AllergySeverity, AlternateCharacterSetHandlingScheme, AlternateCharacterSets, AmbulatoryStatus, ArrivalMode, AssignmentOfBenefits, AuthorizationMode, BedStatus, ClergyNotificationType, CommentType, ConfidentialityCodes, ContactRole2, ContainerCondition, ContinuationStyle, CoordinationOfBenefits, CoverageType, CyclicEntryExitIndicator, DiagnosisClassification, DiagnosisPriority, DiagnosisType, DiagnosticServiceSectionId, DisabilityInformationRelationship, DrgTransferType, EligibilitySource, EmploymentStatus, EscortRequired, EthnicGroup, Event, EventReason, ExtendedPriorityCodes, HospitalService, IdentifierType, IdentityReliability, ImmunizationRegistryStatus, InsuranceCompanyContactReason, JobStatus, LivingArrangement, LivingDependency2, LivingWillCodes, MailClaimParty, MaritalStatus, MilitaryService, MilitaryStatus, NatureOfAbnormalTesting, ObservationResultHandling, ObservationResultStatusCodesInterpretation, OrderControlCodes, OrderStatus, OrderType, OrganDonorCodes, OrganizationUnitType, OutlierType, PHRaceAndEthnicityCDC, PatientClass, PatientCondition, PatientStatus, PatientsRelationshipToInsured, Precaution, PreferredMethodOfContact, ProblemGoalAction, ProcedureDrgType, ProcedureFunctionalType, ProcedurePriority, ProductionClass, ProviderRole, Publicity, PurgeStatus, ReAdmissionIndicator, RecreationalDrugType, Relationship, Religion2, RepeatPattern, ResponseFlag, ResultStatus, RiskManagementIncident, Risks, SegmentAction, SequenceCondition, SequenceResultsFlag, ServiceRequestRelationship, SignatureType, SourceOfComment, SpecialHandling, SpecialProgram, SpecimenAction, SpecimenAppropriateness, SpecimenChildRole, SpecimenCollectionMethod, SpecimenCondition, SpecimenQuality, SpecimenRejectReason, SpecimenRole, SpecimenType, StudentStatus, TissueType, TransactionType, TransportArranged, TransportationMode, TypeOfAgreement, VisitIndicator, VisitPriority, VisitUserCodes } from "./tables";
+import { AcceptApplicationAcknowledgmentConditions, ActionCodes, AdditivePreservative, AdministrationDevice, AdministrationMethod, AdministrativeSex, AdmissionLevelOfCare, AdmissionType, AdvanceDirective, AdvancedBeneficiaryNotice, AllergenType, AllergySeverity, AlternateCharacterSetHandlingScheme, AlternateCharacterSets, AmbulatoryStatus, ArrivalMode, AssignmentOfBenefits, AuthorizationMode, BedStatus, BodySite, BodySiteModifier, ClergyNotificationType, CommentType, CompletionStatus, ConfidentialityCodes, ContactRole2, ContainerCondition, ContinuationStyle, CoordinationOfBenefits, CoverageType, CyclicEntryExitIndicator, DiagnosisClassification, DiagnosisPriority, DiagnosisType, DiagnosticServiceSectionId, DisabilityInformationRelationship, DrgTransferType, EligibilitySource, EmploymentStatus, EscortRequired, EthnicGroup, Event, EventReason, ExtendedPriorityCodes, HospitalService, IdentifierType, IdentityReliability, ImmunizationRegistryStatus, InsuranceCompanyContactReason, JobStatus, LivingArrangement, LivingDependency2, LivingWillCodes, MailClaimParty, MaritalStatus, MilitaryService, MilitaryStatus, NatureOfAbnormalTesting, ObservationResultHandling, ObservationResultStatusCodesInterpretation, OrderControlCodes, OrderStatus, OrderType, OrganDonorCodes, OrganizationUnitType, OutlierType, PHRaceAndEthnicityCDC, PatientClass, PatientCondition, PatientStatus, PatientsRelationshipToInsured, PharmacyOrderTypes, Precaution, PreferredMethodOfContact, ProblemGoalAction, ProcedureDrgType, ProcedureFunctionalType, ProcedurePriority, ProductionClass, ProviderRole, Publicity, PurgeStatus, ReAdmissionIndicator, RecreationalDrugType, Relationship, Religion2, RepeatPattern, ResponseFlag, ResultStatus, RiskManagementIncident, Risks, RouteOfAdministration, SegmentAction, SequenceCondition, SequenceResultsFlag, ServiceRequestRelationship, SignatureType, SourceOfComment, SpecialHandling, SpecialProgram, SpecimenAction, SpecimenAppropriateness, SpecimenChildRole, SpecimenCollectionMethod, SpecimenCondition, SpecimenQuality, SpecimenRejectReason, SpecimenRole, SpecimenType, StudentStatus, TissueType, TransactionType, TransportArranged, TransportationMode, TypeOfAgreement, VisitIndicator, VisitPriority, VisitUserCodes } from "./tables";
 
 // ====== DataType Interfaces ======
 
@@ -266,6 +265,42 @@ export interface JCC {
   $2_jobClass?: string;
   /** JCC.3 - Job Description Text */
   $3_jobDescription?: string;
+}
+
+/** LA2 DataType */
+export interface LA2 {
+  /** LA2.1 - Point of Care */
+  $1_careSite?: string;
+  /** LA2.2 - Room */
+  $2_room?: string;
+  /** LA2.3 - Bed */
+  $3_bed?: string;
+  /** LA2.4 - Facility */
+  $4_facility?: HD;
+  /** LA2.5 - Location Status */
+  $5_status?: string;
+  /** LA2.6 - Patient Location Type */
+  $6_locationType?: string;
+  /** LA2.7 - Building */
+  $7_building?: string;
+  /** LA2.8 - Floor */
+  $8_floor?: string;
+  /** LA2.9 - Street Address */
+  $9_line1?: string;
+  /** LA2.10 - Other Designation */
+  $10_line2?: string;
+  /** LA2.11 - City */
+  $11_city?: string;
+  /** LA2.12 - State or Province */
+  $12_state?: string;
+  /** LA2.13 - Zip or Postal Code */
+  $13_postalCode?: string;
+  /** LA2.14 - Country */
+  $14_country?: string;
+  /** LA2.15 - Address Type */
+  $15_type?: string;
+  /** LA2.16 - Other Geographic Designation */
+  $16_additionalLocator?: string;
 }
 
 /** MO DataType */
@@ -1337,6 +1372,91 @@ function fromJCC(fv: FieldValue | undefined): JCC | undefined {
     const v3 = fv[3];
     if (typeof v3 === "string") result.$3_jobDescription = v3;
     else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_jobDescription = (v3 as any)[1];
+  }
+  return result;
+}
+
+/** Convert FieldValue to LA2 */
+function fromLA2(fv: FieldValue | undefined): LA2 | undefined {
+  if (fv === undefined) return undefined;
+  if (typeof fv === "string") return { $1_careSite: fv };
+  if (Array.isArray(fv)) return fromLA2(fv[0]);
+  const result: LA2 = {};
+  if (fv[1] !== undefined) {
+    const v1 = fv[1];
+    if (typeof v1 === "string") result.$1_careSite = v1;
+    else if (typeof v1 === "object" && !Array.isArray(v1) && typeof (v1 as any)[1] === "string") result.$1_careSite = (v1 as any)[1];
+  }
+  if (fv[2] !== undefined) {
+    const v2 = fv[2];
+    if (typeof v2 === "string") result.$2_room = v2;
+    else if (typeof v2 === "object" && !Array.isArray(v2) && typeof (v2 as any)[1] === "string") result.$2_room = (v2 as any)[1];
+  }
+  if (fv[3] !== undefined) {
+    const v3 = fv[3];
+    if (typeof v3 === "string") result.$3_bed = v3;
+    else if (typeof v3 === "object" && !Array.isArray(v3) && typeof (v3 as any)[1] === "string") result.$3_bed = (v3 as any)[1];
+  }
+  if (fv[4] !== undefined) result.$4_facility = fromHD(fv[4]);
+  if (fv[5] !== undefined) {
+    const v5 = fv[5];
+    if (typeof v5 === "string") result.$5_status = v5;
+    else if (typeof v5 === "object" && !Array.isArray(v5) && typeof (v5 as any)[1] === "string") result.$5_status = (v5 as any)[1];
+  }
+  if (fv[6] !== undefined) {
+    const v6 = fv[6];
+    if (typeof v6 === "string") result.$6_locationType = v6;
+    else if (typeof v6 === "object" && !Array.isArray(v6) && typeof (v6 as any)[1] === "string") result.$6_locationType = (v6 as any)[1];
+  }
+  if (fv[7] !== undefined) {
+    const v7 = fv[7];
+    if (typeof v7 === "string") result.$7_building = v7;
+    else if (typeof v7 === "object" && !Array.isArray(v7) && typeof (v7 as any)[1] === "string") result.$7_building = (v7 as any)[1];
+  }
+  if (fv[8] !== undefined) {
+    const v8 = fv[8];
+    if (typeof v8 === "string") result.$8_floor = v8;
+    else if (typeof v8 === "object" && !Array.isArray(v8) && typeof (v8 as any)[1] === "string") result.$8_floor = (v8 as any)[1];
+  }
+  if (fv[9] !== undefined) {
+    const v9 = fv[9];
+    if (typeof v9 === "string") result.$9_line1 = v9;
+    else if (typeof v9 === "object" && !Array.isArray(v9) && typeof (v9 as any)[1] === "string") result.$9_line1 = (v9 as any)[1];
+  }
+  if (fv[10] !== undefined) {
+    const v10 = fv[10];
+    if (typeof v10 === "string") result.$10_line2 = v10;
+    else if (typeof v10 === "object" && !Array.isArray(v10) && typeof (v10 as any)[1] === "string") result.$10_line2 = (v10 as any)[1];
+  }
+  if (fv[11] !== undefined) {
+    const v11 = fv[11];
+    if (typeof v11 === "string") result.$11_city = v11;
+    else if (typeof v11 === "object" && !Array.isArray(v11) && typeof (v11 as any)[1] === "string") result.$11_city = (v11 as any)[1];
+  }
+  if (fv[12] !== undefined) {
+    const v12 = fv[12];
+    if (typeof v12 === "string") result.$12_state = v12;
+    else if (typeof v12 === "object" && !Array.isArray(v12) && typeof (v12 as any)[1] === "string") result.$12_state = (v12 as any)[1];
+  }
+  if (fv[13] !== undefined) {
+    const v13 = fv[13];
+    if (typeof v13 === "string") result.$13_postalCode = v13;
+    else if (typeof v13 === "object" && !Array.isArray(v13) && typeof (v13 as any)[1] === "string") result.$13_postalCode = (v13 as any)[1];
+  }
+  if (fv[14] !== undefined) {
+    const v14 = fv[14];
+    if (typeof v14 === "string") result.$14_country = v14;
+    else if (typeof v14 === "object" && !Array.isArray(v14) && typeof (v14 as any)[1] === "string") result.$14_country = (v14 as any)[1];
+  }
+  if (fv[15] !== undefined) {
+    const v15 = fv[15];
+    if (typeof v15 === "string") result.$15_type = v15;
+    else if (typeof v15 === "object" && !Array.isArray(v15) && typeof (v15 as any)[1] === "string") result.$15_type = (v15 as any)[1];
+  }
+  if (fv[16] !== undefined) {
+    const v16 = fv[16];
+    if (typeof v16 === "string") result.$16_additionalLocator = v16;
+    else if (typeof v16 === "object" && !Array.isArray(v16) && typeof (v16 as any)[1] === "string") result.$16_additionalLocator = (v16 as any)[1];
   }
   return result;
 }
@@ -3759,6 +3879,78 @@ export interface ROL {
   $11_address?: XAD[];
   /** ROL.12 - Phone */
   $12_phone?: XTN[];
+}
+
+/** RXA Segment */
+export interface RXA {
+  /** RXA.1 - Give Sub-ID Counter */
+  $1_subIdCounter: string;
+  /** RXA.2 - Administration Sub-ID Counter */
+  $2_administrationSubIdCounter: string;
+  /** RXA.3 - Date/Time Start of Administration */
+  $3_startAdministrationDateTime: string;
+  /** RXA.4 - Date/Time End of Administration */
+  $4_endAdministrationDateTime: string;
+  /** RXA.5 - Administered Code */
+  $5_administeredCode: CE;
+  /** RXA.6 - Administered Amount */
+  $6_administeredAmount: string;
+  /** RXA.7 - Administered Units */
+  $7_administeredUnit?: CE;
+  /** RXA.8 - Administered Dosage Form */
+  $8_administeredDosageForm?: CE;
+  /** RXA.9 - Administration Notes */
+  $9_administrationNotes?: CE[];
+  /** RXA.10 - Administering Provider */
+  $10_administeringProvider?: XCN[];
+  /** RXA.11 - Administered-at Location */
+  $11_administeredAtLocation?: LA2;
+  /** RXA.12 - Administered Per (Time Unit) */
+  $12_administeredPer?: string;
+  /** RXA.13 - Administered Strength */
+  $13_administeredStrength?: string;
+  /** RXA.14 - Administered Strength Units */
+  $14_administeredStrengthUnit?: CE;
+  /** RXA.15 - Substance Lot Number */
+  $15_lotNumber?: string[];
+  /** RXA.16 - Substance Expiration Date */
+  $16_expiration?: string[];
+  /** RXA.17 - Substance Manufacturer Name */
+  $17_manufacturer?: CE[];
+  /** RXA.18 - Substance/Treatment Refusal Reason */
+  $18_substanceTreatmentRefusalReason?: CE[];
+  /** RXA.19 - Indication */
+  $19_indication?: CE[];
+  /** RXA.20 - Completion Status */
+  $20_completionStatus?: CompletionStatus | string;
+  /** RXA.21 - Action Code - RXA */
+  $21_actionCodeRxa?: ActionCodes | string;
+  /** RXA.22 - System Entry Date/Time */
+  $22_systemEntryDateTime?: string;
+  /** RXA.23 - Administered Drug Strength Volume */
+  $23_administeredDrugStrengthVolume?: string;
+  /** RXA.24 - Administered Drug Strength Volume Units */
+  $24_administeredDrugStrengthVolumeUnit?: CWE;
+  /** RXA.25 - Administered Barcode Identifier */
+  $25_administeredBarcodeIdentifier?: CWE;
+  /** RXA.26 - Pharmacy Order Type */
+  $26_pharmacyOrderType?: PharmacyOrderTypes | string;
+}
+
+/** RXR Segment */
+export interface RXR {
+  /** RXR.1 - Route */
+  $1_route: CE;
+  /** RXR.2 - Administration Site */
+  $2_administrationSite?: CWE;
+  /** RXR.3 - Administration Device */
+  $3_administrationDevice?: CE;
+  /** RXR.4 - Administration Method */
+  $4_administrationMethod?: CWE;
+  /** RXR.5 - Routing Instruction */
+  $5_routingInstruction?: CE;
+  /** RXR.6 - Administration Site Modifier */
+  $6_administrationSiteModifier?: CWE;
 }
 
 /** SFT Segment */
@@ -7764,6 +7956,179 @@ export function fromROL(segment: HL7v2Segment): ROL {
       const converted = fromXTN(fv);
       if (converted) result.$12_phone = [converted];
     }
+  }
+  return result;
+}
+
+/** Convert HL7v2Segment to RXA */
+export function fromRXA(segment: HL7v2Segment): RXA {
+  const result: RXA = {} as RXA;
+  if (segment.fields[1] !== undefined) {
+    const v = getComponent(segment.fields[1]);
+    if (v !== undefined) result.$1_subIdCounter = v;
+  }
+  if (segment.fields[2] !== undefined) {
+    const v = getComponent(segment.fields[2]);
+    if (v !== undefined) result.$2_administrationSubIdCounter = v;
+  }
+  if (segment.fields[3] !== undefined) {
+    const v = getComponent(segment.fields[3]);
+    if (v !== undefined) result.$3_startAdministrationDateTime = v;
+  }
+  if (segment.fields[4] !== undefined) {
+    const v = getComponent(segment.fields[4]);
+    if (v !== undefined) result.$4_endAdministrationDateTime = v;
+  }
+  if (segment.fields[5] !== undefined) {
+    const converted = fromCE(segment.fields[5]);
+    if (converted) result.$5_administeredCode = converted;
+  }
+  if (segment.fields[6] !== undefined) {
+    const v = getComponent(segment.fields[6]);
+    if (v !== undefined) result.$6_administeredAmount = v;
+  }
+  if (segment.fields[7] !== undefined) {
+    const converted = fromCE(segment.fields[7]);
+    if (converted) result.$7_administeredUnit = converted;
+  }
+  if (segment.fields[8] !== undefined) {
+    const converted = fromCE(segment.fields[8]);
+    if (converted) result.$8_administeredDosageForm = converted;
+  }
+  if (segment.fields[9] !== undefined) {
+    const fv = segment.fields[9];
+    if (Array.isArray(fv)) {
+      result.$9_administrationNotes = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$9_administrationNotes = [converted];
+    }
+  }
+  if (segment.fields[10] !== undefined) {
+    const fv = segment.fields[10];
+    if (Array.isArray(fv)) {
+      result.$10_administeringProvider = fv.map(v => fromXCN(v)).filter((v): v is XCN => v !== undefined);
+    } else {
+      const converted = fromXCN(fv);
+      if (converted) result.$10_administeringProvider = [converted];
+    }
+  }
+  if (segment.fields[11] !== undefined) {
+    const converted = fromLA2(segment.fields[11]);
+    if (converted) result.$11_administeredAtLocation = converted;
+  }
+  if (segment.fields[12] !== undefined) {
+    const v = getComponent(segment.fields[12]);
+    if (v !== undefined) result.$12_administeredPer = v;
+  }
+  if (segment.fields[13] !== undefined) {
+    const v = getComponent(segment.fields[13]);
+    if (v !== undefined) result.$13_administeredStrength = v;
+  }
+  if (segment.fields[14] !== undefined) {
+    const converted = fromCE(segment.fields[14]);
+    if (converted) result.$14_administeredStrengthUnit = converted;
+  }
+  if (segment.fields[15] !== undefined) {
+    const fv = segment.fields[15];
+    if (Array.isArray(fv)) {
+      result.$15_lotNumber = fv.map(v => typeof v === "string" ? v : getComponent(v)).filter((v): v is string => v !== undefined);
+    } else if (typeof fv === "string") {
+      result.$15_lotNumber = [fv];
+    }
+  }
+  if (segment.fields[16] !== undefined) {
+    const fv = segment.fields[16];
+    if (Array.isArray(fv)) {
+      result.$16_expiration = fv.map(v => typeof v === "string" ? v : getComponent(v)).filter((v): v is string => v !== undefined);
+    } else if (typeof fv === "string") {
+      result.$16_expiration = [fv];
+    }
+  }
+  if (segment.fields[17] !== undefined) {
+    const fv = segment.fields[17];
+    if (Array.isArray(fv)) {
+      result.$17_manufacturer = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$17_manufacturer = [converted];
+    }
+  }
+  if (segment.fields[18] !== undefined) {
+    const fv = segment.fields[18];
+    if (Array.isArray(fv)) {
+      result.$18_substanceTreatmentRefusalReason = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$18_substanceTreatmentRefusalReason = [converted];
+    }
+  }
+  if (segment.fields[19] !== undefined) {
+    const fv = segment.fields[19];
+    if (Array.isArray(fv)) {
+      result.$19_indication = fv.map(v => fromCE(v)).filter((v): v is CE => v !== undefined);
+    } else {
+      const converted = fromCE(fv);
+      if (converted) result.$19_indication = [converted];
+    }
+  }
+  if (segment.fields[20] !== undefined) {
+    const v = getComponent(segment.fields[20]);
+    if (v !== undefined) result.$20_completionStatus = v;
+  }
+  if (segment.fields[21] !== undefined) {
+    const v = getComponent(segment.fields[21]);
+    if (v !== undefined) result.$21_actionCodeRxa = v;
+  }
+  if (segment.fields[22] !== undefined) {
+    const v = getComponent(segment.fields[22]);
+    if (v !== undefined) result.$22_systemEntryDateTime = v;
+  }
+  if (segment.fields[23] !== undefined) {
+    const v = getComponent(segment.fields[23]);
+    if (v !== undefined) result.$23_administeredDrugStrengthVolume = v;
+  }
+  if (segment.fields[24] !== undefined) {
+    const converted = fromCWE(segment.fields[24]);
+    if (converted) result.$24_administeredDrugStrengthVolumeUnit = converted;
+  }
+  if (segment.fields[25] !== undefined) {
+    const converted = fromCWE(segment.fields[25]);
+    if (converted) result.$25_administeredBarcodeIdentifier = converted;
+  }
+  if (segment.fields[26] !== undefined) {
+    const v = getComponent(segment.fields[26]);
+    if (v !== undefined) result.$26_pharmacyOrderType = v;
+  }
+  return result;
+}
+
+/** Convert HL7v2Segment to RXR */
+export function fromRXR(segment: HL7v2Segment): RXR {
+  const result: RXR = {} as RXR;
+  if (segment.fields[1] !== undefined) {
+    const converted = fromCE(segment.fields[1]);
+    if (converted) result.$1_route = converted;
+  }
+  if (segment.fields[2] !== undefined) {
+    const converted = fromCWE(segment.fields[2]);
+    if (converted) result.$2_administrationSite = converted;
+  }
+  if (segment.fields[3] !== undefined) {
+    const converted = fromCE(segment.fields[3]);
+    if (converted) result.$3_administrationDevice = converted;
+  }
+  if (segment.fields[4] !== undefined) {
+    const converted = fromCWE(segment.fields[4]);
+    if (converted) result.$4_administrationMethod = converted;
+  }
+  if (segment.fields[5] !== undefined) {
+    const converted = fromCE(segment.fields[5]);
+    if (converted) result.$5_routingInstruction = converted;
+  }
+  if (segment.fields[6] !== undefined) {
+    const converted = fromCWE(segment.fields[6]);
+    if (converted) result.$6_administrationSiteModifier = converted;
   }
   return result;
 }

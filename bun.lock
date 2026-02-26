@@ -6,7 +6,7 @@
       "name": "aidbox-hl7",
       "dependencies": {
         "@atomic-ehr/codegen": "0.0.4-canary.20251216132615.27719de",
-        "@atomic-ehr/hl7v2": "^0.0.1-canary.22.202c8cc",
+        "@atomic-ehr/hl7v2": "0.0.1-canary.22.202c8cc",
       },
       "devDependencies": {
         "@types/bun": "latest",

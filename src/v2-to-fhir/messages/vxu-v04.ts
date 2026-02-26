@@ -48,7 +48,8 @@ import type {
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertPIDToPatient } from "../segments/pid-patient";
-import { convertRXAToImmunization, type RXA, type RXR } from "../segments/rxa-immunization";
+import { convertRXAToImmunization } from "../segments/rxa-immunization";
+import type { RXA, RXR } from "../../hl7v2/generated/fields";
 import type { SenderContext } from "../../code-mapping/concept-map";
 import type { ConverterContext } from "../converter-context";
 import type { Hl7v2ToFhirConfig } from "../config";

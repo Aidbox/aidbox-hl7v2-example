@@ -13,10 +13,7 @@
  * If not available in generated types, define minimal interfaces here.
  */
 
-// TODO: Import generated types when available:
-// import type { RXA, RXR } from "../../hl7v2/generated/fields";
-// import { fromRXA, fromRXR } from "../../hl7v2/generated/fields";
-import type { ORC, XCN, CE, CWE } from "../../hl7v2/generated/fields";
+import type { RXA, RXR, ORC, XCN, CE, CWE } from "../../hl7v2/generated/fields";
 import type {
   Immunization,
   ImmunizationPerformer,
@@ -29,37 +26,6 @@ import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { convertXCNToPractitioner } from "../datatypes/xcn-practitioner";
 import type { BundleEntry } from "../../fhir/hl7-fhir-r4-core";
 
-// ============================================================================
-// RXA/RXR Type Placeholders (until generated types are available)
-// ============================================================================
-
-// TODO: Replace with generated types from `bun run regenerate-hl7v2`
-// These are minimal interfaces matching the RXA/RXR spec fields we need.
-
-export interface RXA {
-  $1_giveSubIdCounter?: string;
-  $2_administrationSubIdCounter?: string;
-  $3_dateTimeStart: string;                // Required: DTM
-  $4_dateTimeEnd?: string;                 // DTM
-  $5_administeredCode: CE;                 // Required: CE (table 0292/CVX)
-  $6_administeredAmount: string;           // Required: NM
-  $7_administeredUnits?: CE;               // Conditional: CE
-  $9_administrationNotes?: CE[];           // Optional: CE repeating (NIP001)
-  $10_administeringProvider?: XCN[];       // Optional: XCN repeating
-  $15_substanceLotNumber?: string[];       // Optional: ST repeating
-  $16_substanceExpirationDate?: string[];  // Optional: DTM repeating
-  $17_substanceManufacturerName?: CE[];    // Optional: CE repeating (MVX)
-  $18_substanceRefusalReason?: CE[];       // Optional: CE repeating
-  $19_indication?: CE[];                   // Optional: CE repeating
-  $20_completionStatus?: string;           // Optional: ID (table 0322)
-  $21_actionCode?: string;                 // Optional: ID (table 0323)
-  $22_systemEntryDateTime?: string;        // Optional: DTM
-}
-
-export interface RXR {
-  $1_route: CE;                            // Required: CE (table 0162)
-  $2_administrationSite?: CWE;            // Optional: CWE (table 0163)
-}
 
 // ============================================================================
 // Status Derivation
@@ -236,7 +202,7 @@ export function convertRXAToImmunization(
   // 1. ID is pre-computed by message converter (no longer generated here)
 
   // 2. Derive status from RXA-20/21
-  const status = deriveImmunizationStatus(rxa.$20_completionStatus, rxa.$21_actionCode);
+  const status = deriveImmunizationStatus(rxa.$20_completionStatus, rxa.$21_actionCodeRxa);
 
   // 3. Build vaccineCode from RXA-5
   const vaccineCode = convertCEToCodeableConcept(rxa.$5_administeredCode);
@@ -251,27 +217,27 @@ export function convertRXAToImmunization(
     status,
     vaccineCode,
     patient: { reference: "Patient/placeholder" } as Reference<"Patient">,
-    occurrenceDateTime: convertDTMToDateTime(rxa.$3_dateTimeStart),
+    occurrenceDateTime: convertDTMToDateTime(rxa.$3_startAdministrationDateTime),
   };
 
   // 5. Dose quantity from RXA-6/7
   // TODO: if (rxa.$6_administeredAmount && rxa.$6_administeredAmount !== "999") {
   //   immunization.doseQuantity = { value: parseFloat(rxa.$6_administeredAmount) };
-  //   if (rxa.$7_administeredUnits) { ... unit ... }
+  //   if (rxa.$7_administeredUnit) { ... unit ... }
   // }
 
   // 6. Lot number from RXA-15 (first value)
-  // TODO: if (rxa.$15_substanceLotNumber?.[0]) {
-  //   immunization.lotNumber = rxa.$15_substanceLotNumber[0];
+  // TODO: if (rxa.$15_lotNumber?.[0]) {
+  //   immunization.lotNumber = rxa.$15_lotNumber[0];
   // }
 
   // 7. Expiration date from RXA-16 (first value)
-  // TODO: if (rxa.$16_substanceExpirationDate?.[0]) {
-  //   immunization.expirationDate = convertDTMToDate(rxa.$16_substanceExpirationDate[0]);
+  // TODO: if (rxa.$16_expiration?.[0]) {
+  //   immunization.expirationDate = convertDTMToDate(rxa.$16_expiration[0]);
   // }
 
   // 8. Status reason from RXA-18 (when status=not-done)
-  // TODO: if (status === "not-done" && rxa.$18_substanceRefusalReason) { ... }
+  // TODO: if (status === "not-done" && rxa.$18_substanceTreatmentRefusalReason) { ... }
 
   // 9. Reason code from RXA-19
   // TODO: if (rxa.$19_indication) { ... }
@@ -285,7 +251,7 @@ export function convertRXAToImmunization(
   //     Authoritative rule: ORC-9 ?? (RXA-21=A ? RXA-22 : undefined)
   //     Works uniformly regardless of ORC presence (ORC-9 simply unavailable when ORC absent)
   // TODO: const recorded = orc?.$9_transactionDateTime
-  //   ?? (rxa.$21_actionCode?.toUpperCase() === "A" ? rxa.$22_systemEntryDateTime : undefined);
+  //   ?? (rxa.$21_actionCodeRxa?.toUpperCase() === "A" ? rxa.$22_systemEntryDateTime : undefined);
   // if (recorded) immunization.recorded = convertDTMToDateTime(recorded);
 
   // 12. Route from RXR-1

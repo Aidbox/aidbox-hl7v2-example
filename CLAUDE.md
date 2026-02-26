@@ -188,7 +188,7 @@ src/
 ├── fhir/                 # FHIR R4 types (generated)
 ├── hl7v2/                # HL7v2 types, builders, formatters (generated)
 │   ├── generated/        # types.ts, fields.ts, messages.ts, tables.ts
-│   └── wrappers/         # Parser fixes (e.g., OBX SN values)
+│   └── wrappers/         # Fixes for gaps in @atomic-ehr/hl7v2 (e.g., segment parsing, message structure, etc.)
 ├── bar/                  # FHIR → HL7v2 BAR generation
 │   ├── generator.ts      # generateBarMessage() - pure transformation
 │   ├── invoice-builder-service.ts  # Polling service
@@ -254,6 +254,8 @@ IMPORTANT: Always read `.claude/code-style.md` before writing or modifying code.
 Before proposing, implementing, designing or reviewing ANY change that touches HL7v2 message handling — including segment optionality, field semantics, message structure, or processing rules — you MUST look up the relevant message/segment/field via the `hl7v2-info` skill first.
 
 Do NOT rely on assumptions, existing code patterns, or memory of the spec. The code may intentionally deviate from the spec, but you must know what the spec says before proposing or implementing changes.
+
+**Never read `data/hl7v2-reference/` JSON files directly** — not via `cat`, `python`, `Read`, `Grep`, or any other tool. Always use the `hl7v2-info` skill (`bun scripts/hl7v2-ref-lookup.ts`), which parses and formats the data correctly. This rule applies to all agents, including sub-agents spawned for review or exploration.
 
 **Spec completeness rule:** You must handle ALL components/fields defined in the spec — not just those present in current sample data or example messages. Never skip a field or component solely because the example senders don't populate it.
 
