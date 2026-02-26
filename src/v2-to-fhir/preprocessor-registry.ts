@@ -18,11 +18,12 @@ export type SegmentPreprocessorFn = (
 ) => void;
 
 export const SEGMENT_PREPROCESSORS: Record<string, SegmentPreprocessorFn> = {
-  "fix-authority-with-msh": fixAuthorityWithMsh,
+  "fix-pv1-authority-with-msh": fixAuthorityWithMsh,
   "move-pid2-into-pid3": movePid2IntoPid3,
   "inject-authority-from-msh": injectAuthorityFromMsh,
-  // DESIGN PROTOTYPE: 2026-02-23-vxu-support.md
-  // "inject-authority-into-orc3": injectAuthorityIntoOrc3,
+  "inject-authority-into-orc3": injectAuthorityIntoOrc3,
+  "normalize-rxa6-dose": normalizeRxa6Dose,
+  "normalize-rxa9-nip001": normalizeRxa9Nip001,
 };
 
 export type SegmentPreprocessorId = keyof typeof SEGMENT_PREPROCESSORS;
@@ -286,39 +287,25 @@ function insertAuthorityIntoPv1Segment(
   }
 }
 
-// =============================================================================
-// DESIGN PROTOTYPE: 2026-02-23-vxu-support.md
-// =============================================================================
+// Stub implementations — actual logic added in Tasks 4-6
 
-/**
- * If ORC-3 (Filler Order Number) is present but missing authority (EI.2/EI.3),
- * inject MSH-3/MSH-4 derived namespace into EI.2.
- * Never overrides existing authority.
- *
- * This ensures deterministic Immunization ID generation that is scoped by sender,
- * preventing cross-sender ID collisions.
- */
-// function injectAuthorityIntoOrc3(
-//   context: PreprocessorContext,
-//   segment: HL7v2Segment,
-// ): void {
-//   if (segment.segment !== "ORC") return;
-//
-//   const mshSegment = findSegment(context.parsedMessage, "MSH");
-//   if (!mshSegment) return;
-//
-//   const msh = fromMSH(mshSegment);
-//   const namespace = deriveMshNamespace(msh);
-//   if (!namespace) return;
-//
-//   const orc3 = segment.fields[3];
-//   if (!orc3) return;
-//
-//   // Check if EI.1 (entity identifier) is present
-//   // Check if EI.2/EI.3 (authority) are missing
-//   // If so, inject namespace into EI.2
-//
-//   // TODO: Implement EI field manipulation
-//   // The EI datatype has: EI.1 (value), EI.2 (namespace), EI.3 (universal ID), EI.4 (type)
-//   // Structure in parsed form: { 1: value, 2: namespace, 3: system, 4: systemType }
-// }
+function injectAuthorityIntoOrc3(
+  _context: PreprocessorContext,
+  _segment: HL7v2Segment,
+): void {
+  // Task 4: inject MSH-3/MSH-4 namespace into ORC-3 EI.2 when authority is missing
+}
+
+function normalizeRxa6Dose(
+  _context: PreprocessorContext,
+  _segment: HL7v2Segment,
+): void {
+  // Task 5: normalize RXA-6 (999 sentinel, embedded units, unparseable values)
+}
+
+function normalizeRxa9Nip001(
+  _context: PreprocessorContext,
+  _segment: HL7v2Segment,
+): void {
+  // Task 6: inject NIP001 system when bare 00/01 codes lack coding system
+}

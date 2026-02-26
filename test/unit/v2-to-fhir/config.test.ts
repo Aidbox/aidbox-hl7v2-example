@@ -46,11 +46,11 @@ describe("hl7v2ToFhirConfig", () => {
       identitySystem: { patient: { rules: minimalRules } },
       messages: {
         "ORU-R01": {
-          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+          preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
           converter: { PV1: { required: false } },
         },
         "ADT-A01": {
-          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+          preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
           converter: { PV1: { required: true } },
         },
       },
@@ -86,12 +86,12 @@ describe("hl7v2ToFhirConfig", () => {
     expect(config.messages?.["ORU-R01"]?.converter?.PV1?.required).toBe(false);
   });
 
-  test("config navigation works: ADT-A01 preprocess PV1.19 has fix-authority-with-msh", () => {
+  test("config navigation works: ADT-A01 preprocess PV1.19 has fix-pv1-authority-with-msh", () => {
     const validConfig: Hl7v2ToFhirConfig = {
       identitySystem: { patient: { rules: minimalRules } },
       messages: {
         "ADT-A01": {
-          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+          preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
         },
       },
     };
@@ -103,7 +103,7 @@ describe("hl7v2ToFhirConfig", () => {
     const config = hl7v2ToFhirConfig();
 
     expect(config.messages?.["ADT-A01"]?.preprocess?.PV1?.["19"]?.[0]).toBe(
-      "fix-authority-with-msh",
+      "fix-pv1-authority-with-msh",
     );
   });
 
@@ -304,7 +304,7 @@ describe("hl7v2ToFhirConfig", () => {
       );
 
       expect(() => hl7v2ToFhirConfig()).toThrow(
-        /Unknown preprocessor ID "unknown-preprocessor".*Valid IDs: fix-authority-with-msh/,
+        /Unknown preprocessor ID "unknown-preprocessor".*Valid IDs: fix-pv1-authority-with-msh/,
       );
     });
 
@@ -313,7 +313,7 @@ describe("hl7v2ToFhirConfig", () => {
         identitySystem: { patient: { rules: minimalRules } },
         messages: {
           "ORU-R01": {
-            preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+            preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
           },
         },
       };
@@ -330,7 +330,7 @@ describe("hl7v2ToFhirConfig", () => {
         identitySystem: { patient: { rules: minimalRules } },
         messages: {
           "ORU-R01": {
-            preprocess: { PV1: { "19": ["fix-authority-with-msh", "bad-one"] } },
+            preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh", "bad-one"] } },
           },
         },
       };
@@ -383,7 +383,7 @@ describe("hl7v2ToFhirConfig", () => {
         identitySystem: { patient: { rules: minimalRules } },
         messages: {
           "ORU-R01": {
-            preprocess: { PV1: { "19": "fix-authority-with-msh" } },
+            preprocess: { PV1: { "19": "fix-pv1-authority-with-msh" } },
           },
         },
       };

@@ -356,7 +356,7 @@ If any RXA-9 CWE repeat has code `"00"` or `"01"` but no coding system (CWE.3 em
         "2": ["move-pid2-into-pid3"],
         "3": ["inject-authority-from-msh"]
       },
-      "PV1": { "19": ["fix-authority-with-msh"] },
+      "PV1": { "19": ["fix-pv1-authority-with-msh"] },
       "ORC": { "3": ["inject-authority-into-orc3"] },
       "RXA": {
         "6": ["normalize-rxa6-dose"],
@@ -801,21 +801,21 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Add VXU-V04 config entry and extend the preprocessor type system to support RXA segments.
 
-- [ ] Add `VXU-V04` entry to `config/hl7v2-to-fhir.json` matching the design:
+- [x] Add `VXU-V04` entry to `config/hl7v2-to-fhir.json` matching the design:
   ```json
   "VXU-V04": {
     "preprocess": {
       "PID": { "2": ["move-pid2-into-pid3"], "3": ["inject-authority-from-msh"] },
-      "PV1": { "19": ["fix-authority-with-msh"] },
+      "PV1": { "19": ["fix-pv1-authority-with-msh"] },
       "ORC": { "3": ["inject-authority-into-orc3"] },
       "RXA": { "6": ["normalize-rxa6-dose"], "9": ["normalize-rxa9-nip001"] }
     },
     "converter": { "PV1": { "required": false } }
   }
   ```
-- [ ] Extend `MessageTypeConfig.preprocess` type in `src/v2-to-fhir/config.ts` to include `RXA` alongside existing PID/PV1/ORC
-- [ ] Verify `preprocessor.ts` iteration logic handles RXA segments (it iterates all segments generically, so adding the type should be sufficient — verify)
-- [ ] Run `bun run typecheck` and `bun test:all` — must pass (config validation will fail until preprocessors exist, so may need stub IDs temporarily or add config + preprocessors together)
+- [x] Extend `MessageTypeConfig.preprocess` type in `src/v2-to-fhir/config.ts` to include `RXA` alongside existing PID/PV1/ORC
+- [x] Verify `preprocessor.ts` iteration logic handles RXA segments (it iterates all segments generically, so adding the type should be sufficient — verify)
+- [x] Run `bun run typecheck` and `bun test:all` — must pass (config validation will fail until preprocessors exist, so may need stub IDs temporarily or add config + preprocessors together)
 - [ ] Stop and request user feedback before proceeding
 
 ---

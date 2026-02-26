@@ -27,7 +27,7 @@ src/v2-to-fhir/
 │   └── coding-systems.ts # System URI normalization
 ├── config.ts             # Config loader for config/hl7v2-to-fhir.json
 ├── preprocessor.ts       # Config-driven preprocessing before conversion
-├── preprocessor-registry.ts  # Registered preprocessors (e.g., fix-authority-with-msh)
+├── preprocessor-registry.ts  # Registered preprocessors (e.g., fix-pv1-authority-with-msh)
 ├── id-generation.ts      # Encounter ID from PV1-19 (HL7 v2.8.2 CX rules)
 ├── converter.ts          # Message routing and ConversionResult type
 └── processor-service.ts  # Polling service for IncomingHL7v2Message

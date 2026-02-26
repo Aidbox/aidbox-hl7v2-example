@@ -8,16 +8,16 @@ import { fromPID, fromPV1 } from "../../../src/hl7v2/generated/fields";
 /** Minimal valid identity rules for tests that don't focus on identity validation. */
 const minimalRules = [{ assigner: "UNIPAT" }];
 
-// Config with fix-authority-with-msh preprocessor enabled for both message types
+// Config with fix-pv1-authority-with-msh preprocessor enabled for both message types
 const configWithMshFallback: Hl7v2ToFhirConfig = {
   identitySystem: { patient: { rules: minimalRules } },
   messages: {
     "ORU-R01": {
-      preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+      preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
       converter: { PV1: { required: false } },
     },
     "ADT-A01": {
-      preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+      preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
       converter: { PV1: { required: true } },
     },
   },
@@ -76,7 +76,7 @@ describe("preprocessMessage", () => {
     });
   });
 
-  describe("ORU with missing PV1-19 authority and fix-authority-with-msh enabled", () => {
+  describe("ORU with missing PV1-19 authority and fix-pv1-authority-with-msh enabled", () => {
     test("populates CX.4 from MSH-3 and MSH-4 namespaces when PV1-19 has no authority", () => {
       const rawMessage = [
         "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
@@ -147,7 +147,7 @@ describe("preprocessMessage", () => {
     });
   });
 
-  describe("ADT with missing PV1-19 authority and fix-authority-with-msh enabled", () => {
+  describe("ADT with missing PV1-19 authority and fix-pv1-authority-with-msh enabled", () => {
     test("populates CX.4 from MSH-3 and MSH-4 for ADT-A01", () => {
       const rawMessage = [
         "MSH|^~\\&|ADMISSIONS|HOSPITAL||DEST|20260105||ADT^A01|MSG001|P|2.5.1",
