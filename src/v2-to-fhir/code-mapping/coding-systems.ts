@@ -23,6 +23,9 @@ export function normalizeSystem(system: string | undefined): string | undefined 
   if (upper === "ICD10" || upper === "I10") {
     return "http://hl7.org/fhir/sid/icd-10";
   }
+  if (upper === "ICD-10-CM") {
+    return "http://hl7.org/fhir/sid/icd-10-cm";
+  }
   if (upper === "CVX") {
     return "http://hl7.org/fhir/sid/cvx";
   }

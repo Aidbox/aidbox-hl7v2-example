@@ -940,13 +940,13 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 1: Infrastructure -- `orc-status` mapping type and `normalizeSystem` update
 
-- [ ] Add `"orc-status"` entry to `MAPPING_TYPES` in `src/code-mapping/mapping-types.ts` with `source: { segment: "ORC", field: 5 }`, `target: { resource: "ServiceRequest", field: "status" }`, `targetSystem: "http://hl7.org/fhir/request-status"` [D-1]
-- [ ] Add `"orc-status"` valid values to `VALID_VALUES` in `src/code-mapping/mapping-type-options.ts` with FHIR request-status codes: `active`, `on-hold`, `revoked`, `completed`, `entered-in-error`, `unknown`, `draft` [D-1]
-- [ ] Add `"ICD-10-CM"` entry to `normalizeSystem()` in `src/v2-to-fhir/code-mapping/coding-systems.ts` mapping to `http://hl7.org/fhir/sid/icd-10-cm`. Keep existing `"I10"` mapping unchanged. [D-7]
-- [ ] Add `"ORM-O01"` entry to `config/hl7v2-to-fhir.json` with: PID preprocessors (`move-pid2-into-pid3`, `inject-authority-from-msh`), PV1 preprocessor (`fix-pv1-authority-with-msh`), and `converter.PV1.required: false` [PREP-1, D-3]
-- [ ] Write unit test for `normalizeSystem("ICD-10-CM")` returning `http://hl7.org/fhir/sid/icd-10-cm`
-- [ ] Verify existing `normalizeSystem` tests still pass (e.g., `"I10"` still returns `icd-10`)
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Add `"orc-status"` entry to `MAPPING_TYPES` in `src/code-mapping/mapping-types.ts` with `source: { segment: "ORC", field: 5 }`, `target: { resource: "ServiceRequest", field: "status" }`, `targetSystem: "http://hl7.org/fhir/request-status"` [D-1]
+- [x] Add `"orc-status"` valid values to `VALID_VALUES` in `src/code-mapping/mapping-type-options.ts` with FHIR request-status codes: `active`, `on-hold`, `revoked`, `completed`, `entered-in-error`, `unknown`, `draft` [D-1]
+- [x] Add `"ICD-10-CM"` entry to `normalizeSystem()` in `src/v2-to-fhir/code-mapping/coding-systems.ts` mapping to `http://hl7.org/fhir/sid/icd-10-cm`. Keep existing `"I10"` mapping unchanged. [D-7]
+- [x] Add `"ORM-O01"` entry to `config/hl7v2-to-fhir.json` with: PID preprocessors (`move-pid2-into-pid3`, `inject-authority-from-msh`), PV1 preprocessor (`fix-pv1-authority-with-msh`), and `converter.PV1.required: false` [PREP-1, D-3]
+- [x] Write unit test for `normalizeSystem("ICD-10-CM")` returning `http://hl7.org/fhir/sid/icd-10-cm`
+- [x] Verify existing `normalizeSystem` tests still pass (e.g., `"I10"` still returns `icd-10`)
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
