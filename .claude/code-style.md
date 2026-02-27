@@ -142,6 +142,17 @@ Example: if the choice is between "elegant internals with fragile config couplin
 - Always use static imports at the top of the file. Never use dynamic `await import()` inside functions or route handlers
 - Remove unused code immediately; do not keep dead code or commented-out code; do not keep code in src/ that is only used in tests
 
+## Naming
+
+Use semantic variable names. Avoid short abbreviations (`fv`, `val`, `res`) and generic names (`obj`, `data`, `item`, `result`) that don't convey the variable's meaning. Name variables after what they represent in the domain.
+
+```typescript
+/* GOOD */
+const rawFillerOrder = segment.fields[3];
+const eiComponents = rawFillerOrder as Record<number, FieldValue>;
+const entityIdentifier = eiComponents[1];
+```
+
 ## Code Style
 
 Don't leave `continue` or `return` statements on the same line with the `if` condition.

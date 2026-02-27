@@ -824,15 +824,15 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Add preprocessor that injects MSH-3/MSH-4 derived namespace into ORC-3 when authority is missing. Enables deterministic Immunization ID generation.
 
-- [ ] Add `inject-authority-into-orc3` to `src/v2-to-fhir/preprocessor-registry.ts`:
+- [x] Add `inject-authority-into-orc3` to `src/v2-to-fhir/preprocessor-registry.ts`:
   - If ORC-3.1 (Entity Identifier) present but ORC-3.2 (Namespace ID) and ORC-3.3 (Universal ID) both missing → inject MSH-3/MSH-4 derived namespace into ORC-3.2
   - Same MSH namespace derivation pattern as existing `inject-authority-from-msh`
-- [ ] Write unit tests:
+- [x] Write unit tests:
   - ORC-3 with value but no authority → authority injected from MSH
   - ORC-3 with value and existing authority → no change
   - ORC-3 empty (no value) → no change
   - ORC absent → no error
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---

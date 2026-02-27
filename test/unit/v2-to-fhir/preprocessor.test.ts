@@ -3,7 +3,7 @@ import { parseMessage } from "@atomic-ehr/hl7v2";
 import { preprocessMessage } from "../../../src/v2-to-fhir/preprocessor";
 import type { Hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
 import { clearConfigCache, hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
-import { fromPID, fromPV1 } from "../../../src/hl7v2/generated/fields";
+import { fromORC, fromPID, fromPV1 } from "../../../src/hl7v2/generated/fields";
 
 /** Minimal valid identity rules for tests that don't focus on identity validation. */
 const minimalRules = [{ assigner: "UNIPAT" }];
@@ -342,6 +342,100 @@ describe("preprocessMessage", () => {
         clearConfigCache();
         require("fs").unlinkSync(tmpPath);
       }
+    });
+  });
+
+  describe("inject-authority-into-orc3", () => {
+    const vxuConfig: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "VXU-V04": {
+          preprocess: { ORC: { "3": ["inject-authority-into-orc3"] } },
+        },
+      },
+    };
+
+    function getOrc3(parsed: ReturnType<typeof parseMessage>) {
+      const orcSegment = parsed.find((s) => s.segment === "ORC");
+      if (!orcSegment) return undefined;
+      return fromORC(orcSegment).$3_fillerOrderNumber;
+    }
+
+    test("injects MSH namespace into ORC-3 EI.2 when authority is missing", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "ORC|RE||65930",
+        "RXA|0|1|20260101||08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, vxuConfig);
+      const orc3 = getOrc3(result);
+
+      expect(orc3?.$1_value).toBe("65930");
+      expect(orc3?.$2_namespace).toBe("MyEMR-DE-000001");
+    });
+
+    test("does not override existing EI.2 authority", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "ORC|RE||65930^ExistingNS",
+        "RXA|0|1|20260101||08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, vxuConfig);
+      const orc3 = getOrc3(result);
+
+      expect(orc3?.$1_value).toBe("65930");
+      expect(orc3?.$2_namespace).toBe("ExistingNS");
+    });
+
+    test("does not override existing EI.3 universal ID", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "ORC|RE||65930^^1.2.3.4.5",
+        "RXA|0|1|20260101||08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, vxuConfig);
+      const orc3 = getOrc3(result);
+
+      expect(orc3?.$1_value).toBe("65930");
+      expect(orc3?.$2_namespace).toBeUndefined();
+      expect(orc3?.$3_system).toBe("1.2.3.4.5");
+    });
+
+    test("no change when ORC-3 is empty (no EI.1 value)", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "ORC|RE||",
+        "RXA|0|1|20260101||08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, vxuConfig);
+      const orc3 = getOrc3(result);
+
+      expect(orc3).toBeUndefined();
+    });
+
+    test("no error when ORC segment is absent", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, vxuConfig);
+
+      expect(getOrc3(result)).toBeUndefined();
     });
   });
 });

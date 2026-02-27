@@ -287,13 +287,77 @@ function insertAuthorityIntoPv1Segment(
   }
 }
 
-// Stub implementations — actual logic added in Tasks 4-6
-
+/**
+ * If ORC-3 (Filler Order Number, EI type) has a value (EI.1) but no authority
+ * (EI.2 and EI.3 both empty), inject MSH-3/MSH-4 derived namespace into EI.2.
+ * Prevents cross-sender ID collisions for deterministic Immunization ID generation.
+ */
 function injectAuthorityIntoOrc3(
-  _context: PreprocessorContext,
-  _segment: HL7v2Segment,
+  context: PreprocessorContext,
+  segment: HL7v2Segment,
 ): void {
-  // Task 4: inject MSH-3/MSH-4 namespace into ORC-3 EI.2 when authority is missing
+  if (segment.segment !== "ORC") {
+    return;
+  }
+
+  const mshSegment = findSegment(context.parsedMessage, "MSH");
+  if (!mshSegment) {
+    return;
+  }
+
+  const msh = fromMSH(mshSegment);
+  const namespace = deriveMshNamespace(msh);
+  if (!namespace) {
+    return;
+  }
+
+  const orc3 = segment.fields[3];
+  if (orc3 === undefined || orc3 === null) {
+    return;
+  }
+
+  injectNamespaceIntoEi(segment, 3, orc3, namespace);
+}
+
+/**
+ * Inject namespace into an EI field (EI.2) when EI.1 is present but EI.2/EI.3 are both empty.
+ * Modifies the segment in place.
+ */
+function injectNamespaceIntoEi(
+  segment: HL7v2Segment,
+  fieldIndex: number,
+  fieldValue: FieldValue,
+  namespace: string,
+): void {
+  if (typeof fieldValue === "string") {
+    if (!fieldValue.trim()) {
+      return;
+    }
+    segment.fields[fieldIndex] = { 1: fieldValue, 2: namespace } as FieldValue;
+    return;
+  }
+
+  if (Array.isArray(fieldValue)) {
+    return;
+  }
+
+  const eiComponents = fieldValue as Record<number, FieldValue>;
+  const entityIdentifier = eiComponents[1];
+  if (entityIdentifier === undefined || entityIdentifier === null) {
+    return;
+  }
+  if (typeof entityIdentifier === "string" && !entityIdentifier.trim()) {
+    return;
+  }
+
+  const hasNamespaceId = hasSubcomponent(eiComponents[2], 1);
+  const hasUniversalId = hasSubcomponent(eiComponents[3], 1);
+
+  if (hasNamespaceId || hasUniversalId) {
+    return;
+  }
+
+  eiComponents[2] = namespace;
 }
 
 function normalizeRxa6Dose(
