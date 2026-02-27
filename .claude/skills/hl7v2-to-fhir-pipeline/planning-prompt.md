@@ -1,40 +1,16 @@
----
-name: ticket-plan
-description: Create detailed implementation plan from an approved design. Converts design document and prototype placeholders into step-by-step tasks for execution by Claude Code agents.
----
-
 # Task Plan Creator
 
-You are creating a detailed implementation plan from an approved design document. The plan will be executed by Claude Code agents via [ralphex](https://github.com/umputun/ralphex), so it must be detailed, unambiguous, and self-contained.
-
-## Prerequisites
-
-Before starting, verify that an approved design exists:
-
-1. Look for `ai/tickets/YYYY-MM-DD-feature-name.md`
-2. Check that frontmatter contains `status: approved`
-
-**If no approved design exists:**
-```
-No approved design found for this feature.
-Run /ticket-design first to create and approve a design, or specify the design file path.
-```
-
-**If design exists but not approved:**
-```
-Design exists but status is '[current-status]', not 'approved'.
-Run /ticket-design to continue the design process.
-```
+Create detailed implementation plan from an approved design. Converts design document and prototype placeholders into step-by-step tasks for execution by Claude Code agents. The plan will be executed by Claude Code sub-agents, skipping the design phase, so it must be detailed, unambiguous, and self-contained.
 
 ## Output Location
 
-Write the plan inside the existing design document: `ai/tickets/YYYY-MM-DD-feature-name.md`
+Write the plan inside the existing ticket document: `ai/tickets/converter-skill-tickets/<the-ticket-name>/ticket.md`
 
-Add a new section `# Implementation Plan` at the end of the design document (after `# Context`).
+Add a new section `# Implementation Plan` at the end of the ticket document.
 
 ## Plan Structure
 
-Add the following section to the design document:
+Add the following section to the document:
 
 ```markdown
 # Implementation Plan
@@ -60,7 +36,6 @@ Add the following section to the design document:
 - [ ] [Another action item]
 - [ ] Write/update tests for this task
 - [ ] Run `[validation command]` - must pass before next task
-- [ ] Stop and request user feedback before proceeding
 
 ---
 
@@ -100,26 +75,15 @@ Add the following section to the design document:
 ### Phase 1: Load Design Context
 
 1. Read the approved design document completely
-2. Read all prototype placeholder files listed in `prototype-files` frontmatter
-3. Understand:
-   - The problem being solved (from Problem Statement)
-   - The chosen approach and rationale (from Proposed Approach, Key Decisions)
-   - All affected files (from Affected Components)
-   - Technical details (from Technical Details)
-   - Edge cases identified (from Edge Cases and Error Handling)
-   - Test cases planned (from Test Cases)
-   - Review notes (from AI Review Notes)
+2. Understand:
+   - The problem being solved
+   - The chosen approach and rationale
+   - All affected files
+   - Technical details
+   - Edge cases identified
+   - Test cases planned
 
-### Phase 2: Analyze Prototype Placeholders
-
-For each file with `DESIGN PROTOTYPE: <design-file>` markers:
-
-1. Identify what changes are outlined
-2. Determine dependencies between changes
-3. Note what each prototype outlines and its dependencies
-4. Order tasks so dependencies are satisfied
-
-### Phase 3: Read Code Style Guide
+### Phase 2: Read Code Style Guide
 
 Read `.claude/code-style.md` before planning any file/module structure. The style guide governs:
 - When to create new files vs. extend existing ones (Separation of Concerns, File Creation rules)
@@ -128,7 +92,7 @@ Read `.claude/code-style.md` before planning any file/module structure. The styl
 
 **Every task that creates or restructures files must comply with the code style guide.** If the plan calls for a "shared helpers" file, verify each helper belongs together by responsibility — don't create dump files that mix unrelated concerns.
 
-### Phase 4: Explore the Existing Codebase
+### Phase 3: Explore the Existing Codebase
 
 You cannot write a good plan from the design document alone. You must understand the actual code that will be modified or extended.
 
@@ -141,7 +105,7 @@ Use Task agents (subagent_type=Explore) to explore in parallel:
 
 This exploration directly informs task granularity. Without it, you'll write vague tasks that bundle unrelated work.
 
-### Phase 5: Create Task Breakdown
+### Phase 4: Create Task Breakdown
 
 Convert the design into discrete, ordered tasks.
 
@@ -156,8 +120,6 @@ Convert the design into discrete, ordered tasks.
 
 **Task sizing target**: 3-7 checkboxes per task. If you have 8+, try to look for a split point.
 
-**It is normal for large features to have 15-30 tasks.** Do not try to compress into fewer tasks. Small, focused tasks are easier to review and easier to implement correctly.
-
 **Task ordering principles:**
 - Types/interfaces before implementations
 - Shared code extraction before consumers
@@ -170,7 +132,7 @@ Convert the design into discrete, ordered tasks.
 
 ### Phase 6: Write the Implementation Plan
 
-Add `# Implementation Plan` section to `ai/tickets/YYYY-MM-DD-feature-name.md` with:
+Add `# Implementation Plan` section to the document with:
 
 1. Overview derived from design's Problem Statement
 2. Development approach guidelines
@@ -197,12 +159,6 @@ Critically and thoroughly review the plan before presenting to user:
 - There's a task focused on cleaning up all DESIGN PROTOTYPE markers
 - Post-completion verification steps are defined
 
-### Phase 8: Update the document status
-
-Change the design document status to `planned`.
-
----
-
 ## Task Writing Guidelines
 
 ### Good Task Structure (focused, one concern)
@@ -215,7 +171,6 @@ Change the design document status to `planned`.
 - [ ] Return structured error with 401 for missing/invalid, 403 for expired
 - [ ] Write unit tests: valid token, expired token, malformed token, missing header
 - [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
-- [ ] Stop and request user feedback before proceeding
 ```
 
 ```markdown
@@ -224,7 +179,6 @@ Change the design document status to `planned`.
 - [ ] Add `validateJWT` middleware to protected routes in `src/routes/index.ts`
 - [ ] Write integration test for protected endpoint (valid token → 200, no token → 401)
 - [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
-- [ ] Stop and request user feedback before proceeding
 ```
 
 ### Bad: Too vague
@@ -280,57 +234,6 @@ Test coverage should include:
 - Error conditions
 - Edge cases (empty inputs, boundary values, concurrent access)
 - Integration with adjacent components
-
----
-
-## Converting Prototype Placeholders to Tasks
-
-### From new file scaffold:
-
-**Prototype:**
-```typescript
-// ═══════════════════════════════════════════════════════════════════════════
-// DESIGN PROTOTYPE: 2026-01-28-feature.md
-// ═══════════════════════════════════════════════════════════════════════════
-//
-// export interface UserSession { ... }
-// export function createSession(userId: string): UserSession
-// export function validateSession(token: string): boolean
-```
-
-**Task:**
-```markdown
-### Task 2: Implement session management module
-
-- [ ] Replace prototype scaffold in `src/session/manager.ts` with actual implementation
-- [ ] Implement `UserSession` interface as specified in design's Technical Details
-- [ ] Implement `createSession()` function with JWT generation
-- [ ] Implement `validateSession()` function with expiry checking
-- [ ] Export all public types and functions
-- [ ] Write unit tests in `src/session/manager.test.ts`
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
-```
-
-### From inline markers:
-
-**Prototype:**
-```typescript
-// DESIGN PROTOTYPE: 2026-01-28-feature.md
-// Add parameter → mappingType: MappingTypeName = "loinc"
-export function generateConceptMapId(sender: SenderContext): string {
-```
-
-**Task:**
-```markdown
-### Task 4: Update generateConceptMapId for multiple mapping types
-
-- [ ] Add `mappingType: MappingTypeName = "loinc"` parameter to `generateConceptMapId()`
-- [ ] Import `MappingTypeName` from `src/code-mapping/mapping-types.ts`
-- [ ] Use `MAPPING_TYPES[mappingType].conceptMapSuffix` instead of hardcoded `-to-loinc`
-- [ ] Update all existing call sites (should work with default parameter)
-- [ ] Add unit tests for new parameter with different mapping types
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
-```
 
 ---
 
