@@ -872,7 +872,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - `"02"` without system → no change (not a NIP001 code)
   - Empty RXA-9 → no error
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -880,12 +880,12 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Add CVX/NCIT/HL70163 to normalizeSystem and wire VXU_V04 into the converter switch.
 
-- [ ] Add CVX to `normalizeSystem()` in `src/v2-to-fhir/code-mapping/coding-systems.ts`:
+- [x] Add CVX to `normalizeSystem()` in `src/v2-to-fhir/code-mapping/coding-systems.ts`:
   - `"CVX"` → `"http://hl7.org/fhir/sid/cvx"`
-- [ ] Add NCIT: `"NCIT"` → appropriate FHIR URI (verify via V2-to-FHIR IG vocabulary mappings in `docs/v2-to-fhir-spec/mappings/codesystems/`)
-- [ ] Add HL70163: `"HL70163"` → appropriate FHIR URI (check V2-to-FHIR IG vocabulary mappings)
-- [ ] Add `VXU_V04` case to switch in `src/v2-to-fhir/converter.ts` + import `convertVXU_V04`
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Add NCIT: `"NCIT"` → `"http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl"` (from HL7 Terminology NamingSystem v3-nciThesaurus)
+- [x] Add HL70163: `"HL70163"` → `"http://terminology.hl7.org/CodeSystem/v2-0163"` (from V2-to-FHIR IG BodySite CSV)
+- [x] Add `VXU_V04` case to switch in `src/v2-to-fhir/converter.ts` + import `convertVXU_V04`
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---

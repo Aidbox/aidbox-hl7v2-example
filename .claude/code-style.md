@@ -31,9 +31,17 @@ if (!mapsToLoinc || !matchingSystem) {
 }
 ```
 
-Don't add comments that restate what names and types already convey. 
-Comments should explain WHY or document non-obvious contracts/requirements, not describe WHAT the code does.
-If the name is descriptive, a comment is redundant. Delete it.
+Comments are useful when they tell you something you can't quickly see from the code:
+- WHY something is done (business reason, non-obvious constraint, workaround)
+- Contracts (`@param`/`@returns` with semantic context beyond the type signature — e.g., "HL7v2 coding system identifier", "returns original value if no mapping exists")
+- Edge case behavior that would surprise a reader
+- References to external specs, tickets, or standards
+
+Comments are redundant (delete them) when they restate what names and types already convey:
+- `@param id - the id` (pure type restatement)
+- `// Check if patient exists` before `if (patientExists)`
+- `// Loop through items` before `for (const item of items)`
+- Lists of specific values that will go stale as the code evolves
 
 ### Prefer functions over big commented blocks
 
