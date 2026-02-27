@@ -910,3 +910,292 @@ Test fixtures: `test/fixtures/hl7v2/orm-o01/` (copied from example messages with
 - **Realistic fixtures** for integration tests: derive from the 6 examples but with synthetic identifiers. Place in `test/fixtures/hl7v2/orm-o01/`.
 - **Edge case fixtures**: create specific fixtures for empty PV1, missing ORC-1, missing OBX-11, etc.
 
+---
+
+# Implementation Plan
+
+## Overview
+
+Implement an ORM^O01 (General Order Message) to FHIR converter that handles incoming order messages and produces ServiceRequest (from OBR-based orders), MedicationRequest (from RXO-based orders), Condition (from DG1), Observation (from OBX), and Coverage (from IN1) resources. The converter supports multiple order groups per message, ORC-based status resolution with ConceptMap fallback, and follows the existing project patterns established by the ORU_R01, ADT_A01, and VXU_V04 converters.
+
+## Development Approach
+- Complete each task fully before moving to the next
+- Make small, focused changes
+- **CRITICAL: all tests must pass before starting next task**
+- **CRITICAL: update this plan when scope changes**
+
+## Validation Commands
+- `bun test:all` - Run all tests (unit + integration)
+- `bun run typecheck` - Type checking
+
+## Implementation Note: ServiceRequest vs MedicationRequest Status Types
+
+The FHIR R4 type definitions differ between the two resources:
+- `ServiceRequest.status`: `"draft" | "active" | "on-hold" | "revoked" | "completed" | "entered-in-error" | "unknown"`
+- `MedicationRequest.status`: `"active" | "on-hold" | "cancelled" | "completed" | "entered-in-error" | "stopped" | "draft" | "unknown"`
+
+The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is valid for ServiceRequest but NOT for MedicationRequest. For MedicationRequest, `"revoked"` must be translated to `"cancelled"` (the semantic equivalent). The `resolveOrderStatus()` function should return a generic string, and each consumer (ServiceRequest builder, MedicationRequest builder) should validate/adapt the value to its own allowed status codes. This is an implementation detail not explicitly called out in the design; implementing agents should handle this mapping at the resource builder level.
+
+---
+
+## Task 1: Infrastructure -- `orc-status` mapping type and `normalizeSystem` update
+
+- [ ] Add `"orc-status"` entry to `MAPPING_TYPES` in `src/code-mapping/mapping-types.ts` with `source: { segment: "ORC", field: 5 }`, `target: { resource: "ServiceRequest", field: "status" }`, `targetSystem: "http://hl7.org/fhir/request-status"` [D-1]
+- [ ] Add `"orc-status"` valid values to `VALID_VALUES` in `src/code-mapping/mapping-type-options.ts` with FHIR request-status codes: `active`, `on-hold`, `revoked`, `completed`, `entered-in-error`, `unknown`, `draft` [D-1]
+- [ ] Add `"ICD-10-CM"` entry to `normalizeSystem()` in `src/v2-to-fhir/code-mapping/coding-systems.ts` mapping to `http://hl7.org/fhir/sid/icd-10-cm`. Keep existing `"I10"` mapping unchanged. [D-7]
+- [ ] Add `"ORM-O01"` entry to `config/hl7v2-to-fhir.json` with: PID preprocessors (`move-pid2-into-pid3`, `inject-authority-from-msh`), PV1 preprocessor (`fix-pv1-authority-with-msh`), and `converter.PV1.required: false` [PREP-1, D-3]
+- [ ] Write unit test for `normalizeSystem("ICD-10-CM")` returning `http://hl7.org/fhir/sid/icd-10-cm`
+- [ ] Verify existing `normalizeSystem` tests still pass (e.g., `"I10"` still returns `icd-10`)
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 2: RXO segment wrapper
+
+- [ ] Create `src/hl7v2/wrappers/rxo.ts` with `RXO` interface and `fromRXO()` parser following the `fromOBX` wrapper pattern in `src/hl7v2/wrappers/obx.ts` [D-8]
+- [ ] Define all fields per REQ-RXO-1: `$1_requestedGiveCode` (CE), `$2_requestedGiveAmountMin` (string), `$3_requestedGiveAmountMax` (string), `$4_requestedGiveUnits` (CE), `$5_requestedDosageForm` (CE), `$9_allowSubstitutions` (string), `$11_requestedDispenseAmount` (string), `$12_requestedDispenseUnits` (CE), `$13_numberOfRefills` (string), `$14_orderingProviderDea` (XCN[]), `$18_requestedGiveStrength` (string), `$19_requestedGiveStrengthUnits` (CE), `$25_requestedDrugStrengthVolume` (string), `$26_requestedDrugStrengthVolumeUnits` (CWE)
+- [ ] Parser reads from `segment.fields[N]` using existing `fromCE()`, `fromXCN()`, `fromCWE()` helpers
+- [ ] Export `fromRXO` and `RXO` from `src/hl7v2/wrappers/index.ts`
+- [ ] Write unit tests for `fromRXO()`: parse a segment with populated fields, parse a segment with minimal fields, verify CE/XCN/CWE conversion
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 3: Extract `generateCoverageId` to shared module
+
+- [ ] Extract `generateCoverageId()` and `hasValidPayorInfo()` functions from `src/v2-to-fhir/messages/adt-a01.ts` into `src/v2-to-fhir/segments/in1-coverage.ts` (the existing IN1 segment converter module) [D-6, FALL-7]
+- [ ] Update `src/v2-to-fhir/messages/adt-a01.ts` to import `generateCoverageId` and `hasValidPayorInfo` from `in1-coverage.ts` instead of defining locally
+- [ ] Verify the ADT tests pass unchanged (no behavior change, just code relocation)
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 4: ORC -> ServiceRequest segment converter
+
+- [ ] Create `src/v2-to-fhir/segments/orc-servicerequest.ts` with `convertORCToServiceRequest()` [D-1, REQ-ORC-1]
+- [ ] Implement three-tier status resolution as private function `resolveOrderStatus()`:
+  - Tier 1: ORC-5 valued + in `ORDER_STATUS_MAP` (Table 0038) -> use it
+  - Tier 2: ORC-5 valued + NOT in standard map -> ConceptMap lookup via `orc-status` mapping type. On failure, return `MappingError`
+  - Tier 3: ORC-5 empty -> use `ORDER_CONTROL_STATUS_MAP` from ORC-1 (Table 0119)
+  - Tier 4: Neither -> return `"unknown"`
+  - Handle GAP-1: ORC-1 missing gracefully [RELAX-1]
+- [ ] Define `ORDER_STATUS_MAP` constant: CA->revoked, CM->completed, DC->revoked, ER->entered-in-error, HD->on-hold, IP->active, RP->revoked, SC->active
+- [ ] Define `ORDER_CONTROL_STATUS_MAP` constant: NW->active, CA->active, OC->revoked, DC->revoked, HD->active, OH->on-hold, HR->on-hold, CR->revoked, DR->revoked (SC has no mapping)
+- [ ] Map ORC-2 -> `identifier[PLAC]` (with type coding), ORC-3 -> `identifier[FILL]` (with type coding)
+- [ ] Map ORC-4 -> `requisition` (EI -> Identifier)
+- [ ] Map ORC-9 -> `authoredOn` only when ORC-1 = "NW"
+- [ ] Map ORC-12 -> `requester` (display reference via `convertXCNToPractitioner()`)
+- [ ] Map ORC-29 -> `locationCode` (CWE -> CodeableConcept)
+- [ ] Set `intent = "order"` as default
+- [ ] Return `ORCServiceRequestResult` with partial ServiceRequest and optional MappingError
+- [ ] Write unit tests in `test/unit/v2-to-fhir/segments/orc-servicerequest.test.ts`:
+  - Status from standard ORC-5 values (each Table 0038 code)
+  - Status from ORC-1 fallback (each Table 0119 code)
+  - Non-standard ORC-5 returns mapping error with `mappingType: "orc-status"`
+  - Both ORC-1 and ORC-5 empty -> status "unknown"
+  - ORC-4 -> requisition Identifier
+  - ORC-9 mapped to authoredOn when ORC-1="NW", NOT mapped when ORC-1="CA"
+  - ORC-12 -> requester display reference
+  - ORC-29 -> locationCode
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 5: OBR -> ServiceRequest merger
+
+- [ ] Create `src/v2-to-fhir/segments/obr-servicerequest.ts` with `mergeOBRIntoServiceRequest()` [REQ-OBR-1]
+- [ ] Map OBR-4 -> `code` via `convertCEToCodeableConcept()`
+- [ ] Map OBR-2 -> `identifier[PLAC]` only if ORC-2 empty (check via parameter)
+- [ ] Map OBR-3 -> `identifier[FILL]` only if ORC-3 empty (check via parameter)
+- [ ] Map OBR-5 -> `priority`: S/A -> "stat", R -> "routine", T -> "urgent"
+- [ ] Map OBR-6 -> `occurrenceDateTime` via `convertDTMToDateTime()`
+- [ ] Map OBR-11 -> `intent` override: "G" -> "reflex-order", all other values keep existing intent [REQ-OBR-1 note on "A"]
+- [ ] Map OBR-16 -> `requester` only if ORC-12 not valued (fallback) [EC-7]
+- [ ] Map OBR-31 -> `reasonCode` via `convertCEToCodeableConcept()`
+- [ ] Write unit tests in `test/unit/v2-to-fhir/segments/obr-servicerequest.test.ts`:
+  - OBR-4 maps to code
+  - OBR-2 used as PLAC identifier when ORC-2 empty
+  - OBR-2 NOT used when ORC-2 present
+  - OBR-5 priority mapping (S->stat, R->routine, T->urgent)
+  - OBR-6 maps to occurrenceDateTime
+  - OBR-11 "G" -> reflex-order, "A" -> keeps "order"
+  - OBR-16 requester fallback when ORC-12 empty
+  - OBR-31 maps to reasonCode
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 6: RXO -> MedicationRequest converter
+
+- [ ] Create `src/v2-to-fhir/segments/rxo-medicationrequest.ts` with `convertRXOToMedicationRequest()` [REQ-RXO-1]
+- [ ] Set `intent = "original-order"` always
+- [ ] Accept resolved status as parameter (from ORC resolution); adapt `"revoked"` to `"cancelled"` for MedicationRequest type compatibility (see Implementation Note above)
+- [ ] Map RXO-1 -> `medicationCodeableConcept` via `convertCEToCodeableConcept()`
+- [ ] Map RXO-2/3/4 -> `dosageInstruction[0].doseAndRate[0].doseRange` (low.value, high.value, units from RXO-4)
+- [ ] Map RXO-9 -> `substitution.allowedCodeableConcept` (map "Y"/"T" to allowed, "N" to not allowed)
+- [ ] Map RXO-11/12 -> `dispenseRequest.quantity` (value and units)
+- [ ] Map RXO-13 -> `dispenseRequest.numberOfRepeatsAllowed` (parse as integer)
+- [ ] Write unit tests in `test/unit/v2-to-fhir/segments/rxo-medicationrequest.test.ts`:
+  - RXO-1 maps to medicationCodeableConcept
+  - RXO-2/3/4 maps to dosageInstruction doseRange (low, high, units)
+  - RXO-2 only (no max) -> doseRange.low only
+  - RXO-9 "T" -> allowed, "N" -> not allowed
+  - RXO-11/12 maps to dispenseRequest quantity
+  - RXO-13 maps to numberOfRepeatsAllowed
+  - Intent is always "original-order"
+  - Status "revoked" adapted to "cancelled" for MedicationRequest
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 7: ORM order grouping and ID generation
+
+- [ ] Create the `ORMOrderGroup` interface and `groupORMOrders()` function in `src/v2-to-fhir/messages/orm-o01.ts` (or a separate file if the main converter gets too large) [D-4]
+- [ ] Implement ORC-starts-group pattern: walk through segments sequentially, ORC starts new group, OBR/RXO sets orderChoice, NTE/DG1/OBX attach to current group. Handle observation-level NTEs (NTE after OBX attaches to observation, not order) [D-4]
+- [ ] Implement `resolveOrderNumber()`: ORC-2 first, OBR-2 fallback for OBR-based orders, ORC-2 only for RXO-based orders. Uses `sanitizeForId()` with optional namespace suffix [FALL-1, FALL-2, D-5]
+- [ ] Implement `isEmptyPV1()` helper to detect PV1 segments with no meaningful content (PV1-2 empty AND PV1-19 empty) [EC-1]
+- [ ] Write unit tests for `groupORMOrders()`:
+  - Single ORC + OBR groups correctly
+  - Two ORC + OBR groups (multi-order)
+  - ORC + RXO groups correctly
+  - Mixed ORC+OBR and ORC+RXO in one message
+  - NTEs after OBX attach to observation, NTEs before OBX attach to order
+  - DG1 attaches to current order group
+  - OBX starts new observation entry
+- [ ] Write unit tests for `resolveOrderNumber()`:
+  - ORC-2 present -> uses ORC-2.1 (with namespace suffix when ORC-2.2 present)
+  - ORC-2 empty, OBR-2 present -> uses OBR-2.1
+  - Both empty -> returns error
+  - Sanitization applied correctly
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 8: Main ORM_O01 converter -- core flow (Patient, Encounter, OBR orders)
+
+- [ ] Create `src/v2-to-fhir/messages/orm-o01.ts` with `convertORM_O01()` function [D-8, AC-1]
+- [ ] Implement main flow: parseMSH -> parsePID -> extractSenderTag -> handlePatient -> parsePV1 (with empty PV1 detection) -> handleEncounter (with messageTypeKey "ORM-O01")
+- [ ] Process IN1 segments -> Coverage[] using existing `convertIN1ToCoverage()` and extracted `generateCoverageId()` + `hasValidPayorInfo()` from `in1-coverage.ts` [D-6]
+- [ ] Call `groupORMOrders()` to partition segments
+- [ ] For each OBR-based order group: call `convertORCToServiceRequest()`, then `mergeOBRIntoServiceRequest()`, process DG1s into Conditions (using `convertDG1ToCondition()` with positional IDs `{orderNumber}-dg1-{index}`), process order-level NTEs into `ServiceRequest.note`, process OBX observations (see next point), link `reasonReference`, `supportingInfo`, `note`
+- [ ] For OBX in ORM context: use `convertOBXWithMappingSupportAsync()` for status mapping but NOT LOINC resolution. When OBX-11 is missing, default to status `"registered"` before calling the mapping-aware function [D-2, REQ-OBX-NOLOINC-1, RELAX-5]. Use positional IDs `{orderNumber}-obx-{index}` [FALL-4]
+- [ ] Collect mapping errors. If any: return `buildMappingErrorResult()`. Otherwise build transaction bundle
+- [ ] Handle error cases: missing MSH (throw), missing PID (return error), no processable order groups (return error) [AC-17, AC-18, AC-20]
+- [ ] Handle warning case: PV1-19 present but invalid authority -> warning status [REQ-PV1-1]
+- [ ] Handle processed case: no PV1 or empty PV1 -> processed (not warning) [D-3, EC-1]
+- [ ] Register `ORM_O01` in `src/v2-to-fhir/converter.ts`: add `case "ORM_O01"` and import [AC-1]
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 9: Main ORM_O01 converter -- RXO order support and linkages
+
+- [ ] Add RXO-based order processing in `processOrderGroup()`: when orderChoiceType is "RXO", call `convertRXOToMedicationRequest()` with the resolved ORC status [AC-4]
+- [ ] Link NTE segments to `MedicationRequest.note` (not ServiceRequest.note) for RXO orders [REQ-RXO-LINKAGE-1, AC-6]
+- [ ] Link DG1-derived Conditions to `MedicationRequest.reasonReference` for RXO orders [REQ-RXO-LINKAGE-1, AC-5]
+- [ ] Link OBX-derived Observations to `MedicationRequest.supportingInformation` for RXO orders [REQ-RXO-LINKAGE-1, AC-7]
+- [ ] Set MedicationRequest `subject` (patientRef) and `encounter` (encounterRef, when present)
+- [ ] Set MedicationRequest ID using `resolveOrderNumber()` with ORC-2 only (no OBR fallback for RXO) [FALL-2]
+- [ ] Add meta tags to MedicationRequest (baseMeta)
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 10: Unit tests for ORM_O01 message converter
+
+- [ ] Create `test/unit/v2-to-fhir/messages/orm-o01.test.ts` following the pattern in `oru-r01.test.ts` (inline HL7v2 message strings, `makeTestContext()`)
+- [ ] Test: ORM with single OBR order produces ServiceRequest with correct resourceType, intent="order", code, identifiers [AC-3]
+- [ ] Test: ORM with single RXO order produces MedicationRequest with intent="original-order", medication code [AC-4]
+- [ ] Test: ORM with multiple OBR orders produces multiple ServiceRequests with distinct IDs [AC-9]
+- [ ] Test: ORM with multiple RXO orders produces multiple MedicationRequests [AC-9]
+- [ ] Test: DG1 segments produce Conditions linked via reasonReference [AC-5]
+- [ ] Test: NTE segments produce ServiceRequest.note entries [AC-6]
+- [ ] Test: OBX segments produce Observations linked via supportingInfo [AC-7]
+- [ ] Test: IN1 segments produce Coverage resources [AC-8]
+- [ ] Test: OBX in ORM context does NOT trigger LOINC resolution [AC-21]
+- [ ] Test: Missing OBX-11 defaults to status=registered [RELAX-5]
+- [ ] Test: ServiceRequest.status from ORC-5 standard value "SC" -> "active" [AC-15]
+- [ ] Test: ServiceRequest.status from ORC-1 "NW" when ORC-5 empty -> "active" [AC-15]
+- [ ] Test: Status = "unknown" when both ORC-1 and ORC-5 empty [AC-15, RELAX-1]
+- [ ] Test: Missing PID rejects message (status="error") [AC-18]
+- [ ] Test: Missing ORC-2 and OBR-2 rejects order group [AC-20]
+- [ ] Test: ORM without PV1 processes normally (status=processed) [AC-12]
+- [ ] Test: ORM with empty PV1 processes normally (treated as absent) [EC-1]
+- [ ] Test: ORM with valid PV1-19 creates Encounter [AC-13]
+- [ ] Test: ORM with PV1 but no PV1-19 skips Encounter (status=processed) [FALL-6]
+- [ ] Test: Deterministic ServiceRequest ID from ORC-2 [AC-10, FALL-1]
+- [ ] Test: Deterministic Condition ID from order + position [AC-10, FALL-3]
+- [ ] Test: Deterministic Observation ID from order + position [AC-10, FALL-4]
+- [ ] Test: OBR-11 "G" overrides intent to "reflex-order" [REQ-OBR-1]
+- [ ] Test: ORC-12 maps to ServiceRequest.requester [REQ-ORC-1]
+- [ ] Test: OBR-16 used as requester fallback when ORC-12 empty [EC-7]
+- [ ] Test: Mixed order types in one message: OBR + RXO -> 1 ServiceRequest + 1 MedicationRequest [EC-2]
+- [ ] Test: NTE in RXO order maps to MedicationRequest.note [REQ-RXO-LINKAGE-1]
+- [ ] Test: DG1 in RXO order maps to MedicationRequest.reasonReference [REQ-RXO-LINKAGE-1]
+- [ ] Test: OBX in RXO order maps to MedicationRequest.supportingInformation [REQ-RXO-LINKAGE-1]
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 11: Integration test fixtures
+
+- [ ] Create `test/fixtures/hl7v2/orm-o01/` directory
+- [ ] Create `base-obr.hl7`: single OBR-based order with ORC, OBR, DG1, PV1 (derived from ex1, de-identified with synthetic data)
+- [ ] Create `base-rxo.hl7`: single RXO-based order with ORC, RXO (derived from ex6, simplified to single order, de-identified)
+- [ ] Create `multi-obr.hl7`: two OBR-based orders in one message (derived from ex2, de-identified)
+- [ ] Create `multi-rxo.hl7`: two RXO-based orders with DG1/OBX/NTE per order (derived from ex6, de-identified)
+- [ ] Create `non-standard-orc5.hl7`: ORC-5="Final" (non-standard value triggering mapping_error)
+- [ ] Create `with-insurance.hl7`: ORM with IN1 segments (derived from ex2 or ex6, de-identified)
+- [ ] Create `no-pv1.hl7`: ORM without PV1 segment
+- [ ] Create `new-patient.hl7`: ORM with a patient ID that won't exist in Aidbox (for draft patient creation test)
+- [ ] Verify all fixtures parse correctly with `parseMessage()` (no syntax errors)
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 12: Integration tests
+
+- [ ] Add `getServiceRequests()` and `getMedicationRequests()` helper functions to `test/integration/helpers.ts`
+- [ ] Add `immunization`, `medicationrequest`, `servicerequest` to the TRUNCATE list in `cleanupTestResources()` if not already present
+- [ ] Create `test/integration/v2-to-fhir/orm-o01.integration.test.ts`
+- [ ] Test: Happy path single OBR order E2E: submit ORM -> verify ServiceRequest, Condition, Patient created in Aidbox [AC-3, AC-22]
+- [ ] Test: Happy path single RXO order E2E: submit ORM with RXO -> verify MedicationRequest created [AC-4, AC-22]
+- [ ] Test: Multiple OBR orders in one message -> 2 ServiceRequests [AC-9]
+- [ ] Test: Multiple RXO orders with DG1/OBX/NTE -> verify MedicationRequests, Conditions, Observations created [AC-9]
+- [ ] Test: Non-standard ORC-5 triggers mapping_error status and Task creation [AC-16]
+- [ ] Test: ORC-5 mapping resolution after ConceptMap created + reprocess -> verify processed status [AC-16]
+- [ ] Test: IN1 produces Coverage resources in Aidbox [AC-8]
+- [ ] Test: Missing PV1 processes normally, no Encounter created [AC-12]
+- [ ] Test: Patient draft creation (submit with unknown patient -> verify draft Patient active=false) [AC-11]
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 13: Update documentation
+
+- [ ] Update CLAUDE.md:
+  - Add `ORM_O01` to the converter list in the Architecture Overview / Components table
+  - Add ORM to the "Supported message types" in the converter.ts comment (if applicable)
+  - Document the `orc-status` mapping type alongside existing mapping types
+  - Add any gotchas discovered during implementation
+- [ ] Add inline documentation for complex functions (especially `resolveOrderStatus` three-tier logic, `groupORMOrders` segment walking, and the ServiceRequest/MedicationRequest status type adaptation)
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+
+---
+
+## Task 14: Cleanup design artifacts
+
+- [ ] Remove all `DESIGN PROTOTYPE: YYYY-MM-DD-feature-name` comments from codebase (note: VXU still has one at the top of `vxu-v04.ts` -- only remove ORM-related ones if any were added)
+- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE" src/`
+- [ ] Update design document status to `implemented` (add a note at the top of the Requirements section)
+- [ ] Run `bun test:all` and `bun run typecheck` - final verification
+
+---
+
+## Post-Completion Verification
+
+1. **Functional test**: Process each of the 6 example messages (from `ai/tickets/converter-skill-tickets/orm-converter/examples/`) through the converter by running the integration test suite. Verify each produces the expected resource types without crashing [AC-2].
+2. **Edge case test**: Submit an ORM with empty PV1 (`PV1|`) and verify status is `processed` (not `warning` or `error`). Submit an ORM with ORC-5="Pending" (non-standard) and verify `mapping_error` status with Task creation.
+3. **Integration check**: Verify the ORM converter is routed correctly by `convertToFHIR()` when MSH-9 contains `ORM^O01`. Verify that existing ORU, ADT, VXU tests still pass unchanged (no regressions from shared code changes like `normalizeSystem`, `generateCoverageId` extraction).
+4. **No regressions**: All existing tests pass (`bun test:all` green).
+5. **Cleanup verified**: No DESIGN PROTOTYPE comments remain in ORM-related files.
