@@ -11,9 +11,10 @@
  * The message converter computes the ID and passes it here.
  */
 
-import type { RXA, RXR, ORC, CE } from "../../hl7v2/generated/fields";
+import type { RXA, RXR, ORC, CE, XCN } from "../../hl7v2/generated/fields";
 import type {
   Immunization,
+  ImmunizationPerformer,
   Identifier,
   CodeableConcept,
   Quantity,
@@ -25,6 +26,9 @@ import { convertCWEToCodeableConcept } from "../datatypes/cwe-codeableconcept";
 import { convertEIToTypedIdentifier } from "../datatypes/ei-coding";
 import { convertDTMToDateTime, convertDTMToDate } from "../datatypes/dtm-datetime";
 import { normalizeSystem } from "../code-mapping/coding-systems";
+import { convertXCNToPractitioner, buildPractitionerIdFromXCN } from "../datatypes/xcn-practitioner";
+import { convertXCNToPractitionerRole } from "../datatypes/xcn-practitioner-role";
+import { createBundleEntry } from "../fhir-bundle";
 
 export interface RXAConversionResult {
   immunization: Immunization;
@@ -121,6 +125,68 @@ function deriveRecordedDate(orc: ORC | undefined, rxa: RXA): string | undefined 
   }
 
   return undefined;
+}
+
+const PERFORMER_FUNCTION_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0443";
+
+/**
+ * Create administering performer (function=AP) from RXA-10 XCN.
+ * Returns Practitioner resource with deterministic ID and performer entry.
+ */
+function createAdministeringPerformer(
+  xcn: XCN,
+): { performer: ImmunizationPerformer; practitionerEntry: BundleEntry } | undefined {
+  const practitioner = convertXCNToPractitioner(xcn);
+  if (!practitioner) {
+    return undefined;
+  }
+
+  const practitionerId = buildPractitionerIdFromXCN(xcn);
+  if (!practitionerId) {
+    return undefined;
+  }
+
+  practitioner.id = practitionerId;
+
+  return {
+    performer: {
+      function: {
+        coding: [{ system: PERFORMER_FUNCTION_SYSTEM, code: "AP", display: "Administering Provider" }],
+      },
+      actor: { reference: `Practitioner/${practitionerId}` },
+    },
+    practitionerEntry: createBundleEntry(practitioner),
+  };
+}
+
+/**
+ * Create ordering performer (function=OP) from ORC-12 XCN.
+ * Returns PractitionerRole resource with deterministic ID and performer entry.
+ */
+function createOrderingPerformer(
+  xcn: XCN,
+): { performer: ImmunizationPerformer; practitionerRoleEntry: BundleEntry } | undefined {
+  const practitionerRole = convertXCNToPractitionerRole(xcn);
+  if (!practitionerRole) {
+    return undefined;
+  }
+
+  const roleId = buildPractitionerIdFromXCN(xcn);
+  if (!roleId) {
+    return undefined;
+  }
+
+  practitionerRole.id = `role-${roleId}`;
+
+  return {
+    performer: {
+      function: {
+        coding: [{ system: PERFORMER_FUNCTION_SYSTEM, code: "OP", display: "Ordering Provider" }],
+      },
+      actor: { reference: `PractitionerRole/role-${roleId}` },
+    },
+    practitionerRoleEntry: createBundleEntry(practitionerRole),
+  };
 }
 
 /**
@@ -241,8 +307,40 @@ export function convertRXAToImmunization(
     }
   }
 
-  // Performers will be added by Task 12
-  const performerEntries: BundleEntry[] = [];
+  const { performers, performerEntries } = buildPerformers(rxa, orc);
+  if (performers.length > 0) {
+    immunization.performer = performers;
+  }
 
   return { immunization, performerEntries };
+}
+
+/**
+ * Build performers from RXA-10 (administering, first XCN) and ORC-12 (ordering, first XCN).
+ * Only the first XCN is used — provided VXU message examples have a single provider per role.
+ */
+function buildPerformers(
+  rxa: RXA,
+  orc: ORC | undefined,
+): { performers: ImmunizationPerformer[]; performerEntries: BundleEntry[] } {
+  const performers: ImmunizationPerformer[] = [];
+  const performerEntries: BundleEntry[] = [];
+
+  if (rxa.$10_administeringProvider?.length) {
+    const adminResult = createAdministeringPerformer(rxa.$10_administeringProvider[0]!);
+    if (adminResult) {
+      performers.push(adminResult.performer);
+      performerEntries.push(adminResult.practitionerEntry);
+    }
+  }
+
+  if (orc?.$12_orderingProvider?.length) {
+    const orderResult = createOrderingPerformer(orc.$12_orderingProvider[0]!);
+    if (orderResult) {
+      performers.push(orderResult.performer);
+      performerEntries.push(orderResult.practitionerRoleEntry);
+    }
+  }
+
+  return { performers, performerEntries };
 }

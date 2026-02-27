@@ -35,6 +35,7 @@ import {
 import { composeMappingTask, composeTaskBundleEntry } from "../../code-mapping/mapping-task";
 import type { Hl7v2ToFhirConfig } from "../config";
 import type { EncounterLookupFn } from "../aidbox-lookups";
+import { sanitizeForId } from "../identity-system/utils";
 
 // ============================================================================
 // Code Systems
@@ -527,8 +528,7 @@ export function buildEncounterFromPV1(
     identifiers.push(...identifierResult.identifier);
     const system = identifierResult.identifier[0]!.system!;
     const vnValue = pv1.$19_visitNumber!.$1_value!;
-    const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]/g, "-");
-    encounter.id = `${sanitize(system)}-${sanitize(vnValue)}`;
+    encounter.id = `${sanitizeForId(system)}-${sanitizeForId(vnValue)}`;
   }
 
   // PV1-50: Alternate Visit ID -> identifier

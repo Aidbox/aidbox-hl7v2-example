@@ -642,6 +642,169 @@ describe("convertRXAToImmunization", () => {
     });
   });
 
+  describe("performers (RXA-10 administering, ORC-12 ordering)", () => {
+    const administeringXCN = {
+      $1_value: "1234567890",
+      $2_family: { $1_family: "SMITH" },
+      $3_given: "JOHN",
+      $4_additionalGiven: "W",
+      $9_system: { $1_namespace: "NPI" },
+      $13_type: "NPI",
+    };
+
+    const orderingXCN = {
+      $1_value: "9876543210",
+      $2_family: { $1_family: "DOE" },
+      $3_given: "JANE",
+      $9_system: { $1_namespace: "NPI" },
+      $13_type: "NPI",
+    };
+
+    test("RXA-10 creates Practitioner + performer with function=AP", () => {
+      const rxa = makeBaseRXA({ $10_administeringProvider: [administeringXCN] });
+
+      const { immunization, performerEntries } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      const apPerformer = immunization.performer?.find(
+        (p) => p.function?.coding?.[0]?.code === "AP",
+      );
+      expect(apPerformer).toBeDefined();
+      expect(apPerformer?.function?.coding?.[0]?.system).toBe(
+        "http://terminology.hl7.org/CodeSystem/v2-0443",
+      );
+      expect(apPerformer?.function?.coding?.[0]?.display).toBe("Administering Provider");
+      expect(apPerformer?.actor.reference).toMatch(/^Practitioner\//);
+
+      // Practitioner bundle entry created
+      const practitionerEntry = performerEntries.find(
+        (e) => (e.resource as any)?.resourceType === "Practitioner",
+      );
+      expect(practitionerEntry).toBeDefined();
+      expect((practitionerEntry!.resource as any).name?.[0]?.family).toBe("SMITH");
+      expect((practitionerEntry!.resource as any).id).toBe("npi-1234567890");
+      expect(practitionerEntry!.request?.method).toBe("PUT");
+    });
+
+    test("ORC-12 creates PractitionerRole + performer with function=OP", () => {
+      const rxa = makeBaseRXA();
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $12_orderingProvider: [orderingXCN],
+      };
+
+      const { immunization, performerEntries } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
+      );
+
+      const opPerformer = immunization.performer?.find(
+        (p) => p.function?.coding?.[0]?.code === "OP",
+      );
+      expect(opPerformer).toBeDefined();
+      expect(opPerformer?.function?.coding?.[0]?.system).toBe(
+        "http://terminology.hl7.org/CodeSystem/v2-0443",
+      );
+      expect(opPerformer?.function?.coding?.[0]?.display).toBe("Ordering Provider");
+      expect(opPerformer?.actor.reference).toMatch(/^PractitionerRole\//);
+
+      // PractitionerRole bundle entry created
+      const roleEntry = performerEntries.find(
+        (e) => (e.resource as any)?.resourceType === "PractitionerRole",
+      );
+      expect(roleEntry).toBeDefined();
+      expect((roleEntry!.resource as any).id).toBe("role-npi-9876543210");
+      expect(roleEntry!.request?.method).toBe("PUT");
+    });
+
+    test("both RXA-10 and ORC-12 create two performers and two bundle entries", () => {
+      const rxa = makeBaseRXA({ $10_administeringProvider: [administeringXCN] });
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $12_orderingProvider: [orderingXCN],
+      };
+
+      const { immunization, performerEntries } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
+      );
+
+      expect(immunization.performer).toHaveLength(2);
+      expect(immunization.performer?.[0]?.function?.coding?.[0]?.code).toBe("AP");
+      expect(immunization.performer?.[1]?.function?.coding?.[0]?.code).toBe("OP");
+      expect(performerEntries).toHaveLength(2);
+    });
+
+    test("function coding includes system URI for both AP and OP", () => {
+      const rxa = makeBaseRXA({ $10_administeringProvider: [administeringXCN] });
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $12_orderingProvider: [orderingXCN],
+      };
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
+      );
+
+      for (const performer of immunization.performer!) {
+        expect(performer.function?.coding?.[0]?.system).toBe(
+          "http://terminology.hl7.org/CodeSystem/v2-0443",
+        );
+      }
+    });
+
+    test("no administering performer when RXA-10 is empty", () => {
+      const rxa = makeBaseRXA({ $10_administeringProvider: undefined });
+
+      const { immunization, performerEntries } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.performer).toBeUndefined();
+      expect(performerEntries).toHaveLength(0);
+    });
+
+    test("no ordering performer when ORC is absent", () => {
+      const rxa = makeBaseRXA();
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      const opPerformer = immunization.performer?.find(
+        (p) => p.function?.coding?.[0]?.code === "OP",
+      );
+      expect(opPerformer).toBeUndefined();
+    });
+
+    test("no performer when RXA-10 XCN has no identifier or name", () => {
+      const emptyXCN = {};
+      const rxa = makeBaseRXA({ $10_administeringProvider: [emptyXCN as any] });
+
+      const { immunization, performerEntries } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.performer).toBeUndefined();
+      expect(performerEntries).toHaveLength(0);
+    });
+
+    test("Practitioner ID is deterministic from XCN.9 system + XCN.1 value", () => {
+      const rxa = makeBaseRXA({ $10_administeringProvider: [administeringXCN] });
+
+      const result1 = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+      const result2 = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      const id1 = (result1.performerEntries[0]!.resource as any).id;
+      const id2 = (result2.performerEntries[0]!.resource as any).id;
+      expect(id1).toBe(id2);
+      expect(id1).toBe("npi-1234567890");
+    });
+  });
+
   describe("base fixture — comprehensive fields", () => {
     test("produces complete Immunization from typical VXU data", () => {
       const rxa = makeBaseRXA({

@@ -14,6 +14,7 @@ import type {
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertHDToUri } from "./hd-converters";
 import { convertDRToPeriod } from "./dr-datetime";
+import { sanitizeForId } from "../identity-system/utils";
 
 // ============================================================================
 // Name Type Code Mapping (HL7 Table 0200 -> FHIR name-use)
@@ -248,6 +249,22 @@ export function convertXCNArrayToPractitioners(
   }
 
   return practitioners.length > 0 ? practitioners : undefined;
+}
+
+/**
+ * Generate a deterministic Practitioner/PractitionerRole ID from XCN identifier fields.
+ * Uses convertHDToUri for the system component — same logic as
+ * convertXCNToPractitioner uses for identifier.system, ensuring consistency.
+ */
+export function buildPractitionerIdFromXCN(xcn: XCN): string | undefined {
+  if (!xcn.$1_value) {
+    return undefined;
+  }
+  const system = convertHDToUri(xcn.$9_system);
+  if (system) {
+    return sanitizeForId(`${system}-${xcn.$1_value}`);
+  }
+  return sanitizeForId(xcn.$1_value);
 }
 
 export default convertXCNToPractitioner;

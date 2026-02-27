@@ -977,19 +977,19 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Create Practitioner from RXA-10 (administering provider) and PractitionerRole from ORC-12 (ordering provider), link via Immunization.performer with function codes.
 
-- [ ] Implement performer creation in `rxa-immunization.ts`:
+- [x] Implement performer creation in `rxa-immunization.ts`:
   - RXA-10 → `performer` with function=AP (`http://terminology.hl7.org/CodeSystem/v2-0443`), actor=`Practitioner/{id}` via `convertXCNToPractitioner()`
   - ORC-12 → `performer` with function=OP (`http://terminology.hl7.org/CodeSystem/v2-0443`), actor=`PractitionerRole/{id}` via `convertXCNToPractitionerRole()`
   - Return Practitioner/PractitionerRole resources as additional bundle entries
   - Skip performer when XCN is empty
   - When ORC absent → no ordering provider performer
-- [ ] Write unit tests (design test cases #9, #33, #45, #46):
+- [x] Write unit tests (design test cases #9, #33, #45, #46):
   - RXA-10 creates Practitioner + performer with function=AP
   - ORC-12 creates PractitionerRole + performer with function=OP
   - Function coding includes system URI
   - RXA-10 empty → no administering performer
   - ORC absent → no ordering performer
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---
