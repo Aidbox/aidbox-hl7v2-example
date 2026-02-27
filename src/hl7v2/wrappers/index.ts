@@ -1,8 +1,9 @@
 /**
- * Wrappers for generated HL7v2 segment parsers.
+ * Wrappers for HL7v2 segment parsers.
  *
- * These wrappers fix issues with the auto-generated parsers that can't
- * be fixed in the generator itself.
+ * Includes fixes for auto-generated parsers (OBX) and manual parsers
+ * for segments not in the generated types (RXO — ORM retired pre-v2.8.2).
  */
 
 export { fromOBX } from "./obx";
+export { fromRXO, type RXO } from "./rxo";

@@ -952,12 +952,12 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 2: RXO segment wrapper
 
-- [ ] Create `src/hl7v2/wrappers/rxo.ts` with `RXO` interface and `fromRXO()` parser following the `fromOBX` wrapper pattern in `src/hl7v2/wrappers/obx.ts` [D-8]
-- [ ] Define all fields per REQ-RXO-1: `$1_requestedGiveCode` (CE), `$2_requestedGiveAmountMin` (string), `$3_requestedGiveAmountMax` (string), `$4_requestedGiveUnits` (CE), `$5_requestedDosageForm` (CE), `$9_allowSubstitutions` (string), `$11_requestedDispenseAmount` (string), `$12_requestedDispenseUnits` (CE), `$13_numberOfRefills` (string), `$14_orderingProviderDea` (XCN[]), `$18_requestedGiveStrength` (string), `$19_requestedGiveStrengthUnits` (CE), `$25_requestedDrugStrengthVolume` (string), `$26_requestedDrugStrengthVolumeUnits` (CWE)
-- [ ] Parser reads from `segment.fields[N]` using existing `fromCE()`, `fromXCN()`, `fromCWE()` helpers
-- [ ] Export `fromRXO` and `RXO` from `src/hl7v2/wrappers/index.ts`
-- [ ] Write unit tests for `fromRXO()`: parse a segment with populated fields, parse a segment with minimal fields, verify CE/XCN/CWE conversion
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Create `src/hl7v2/wrappers/rxo.ts` with `RXO` interface and `fromRXO()` parser following the `fromOBX` wrapper pattern in `src/hl7v2/wrappers/obx.ts` [D-8]
+- [x] Define all fields per REQ-RXO-1: `$1_requestedGiveCode` (CE), `$2_requestedGiveAmountMin` (string), `$3_requestedGiveAmountMax` (string), `$4_requestedGiveUnits` (CE), `$5_requestedDosageForm` (CE), `$9_allowSubstitutions` (string), `$11_requestedDispenseAmount` (string), `$12_requestedDispenseUnits` (CE), `$13_numberOfRefills` (string), `$14_orderingProviderDea` (XCN[]), `$18_requestedGiveStrength` (string), `$19_requestedGiveStrengthUnits` (CE), `$25_requestedDrugStrengthVolume` (string), `$26_requestedDrugStrengthVolumeUnits` (CWE)
+- [x] Parser reads from `segment.fields[N]` using existing `fromCE()`, `fromXCN()`, `fromCWE()` helpers
+- [x] Export `fromRXO` and `RXO` from `src/hl7v2/wrappers/index.ts`
+- [x] Write unit tests for `fromRXO()`: parse a segment with populated fields, parse a segment with minimal fields, verify CE/XCN/CWE conversion
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
