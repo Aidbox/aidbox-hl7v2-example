@@ -50,6 +50,16 @@
         "RXA": { "6": ["normalize-rxa6-dose"], "9": ["normalize-rxa9-nip001"] }
       },
       "converter": { "PV1": { "required": false } }
+    },
+    "ORM-O01": {
+      "preprocess": {
+        "PID": {
+          "2": ["move-pid2-into-pid3"],
+          "3": ["inject-authority-from-msh"]
+        },
+        "PV1": { "19": ["fix-pv1-authority-with-msh"] }
+      },
+      "converter": { "PV1": { "required": false } }
     }
   }
 }

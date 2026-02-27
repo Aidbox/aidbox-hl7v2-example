@@ -67,5 +67,7 @@ function getTypeLabel(mappingType: MappingTypeName): string {
       return "Observation status";
     case "patient-class":
       return "Encounter class";
+    case "orc-status":
+      return "ServiceRequest status";
   }
 }

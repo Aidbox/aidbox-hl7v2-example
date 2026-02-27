@@ -62,6 +62,15 @@ const VALID_VALUES: Partial<Record<MappingTypeName, Record<string, string>>> = {
     "entered-in-error": "Entered in Error",
     unknown: "Unknown",
   },
+  "orc-status": {
+    active: "Active",
+    "on-hold": "On Hold",
+    revoked: "Revoked",
+    completed: "Completed",
+    "entered-in-error": "Entered in Error",
+    unknown: "Unknown",
+    draft: "Draft",
+  },
 };
 
 /**

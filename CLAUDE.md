@@ -25,7 +25,7 @@ Do NOT use the auto memory file (MEMORY.md) for this project. CLAUDE.md is the p
 
 # Aidbox HL7 Integration
 
-HL7v2 message processing with Aidbox FHIR server. Bidirectional: FHIR → HL7v2 BAR (billing) and HL7v2 → FHIR (lab results, ADT).
+HL7v2 message processing with Aidbox FHIR server. Bidirectional: FHIR → HL7v2 BAR (billing) and HL7v2 → FHIR (lab results, ADT, orders, immunization).
 
 ## Quick Start
 
@@ -78,6 +78,7 @@ Read `docs/developer-guide/how-to/development-guide.md` for: test infrastructure
 | BAR Sender | `src/bar/sender-service.ts` | Polls pending OutgoingBarMessage → delivers |
 | MLLP Server | `src/mllp/` | TCP server receiving HL7v2 messages (port 2575) |
 | V2-to-FHIR Processor | `src/v2-to-fhir/processor-service.ts` | Polls received messages → converts to FHIR |
+| ORM Converter | `src/v2-to-fhir/messages/orm-o01.ts` | Converts `ORM^O01` to ServiceRequest/MedicationRequest + related resources |
 | Code Mapping | `src/code-mapping/` | LOINC resolution, ConceptMap per sender |
 
 ### Data Flow
@@ -137,6 +138,19 @@ V2-to-FHIR Processor polls received IncomingHL7v2Message and:
 
 → Details: `docs/developer-guide/oru-processing.md`
 
+### ORM Processing (HL7v2 → FHIR)
+
+V2-to-FHIR Processor handles `ORM^O01` messages by:
+1. Parsing PID (required), PV1 (optional), and IN1 (optional)
+2. Grouping orders by ORC boundaries, then branching by ORDER_CHOICE:
+   - OBR-based orders -> ServiceRequest
+   - RXO-based orders -> MedicationRequest
+3. Mapping ORC status with three tiers: standard ORC-5 map -> sender ConceptMap (`orc-status`) -> ORC-1 fallback
+4. Creating related Condition (DG1), Observation (OBX), and Coverage (IN1) resources
+5. Treating class-only PV1 (missing PV1-19 visit number) as absent for ORM to avoid false warnings
+
+**Deterministic IDs**: Order and child resources use deterministic IDs for idempotent reprocessing.
+
 ### Code Mapping (Multiple Types)
 
 When HL7v2 codes can't be mapped to valid FHIR values:
@@ -146,6 +160,13 @@ When HL7v2 codes can't be mapped to valid FHIR values:
 4. On resolution: Task completed, message requeued for processing
 
 Mapping types are defined in `src/code-mapping/mapping-types.ts`.
+
+Current mapping types:
+- `observation-code-loinc` (OBX-3 -> Observation.code)
+- `patient-class` (PV1-2 -> Encounter.class)
+- `obr-status` (OBR-25 -> DiagnosticReport.status)
+- `obx-status` (OBX-11 -> Observation.status)
+- `orc-status` (ORC-5 -> ServiceRequest.status; reused for MedicationRequest status resolution in ORM)
 
 **ConceptMap per sender per type**: Same local code from different senders can map to different values.
 
@@ -203,7 +224,7 @@ src/
 │   ├── config.ts         # Config loader for config/hl7v2-to-fhir.json
 │   ├── preprocessor.ts   # Config-driven preprocessing before conversion
 │   ├── id-generation.ts  # Encounter ID from PV1-19 (HL7 v2.8.2 CX rules)
-│   ├── messages/         # ADT_A01, ORU_R01 converters
+│   ├── messages/         # ADT_A01, ADT_A08, ORU_R01, ORM_O01, VXU_V04 converters
 │   └── segments/         # PID, OBX, etc. converters
 ├── code-mapping/         # Code mapping for multiple field types
 │   ├── mapping-types.ts  # Mapping type registry (CRITICAL: add new types here)
@@ -284,3 +305,7 @@ scripts/hl7v2-inspect.sh <file> --verify RXA.20 # Verify field position by pipe 
 ```
 Handles RTF wrappers, multi-message files, and repeating fields. Use `--verify` to catch pipe count errors in fixtures.
 Reference: working fixture `test/fixtures/hl7v2/oru-r01/encounter/with-visit.hl7` has correct PV1-19.
+
+### Gotchas
+
+- ORM fixtures can include PV1 with only patient class (e.g. `PV1-2`) and no visit number (`PV1-19`). For `ORM^O01`, this should be treated as absent PV1 (skip Encounter, keep `processed`) instead of warning/error.

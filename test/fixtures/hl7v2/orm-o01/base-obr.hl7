@@ -1,0 +1,8 @@
+MSH|^~\&|ORMAPP|FACA||DEST|20260220103000||ORM^O01|ORM-BASE-OBR-001|P|2.5.1
+PID|1||ORMP-1001^^^FACA^MR||CARTER^ALEX||19860412|M
+PV1|1|I|||||||||||||||||VIS-1001^^^FACA&urn:oid:1.2.840.114350&ISO
+ORC|NW|ORD-1001|||SC|||||||9001^TAYLOR^AVA
+OBR|1|ORD-1001||24323-8^Basic metabolic panel^LN
+DG1|1||E11.9^Type 2 diabetes mellitus^I10
+NTE|1||Order entered from outpatient clinic
+OBX|1|ST|AOE-1^Fasting status^99LCL||YES||||||F
