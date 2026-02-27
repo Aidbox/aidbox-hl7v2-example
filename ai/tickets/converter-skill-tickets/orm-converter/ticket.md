@@ -972,23 +972,23 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 4: ORC -> ServiceRequest segment converter
 
-- [ ] Create `src/v2-to-fhir/segments/orc-servicerequest.ts` with `convertORCToServiceRequest()` [D-1, REQ-ORC-1]
-- [ ] Implement three-tier status resolution as private function `resolveOrderStatus()`:
+- [x] Create `src/v2-to-fhir/segments/orc-servicerequest.ts` with `convertORCToServiceRequest()` [D-1, REQ-ORC-1]
+- [x] Implement three-tier status resolution as private function `resolveOrderStatus()`:
   - Tier 1: ORC-5 valued + in `ORDER_STATUS_MAP` (Table 0038) -> use it
   - Tier 2: ORC-5 valued + NOT in standard map -> ConceptMap lookup via `orc-status` mapping type. On failure, return `MappingError`
   - Tier 3: ORC-5 empty -> use `ORDER_CONTROL_STATUS_MAP` from ORC-1 (Table 0119)
   - Tier 4: Neither -> return `"unknown"`
   - Handle GAP-1: ORC-1 missing gracefully [RELAX-1]
-- [ ] Define `ORDER_STATUS_MAP` constant: CA->revoked, CM->completed, DC->revoked, ER->entered-in-error, HD->on-hold, IP->active, RP->revoked, SC->active
-- [ ] Define `ORDER_CONTROL_STATUS_MAP` constant: NW->active, CA->active, OC->revoked, DC->revoked, HD->active, OH->on-hold, HR->on-hold, CR->revoked, DR->revoked (SC has no mapping)
-- [ ] Map ORC-2 -> `identifier[PLAC]` (with type coding), ORC-3 -> `identifier[FILL]` (with type coding)
-- [ ] Map ORC-4 -> `requisition` (EI -> Identifier)
-- [ ] Map ORC-9 -> `authoredOn` only when ORC-1 = "NW"
-- [ ] Map ORC-12 -> `requester` (display reference via `convertXCNToPractitioner()`)
-- [ ] Map ORC-29 -> `locationCode` (CWE -> CodeableConcept)
-- [ ] Set `intent = "order"` as default
-- [ ] Return `ORCServiceRequestResult` with partial ServiceRequest and optional MappingError
-- [ ] Write unit tests in `test/unit/v2-to-fhir/segments/orc-servicerequest.test.ts`:
+- [x] Define `ORDER_STATUS_MAP` constant: CA->revoked, CM->completed, DC->revoked, ER->entered-in-error, HD->on-hold, IP->active, RP->revoked, SC->active
+- [x] Define `ORDER_CONTROL_STATUS_MAP` constant: NW->active, CA->active, OC->revoked, DC->revoked, HD->active, OH->on-hold, HR->on-hold, CR->revoked, DR->revoked (SC has no mapping)
+- [x] Map ORC-2 -> `identifier[PLAC]` (with type coding), ORC-3 -> `identifier[FILL]` (with type coding)
+- [x] Map ORC-4 -> `requisition` (EI -> Identifier)
+- [x] Map ORC-9 -> `authoredOn` only when ORC-1 = "NW"
+- [x] Map ORC-12 -> `requester` (display reference via `convertXCNToPractitioner()`)
+- [x] Map ORC-29 -> `locationCode` (CWE -> CodeableConcept)
+- [x] Set `intent = "order"` as default
+- [x] Return `ORCServiceRequestResult` with partial ServiceRequest and optional MappingError
+- [x] Write unit tests in `test/unit/v2-to-fhir/segments/orc-servicerequest.test.ts`:
   - Status from standard ORC-5 values (each Table 0038 code)
   - Status from ORC-1 fallback (each Table 0119 code)
   - Non-standard ORC-5 returns mapping error with `mappingType: "orc-status"`
@@ -997,7 +997,7 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
   - ORC-9 mapped to authoredOn when ORC-1="NW", NOT mapped when ORC-1="CA"
   - ORC-12 -> requester display reference
   - ORC-29 -> locationCode
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
