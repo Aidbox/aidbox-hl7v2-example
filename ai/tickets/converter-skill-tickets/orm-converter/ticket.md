@@ -91,9 +91,11 @@ Source: `docs/v2-to-fhir-spec/mappings/messages/HL7 Message - FHIR R4_ ORM_O01 -
 | ORC | ServiceRequest[1] | per ORDER group | 4.1 |
 | OBR | ServiceRequest[1] (merge) | if ORDER_CHOICE is OBR | 4.2.1.1 |
 | RXO | MedicationRequest | if ORDER_CHOICE is RXO | 4.2.1.7 |
-| NTE (order-level) | ServiceRequest[1].note | per NTE in ORDER_DETAIL | 4.2.2 |
-| DG1 | Condition | per DG1, referenced from ServiceRequest.reasonReference | 4.2.4 |
-| OBX (in ORDER_DETAIL) | Observation[1] | per OBSERVATION group; linked via ServiceRequest.supportingInfo | 4.2.5.1 |
+| NTE (order-level) | ServiceRequest[1].note | per NTE in ORDER_DETAIL (IG-defined) | 4.2.2 |
+| DG1 | Condition | per DG1, referenced from ServiceRequest.reasonReference (IG-defined) | 4.2.4 |
+| OBX (in ORDER_DETAIL) | Observation[1] | per OBSERVATION group; linked via ServiceRequest.supportingInfo (IG-defined) | 4.2.5.1 |
+
+**Note on RXO-based order linkages**: The IG message mapping rows 4.2.2, 4.2.4, and 4.2.5.1 all reference `ServiceRequest[1]` as the linkage target. When the ORDER_CHOICE is RXO, there is no ServiceRequest -- only a MedicationRequest. The IG does not explicitly define NTE/DG1/OBX linkage for RXO orders. As an implementation extension (not spec-mandated), we map these to the equivalent MedicationRequest fields: NTE -> `MedicationRequest.note`, DG1 -> `MedicationRequest.reasonReference(Condition)`, OBX -> `MedicationRequest.supportingInformation(Observation)`. All three FHIR R4 fields exist on MedicationRequest and serve the same semantic purpose. [REQ-RXO-LINKAGE-1]
 
 ### ORC -> ServiceRequest Mapping [REQ-ORC-1]
 
@@ -160,12 +162,14 @@ Source: `docs/v2-to-fhir-spec/mappings/segments/HL7 Segment - FHIR R4_ OBR[Servi
 | OBR-4 (Universal Service ID) | ServiceRequest.code | always (CWE->CodeableConcept) | Row 4 |
 | OBR-5 (Priority) | ServiceRequest.priority | if valued | Row 5 |
 | OBR-6 (Requested Date/Time) | ServiceRequest.occurrenceDateTime | if valued | Row 6 |
-| OBR-11 (Specimen Action Code) | ServiceRequest.intent override | "A" -> intent "add-on"; "G" -> "reflex-order"; else "order" | Row 11 |
+| OBR-11 (Specimen Action Code) | ServiceRequest.intent override | "G" -> "reflex-order"; "A" -> "order" (see note below); else "order" | Row 11 |
 | OBR-16 (Ordering Provider) | ServiceRequest.requester(Practitioner) | IF ORC-12 NOT VALUED | Row 16 |
 | OBR-17 (Order Callback Phone) | extension servicerequest-order-callback-phone-number | if valued | Row 17 |
 | OBR-27 (Quantity/Timing) | ServiceRequest (TQ mapping) | IF ORC-7 NOT VALUED | Row 27 |
 | OBR-31 (Reason for Study) | ServiceRequest.reasonCode | if valued | Row 31 |
 | OBR-46 (Placer Supplemental Service Info) | ServiceRequest.orderDetail | if valued | Row 46 |
+
+**OBR-11 "A" (add-on) intent note**: The IG maps OBR-11="A" to the non-standard value `#add-on#`, which is NOT a valid FHIR `ServiceRequest.intent` code. Valid R4 intent codes are: proposal, plan, directive, order, original-order, reflex-order, filler-order, instance-order, option. Since `#add-on#` is not representable without a custom extension and no example messages use OBR-11="A", we map "A" to the default `"order"` for v1. This can be extended later with a custom extension if a real need arises.
 
 ### RXO -> MedicationRequest Mapping [REQ-RXO-1]
 
@@ -355,7 +359,7 @@ Based on analysis of all 6 example messages:
 ### GAP-13: DG1-3 Coding System Inconsistency [MIS-13]
 
 - **Real**: DG1-3.3 varies: "I10", "ICD-10-CM". Ex6 has DG1-3 with only text component.
-- **Handling**: Normalize via updated global `normalizeSystem()`: "I10" and "ICD-10-CM" both map to `http://hl7.org/fhir/sid/icd-10-cm`.
+- **Handling**: Add "ICD-10-CM" as a new entry in `normalizeSystem()` mapping to `http://hl7.org/fhir/sid/icd-10-cm`. Keep existing "I10" -> `http://hl7.org/fhir/sid/icd-10` unchanged (see D-7 for rationale).
 
 ---
 
@@ -417,7 +421,9 @@ Follow existing project pattern:
 
 | Priority | Source | Precondition | ID Format |
 |---|---|---|---|
-| 1 | Derived from patient + IN1 position | Always when IN1 present | `{patientId}-coverage-{positional-index}` |
+| 1 | Reuse ADT `generateCoverageId()` | Always when IN1 present | `{patientId}-{payorId}` (payor from IN1-3 or IN1-4) |
+
+Note: This aligns with the ADT converter's Coverage ID scheme (`{patientId}-{payorId}`) to prevent duplicate Coverage resources when the same patient is processed via both ADT and ORM. The existing `generateCoverageId()` function from `adt-a01.ts` should be extracted to a shared utility and reused.
 
 ---
 
@@ -429,9 +435,9 @@ Follow existing project pattern:
 - [AC-2] All 6 example messages can be processed without crashing.
 - [AC-3] OBR-based orders produce ServiceRequest resources with correct status, intent, identifiers, code, and provider references.
 - [AC-4] RXO-based orders produce MedicationRequest resources with intent="original-order", medication code, dosage, and dispense information.
-- [AC-5] DG1 segments produce Condition resources linked via ServiceRequest.reasonReference or MedicationRequest.reasonReference.
-- [AC-6] NTE segments in ORDER_DETAIL produce ServiceRequest.note or MedicationRequest.note entries.
-- [AC-7] OBX segments in ORDER_DETAIL produce Observation resources linked via ServiceRequest.supportingInfo.
+- [AC-5] DG1 segments produce Condition resources linked via ServiceRequest.reasonReference (IG-defined). For RXO orders, linked via MedicationRequest.reasonReference (implementation extension, see REQ-RXO-LINKAGE-1).
+- [AC-6] NTE segments in ORDER_DETAIL produce ServiceRequest.note entries (IG-defined). For RXO orders, produce MedicationRequest.note entries (implementation extension, see REQ-RXO-LINKAGE-1).
+- [AC-7] OBX segments in ORDER_DETAIL produce Observation resources linked via ServiceRequest.supportingInfo (IG-defined). For RXO orders, linked via MedicationRequest.supportingInformation (implementation extension, see REQ-RXO-LINKAGE-1).
 - [AC-8] IN1 segments produce Coverage resources linked to Patient.
 - [AC-9] Multiple ORDER groups in a single message produce separate ServiceRequest/MedicationRequest resources (verified with ex2 and ex6).
 - [AC-10] Each produced resource has a deterministic ID per the Fallback Chain tables.
@@ -445,7 +451,7 @@ Follow existing project pattern:
 
 ### Status/Error Handling
 
-- [AC-15] ServiceRequest.status derived from ORC-5 when valued (using OrderStatus map). When ORC-5 not valued, derived from ORC-1 (using OrderControlCode map). When neither yields a mapping, status = "unknown".
+- [AC-15] ServiceRequest.status and MedicationRequest.status derived from ORC-5 when valued (using OrderStatus map). When ORC-5 not valued, derived from ORC-1 (using OrderControlCode map). When neither yields a mapping, status = "unknown". The same resolution logic applies to both resource types (see D-1).
 - [AC-16] Non-standard ORC-5 values ("Final", "Pending") that are not in OrderStatus map are handled via `orc-status` mapping type for ConceptMap-based resolution per sender.
 - [AC-17] Missing MSH segment causes message rejection (status=error).
 - [AC-18] Missing PID segment causes message rejection (status=error).
@@ -467,18 +473,22 @@ Follow existing project pattern:
 
 ### D-1: ORC Status Resolution -- Two-Tier with ConceptMap Fallback [REQ-ORC-STATUS-1, AC-15, AC-16]
 
-ServiceRequest.status uses a three-tier resolution:
+ORC-based order status uses a three-tier resolution that applies to both ServiceRequest.status and MedicationRequest.status:
 1. **ORC-5 standard map**: If ORC-5 is valued and matches Table 0038, use `ORDER_STATUS_MAP`.
 2. **ORC-5 ConceptMap**: If ORC-5 is valued but NOT in Table 0038, attempt sender-specific ConceptMap lookup via new `orc-status` mapping type. If no mapping found, return `MappingError` (message gets `mapping_error` status with Task creation).
 3. **ORC-1 fallback**: If ORC-5 is empty, use `ORDER_CONTROL_STATUS_MAP` from ORC-1. If ORC-1 is also empty or has no mapping (e.g., "SC"), set status = "unknown".
 
 This follows the established pattern used by `obx-status` and `patient-class` mapping types.
 
+**Shared `orc-status` mapping type**: The same `orc-status` mapping type is used for both ServiceRequest and MedicationRequest status resolution. The IG only defines `ORC[ServiceRequest]` segment mapping (no `ORC[MedicationRequest]` exists), but the same ORC-5 OrderStatus vocabulary applies to both resource types since MedicationRequest uses the same `medicationrequest-status` value set which overlaps with `request-status`. The mapping type metadata uses `target: { resource: "ServiceRequest", field: "status" }` as the canonical target; this is an intentional simplification since the mapping resolution logic is identical for both resources. The resolved status value (e.g., "active", "completed", "revoked") is passed from the order group processor to both `buildOBRServiceRequest()` and `buildRXOMedicationRequest()`.
+
 ### D-2: ORM OBX -- No LOINC Resolution [REQ-OBX-NOLOINC-1, AC-21]
 
 ORM OBX segments map directly to `Observation.code` via `convertCEToCodeableConcept()` without LOINC resolution. Use `convertOBXWithMappingSupportAsync()` for status mapping only (handles OBX-11 ConceptMap lookup for non-standard values). Do NOT call `convertOBXToObservationResolving()` (which includes LOINC resolution).
 
 When OBX-11 is missing in ORM context, default to `Observation.status = "registered"` rather than creating a mapping error. This is implemented by a small wrapper that provides the default before calling the mapping-aware function.
+
+Note: The existing codebase has some duplication between `convertOBXToObservation()` (sync, no LOINC) and `convertOBXWithMappingSupportAsync()` (async, with status ConceptMap). The ORM wrapper adds another layer. This is a pre-existing concern; a future cleanup could consolidate these into a single configurable function.
 
 ### D-3: Encounter -- PV1-19 Only, No PID-18 Fallback [FALL-6, AC-12]
 
@@ -494,11 +504,11 @@ ServiceRequest/MedicationRequest IDs are derived primarily from ORC-2 (Placer Or
 
 ### D-6: Coverage Included [REQ-IN1-1, AC-8]
 
-IN1 segments are processed using existing `convertIN1ToCoverage()` from ADT. Coverage resources get deterministic IDs: `{patientId}-coverage-{positional-index}`. They reference the Patient via `beneficiary`.
+IN1 segments are processed using existing `convertIN1ToCoverage()` from ADT. Coverage IDs use the same scheme as ADT: `{patientId}-{payorId}` where payor is derived from IN1-3 (Insurance Company ID) or IN1-4 (Insurance Company Name). The existing `generateCoverageId()` function from `adt-a01.ts` should be extracted to a shared utility (e.g., `src/v2-to-fhir/segments/in1-coverage.ts`) and reused by both converters. This prevents duplicate Coverage resources when the same patient/insurance appears in both ADT and ORM messages.
 
-### D-7: DG1-3 Coding System -- Global Normalizer Update [GAP-13]
+### D-7: DG1-3 Coding System -- Additive Normalizer Update [GAP-13]
 
-The global `normalizeSystem()` is updated: "I10" now maps to `http://hl7.org/fhir/sid/icd-10-cm` (was `icd-10`), and "ICD-10-CM" is added as a new entry also mapping to `http://hl7.org/fhir/sid/icd-10-cm`. This affects all converters consistently.
+The global `normalizeSystem()` is updated additively: "ICD-10-CM" is added as a new entry mapping to `http://hl7.org/fhir/sid/icd-10-cm`. The existing "I10" -> `http://hl7.org/fhir/sid/icd-10` mapping is left unchanged to avoid breaking existing converters and tests (ADT fixtures use "ICD10"/"I10" with the expectation of `icd-10` international). This is a safe approach: ORM example messages that use "ICD-10-CM" explicitly will get the correct US clinical modification system, while messages using the ambiguous "I10" abbreviation continue to map to the international system. If a sender needs "I10" to mean ICD-10-CM, this can be handled via a sender-specific preprocessor or ConceptMap in the future.
 
 ### D-8: RXO Segment Type -- Manual Wrapper [GAP-C from exploration]
 
@@ -584,7 +594,11 @@ const ORDER_CONTROL_STATUS_MAP: Record<string, ServiceRequest["status"]> = {
 };
 ```
 
-ORC-12 (Ordering Provider) maps to `ServiceRequest.requester` as an inline display reference using `convertXCNToPractitioner()`. ORC-4 (Placer Group Number) maps to `ServiceRequest.requisition` as an `Identifier` via EI conversion.
+ORC-12 (Ordering Provider) maps to `ServiceRequest.requester` as an inline display reference using `convertXCNToPractitioner()`. Note: the IG specifies the target as `requester(PractitionerRole.practitioner)`, meaning a PractitionerRole intermediate resource. For v1, we use a simplified inline Practitioner reference for consistency with existing converters (ORU, ADT). This can be extended to PractitionerRole if needed.
+
+ORC-4 (Placer Group Number) maps to `ServiceRequest.requisition` (0..1, type `Identifier`) via EI conversion. Since `requisition` is singular, only the first ORC-4 value is used.
+
+ORC-9 (Date/Time of Transaction) maps to `ServiceRequest.authoredOn` only when ORC-1 = "NW" (New Order). When ORC-1 has any other value or is empty, ORC-9 is not mapped to `authoredOn`. This condition is per IG row 9.
 
 ### `src/v2-to-fhir/segments/obr-servicerequest.ts` -- OBR->ServiceRequest Merger
 
@@ -609,7 +623,7 @@ Key fields:
 - OBR-3 -> `identifier[FILL]` (only if ORC-3 empty)
 - OBR-5 -> `priority` (mapped: S/A->stat, R->routine, T->urgent)
 - OBR-6 -> `occurrenceDateTime` via `convertDTMToDateTime()`
-- OBR-11 -> `intent` override: "A"->"reflex-order", "G"->"reflex-order", else unchanged
+- OBR-11 -> `intent` override: "G"->"reflex-order", "A"->"order" (IG maps to non-standard `#add-on#`; we use "order" default since add-on is not a valid FHIR intent code), else unchanged
 - OBR-31 -> `reasonCode` via `convertCEToCodeableConcept()`
 
 ### `src/v2-to-fhir/segments/rxo-medicationrequest.ts` -- RXO->MedicationRequest Converter
@@ -626,8 +640,8 @@ export function convertRXOToMedicationRequest(
 ```
 
 Key mappings:
-- `intent`: always "original-order"
-- `status`: inherited from ORC resolution (passed in from the order group processor, not re-resolved)
+- `intent`: always "original-order" (per IG RXO[MedicationRequest] row 0)
+- `status`: inherited from ORC resolution (passed in from the order group processor, not re-resolved). Uses the same three-tier `resolveServiceRequestStatus()` logic as OBR orders (see D-1). The IG does not define a separate `ORC[MedicationRequest]` segment mapping, so the `OrderStatus` and `OrderControlCode[ServiceRequest.status]` vocabulary maps are reused.
 - RXO-1 -> `medicationCodeableConcept` via `convertCEToCodeableConcept()`
 - RXO-2/3/4 -> `dosageInstruction[0].doseAndRate[0].doseRange` (low.value, high.value, units)
 - RXO-5 -> not mapped to MedicationRequest directly (it maps to `Medication.form` which would require a contained Medication resource -- deferred for simplicity, store as extension or omit)
@@ -637,6 +651,12 @@ Key mappings:
 - RXO-18/19/25/26 -> Medication strength (requires contained Medication -- deferred for simplicity unless the implementation finds a straightforward approach)
 
 Note on RXO-5, RXO-18/19/25/26: These map to `Medication` resource properties per the IG. The simplest approach is to use `medicationCodeableConcept` for the drug code (RXO-1) and skip the contained Medication for dose form and strength in v1. This can be extended later.
+
+**RXO order linkages** (implementation extension, see REQ-RXO-LINKAGE-1): When the ORDER_CHOICE is RXO, the order group processor links NTE, DG1, and OBX to the MedicationRequest instead of a ServiceRequest:
+- NTE -> `MedicationRequest.note` (same mapping as NTE[ServiceRequest].note)
+- DG1-derived Conditions -> `MedicationRequest.reasonReference`
+- OBX-derived Observations -> `MedicationRequest.supportingInformation`
+This is handled in `processOrderGroup()` which detects the order type and links to the appropriate resource.
 
 ### `src/v2-to-fhir/messages/orm-o01.ts` -- Main Message Converter
 
@@ -711,8 +731,10 @@ Walk through message segments sequentially:
 | `config/hl7v2-to-fhir.json` | Modify | Add `"ORM-O01"` entry with PID/PV1 preprocessors and `PV1.required: false` |
 | `src/code-mapping/mapping-types.ts` | Modify | Add `"orc-status"` mapping type entry |
 | `src/code-mapping/mapping-type-options.ts` | Modify | Add `"orc-status"` valid values (FHIR request-status codes) |
-| `src/v2-to-fhir/code-mapping/coding-systems.ts` | Modify | Update `normalizeSystem()`: change "I10" -> `icd-10-cm`; add "ICD-10-CM" -> `icd-10-cm` |
+| `src/v2-to-fhir/code-mapping/coding-systems.ts` | Modify | Update `normalizeSystem()`: add "ICD-10-CM" -> `icd-10-cm` (keep "I10" -> `icd-10` unchanged) |
 | `src/hl7v2/wrappers/index.ts` | Modify | Export `fromRXO` and `RXO` from new rxo.ts wrapper |
+| `src/v2-to-fhir/segments/in1-coverage.ts` | Modify | Extract `generateCoverageId()` from `adt-a01.ts` into this shared module |
+| `src/v2-to-fhir/messages/adt-a01.ts` | Modify | Import `generateCoverageId()` from `in1-coverage.ts` instead of defining locally |
 | `test/integration/helpers.ts` | Modify | Add `getServiceRequests()`, `getMedicationRequests()` helper functions |
 
 ---
@@ -831,10 +853,15 @@ Location: `test/unit/v2-to-fhir/messages/orm-o01.test.ts`
 | Deterministic Condition ID from order + position | ID = {orderNumber}-dg1-{index} | [AC-10, FALL-3] |
 | Deterministic Observation ID from order + position | ID = {orderNumber}-obx-{index} | [AC-10, FALL-4] |
 | OBR-4 maps to ServiceRequest.code | CWE->CodeableConcept | [REQ-OBR-1] |
-| OBR-11 "A" overrides intent to "reflex-order" | intent changes from "order" to "reflex-order" | [REQ-OBR-1] |
+| OBR-11 "G" overrides intent to "reflex-order" | intent changes from "order" to "reflex-order" | [REQ-OBR-1] |
+| OBR-11 "A" keeps intent as "order" | "A" (add-on) does not change intent from default "order" (IG `#add-on#` is non-standard) | [REQ-OBR-1] |
 | ORC-12 maps to ServiceRequest.requester | Practitioner display reference | [REQ-ORC-1] |
 | OBR-16 used as requester fallback when ORC-12 empty | requester from OBR-16 | [EC-7] |
 | RXO dosage mapping (dose range, dispense quantity) | dosageInstruction and dispenseRequest populated | [REQ-RXO-1] |
+| Mixed order types: OBR + RXO in one message | One ORC+OBR + one ORC+RXO -> 1 ServiceRequest + 1 MedicationRequest | [EC-2] |
+| NTE in RXO order maps to MedicationRequest.note | NTE segments produce note entries on MedicationRequest | [REQ-RXO-LINKAGE-1] |
+| DG1 in RXO order maps to MedicationRequest.reasonReference | Condition linked via MedicationRequest.reasonReference | [REQ-RXO-LINKAGE-1] |
+| OBX in RXO order maps to MedicationRequest.supportingInformation | Observation linked via MedicationRequest.supportingInformation | [REQ-RXO-LINKAGE-1] |
 
 Location: `test/unit/v2-to-fhir/segments/orc-servicerequest.test.ts`
 
@@ -845,6 +872,7 @@ Location: `test/unit/v2-to-fhir/segments/orc-servicerequest.test.ts`
 | resolveServiceRequestStatus with non-standard ORC-5 returns mapping error | MappingError with `mappingType: "orc-status"` |
 | ORC-4 maps to requisition Identifier | EI conversion |
 | ORC-9 maps to authoredOn when ORC-1="NW" | Date conversion |
+| ORC-9 NOT mapped to authoredOn when ORC-1 != "NW" | ORC-1="CA" with ORC-9 valued -> authoredOn not set |
 | ORC-29 maps to locationCode | CWE->CodeableConcept |
 
 Location: `test/unit/v2-to-fhir/segments/rxo-medicationrequest.test.ts`
@@ -881,3 +909,4 @@ Test fixtures: `test/fixtures/hl7v2/orm-o01/` (copied from example messages with
 - **Minimal fixtures** for unit tests: construct inline HL7v2 strings with only the segments needed for each test case (follow the pattern in `test/unit/v2-to-fhir/messages/oru-r01.test.ts`).
 - **Realistic fixtures** for integration tests: derive from the 6 examples but with synthetic identifiers. Place in `test/fixtures/hl7v2/orm-o01/`.
 - **Edge case fixtures**: create specific fixtures for empty PV1, missing ORC-1, missing OBX-11, etc.
+
