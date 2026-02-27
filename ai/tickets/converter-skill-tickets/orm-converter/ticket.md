@@ -645,3 +645,230 @@ How should the converter detect order type? Per spec, ORDER_CHOICE is exactly on
 ### OQ-6: DG1-3 Coding System URI Normalization [Blocking: Low]
 
 Real messages use "I10", "ICD-10-CM" as DG1-3.3 values. These need to be normalized to FHIR system URIs. **Proposal**: Map "I10" and "ICD-10-CM" to `http://hl7.org/fhir/sid/icd-10-cm`. This should use the existing coding system normalization infrastructure if available, or be added as a new mapping in the system URI normalizer.
+
+---
+
+# Codebase Exploration
+
+## Exploration Summary
+
+- **Router**: `src/v2-to-fhir/converter.ts` routes messages by MSH-9 type. Currently supports ADT_A01, ADT_A08, ORU_R01, VXU_V04. ORM_O01 is not registered. Adding it requires a new `case "ORM_O01"` and importing a new converter function.
+- **Existing segment converters cover most ORM needs**: PID->Patient, PV1->Encounter, DG1->Condition, IN1->Coverage, OBX->Observation, NTE->Annotation all exist and are reusable. No segment converter exists for ORC->ServiceRequest or RXO->MedicationRequest.
+- **RXO segment type is completely missing**: No `fromRXO` parser, no `RXO` interface in generated types (`src/hl7v2/generated/fields.ts`). This must be generated via `bun run regenerate-hl7v2` or manually created.
+- **ORM_O01 message structure not in generated HL7v2 types**: The spec lookup confirms ORM_O01 is a pre-v2.8.2 message type (retired after v2.5.1). The `data/hl7v2-reference/` only has v2.5 and v2.8.2. The v2.5 reference has ORM_O01 structure, but no generated message type exists in `src/hl7v2/generated/messages.ts`.
+- **Pattern: ORU_R01 is the closest analog** for ORM converter design. Both have multi-group structures (OBR groups in ORU; ORDER groups with ORC+OBR/RXO in ORM). The ORU pattern of grouping segments, processing each group, collecting mapping errors, and building a transaction bundle is directly reusable.
+- **ADT_A01 is the closest analog for DG1/IN1 handling**: ADT already integrates `convertDG1ToCondition` and `convertIN1ToCoverage` with ID generation and patient/encounter linking. The ORM converter should follow the same integration patterns.
+- **No ORC->ServiceRequest mapping exists anywhere in the codebase**: This is entirely new functionality. The ORC type (`src/hl7v2/generated/fields.ts:3409`) is fully generated with all 31 fields. The IG mapping CSV (`docs/v2-to-fhir-spec/mappings/segments/HL7 Segment - FHIR R4_ ORC[ServiceRequest] - ORC.csv`) is available.
+- **Status mapping complexity**: ORC status resolution requires a two-tier fallback (ORC-5 -> ORC-1) with vocabulary maps from two different IG CSVs. This is more complex than existing status mappings (OBR-25, OBX-11) which use single-table lookups.
+- **Config infrastructure is ready**: `config/hl7v2-to-fhir.json` supports per-message-type preprocessors and converter settings. Adding `"ORM-O01"` config follows existing patterns.
+- **`normalizeSystem()` partially covers DG1 coding systems**: `"I10"` maps to `http://hl7.org/fhir/sid/icd-10` (note: ICD-10, not ICD-10-CM). `"ICD-10-CM"` is NOT in the normalizer. The ticket requirement [OQ-6] calls for both to map to `http://hl7.org/fhir/sid/icd-10-cm`. The existing normalizer maps `"I10"` to the wrong system URI for this use case.
+
+## What Already Exists (Evidence-Backed)
+
+### Reusable Segment Converters
+
+| Converter | Location | Used By | ORM Usage |
+|---|---|---|---|
+| `convertPIDToPatient()` | `src/v2-to-fhir/segments/pid-patient.ts:174` | ADT, ORU, VXU | Reuse as-is for PID->Patient |
+| `handlePatient()` | `src/v2-to-fhir/segments/pid-patient.ts:608` | ORU, VXU | Reuse for lookup/draft creation |
+| `extractSenderTag()` | `src/v2-to-fhir/segments/pid-patient.ts:122` | ORU | Reuse for sender tag extraction |
+| `parsePV1()` | `src/v2-to-fhir/segments/pv1-encounter.ts:829` | ORU | Reuse for PV1 segment extraction |
+| `handleEncounter()` | `src/v2-to-fhir/segments/pv1-encounter.ts:873` | ORU | Reuse for encounter lookup/draft creation |
+| `convertDG1ToCondition()` | `src/v2-to-fhir/segments/dg1-condition.ts:96` | ADT | Reuse for DG1->Condition (returns `Omit<Condition, "subject">`) |
+| `convertIN1ToCoverage()` | `src/v2-to-fhir/segments/in1-coverage.ts:100` | ADT | Reuse for IN1->Coverage |
+| `convertOBXToObservation()` | `src/v2-to-fhir/segments/obx-observation.ts:303` | ORU | Reuse for OBX->Observation (sync version, no LOINC resolution -- appropriate for ORM) |
+| `convertOBXWithMappingSupportAsync()` | `src/v2-to-fhir/segments/obx-observation.ts:559` | ORU | Reuse for OBX->Observation with OBX-11 status mapping support (but WITHOUT LOINC resolution) |
+| `convertNTEsToAnnotation()` | `src/v2-to-fhir/segments/nte-annotation.ts:20` | ORU | Reuse for NTE->ServiceRequest.note |
+
+### Reusable Infrastructure
+
+| Module | Location | Purpose | ORM Usage |
+|---|---|---|---|
+| `parseMSH()` | `src/v2-to-fhir/segments/msh-parsing.ts:50` | Extract sender context, meta tags | Reuse as-is |
+| `addSenderTagToMeta()` | `src/v2-to-fhir/segments/msh-parsing.ts:41` | Add sender tag to resource meta | Reuse as-is |
+| `createBundleEntry()` | `src/v2-to-fhir/fhir-bundle.ts:7` | Create PUT bundle entries | Reuse as-is |
+| `buildMappingErrorResult()` | `src/code-mapping/mapping-errors.ts:44` | Build ConversionResult for mapping errors | Reuse as-is |
+| `sanitizeForId()` | `src/v2-to-fhir/identity-system/utils.ts:5` | Sanitize strings for FHIR IDs | Reuse as-is |
+| `normalizeSystem()` | `src/v2-to-fhir/code-mapping/coding-systems.ts:13` | Normalize coding system URIs | Reuse + extend |
+| `convertCEToCodeableConcept()` | `src/v2-to-fhir/datatypes/ce-codeableconcept.ts` | CE->CodeableConcept | Reuse for OBR-4, DG1-3 |
+| `convertXCNToPractitioner()` | `src/v2-to-fhir/datatypes/xcn-practitioner.ts` | XCN->Practitioner | Reuse for ORC-12 |
+| `convertXONToOrganization()` | `src/v2-to-fhir/datatypes/xon-organization.ts` | XON->Organization | Reuse for ORC-21 |
+| `convertXADToAddress()` | `src/v2-to-fhir/datatypes/xad-address.ts` | XAD->Address | Reuse for ORC-22 |
+| `convertXTNToContactPoint()` | `src/v2-to-fhir/datatypes/xtn-contactpoint.ts` | XTN->ContactPoint | Reuse for ORC-14, OBR-17 |
+| `convertCXToIdentifier()` | `src/v2-to-fhir/datatypes/cx-identifier.ts` | CX->Identifier | Reuse for various |
+| `makeTestContext()` | `test/unit/v2-to-fhir/helpers.ts:5` | Create test converter context | Reuse in unit tests |
+| `ConverterContext` | `src/v2-to-fhir/converter-context.ts:12` | Context with config, patient/encounter lookups | Reuse as-is |
+| `preprocessMessage()` | `src/v2-to-fhir/preprocessor.ts:28` | Config-driven message preprocessing | Reuse as-is (add ORM-O01 config) |
+
+### Reusable Patterns from ADT for DG1/IN1
+
+| Pattern | ADT Location | Description |
+|---|---|---|
+| DG1 deduplication | `src/v2-to-fhir/messages/adt-a01.ts:106-150` | `prepareDG1ForExtraction()` -- dedup by diagnosis code+display, keep lowest priority. Useful pattern but ORM DG1s are per-order-group, not message-level. |
+| Condition ID generation | `src/v2-to-fhir/messages/adt-a01.ts:157-167` | `generateConditionId()` -- uses DG1-4 or DG1-3 text + prefix. ORM needs different strategy: order-number + positional index. |
+| Coverage ID generation | `src/v2-to-fhir/messages/adt-a01.ts:174-202` | `generateCoverageId()` -- uses IN1-3 or IN1-4 + patient prefix. ORM can reuse or simplify. |
+| IN1 validity check | `src/v2-to-fhir/messages/adt-a01.ts:209-224` | `hasValidPayorInfo()` -- checks IN1-3 or IN1-4 present. Reusable. |
+| Linking DG1 Conditions | `src/v2-to-fhir/messages/adt-a01.ts:426-441` | Sets `condition.subject`, `condition.encounter`, `condition.id`. ORM: similar but links via `ServiceRequest.reasonReference`. |
+| Linking IN1 Coverages | `src/v2-to-fhir/messages/adt-a01.ts:479-496` | Sets `coverage.beneficiary`, `coverage.id`. ORM: same pattern. |
+
+### Generated HL7v2 Types Available
+
+| Type | Location | Fields | Notes |
+|---|---|---|---|
+| `ORC` | `src/hl7v2/generated/fields.ts:3409` | 31 fields ($1 through $31) | Full type with all fields needed for ServiceRequest mapping |
+| `OBR` | `src/hl7v2/generated/fields.ts:3251` | 50+ fields | Full type, already used by ORU converter |
+| `DG1` | `src/hl7v2/generated/fields.ts` (via `fromDG1`) | All fields | Already used by ADT converter |
+| `IN1` | `src/hl7v2/generated/fields.ts` (via `fromIN1`) | All fields | Already used by ADT converter |
+| `NTE` | `src/hl7v2/generated/fields.ts` (via `fromNTE`) | All fields | Already used by ORU converter |
+| `OBX` | `src/hl7v2/wrappers` (via `fromOBX`) | All fields | Already used by ORU converter (wrapper version) |
+| `RXO` | **NOT GENERATED** | N/A | Must be generated or manually created |
+| `fromORC()` | `src/hl7v2/generated/fields.ts:6742` | Parser | Available but only imported by VXU (unused in practice since VXU is stub) |
+
+### FHIR Types Available
+
+| Type | Location | Required Fields | Notes |
+|---|---|---|---|
+| `ServiceRequest` | `src/fhir/hl7-fhir-r4-core/ServiceRequest.ts:27` | `intent`, `status`, `subject` | All needed fields: `identifier`, `code`, `reasonReference`, `supportingInfo`, `note`, `requester`, `requisition`, `authoredOn`, `locationCode`, `orderDetail`, `priority`, `occurrenceDateTime` |
+| `MedicationRequest` | `src/fhir/hl7-fhir-r4-core/MedicationRequest.ts:48` | `intent`, `status`, `subject` | All needed fields: `medicationCodeableConcept`, `dosageInstruction`, `dispenseRequest`, `substitution`, `requester`, `note`, `reasonReference` |
+| `Condition` | Already used by ADT | `subject` | Already proven in ADT converter |
+| `Coverage` | Already used by ADT | `beneficiary`, `payor`, `status` | Already proven in ADT converter |
+| `Observation` | Already used by ORU | `status`, `code` | Already proven in ORU converter |
+
+## Reusable Patterns for New Converter
+
+### Pattern 1: Message-Level MSH/PID/PV1 Handling
+- **Where used**: `src/v2-to-fhir/messages/oru-r01.ts:468-515`
+- **Why reuse**: The ORU converter demonstrates the exact pattern needed: `parseMSH()` -> `parsePID()` -> `handlePatient()` -> `parsePV1()` -> `handleEncounter()` -> group-level processing -> bundle assembly. The ORM converter follows the same structure with PV1 optional (same as ORU).
+- **Caveats**: The ORU validates OBR presence (`validateOBRPresence`). ORM must validate ORC presence instead, and OBR/RXO presence within ORDER_DETAIL is conditional.
+
+### Pattern 2: Segment Grouping
+- **Where used**: `src/v2-to-fhir/messages/oru-r01.ts:65-118` (`groupSegmentsByOBR`)
+- **Why reuse**: The state-machine approach to grouping segments (iterate, switch on segment type, accumulate into groups) is the right pattern for ORM ORDER groups. ORM groups are more complex (ORC starts a group, then OBR/RXO/NTE/DG1/OBX follow) but the same pattern applies.
+- **Caveats**: ORU groups are flat (OBR -> OBX* -> NTE* -> SPM*). ORM groups have a two-level nesting: ORDER (ORC) -> ORDER_DETAIL (OBR/RXO + NTE* + DG1* + OBSERVATION(OBX + NTE*)). The grouping logic must be more sophisticated.
+
+### Pattern 3: Mapping Error Collection and Result Building
+- **Where used**: `src/v2-to-fhir/messages/oru-r01.ts:522-538` and `src/code-mapping/mapping-errors.ts:44`
+- **Why reuse**: Collect `MappingError[]` across all order groups, then call `buildMappingErrorResult()` if any errors exist. The pattern of short-circuiting on mapping errors while preserving Tasks is essential.
+- **Caveats**: ORM adds a new mapping type (ORC status, if OQ-1 Option A is chosen). The `MAPPING_TYPES` registry in `src/code-mapping/mapping-types.ts` must be extended.
+
+### Pattern 4: Deterministic ID Generation
+- **Where used**: Various locations -- ORU uses `getOrderNumber()` from OBR-3/OBR-2 (`src/v2-to-fhir/messages/oru-r01.ts:225-239`), ADT uses `generateConditionId()` / `generateCoverageId()`, OBX uses `{orderNumber}-obx-{setId}` pattern.
+- **Why reuse**: The `sanitizeForId()` utility and the pattern of deriving IDs from EI components are standard. ORM should follow the same convention.
+- **Caveats**: ORM ID generation differs from ORU: ORM prefers ORC-2 (placer) over OBR-3 (filler) because this is an ORDER (not a result). The fallback chain is specified in the ticket (FALL-1 through FALL-7).
+
+### Pattern 5: Config-Driven PV1 Policy
+- **Where used**: `src/v2-to-fhir/segments/pv1-encounter.ts:873-926` (`handleEncounter` with config key)
+- **Why reuse**: The config key `"ORM-O01"` follows the same pattern as `"ORU-R01"` and `"VXU-V04"`. Set `PV1.required = false` for ORM.
+- **Caveats**: None -- the infrastructure is designed for this exact extensibility.
+
+### Pattern 6: Draft Patient/Encounter Creation
+- **Where used**: `src/v2-to-fhir/segments/pid-patient.ts:608-632` (`handlePatient`) and `src/v2-to-fhir/segments/pv1-encounter.ts:873-926` (`handleEncounter`)
+- **Why reuse**: Uses POST with If-None-Exist for race condition safety. ORM follows the same ownership model: ORM does not own Patient/Encounter (ADT does), so it creates drafts.
+- **Caveats**: None.
+
+### Anti-Pattern: Large Monolithic Converter Functions
+- **Where seen**: `src/v2-to-fhir/messages/adt-a01.ts:270-556` -- the `convertADT_A01` function is ~290 lines with inline MSH parsing, patient handling, encounter handling, and all segment processing.
+- **Why avoid**: The code style guide says functions >100 lines should be critically reviewed. The ORU converter already demonstrates the better pattern: extract helper functions (`parsePID`, `processObservations`, `processOBRGroup`, `buildBundleEntries`) and compose them in the main function.
+- **Recommendation**: ORM should follow the ORU decomposition pattern, not the ADT monolith pattern. Extract `groupORMOrders()`, `processOrderGroup()`, `buildServiceRequestFromORC()`, `buildServiceRequestFromOBR()`, `buildMedicationRequestFromRXO()`.
+
+## Gaps and Missing Pieces
+
+### GAP-A: No ORC->ServiceRequest Converter [Critical]
+- **Impact**: The core conversion from ORC to ServiceRequest does not exist anywhere. All 31 ORC fields need mapping per the IG CSV.
+- **Evidence**: No file in `src/v2-to-fhir/segments/` handles ORC->ServiceRequest. The only ORC usage is `fromORC` imported by VXU (`src/v2-to-fhir/messages/vxu-v04.ts:30`) but never called (VXU is a stub).
+- **Suggested direction**: Create `src/v2-to-fhir/segments/orc-servicerequest.ts` following the pattern of `obr-diagnosticreport.ts` but mapping to ServiceRequest per `docs/v2-to-fhir-spec/mappings/segments/HL7 Segment - FHIR R4_ ORC[ServiceRequest] - ORC.csv`. Include the two-tier status resolution (ORC-5 then ORC-1).
+
+### GAP-B: No OBR->ServiceRequest Converter [Critical]
+- **Impact**: The existing `obr-diagnosticreport.ts` maps OBR to DiagnosticReport (for ORU). ORM needs OBR mapped to ServiceRequest (different fields, different semantics). Cannot reuse the existing converter -- it produces the wrong resource type.
+- **Evidence**: `src/v2-to-fhir/segments/obr-diagnosticreport.ts` only creates `DiagnosticReport`. The IG mapping `docs/v2-to-fhir-spec/mappings/segments/HL7 Segment - FHIR R4_ OBR[ServiceRequest] - OBR.csv` defines a completely different field mapping.
+- **Suggested direction**: Create `src/v2-to-fhir/segments/obr-servicerequest.ts` that merges OBR data into a ServiceRequest created from ORC. Fields: OBR-2 (placer fallback), OBR-3 (filler fallback), OBR-4 (code), OBR-5 (priority), OBR-6 (occurrenceDateTime), OBR-11 (intent override), OBR-16 (requester fallback), OBR-17 (callback phone), OBR-27 (quantity/timing), OBR-31 (reasonCode), OBR-46 (orderDetail).
+
+### GAP-C: No RXO->MedicationRequest Converter [Critical]
+- **Impact**: RXO segment type is not in generated HL7v2 types. No `fromRXO` parser, no `RXO` interface. The converter cannot parse RXO segments at all.
+- **Evidence**: `grep -r "RXO" src/hl7v2/` returns no results. The generated fields file has no RXO interface or parser.
+- **Suggested direction**: (1) Run `bun run regenerate-hl7v2` to check if RXO can be auto-generated. If not (likely, since ORM is pre-v2.8.2), manually create `src/hl7v2/wrappers/rxo.ts` with the RXO interface and `fromRXO()` parser, following the wrapper pattern used for OBX (`src/hl7v2/wrappers/`). (2) Create `src/v2-to-fhir/segments/rxo-medicationrequest.ts` per the IG mapping.
+
+### GAP-D: No ORM_O01 Routing [Low]
+- **Impact**: `convertToFHIR()` throws "Unsupported message type: ORM_O01" for any ORM message.
+- **Evidence**: `src/v2-to-fhir/converter.ts:91-107` -- switch statement only handles ADT_A01, ADT_A08, ORU_R01, VXU_V04.
+- **Suggested direction**: Add `case "ORM_O01": return await convertORM_O01(parsed, context);` and import the new converter.
+
+### GAP-E: No ORM Config Entry [Low]
+- **Impact**: Preprocessing and PV1 policy not configured for ORM messages.
+- **Evidence**: `config/hl7v2-to-fhir.json` has entries for ADT-A01, ADT-A08, ORU-R01, VXU-V04 but not ORM-O01.
+- **Suggested direction**: Add `"ORM-O01"` entry with same PID/PV1 preprocessors as ORU-R01, and `"converter": { "PV1": { "required": false } }`.
+
+### GAP-F: ORC Status Resolution is Novel [Medium]
+- **Impact**: No existing pattern for the two-tier ORC-5/ORC-1 status fallback described in the IG. All existing status resolvers (OBR-25, OBX-11, PV1-2) use a single source field.
+- **Evidence**: The IG specifies: if ORC-5 valued, use OrderStatus map; else use ORC-1 OrderControlCode map. The OrderControlCode map has gaps (SC has no mapping). Both vocabulary maps exist as CSVs in `docs/v2-to-fhir-spec/mappings/codesystems/`.
+- **Suggested direction**: Implement in `orc-servicerequest.ts` as a function `resolveServiceRequestStatus(orc1, orc5, senderContext)` that: (1) tries ORC-5 against OrderStatus hardcoded map, (2) if not valued or not found, tries ORC-1 against OrderControlCode hardcoded map, (3) if still not found, falls back to "unknown". Whether to add an `orc-status` mapping type depends on the answer to OQ-1.
+
+### GAP-G: `normalizeSystem()` Does Not Cover ICD-10-CM [Low]
+- **Impact**: DG1-3.3 values "ICD-10-CM" will not be normalized to a FHIR system URI. "I10" maps to `http://hl7.org/fhir/sid/icd-10` (generic ICD-10), not `http://hl7.org/fhir/sid/icd-10-cm` (US clinical modification).
+- **Evidence**: `src/v2-to-fhir/code-mapping/coding-systems.ts:23` -- `if (upper === "ICD10" || upper === "I10")` maps to `/icd-10`. No handling for "ICD-10-CM".
+- **Suggested direction**: Add `"ICD-10-CM"` and `"ICD10CM"` to `normalizeSystem()` mapping to `http://hl7.org/fhir/sid/icd-10-cm`. Consider whether "I10" should also map to icd-10-cm (this is a broader question that may affect other converters).
+
+### GAP-H: No ORDER Group Segmentation Logic [Critical]
+- **Impact**: ORM messages contain ORDER groups (ORC + ORDER_DETAIL) that must be segmented before processing. No existing grouping logic handles the ORM structure.
+- **Evidence**: ORU has `groupSegmentsByOBR()` which groups by OBR. ORM groups by ORC, with ORDER_DETAIL containing OBR/RXO + NTE + DG1 + OBX. The structure is different enough that a new grouper is needed.
+- **Suggested direction**: Create `groupORMOrders()` in the new `orm-o01.ts` message converter. Each group starts with ORC. Within each group, detect ORDER_CHOICE type (first OBR or RXO after ORC). Collect NTE, DG1, OBX following the ORDER_CHOICE.
+
+### GAP-I: MedicationRequest Status from ORC [Medium]
+- **Impact**: The IG maps ORC->ServiceRequest status. For RXO-based orders, ORC maps to MedicationRequest (different resource, different status value set). The MedicationRequest.status value set differs from ServiceRequest.status.
+- **Evidence**: `ServiceRequest.status`: draft, active, on-hold, revoked, completed, entered-in-error, unknown. `MedicationRequest.status`: active, on-hold, cancelled, completed, entered-in-error, stopped, draft, unknown. "revoked" (ServiceRequest) vs "cancelled" (MedicationRequest) -- the OrderStatus vocabulary map outputs "revoked" for CA/DC/RP, but MedicationRequest uses "cancelled".
+- **Suggested direction**: The ORC status resolution for MedicationRequest must use MedicationRequest-compatible status values. Either create a separate status resolver for MedicationRequest, or apply a translation layer (revoked -> cancelled).
+
+## Test Readiness Assessment
+
+### Existing Tests That Provide Coverage
+
+| Test File | Relevance | What It Covers |
+|---|---|---|
+| `test/unit/v2-to-fhir/messages/oru-r01.test.ts` | Pattern reference | PV1 policy, encounter handling, mapping error flow -- same patterns needed for ORM |
+| `test/unit/v2-to-fhir/messages/adt-a01.test.ts` | Pattern reference | DG1->Condition, IN1->Coverage integration, patient ID resolution |
+| `test/unit/v2-to-fhir/segments/obx-observation.test.ts` | Reusable | OBX->Observation conversion, status mapping, value type parsing |
+| `test/unit/v2-to-fhir/segments/pv1-encounter.test.ts` | Reusable | PV1->Encounter conversion, patient class resolution |
+| `test/unit/v2-to-fhir/segments/pid-patient.test.ts` | Reusable | PID->Patient conversion |
+| `test/unit/v2-to-fhir/segments/nte-annotation.test.ts` | Reusable | NTE->Annotation conversion |
+| `test/unit/code-mapping/mapping-errors.test.ts` | Reusable | `buildMappingErrorResult()` behavior |
+| `test/unit/code-mapping/mapping-types.test.ts` | Must update | Must add new mapping type(s) if OQ-1 Option A is chosen |
+| `test/unit/v2-to-fhir/coding-systems.test.ts` | Must update | Must add tests for "ICD-10-CM" normalization |
+| `test/integration/v2-to-fhir/oru-r01.integration.test.ts` | Pattern reference | End-to-end processing pipeline pattern |
+| `test/integration/v2-to-fhir/converter-pipeline.integration.test.ts` | Pattern reference | Converter pipeline integration |
+
+### Missing Tests Required Before/During Implementation
+
+| Test Needed | Type | Priority | Description |
+|---|---|---|---|
+| ORC->ServiceRequest unit tests | Unit | Critical | Field mapping: ORC-1/5 status resolution, ORC-2/3 identifiers, ORC-4 requisition, ORC-9 authoredOn, ORC-12 requester, ORC-21/22/23 ordering facility, ORC-29 locationCode |
+| OBR->ServiceRequest (merge) unit tests | Unit | Critical | Field mapping: OBR-2/3 identifier fallback, OBR-4 code, OBR-5 priority, OBR-6 occurrenceDateTime, OBR-11 intent override, OBR-16 requester fallback, OBR-17 callback phone, OBR-27 timing, OBR-31 reasonCode |
+| RXO->MedicationRequest unit tests | Unit | Critical | Field mapping: RXO-1 medication code, RXO-2/3/4 dosage, RXO-5 doseForm, RXO-9 substitution, RXO-11/12 dispense, RXO-13 refills, RXO-14 requester, RXO-18/19/25/26 strength |
+| ORM_O01 message converter unit tests | Unit | Critical | All 6 examples processed correctly: resource types, counts, IDs, linking |
+| ORDER group segmentation tests | Unit | Critical | Multi-order messages (ex2: 2 OBR orders, ex6: 2 RXO orders), segment grouping correctness |
+| ORC status fallback chain tests | Unit | High | ORC-5 valued -> OrderStatus map; ORC-5 empty + ORC-1 valued -> OrderControlCode map; both empty -> "unknown"; non-standard values |
+| DG1->ServiceRequest.reasonReference linking tests | Unit | High | Multiple DG1s per order group, positional ID generation, correct linking |
+| OBX->ServiceRequest.supportingInfo linking tests | Unit | High | OBX without LOINC resolution, positional ID generation, correct linking |
+| NTE->ServiceRequest.note tests | Unit | Medium | Multiple NTE per order group, concatenation behavior |
+| IN1->Coverage tests for ORM context | Unit | Medium | Multiple IN1s, positional ID generation, patient linking |
+| Empty PV1 handling tests | Unit | Medium | PV1 present but empty -> treated as absent, no Encounter created |
+| ORM end-to-end integration test | Integration | High | MLLP receive -> IncomingHL7v2Message -> processing -> FHIR resources in Aidbox |
+| ORM test fixtures | Fixture | Critical | Need `.hl7` fixtures in `test/fixtures/hl7v2/orm-o01/` based on example messages (de-identified) |
+
+## Open Questions / Unknowns
+
+### OQ-RXO-GENERATION: How to generate RXO type?
+- **Why unresolved**: RXO is not in the generated HL7v2 types. ORM_O01 is a pre-v2.8.2 message type. The code generation pipeline (`bun run regenerate-hl7v2`) uses v2.8.2 reference data, which does not include ORM_O01. RXO may exist in the v2.5 reference data (`data/hl7v2-reference/v2.5/`), but the code generation scripts may not support v2.5.
+- **Options**: (A) Manually create `RXO` interface and `fromRXO()` parser in `src/hl7v2/wrappers/rxo.ts` following the OBX wrapper pattern. (B) Extend the code generation pipeline to also process v2.5 data. (C) Check if `@atomic-ehr/hl7v2` parser returns raw segment data that can be manually extracted.
+- **Recommendation**: Option A is lowest risk and fastest. The RXO segment has ~30 fields but only ~15 are mapped per the IG. A manual wrapper with just the needed fields is sufficient.
+
+### OQ-OBX-STATUS-DEFAULT: Should ORM OBX use "registered" default for missing OBX-11?
+- **Why unresolved**: The ticket proposes RELAX-5 (default to "registered" for missing OBX-11 in ORM context). The existing `convertOBXWithMappingSupportAsync()` returns a mapping error for missing OBX-11. To use a default, the ORM converter would need to either: (A) bypass the mapping support version and use the sync `convertOBXToObservation()` (which throws on invalid status), or (B) create a new ORM-specific OBX conversion function that defaults missing status to "registered", or (C) add an options parameter to the existing function.
+- **Recommendation**: Option C -- add an optional `defaultStatus` parameter to `convertOBXWithMappingSupportAsync()`. When provided and OBX-11 is missing, use the default instead of returning a mapping error. This is backward-compatible.
+
+### OQ-SERVICE-REQUEST-FHIR-TYPE: ServiceRequest.status "unknown" validity
+- **Why unresolved**: The ticket proposes RELAX-1 (default to "unknown" when ORC-1 and ORC-5 both fail to map). The FHIR ServiceRequest.status value set includes "unknown" (`src/fhir/hl7-fhir-r4-core/ServiceRequest.ts:65`), confirming it is valid. No question remains -- "unknown" is a valid default.
+
+### OQ-MULTI-ORDER-DG1-SCOPE: Are DG1 segments per-order or per-message?
+- **Why unresolved**: In the ORM spec, DG1 segments appear inside ORDER_DETAIL (per-order). In example 6, there are DG1 segments that appear between different ORC groups. The grouping logic must correctly associate DG1 segments with their parent order group.
+- **Impact**: If DG1 segments are mis-associated, Conditions will be linked to the wrong ServiceRequest via reasonReference.
+- **Recommendation**: The grouping function should associate DG1 segments with the most recent ORC/ORDER_CHOICE segment, following the spec structure where DG1 is inside ORDER_DETAIL.
