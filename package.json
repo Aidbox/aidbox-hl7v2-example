@@ -23,7 +23,8 @@
     "test:all": "bun test && bun test:integration",
     "test:unit": "bun test",
     "test:integration": "bun test --test-root ./test/integration --preload ./test/integration/preload.ts --max-concurrency=1",
-    "reset-integration-aidbox": "bun scripts/reset-integration-aidbox.ts"
+    "reset-integration-aidbox": "bun scripts/reset-integration-aidbox.ts",
+    "sync:agents-skills": "bash scripts/sync-agents-skills.sh"
   },
   "type": "module",
   "dependencies": {

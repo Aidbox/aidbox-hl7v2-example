@@ -62,6 +62,15 @@ bun run dev
 - **[User Guide](docs/user-guide/README.md)** — Setup, configuration, operations, troubleshooting
 - **[Developer Guide](docs/developer-guide/README.md)** — Architecture, extending the system, implementation details
 
+# AI Agent Skills
+
+Skills are authored in `.claude/skills` and mirrored into `.agents/skills` as symlinks.
+
+```sh
+# Sync claude skills to .agents/skills
+bun run sync:agents-skills
+```
+
 ## Supported Message Types
 
 - **FHIR → HL7v2:** BAR^P01/P05/P06 (billing account records)
