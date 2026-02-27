@@ -303,6 +303,9 @@ When all tasks are completed, move to the next step.
 
 ### Step 8
 
+Run a sub-agent to review the implementation.
+
+Prompt:
 ```
 /ai-review implementation of <path-to-ticket-file>. Think hard. Return your review output as your response, do not change any files. 
 ```
@@ -316,4 +319,4 @@ Get familiar with <path-to-ticket-file>. A review of this implementation reveale
 <review-agent-output>
 ```
 
-When the review and the fixes are done, ask user for the review.
+When the review and the fixes are done, your job is done. Report to the user the implementation is complete, they can test the functionality in the ui.
