@@ -31,8 +31,11 @@ const STATUS_ADAPTATION: Record<string, MedicationRequestStatus> = {
 };
 
 /**
- * Adapt a ServiceRequest-style status to a MedicationRequest-compatible status.
- * Maps "revoked" -> "cancelled" since MedicationRequest uses "cancelled" instead of "revoked".
+ * Adapt a request-status value resolved from ORC to MedicationRequest.status.
+ *
+ * ORM reuses ORC status resolution for both ServiceRequest and MedicationRequest.
+ * FHIR R4 differs here: ServiceRequest uses "revoked" while MedicationRequest
+ * uses "cancelled", so we translate only this incompatible value.
  */
 function adaptStatusForMedicationRequest(status: string): MedicationRequestStatus {
   return (STATUS_ADAPTATION[status] ?? status) as MedicationRequestStatus;

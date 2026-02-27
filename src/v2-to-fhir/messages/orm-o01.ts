@@ -520,7 +520,9 @@ async function processRXOOrderGroup(
     return { entries: [], mappingErrors };
   }
 
-  // Build MedicationRequest from RXO
+  // Build MedicationRequest from RXO.
+  // convertRXOToMedicationRequest adapts shared ORC status values where needed
+  // (for example "revoked" -> "cancelled" for MedicationRequest).
   const rxo = fromRXO(group.orderChoice!);
   const medicationRequest = convertRXOToMedicationRequest(rxo, statusResult.status) as MedicationRequest;
 

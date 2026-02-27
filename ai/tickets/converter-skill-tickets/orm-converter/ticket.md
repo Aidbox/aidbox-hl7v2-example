@@ -10,6 +10,8 @@ Located in: `ai/tickets/converter-skill-tickets/orm-converter/examples/`
 
 # Requirements
 
+> Status: implemented on February 27, 2026.
+
 ## Scope
 
 ### Message Types/Events In Scope
@@ -1173,22 +1175,22 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 13: Update documentation
 
-- [ ] Update CLAUDE.md:
+- [x] Update CLAUDE.md:
   - Add `ORM_O01` to the converter list in the Architecture Overview / Components table
   - Add ORM to the "Supported message types" in the converter.ts comment (if applicable)
   - Document the `orc-status` mapping type alongside existing mapping types
   - Add any gotchas discovered during implementation
-- [ ] Add inline documentation for complex functions (especially `resolveOrderStatus` three-tier logic, `groupORMOrders` segment walking, and the ServiceRequest/MedicationRequest status type adaptation)
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Add inline documentation for complex functions (especially `resolveOrderStatus` three-tier logic, `groupORMOrders` segment walking, and the ServiceRequest/MedicationRequest status type adaptation)
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
 ## Task 14: Cleanup design artifacts
 
-- [ ] Remove all `DESIGN PROTOTYPE: YYYY-MM-DD-feature-name` comments from codebase (note: VXU still has one at the top of `vxu-v04.ts` -- only remove ORM-related ones if any were added)
-- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE" src/`
-- [ ] Update design document status to `implemented` (add a note at the top of the Requirements section)
-- [ ] Run `bun test:all` and `bun run typecheck` - final verification
+- [x] Remove all `DESIGN PROTOTYPE: YYYY-MM-DD-feature-name` comments from codebase (note: VXU still has one at the top of `vxu-v04.ts` -- only remove ORM-related ones if any were added)
+- [x] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE" src/` (existing markers are in non-ORM VXU/profile-conformance files; no ORM markers found)
+- [x] Update design document status to `implemented` (add a note at the top of the Requirements section)
+- [x] Run `bun test:all` and `bun run typecheck` - final verification
 
 ---
 
