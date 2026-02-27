@@ -1155,19 +1155,19 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 12: Integration tests
 
-- [ ] Add `getServiceRequests()` and `getMedicationRequests()` helper functions to `test/integration/helpers.ts`
-- [ ] Add `immunization`, `medicationrequest`, `servicerequest` to the TRUNCATE list in `cleanupTestResources()` if not already present
-- [ ] Create `test/integration/v2-to-fhir/orm-o01.integration.test.ts`
-- [ ] Test: Happy path single OBR order E2E: submit ORM -> verify ServiceRequest, Condition, Patient created in Aidbox [AC-3, AC-22]
-- [ ] Test: Happy path single RXO order E2E: submit ORM with RXO -> verify MedicationRequest created [AC-4, AC-22]
-- [ ] Test: Multiple OBR orders in one message -> 2 ServiceRequests [AC-9]
-- [ ] Test: Multiple RXO orders with DG1/OBX/NTE -> verify MedicationRequests, Conditions, Observations created [AC-9]
-- [ ] Test: Non-standard ORC-5 triggers mapping_error status and Task creation [AC-16]
-- [ ] Test: ORC-5 mapping resolution after ConceptMap created + reprocess -> verify processed status [AC-16]
-- [ ] Test: IN1 produces Coverage resources in Aidbox [AC-8]
-- [ ] Test: Missing PV1 processes normally, no Encounter created [AC-12]
-- [ ] Test: Patient draft creation (submit with unknown patient -> verify draft Patient active=false) [AC-11]
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Add `getServiceRequests()` and `getMedicationRequests()` helper functions to `test/integration/helpers.ts`
+- [x] Add `immunization`, `medicationrequest`, `servicerequest` to the TRUNCATE list in `cleanupTestResources()` if not already present
+- [x] Create `test/integration/v2-to-fhir/orm-o01.integration.test.ts`
+- [x] Test: Happy path single OBR order E2E: submit ORM -> verify ServiceRequest, Condition, Patient created in Aidbox [AC-3, AC-22]
+- [x] Test: Happy path single RXO order E2E: submit ORM with RXO -> verify MedicationRequest created [AC-4, AC-22]
+- [x] Test: Multiple OBR orders in one message -> 2 ServiceRequests [AC-9]
+- [x] Test: Multiple RXO orders with DG1/OBX/NTE -> verify MedicationRequests, Conditions, Observations created [AC-9]
+- [x] Test: Non-standard ORC-5 triggers mapping_error status and Task creation [AC-16]
+- [x] Test: ORC-5 mapping resolution after ConceptMap created + reprocess -> verify processed status [AC-16]
+- [x] Test: IN1 produces Coverage resources in Aidbox [AC-8]
+- [x] Test: Missing PV1 processes normally, no Encounter created [AC-12]
+- [x] Test: Patient draft creation (submit with unknown patient -> verify draft Patient active=false) [AC-11]
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
