@@ -3,6 +3,7 @@
 Developer workflows for testing, debugging, and extending the codebase.
 
 For initial setup (Docker, Aidbox, running services), see the [User Guide: Getting Started](../../user-guide/getting-started.md).
+For AI-assisted converter implementation workflow, see [Converter Pipeline Skill](converter_skill_guide.md).
 
 ## Testing
 

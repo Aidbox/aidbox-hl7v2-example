@@ -30,4 +30,5 @@ Step-by-step guides for common tasks.
 
 - [Extending Outgoing Fields](how-to/extending-outgoing-fields.md) — Add FHIR→HL7v2 field mappings
 - [Extending Incoming Fields](how-to/extending-incoming-fields.md) — Add HL7v2→FHIR field mappings
+- [Converter Pipeline Skill](how-to/converter_skill_guide.md) — Use `/hl7v2-to-fhir-pipeline` for structured converter implementation
 - [Extracting Modules](how-to/extracting-modules.md) — Use modules in your own project
