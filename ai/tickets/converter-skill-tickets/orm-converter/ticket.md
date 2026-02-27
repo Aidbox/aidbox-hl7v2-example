@@ -1073,18 +1073,18 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 8: Main ORM_O01 converter -- core flow (Patient, Encounter, OBR orders)
 
-- [ ] Create `src/v2-to-fhir/messages/orm-o01.ts` with `convertORM_O01()` function [D-8, AC-1]
-- [ ] Implement main flow: parseMSH -> parsePID -> extractSenderTag -> handlePatient -> parsePV1 (with empty PV1 detection) -> handleEncounter (with messageTypeKey "ORM-O01")
-- [ ] Process IN1 segments -> Coverage[] using existing `convertIN1ToCoverage()` and extracted `generateCoverageId()` + `hasValidPayorInfo()` from `in1-coverage.ts` [D-6]
-- [ ] Call `groupORMOrders()` to partition segments
-- [ ] For each OBR-based order group: call `convertORCToServiceRequest()`, then `mergeOBRIntoServiceRequest()`, process DG1s into Conditions (using `convertDG1ToCondition()` with positional IDs `{orderNumber}-dg1-{index}`), process order-level NTEs into `ServiceRequest.note`, process OBX observations (see next point), link `reasonReference`, `supportingInfo`, `note`
-- [ ] For OBX in ORM context: use `convertOBXWithMappingSupportAsync()` for status mapping but NOT LOINC resolution. When OBX-11 is missing, default to status `"registered"` before calling the mapping-aware function [D-2, REQ-OBX-NOLOINC-1, RELAX-5]. Use positional IDs `{orderNumber}-obx-{index}` [FALL-4]
-- [ ] Collect mapping errors. If any: return `buildMappingErrorResult()`. Otherwise build transaction bundle
-- [ ] Handle error cases: missing MSH (throw), missing PID (return error), no processable order groups (return error) [AC-17, AC-18, AC-20]
-- [ ] Handle warning case: PV1-19 present but invalid authority -> warning status [REQ-PV1-1]
-- [ ] Handle processed case: no PV1 or empty PV1 -> processed (not warning) [D-3, EC-1]
-- [ ] Register `ORM_O01` in `src/v2-to-fhir/converter.ts`: add `case "ORM_O01"` and import [AC-1]
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Create `src/v2-to-fhir/messages/orm-o01.ts` with `convertORM_O01()` function [D-8, AC-1]
+- [x] Implement main flow: parseMSH -> parsePID -> extractSenderTag -> handlePatient -> parsePV1 (with empty PV1 detection) -> handleEncounter (with messageTypeKey "ORM-O01")
+- [x] Process IN1 segments -> Coverage[] using existing `convertIN1ToCoverage()` and extracted `generateCoverageId()` + `hasValidPayorInfo()` from `in1-coverage.ts` [D-6]
+- [x] Call `groupORMOrders()` to partition segments
+- [x] For each OBR-based order group: call `convertORCToServiceRequest()`, then `mergeOBRIntoServiceRequest()`, process DG1s into Conditions (using `convertDG1ToCondition()` with positional IDs `{orderNumber}-dg1-{index}`), process order-level NTEs into `ServiceRequest.note`, process OBX observations (see next point), link `reasonReference`, `supportingInfo`, `note`
+- [x] For OBX in ORM context: use `convertOBXWithMappingSupportAsync()` for status mapping but NOT LOINC resolution. When OBX-11 is missing, default to status `"registered"` before calling the mapping-aware function [D-2, REQ-OBX-NOLOINC-1, RELAX-5]. Use positional IDs `{orderNumber}-obx-{index}` [FALL-4]
+- [x] Collect mapping errors. If any: return `buildMappingErrorResult()`. Otherwise build transaction bundle
+- [x] Handle error cases: missing MSH (throw), missing PID (return error), no processable order groups (return error) [AC-17, AC-18, AC-20]
+- [x] Handle warning case: PV1-19 present but invalid authority -> warning status [REQ-PV1-1]
+- [x] Handle processed case: no PV1 or empty PV1 -> processed (not warning) [D-3, EC-1]
+- [x] Register `ORM_O01` in `src/v2-to-fhir/converter.ts`: add `case "ORM_O01"` and import [AC-1]
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
