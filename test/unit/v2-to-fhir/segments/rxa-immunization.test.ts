@@ -4,7 +4,7 @@ import {
   deriveImmunizationStatus,
   type RXAConversionResult,
 } from "../../../../src/v2-to-fhir/segments/rxa-immunization";
-import type { RXA } from "../../../../src/hl7v2/generated/fields";
+import type { RXA, ORC } from "../../../../src/hl7v2/generated/fields";
 import type { Reference } from "../../../../src/fhir/hl7-fhir-r4-core";
 
 const patientReference: Reference<"Patient"> = { reference: "Patient/test-patient-id" };
@@ -324,6 +324,203 @@ describe("convertRXAToImmunization", () => {
       );
 
       expect(immunization.expirationDate).toBeUndefined();
+    });
+  });
+
+  describe("statusReason (RXA-18)", () => {
+    test("populates statusReason when status=not-done (RXA-20=RE) and RXA-18 present", () => {
+      const rxa = makeBaseRXA({
+        $20_completionStatus: "RE",
+        $18_substanceTreatmentRefusalReason: [
+          { $1_code: "00", $2_text: "Parental decision", $3_system: "NIP002" },
+        ],
+      });
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.status).toBe("not-done");
+      expect(immunization.statusReason?.coding?.[0]?.code).toBe("00");
+      expect(immunization.statusReason?.coding?.[0]?.display).toBe("Parental decision");
+    });
+
+    test("omits statusReason when status=not-done (RXA-20=NA) without RXA-18", () => {
+      const rxa = makeBaseRXA({
+        $20_completionStatus: "NA",
+        $18_substanceTreatmentRefusalReason: undefined,
+      });
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.status).toBe("not-done");
+      expect(immunization.statusReason).toBeUndefined();
+    });
+
+    test("omits statusReason when status=entered-in-error (RXA-21=D) even if RXA-18 present", () => {
+      const rxa = makeBaseRXA({
+        $20_completionStatus: "RE",
+        $21_actionCodeRxa: "D",
+        $18_substanceTreatmentRefusalReason: [
+          { $1_code: "00", $2_text: "Parental decision", $3_system: "NIP002" },
+        ],
+      });
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.status).toBe("entered-in-error");
+      expect(immunization.statusReason).toBeUndefined();
+    });
+
+    test("omits statusReason when status=completed even if RXA-18 present", () => {
+      const rxa = makeBaseRXA({
+        $20_completionStatus: "CP",
+        $18_substanceTreatmentRefusalReason: [
+          { $1_code: "00", $2_text: "Parental decision", $3_system: "NIP002" },
+        ],
+      });
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.status).toBe("completed");
+      expect(immunization.statusReason).toBeUndefined();
+    });
+  });
+
+  describe("reasonCode (RXA-19)", () => {
+    test("maps RXA-19 indications to reasonCode[]", () => {
+      const rxa = makeBaseRXA({
+        $19_indication: [
+          { $1_code: "070.30", $2_text: "Hepatitis B", $3_system: "ICD9CM" },
+          { $1_code: "B18.1", $2_text: "Chronic hepatitis B", $3_system: "ICD10CM" },
+        ],
+      });
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.reasonCode).toHaveLength(2);
+      expect(immunization.reasonCode?.[0]?.coding?.[0]?.code).toBe("070.30");
+      expect(immunization.reasonCode?.[1]?.coding?.[0]?.code).toBe("B18.1");
+    });
+
+    test("omits reasonCode when RXA-19 is empty", () => {
+      const rxa = makeBaseRXA({ $19_indication: undefined });
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.reasonCode).toBeUndefined();
+    });
+
+    test("omits reasonCode when RXA-19 has empty CE entries", () => {
+      const rxa = makeBaseRXA({
+        $19_indication: [{}] as any,
+      });
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.reasonCode).toBeUndefined();
+    });
+  });
+
+  describe("recorded date (ORC-9 / RXA-22 fallback)", () => {
+    test("uses ORC-9 as primary recorded date", () => {
+      const rxa = makeBaseRXA({ $21_actionCodeRxa: "A", $22_systemEntryDateTime: "20160601" });
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $9_transactionDateTime: "20160701120000",
+      };
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
+      );
+
+      expect(immunization.recorded).toBe("2016-07-01T12:00:00Z");
+    });
+
+    test("falls back to RXA-22 when ORC-9 is empty and RXA-21=A", () => {
+      const rxa = makeBaseRXA({
+        $21_actionCodeRxa: "A",
+        $22_systemEntryDateTime: "20160601100000",
+      });
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $9_transactionDateTime: undefined,
+      };
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
+      );
+
+      expect(immunization.recorded).toBe("2016-06-01T10:00:00Z");
+    });
+
+    test("no recorded when ORC-9 is empty and RXA-21 is not A", () => {
+      const rxa = makeBaseRXA({
+        $21_actionCodeRxa: "D",
+        $22_systemEntryDateTime: "20160601100000",
+      });
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $9_transactionDateTime: undefined,
+      };
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
+      );
+
+      // RXA-21=D → entered-in-error, and RXA-22 fallback only applies when RXA-21=A
+      expect(immunization.recorded).toBeUndefined();
+    });
+
+    test("falls back to RXA-22 when ORC absent and RXA-21=A", () => {
+      const rxa = makeBaseRXA({
+        $21_actionCodeRxa: "A",
+        $22_systemEntryDateTime: "20160601100000",
+      });
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.recorded).toBe("2016-06-01T10:00:00Z");
+    });
+
+    test("no recorded when ORC absent and RXA-21 not A", () => {
+      const rxa = makeBaseRXA({
+        $21_actionCodeRxa: undefined,
+        $22_systemEntryDateTime: "20160601100000",
+      });
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.recorded).toBeUndefined();
+    });
+
+    test("no recorded when ORC-9 empty and RXA-22 empty", () => {
+      const rxa = makeBaseRXA({
+        $21_actionCodeRxa: "A",
+        $22_systemEntryDateTime: undefined,
+      });
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.recorded).toBeUndefined();
     });
   });
 

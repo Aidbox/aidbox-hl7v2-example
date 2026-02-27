@@ -910,7 +910,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - Status: RE→not-done, NA→not-done, D→entered-in-error, PA→completed+isSubpotent, empty→completed
   - Dose: "999" cleared (no doseQuantity), "0" preserved (value=0)
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -918,11 +918,11 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Add conditional fields: statusReason (when not-done), reasonCode, and recorded date (ORC-9 primary, RXA-22 fallback).
 
-- [ ] Implement in `rxa-immunization.ts`:
+- [x] Implement in `rxa-immunization.ts`:
   - RXA-18 → `statusReason` (only when status=not-done)
   - RXA-19 → `reasonCode[]` (CWE → CodeableConcept, repeating; empty → omitted)
   - `recorded` field: `ORC-9 ?? (RXA-21=A ? RXA-22 : undefined)` — uniform rule regardless of ORC presence
-- [ ] Write unit tests (design test cases #16, #40):
+- [x] Write unit tests (design test cases #16, #40):
   - RXA-20=RE with RXA-18 → status=not-done, statusReason populated
   - RXA-20=NA without RXA-18 → status=not-done, no statusReason
   - RXA-19 with indications → reasonCode[] populated
@@ -930,7 +930,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - ORC-9 empty + RXA-21=A → recorded from RXA-22
   - ORC-9 empty + RXA-21≠A → no recorded
   - ORC absent + RXA-21=A + RXA-22 present → recorded from RXA-22
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---

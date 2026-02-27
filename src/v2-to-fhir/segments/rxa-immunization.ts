@@ -101,6 +101,26 @@ function buildDoseQuantity(amount: string | undefined, unit: CE | undefined): Qu
 }
 
 /**
+ * Derive Immunization.recorded from ORC-9 (primary) with RXA-22 fallback.
+ *
+ * Rule: ORC-9 ?? (RXA-21=A ? RXA-22 : undefined)
+ * RXA-22 is only used as fallback when RXA-21=A (action code "Add"),
+ * because system entry timestamp is only meaningful for new records.
+ * Uniform rule regardless of ORC presence.
+ */
+function deriveRecordedDate(orc: ORC | undefined, rxa: RXA): string | undefined {
+  const orcDateTime = convertDTMToDateTime(orc?.$9_transactionDateTime);
+  if (orcDateTime) return orcDateTime;
+
+  const isAddAction = rxa.$21_actionCodeRxa?.toUpperCase() === "A";
+  if (isAddAction) {
+    return convertDTMToDateTime(rxa.$22_systemEntryDateTime);
+  }
+
+  return undefined;
+}
+
+/**
  * Convert RXA + RXR + ORC to base FHIR Immunization.
  *
  * This is the core segment converter. CDC IIS-specific enrichment
@@ -115,7 +135,7 @@ function buildDoseQuantity(amount: string | undefined, unit: CE | undefined): Qu
 export function convertRXAToImmunization(
   rxa: RXA,
   _rxr: RXR | undefined,
-  _orc: ORC | undefined,
+  orc: ORC | undefined,
   immunizationId: string,
   patientReference: Reference<"Patient">,
 ): RXAConversionResult | { error: string } {
@@ -163,6 +183,31 @@ export function convertRXAToImmunization(
   // RXA-20=PA: partially administered → isSubpotent
   if (rxa.$20_completionStatus?.toUpperCase() === "PA") {
     immunization.isSubpotent = true;
+  }
+
+  // RXA-18: statusReason (only when status=not-done)
+  if (status === "not-done" && rxa.$18_substanceTreatmentRefusalReason?.length) {
+    const statusReasonCC = convertCEToCodeableConcept(rxa.$18_substanceTreatmentRefusalReason[0]);
+    if (statusReasonCC) {
+      immunization.statusReason = normalizeCodeableConceptSystems(statusReasonCC);
+    }
+  }
+
+  // RXA-19: reasonCode (indication — repeating)
+  if (rxa.$19_indication?.length) {
+    const reasonCodes = rxa.$19_indication
+      .map((ce) => convertCEToCodeableConcept(ce))
+      .filter((cc): cc is CodeableConcept => cc !== undefined)
+      .map(normalizeCodeableConceptSystems);
+    if (reasonCodes.length > 0) {
+      immunization.reasonCode = reasonCodes;
+    }
+  }
+
+  // recorded: ORC-9 ?? (RXA-21=A ? RXA-22 : undefined)
+  const recordedDate = deriveRecordedDate(orc, rxa);
+  if (recordedDate) {
+    immunization.recorded = recordedDate;
   }
 
   // Performers will be added by Task 12
