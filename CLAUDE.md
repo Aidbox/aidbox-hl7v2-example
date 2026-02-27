@@ -15,6 +15,10 @@ Keep in mind that user might be an idiot and suggests things without thinking ab
 State tradeoffs before implementing, even if the suggestion seems reasonable. Be direct but constructive.
 If the change has clear downsides and the user still wants it, they must say: "I request you to do it this way".
 
+## File Purpose
+
+The role of this file is to describe common mistakes and confusion points that agents might encounter as they work in this project. If you ever encounter something in the project that surprises you, please alert the developer working with you and indicate that this is the case in the AgentMD file to help prevent future agents from having the same issue.
+
 ## Project Memory
 
 Do NOT use the auto memory file (MEMORY.md) for this project. CLAUDE.md is the project memory — it is checked into the repo and shared across all agents and sessions. When you learn something that should persist (gotchas, rules, patterns), add it here, not to MEMORY.md.

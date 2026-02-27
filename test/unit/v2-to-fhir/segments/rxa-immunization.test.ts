@@ -571,6 +571,77 @@ describe("convertRXAToImmunization", () => {
     });
   });
 
+  describe("ORC identifiers (PLAC/FILL)", () => {
+    test("ORC-3 creates FILL identifier, ORC-2 creates PLAC identifier", () => {
+      const rxa = makeBaseRXA();
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $2_placerOrderNumber: { $1_value: "PL001", $2_namespace: "MYEMR" },
+        $3_fillerOrderNumber: { $1_value: "65930", $2_namespace: "DCS" },
+      };
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
+      );
+
+      expect(immunization.identifier).toHaveLength(2);
+      const placerIdentifier = immunization.identifier?.find(
+        (id) => id.type?.coding?.[0]?.code === "PLAC",
+      );
+      const fillerIdentifier = immunization.identifier?.find(
+        (id) => id.type?.coding?.[0]?.code === "FILL",
+      );
+      expect(placerIdentifier?.value).toBe("PL001");
+      expect(placerIdentifier?.system).toBe("MYEMR");
+      expect(placerIdentifier?.type?.coding?.[0]?.system).toBe(
+        "http://terminology.hl7.org/CodeSystem/v2-0203",
+      );
+      expect(fillerIdentifier?.value).toBe("65930");
+      expect(fillerIdentifier?.system).toBe("DCS");
+    });
+
+    test("ORC present but ORC-2 and ORC-3 both empty — no identifiers", () => {
+      const rxa = makeBaseRXA();
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $2_placerOrderNumber: undefined,
+        $3_fillerOrderNumber: undefined,
+      };
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
+      );
+
+      expect(immunization.identifier).toBeUndefined();
+    });
+
+    test("ORC absent — no identifiers", () => {
+      const rxa = makeBaseRXA();
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.identifier).toBeUndefined();
+    });
+
+    test("ORC-3 only (no ORC-2) — single FILL identifier", () => {
+      const rxa = makeBaseRXA();
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $3_fillerOrderNumber: { $1_value: "65930", $2_namespace: "DCS" },
+      };
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
+      );
+
+      expect(immunization.identifier).toHaveLength(1);
+      expect(immunization.identifier?.[0]?.type?.coding?.[0]?.code).toBe("FILL");
+      expect(immunization.identifier?.[0]?.value).toBe("65930");
+    });
+  });
+
   describe("base fixture — comprehensive fields", () => {
     test("produces complete Immunization from typical VXU data", () => {
       const rxa = makeBaseRXA({

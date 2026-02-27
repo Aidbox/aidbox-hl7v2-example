@@ -958,17 +958,17 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Map ORC-2→PLAC identifier and ORC-3→FILL identifier on the Immunization.
 
-- [ ] Implement ORC identifier application in `rxa-immunization.ts` (when ORC present):
+- [x] Implement ORC identifier application in `rxa-immunization.ts` (when ORC present):
   - ORC-2 → `identifier` with type=PLAC (placer order number)
   - ORC-3 → `identifier` with type=FILL (filler order number)
   - When ORC absent → no identifiers
   - When ORC present but ORC-2/ORC-3 empty → no identifiers for that field
-- [ ] Write unit tests (design test cases #10, #13, #33):
+- [x] Write unit tests (design test cases #10, #13, #33):
   - ORC-3 → FILL identifier
   - ORC-2 → PLAC identifier
   - ORC present but ORC-3 and ORC-2 both empty → no identifiers
   - ORC absent → no identifiers
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---

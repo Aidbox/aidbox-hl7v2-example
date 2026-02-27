@@ -14,6 +14,7 @@
 import type { RXA, RXR, ORC, CE } from "../../hl7v2/generated/fields";
 import type {
   Immunization,
+  Identifier,
   CodeableConcept,
   Quantity,
   Reference,
@@ -21,6 +22,7 @@ import type {
 import type { BundleEntry } from "../../fhir/hl7-fhir-r4-core";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { convertCWEToCodeableConcept } from "../datatypes/cwe-codeableconcept";
+import { convertEIToTypedIdentifier } from "../datatypes/ei-coding";
 import { convertDTMToDateTime, convertDTMToDate } from "../datatypes/dtm-datetime";
 import { normalizeSystem } from "../code-mapping/coding-systems";
 
@@ -224,6 +226,18 @@ export function convertRXAToImmunization(
     const siteCC = convertCWEToCodeableConcept(rxr.$2_administrationSite);
     if (siteCC) {
       immunization.site = normalizeCodeableConceptSystems(siteCC);
+    }
+  }
+
+  // ORC-2/ORC-3: identifiers (when ORC present)
+  if (orc) {
+    const identifiers: Identifier[] = [];
+    const placerIdentifier = convertEIToTypedIdentifier(orc.$2_placerOrderNumber, "PLAC");
+    if (placerIdentifier) identifiers.push(placerIdentifier);
+    const fillerIdentifier = convertEIToTypedIdentifier(orc.$3_fillerOrderNumber, "FILL");
+    if (fillerIdentifier) identifiers.push(fillerIdentifier);
+    if (identifiers.length > 0) {
+      immunization.identifier = identifiers;
     }
   }
 

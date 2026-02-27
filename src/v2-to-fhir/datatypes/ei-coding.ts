@@ -201,6 +201,30 @@ export interface EIP {
 const IDENTIFIER_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0203";
 
 /**
+ * Converts EI to a typed FHIR Identifier (EI[Identifier-Extension] + type code).
+ *
+ * Used for ORC-2 (PLAC) and ORC-3 (FILL) on Immunization per V2-to-FHIR IG.
+ *
+ * Mapping:
+ * - EI.1 (Entity Identifier) -> value
+ * - EI.2 (Namespace ID) -> system
+ * - Fixed: type.coding.code = typeCode
+ * - Fixed: type.coding.system = "http://terminology.hl7.org/CodeSystem/v2-0203"
+ */
+export function convertEIToTypedIdentifier(
+  ei: EI | undefined,
+  typeCode: "FILL" | "PLAC",
+): Identifier | undefined {
+  const baseIdentifier = convertEIToIdentifierExtension(ei);
+  if (!baseIdentifier) return undefined;
+
+  return {
+    ...baseIdentifier,
+    type: { coding: [{ system: IDENTIFIER_TYPE_SYSTEM, code: typeCode }] },
+  };
+}
+
+/**
  * Converts EIP (Entity Identifier Pair) to Placer-assigned Identifier.
  *
  * Mapping:
