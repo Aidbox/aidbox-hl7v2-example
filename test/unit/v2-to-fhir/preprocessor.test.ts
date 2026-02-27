@@ -556,4 +556,134 @@ describe("preprocessMessage", () => {
       expect(getRxaFields(result)?.dose).toBeUndefined();
     });
   });
+
+  describe("normalize-rxa9-nip001", () => {
+    const nip001Config: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "VXU-V04": {
+          preprocess: { RXA: { "9": ["normalize-rxa9-nip001"] } },
+        },
+      },
+    };
+
+    function getRxa9(parsed: ReturnType<typeof parseMessage>) {
+      const rxaSegment = parsed.find((s) => s.segment === "RXA");
+      if (!rxaSegment) return undefined;
+      return fromRXA(rxaSegment).$9_administrationNotes;
+    }
+
+    test('bare "00" without system gets NIP001 injected', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||00",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(1);
+      expect(notes![0]!.$1_code).toBe("00");
+      expect(notes![0]!.$3_system).toBe("NIP001");
+    });
+
+    test('bare "01" without system gets NIP001 injected', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||01^Historical",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(1);
+      expect(notes![0]!.$1_code).toBe("01");
+      expect(notes![0]!.$2_text).toBe("Historical");
+      expect(notes![0]!.$3_system).toBe("NIP001");
+    });
+
+    test('"00" with NIP001 already set is unchanged', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||00^New Record^NIP001",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(1);
+      expect(notes![0]!.$1_code).toBe("00");
+      expect(notes![0]!.$3_system).toBe("NIP001");
+    });
+
+    test('"02" without system is not modified (not a NIP001 code)', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||02^Other",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(1);
+      expect(notes![0]!.$1_code).toBe("02");
+      expect(notes![0]!.$3_system).toBeUndefined();
+    });
+
+    test("empty RXA-9 is no error", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+
+      expect(getRxa9(result)).toBeUndefined();
+    });
+
+    test("repeating RXA-9: injects NIP001 into bare 01, leaves non-NIP001 code unchanged", () => {
+      // ~ is the HL7v2 repeat separator
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||01~02^Other",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(2);
+      expect(notes![0]!.$1_code).toBe("01");
+      expect(notes![0]!.$3_system).toBe("NIP001");
+      expect(notes![1]!.$1_code).toBe("02");
+      expect(notes![1]!.$3_system).toBeUndefined();
+    });
+
+    test('"00" with non-NIP001 system is not overwritten', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||00^New^OTHERSYS",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(1);
+      expect(notes![0]!.$1_code).toBe("00");
+      expect(notes![0]!.$3_system).toBe("OTHERSYS");
+    });
+  });
 });

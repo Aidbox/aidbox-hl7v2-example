@@ -421,9 +421,77 @@ function isNumeric(value: string): boolean {
   return /^[0-9]*\.?[0-9]+$/.test(value);
 }
 
+/**
+ * If any RXA-9 CWE repeat has code "00" or "01" but empty CWE.3 (coding system),
+ * inject "NIP001" as the system. These are CDC IIS NIP001 table codes that senders
+ * sometimes send without the coding system identifier.
+ */
 function normalizeRxa9Nip001(
   _context: PreprocessorContext,
-  _segment: HL7v2Segment,
+  segment: HL7v2Segment,
 ): void {
-  // Task 6: inject NIP001 system when bare 00/01 codes lack coding system
+  if (segment.segment !== "RXA") {
+    return;
+  }
+
+  const rxa9 = segment.fields[9];
+  if (rxa9 === undefined || rxa9 === null) {
+    return;
+  }
+
+  if (Array.isArray(rxa9)) {
+    for (let i = 0; i < rxa9.length; i++) {
+      const replaced = injectNip001SystemIntoCwe(rxa9[i]!);
+      if (replaced) {
+        rxa9[i] = replaced;
+      }
+    }
+  } else {
+    const replaced = injectNip001SystemIntoCwe(rxa9);
+    if (replaced) {
+      segment.fields[9] = replaced;
+    }
+  }
+}
+
+const NIP001_CODES = new Set(["00", "01"]);
+
+/**
+ * If a CWE has code "00" or "01" with no coding system (CWE.3), inject "NIP001".
+ * Returns a replacement FieldValue when the original is a bare string, or undefined
+ * when modified in place.
+ */
+function injectNip001SystemIntoCwe(fieldValue: FieldValue): FieldValue | undefined {
+  if (typeof fieldValue === "string") {
+    if (NIP001_CODES.has(fieldValue.trim())) {
+      return { 1: fieldValue, 3: "NIP001" } as FieldValue;
+    }
+    return undefined;
+  }
+
+  if (Array.isArray(fieldValue)) {
+    return undefined;
+  }
+
+  const cweComponents = fieldValue as Record<number, FieldValue>;
+  const code = cweComponents[1];
+  if (code === undefined || code === null) {
+    return undefined;
+  }
+
+  const codeString = typeof code === "string" ? code.trim() : undefined;
+  if (!codeString || !NIP001_CODES.has(codeString)) {
+    return undefined;
+  }
+
+  const existingSystem = cweComponents[3];
+  const systemIsEmpty = existingSystem === undefined || existingSystem === null ||
+    (typeof existingSystem === "string" && !existingSystem.trim());
+
+  if (!systemIsEmpty) {
+    return undefined;
+  }
+
+  cweComponents[3] = "NIP001";
+  return undefined;
 }

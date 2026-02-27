@@ -855,7 +855,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - `"abc"` → field cleared
   - Empty → no change
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -863,15 +863,15 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Inject "NIP001" coding system when bare "00"/"01" codes lack a system identifier.
 
-- [ ] Add `normalize-rxa9-nip001` to `src/v2-to-fhir/preprocessor-registry.ts`:
+- [x] Add `normalize-rxa9-nip001` to `src/v2-to-fhir/preprocessor-registry.ts`:
   - If any RXA-9 CWE repeat has code `"00"` or `"01"` but empty CWE.3 (coding system) → inject `"NIP001"` as the system
-- [ ] Write unit tests:
+- [x] Write unit tests:
   - Bare `"00"` without system → NIP001 injected
   - Bare `"01"` without system → NIP001 injected
   - `"00"` with NIP001 already set → no change
   - `"02"` without system → no change (not a NIP001 code)
   - Empty RXA-9 → no error
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---
