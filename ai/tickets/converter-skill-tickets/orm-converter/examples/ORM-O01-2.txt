@@ -1,0 +1,9 @@
+MSH|^~\&|SendingApp|SendingFac|ReceivingApp|ReceivingFac|20160827093012||ORM^O01|74521|P|2.3
+PID|1|67890|67890^^^MIE&1.2.840.114398.1.100&ISO^MR||STERLING^ROBERT^J||19850324|M|||456 Elm Ave.^^Cedar Falls^IA^50613|||||||||||||||||||
+PV1|1||9^Franklin^Benjamin^^MD^^^^|||||||||||||||||||||||||||||||||||||||||||||||^^^^^1.2.840.114398.1.668.11999116110119971081089799101||
+IN1|1||1|DEF Insurance Medicaid|P O Box 67890^^Denver^CO^80201|Claims^Colorado |(555)555-5678^^^^^^|H5678|||||||H|Sterling^Robert|SELF|19850324|456 Elm Ave.^^Cedar Falls^IA^50613|Y||||||||||||P||||ABC9876543-2|||||||M||||M||
+ORC|NW|47|||Pending||^^^^^0||20190712083415|38^Miller^Sarah||12^Thompson^Rebecca|^^^^OFFICE^^^^^Office|^^^lab@clinic.com||||||||||
+OBR|1|47||123^CREATININE|0|||||||||||12^Thompson^Rebecca||||||||||||||||||||||||||||||||||
+DG1|1|ICD|B60.0^BABESIOSIS^I10|BABESIOSIS||||||||||||
+OBR|2|47||80061^LIPID PROFILE|0|||||||||||12^Thompson^Rebecca||||||||||||||||||||||||||||||||||
+DG1|1|ICD|B60.0^BABESIOSIS^I10|BABESIOSIS||||||||||||
