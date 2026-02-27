@@ -148,7 +148,7 @@ export async function resolveOrderStatus(
  * Build a display-only Reference<Practitioner> from the first XCN in the array.
  * Uses inline display reference for consistency with existing converters.
  */
-function buildRequesterReference(xcns: XCN[] | undefined): Reference<"Practitioner"> | undefined {
+export function buildRequesterReference(xcns: XCN[] | undefined): Reference<"Practitioner"> | undefined {
   if (!xcns || xcns.length === 0) return undefined;
 
   const xcn = xcns[0]!;

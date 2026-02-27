@@ -1003,16 +1003,16 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 5: OBR -> ServiceRequest merger
 
-- [ ] Create `src/v2-to-fhir/segments/obr-servicerequest.ts` with `mergeOBRIntoServiceRequest()` [REQ-OBR-1]
-- [ ] Map OBR-4 -> `code` via `convertCEToCodeableConcept()`
-- [ ] Map OBR-2 -> `identifier[PLAC]` only if ORC-2 empty (check via parameter)
-- [ ] Map OBR-3 -> `identifier[FILL]` only if ORC-3 empty (check via parameter)
-- [ ] Map OBR-5 -> `priority`: S/A -> "stat", R -> "routine", T -> "urgent"
-- [ ] Map OBR-6 -> `occurrenceDateTime` via `convertDTMToDateTime()`
-- [ ] Map OBR-11 -> `intent` override: "G" -> "reflex-order", all other values keep existing intent [REQ-OBR-1 note on "A"]
-- [ ] Map OBR-16 -> `requester` only if ORC-12 not valued (fallback) [EC-7]
-- [ ] Map OBR-31 -> `reasonCode` via `convertCEToCodeableConcept()`
-- [ ] Write unit tests in `test/unit/v2-to-fhir/segments/obr-servicerequest.test.ts`:
+- [x] Create `src/v2-to-fhir/segments/obr-servicerequest.ts` with `mergeOBRIntoServiceRequest()` [REQ-OBR-1]
+- [x] Map OBR-4 -> `code` via `convertCEToCodeableConcept()`
+- [x] Map OBR-2 -> `identifier[PLAC]` only if ORC-2 empty (check via parameter)
+- [x] Map OBR-3 -> `identifier[FILL]` only if ORC-3 empty (check via parameter)
+- [x] Map OBR-5 -> `priority`: S/A -> "stat", R -> "routine", T -> "urgent"
+- [x] Map OBR-6 -> `occurrenceDateTime` via `convertDTMToDateTime()`
+- [x] Map OBR-11 -> `intent` override: "G" -> "reflex-order", all other values keep existing intent [REQ-OBR-1 note on "A"]
+- [x] Map OBR-16 -> `requester` only if ORC-12 not valued (fallback) [EC-7]
+- [x] Map OBR-31 -> `reasonCode` via `convertCEToCodeableConcept()`
+- [x] Write unit tests in `test/unit/v2-to-fhir/segments/obr-servicerequest.test.ts`:
   - OBR-4 maps to code
   - OBR-2 used as PLAC identifier when ORC-2 empty
   - OBR-2 NOT used when ORC-2 present
@@ -1021,7 +1021,7 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
   - OBR-11 "G" -> reflex-order, "A" -> keeps "order"
   - OBR-16 requester fallback when ORC-12 empty
   - OBR-31 maps to reasonCode
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
