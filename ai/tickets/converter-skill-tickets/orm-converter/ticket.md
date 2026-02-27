@@ -963,10 +963,10 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 3: Extract `generateCoverageId` to shared module
 
-- [ ] Extract `generateCoverageId()` and `hasValidPayorInfo()` functions from `src/v2-to-fhir/messages/adt-a01.ts` into `src/v2-to-fhir/segments/in1-coverage.ts` (the existing IN1 segment converter module) [D-6, FALL-7]
-- [ ] Update `src/v2-to-fhir/messages/adt-a01.ts` to import `generateCoverageId` and `hasValidPayorInfo` from `in1-coverage.ts` instead of defining locally
-- [ ] Verify the ADT tests pass unchanged (no behavior change, just code relocation)
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Extract `generateCoverageId()` and `hasValidPayorInfo()` functions from `src/v2-to-fhir/messages/adt-a01.ts` into `src/v2-to-fhir/segments/in1-coverage.ts` (the existing IN1 segment converter module) [D-6, FALL-7]
+- [x] Update `src/v2-to-fhir/messages/adt-a01.ts` to import `generateCoverageId` and `hasValidPayorInfo` from `in1-coverage.ts` instead of defining locally
+- [x] Verify the ADT tests pass unchanged (no behavior change, just code relocation)
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
