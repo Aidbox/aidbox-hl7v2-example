@@ -4,7 +4,7 @@ import {
   deriveImmunizationStatus,
   type RXAConversionResult,
 } from "../../../../src/v2-to-fhir/segments/rxa-immunization";
-import type { RXA, ORC } from "../../../../src/hl7v2/generated/fields";
+import type { RXA, RXR, ORC } from "../../../../src/hl7v2/generated/fields";
 import type { Reference } from "../../../../src/fhir/hl7-fhir-r4-core";
 
 const patientReference: Reference<"Patient"> = { reference: "Patient/test-patient-id" };
@@ -521,6 +521,53 @@ describe("convertRXAToImmunization", () => {
       );
 
       expect(immunization.recorded).toBeUndefined();
+    });
+  });
+
+  describe("RXR — route and site", () => {
+    test("maps RXR-1 to route and RXR-2 to site", () => {
+      const rxa = makeBaseRXA();
+      const rxr: RXR = {
+        $1_route: { $1_code: "IM", $2_text: "INTRAMUSCULAR", $3_system: "NCIT" },
+        $2_administrationSite: { $1_code: "LA", $2_text: "LEFT ARM", $3_system: "HL70163" },
+      };
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, rxr, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.route?.coding?.[0]?.code).toBe("IM");
+      expect(immunization.route?.coding?.[0]?.display).toBe("INTRAMUSCULAR");
+      expect(immunization.route?.coding?.[0]?.system).toBe("http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl");
+      expect(immunization.site?.coding?.[0]?.code).toBe("LA");
+      expect(immunization.site?.coding?.[0]?.display).toBe("LEFT ARM");
+      expect(immunization.site?.coding?.[0]?.system).toBe("http://terminology.hl7.org/CodeSystem/v2-0163");
+    });
+
+    test("omits route when RXR-1 is empty, preserves site from RXR-2", () => {
+      const rxa = makeBaseRXA();
+      const rxr: RXR = {
+        $1_route: {} as any,
+        $2_administrationSite: { $1_code: "LA", $2_text: "LEFT ARM", $3_system: "HL70163" },
+      };
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, rxr, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.route).toBeUndefined();
+      expect(immunization.site?.coding?.[0]?.code).toBe("LA");
+    });
+
+    test("omits both route and site when RXR is absent", () => {
+      const rxa = makeBaseRXA();
+
+      const { immunization } = expectImmunization(
+        convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
+      );
+
+      expect(immunization.route).toBeUndefined();
+      expect(immunization.site).toBeUndefined();
     });
   });
 

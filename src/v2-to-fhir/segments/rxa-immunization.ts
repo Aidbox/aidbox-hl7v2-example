@@ -20,6 +20,7 @@ import type {
 } from "../../fhir/hl7-fhir-r4-core";
 import type { BundleEntry } from "../../fhir/hl7-fhir-r4-core";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
+import { convertCWEToCodeableConcept } from "../datatypes/cwe-codeableconcept";
 import { convertDTMToDateTime, convertDTMToDate } from "../datatypes/dtm-datetime";
 import { normalizeSystem } from "../code-mapping/coding-systems";
 
@@ -134,7 +135,7 @@ function deriveRecordedDate(orc: ORC | undefined, rxa: RXA): string | undefined 
  */
 export function convertRXAToImmunization(
   rxa: RXA,
-  _rxr: RXR | undefined,
+  rxr: RXR | undefined,
   orc: ORC | undefined,
   immunizationId: string,
   patientReference: Reference<"Patient">,
@@ -208,6 +209,22 @@ export function convertRXAToImmunization(
   const recordedDate = deriveRecordedDate(orc, rxa);
   if (recordedDate) {
     immunization.recorded = recordedDate;
+  }
+
+  // RXR-1: route (optional in practice despite spec-Required)
+  if (rxr?.$1_route) {
+    const routeCC = convertCEToCodeableConcept(rxr.$1_route);
+    if (routeCC) {
+      immunization.route = normalizeCodeableConceptSystems(routeCC);
+    }
+  }
+
+  // RXR-2: site (processed independently of RXR-1)
+  if (rxr?.$2_administrationSite) {
+    const siteCC = convertCWEToCodeableConcept(rxr.$2_administrationSite);
+    if (siteCC) {
+      immunization.site = normalizeCodeableConceptSystems(siteCC);
+    }
   }
 
   // Performers will be added by Task 12

@@ -941,15 +941,15 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Before writing code:** Use `hl7v2-info` skill to verify RXR field positions. Consult `docs/v2-to-fhir-spec/mappings/segments/` for RXR→Immunization CSV.
 
-- [ ] Implement RXR handling in `rxa-immunization.ts` (inline function or separate):
+- [x] Implement RXR handling in `rxa-immunization.ts` (inline function or separate):
   - RXR-1 → `Immunization.route` (optional — skip if empty)
   - RXR-2 → `Immunization.site` (processed independently of RXR-1)
   - Both use CWE→CodeableConcept conversion
-- [ ] Write unit tests (design test cases #15, #37):
+- [x] Write unit tests (design test cases #15, #37):
   - RXR with route and site → both mapped
   - RXR with empty RXR-1 → route omitted, site preserved
   - RXR absent → no route, no site
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---
