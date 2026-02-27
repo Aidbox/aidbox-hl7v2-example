@@ -1050,11 +1050,11 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 7: ORM order grouping and ID generation
 
-- [ ] Create the `ORMOrderGroup` interface and `groupORMOrders()` function in `src/v2-to-fhir/messages/orm-o01.ts` (or a separate file if the main converter gets too large) [D-4]
-- [ ] Implement ORC-starts-group pattern: walk through segments sequentially, ORC starts new group, OBR/RXO sets orderChoice, NTE/DG1/OBX attach to current group. Handle observation-level NTEs (NTE after OBX attaches to observation, not order) [D-4]
-- [ ] Implement `resolveOrderNumber()`: ORC-2 first, OBR-2 fallback for OBR-based orders, ORC-2 only for RXO-based orders. Uses `sanitizeForId()` with optional namespace suffix [FALL-1, FALL-2, D-5]
-- [ ] Implement `isEmptyPV1()` helper to detect PV1 segments with no meaningful content (PV1-2 empty AND PV1-19 empty) [EC-1]
-- [ ] Write unit tests for `groupORMOrders()`:
+- [x] Create the `ORMOrderGroup` interface and `groupORMOrders()` function in `src/v2-to-fhir/messages/orm-o01.ts` (or a separate file if the main converter gets too large) [D-4]
+- [x] Implement ORC-starts-group pattern: walk through segments sequentially, ORC starts new group, OBR/RXO sets orderChoice, NTE/DG1/OBX attach to current group. Handle observation-level NTEs (NTE after OBX attaches to observation, not order) [D-4]
+- [x] Implement `resolveOrderNumber()`: ORC-2 first, OBR-2 fallback for OBR-based orders, ORC-2 only for RXO-based orders. Uses `sanitizeForId()` with optional namespace suffix [FALL-1, FALL-2, D-5]
+- [x] Implement `isEmptyPV1()` helper to detect PV1 segments with no meaningful content (PV1-2 empty AND PV1-19 empty) [EC-1]
+- [x] Write unit tests for `groupORMOrders()`:
   - Single ORC + OBR groups correctly
   - Two ORC + OBR groups (multi-order)
   - ORC + RXO groups correctly
@@ -1062,12 +1062,12 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
   - NTEs after OBX attach to observation, NTEs before OBX attach to order
   - DG1 attaches to current order group
   - OBX starts new observation entry
-- [ ] Write unit tests for `resolveOrderNumber()`:
+- [x] Write unit tests for `resolveOrderNumber()`:
   - ORC-2 present -> uses ORC-2.1 (with namespace suffix when ORC-2.2 present)
   - ORC-2 empty, OBR-2 present -> uses OBR-2.1
   - Both empty -> returns error
   - Sanitization applied correctly
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
