@@ -1090,14 +1090,14 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 9: Main ORM_O01 converter -- RXO order support and linkages
 
-- [ ] Add RXO-based order processing in `processOrderGroup()`: when orderChoiceType is "RXO", call `convertRXOToMedicationRequest()` with the resolved ORC status [AC-4]
-- [ ] Link NTE segments to `MedicationRequest.note` (not ServiceRequest.note) for RXO orders [REQ-RXO-LINKAGE-1, AC-6]
-- [ ] Link DG1-derived Conditions to `MedicationRequest.reasonReference` for RXO orders [REQ-RXO-LINKAGE-1, AC-5]
-- [ ] Link OBX-derived Observations to `MedicationRequest.supportingInformation` for RXO orders [REQ-RXO-LINKAGE-1, AC-7]
-- [ ] Set MedicationRequest `subject` (patientRef) and `encounter` (encounterRef, when present)
-- [ ] Set MedicationRequest ID using `resolveOrderNumber()` with ORC-2 only (no OBR fallback for RXO) [FALL-2]
-- [ ] Add meta tags to MedicationRequest (baseMeta)
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Add RXO-based order processing in `processOrderGroup()`: when orderChoiceType is "RXO", call `convertRXOToMedicationRequest()` with the resolved ORC status [AC-4]
+- [x] Link NTE segments to `MedicationRequest.note` (not ServiceRequest.note) for RXO orders [REQ-RXO-LINKAGE-1, AC-6]
+- [x] Link DG1-derived Conditions to `MedicationRequest.reasonReference` for RXO orders [REQ-RXO-LINKAGE-1, AC-5]
+- [x] Link OBX-derived Observations to `MedicationRequest.supportingInformation` for RXO orders [REQ-RXO-LINKAGE-1, AC-7]
+- [x] Set MedicationRequest `subject` (patientRef) and `encounter` (encounterRef, when present)
+- [x] Set MedicationRequest ID using `resolveOrderNumber()` with ORC-2 only (no OBR fallback for RXO) [FALL-2]
+- [x] Add meta tags to MedicationRequest (baseMeta)
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 

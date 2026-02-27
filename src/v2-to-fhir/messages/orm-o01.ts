@@ -16,13 +16,14 @@
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
 import type { ORC, PV1, EI } from "../../hl7v2/generated/fields";
 import { fromORC, fromPID, fromOBR, fromDG1, fromIN1, fromNTE } from "../../hl7v2/generated/fields";
-import { fromOBX } from "../../hl7v2/wrappers";
+import { fromOBX, fromRXO } from "../../hl7v2/wrappers";
 import { sanitizeForId } from "../identity-system/utils";
 import { findSegment, findAllSegments, type ConversionResult } from "../converter";
 import type {
   Bundle,
   BundleEntry,
   ServiceRequest,
+  MedicationRequest,
   Condition,
   Observation,
   Coverage,
@@ -37,8 +38,9 @@ import { buildMappingErrorResult } from "../../code-mapping/mapping-errors";
 import { parseMSH, addSenderTagToMeta } from "../segments/msh-parsing";
 import { handlePatient, extractSenderTag } from "../segments/pid-patient";
 import { parsePV1, handleEncounter } from "../segments/pv1-encounter";
-import { convertORCToServiceRequest } from "../segments/orc-servicerequest";
+import { convertORCToServiceRequest, resolveOrderStatus } from "../segments/orc-servicerequest";
 import { mergeOBRIntoServiceRequest } from "../segments/obr-servicerequest";
+import { convertRXOToMedicationRequest } from "../segments/rxo-medicationrequest";
 import { convertDG1ToCondition } from "../segments/dg1-condition";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
 import { convertOBXWithMappingSupportAsync } from "../segments/obx-observation";
@@ -489,6 +491,100 @@ async function processOBROrderGroup(
 }
 
 // ============================================================================
+// RXO-Based Order Group Processing
+// ============================================================================
+
+async function processRXOOrderGroup(
+  group: ORMOrderGroup,
+  senderContext: SenderContext,
+  baseMeta: Meta,
+  patientRef: Reference<"Patient">,
+  encounterRef: Reference<"Encounter"> | null,
+): Promise<ProcessOrderGroupResult> {
+  const entries: BundleEntry[] = [];
+  const mappingErrors: MappingError[] = [];
+
+  const orc = fromORC(group.orc);
+
+  // Resolve order number (ORC-2 only for RXO, no OBR fallback)
+  const orderNumberResult = resolveOrderNumber(orc);
+  if ("error" in orderNumberResult) {
+    return { entries: [], mappingErrors: [] };
+  }
+  const orderNumber = orderNumberResult.orderNumber;
+
+  // Resolve ORC status (same three-tier logic as OBR orders)
+  const statusResult = await resolveOrderStatus(orc, senderContext);
+  if (statusResult.mappingError) {
+    mappingErrors.push(statusResult.mappingError);
+    return { entries: [], mappingErrors };
+  }
+
+  // Build MedicationRequest from RXO
+  const rxo = fromRXO(group.orderChoice!);
+  const medicationRequest = convertRXOToMedicationRequest(rxo, statusResult.status) as MedicationRequest;
+
+  // Set ID, subject, encounter, meta
+  medicationRequest.id = orderNumber;
+  medicationRequest.subject = patientRef as MedicationRequest["subject"];
+  if (encounterRef) {
+    medicationRequest.encounter = encounterRef;
+  }
+  medicationRequest.meta = { ...medicationRequest.meta, ...baseMeta };
+
+  // Process DG1 -> Conditions, linked via MedicationRequest.reasonReference
+  const { conditions, entries: conditionEntries } = processDG1Segments(
+    group.dg1s, orderNumber, patientRef, encounterRef, baseMeta,
+  );
+  entries.push(...conditionEntries);
+
+  if (conditions.length > 0) {
+    medicationRequest.reasonReference = conditions.map(
+      (c) => ({ reference: `Condition/${c.id}` }) as Reference<"Condition">,
+    );
+  }
+
+  // Process NTEs -> MedicationRequest.note
+  const notes = processOrderNTEs(group.ntes);
+  if (notes.length > 0) {
+    medicationRequest.note = notes;
+  }
+
+  // Process OBX -> Observations (no LOINC resolution)
+  const { observations, mappingErrors: obxErrors } = await processORMObservations(
+    group.observations, orderNumber, senderContext, baseMeta,
+  );
+  mappingErrors.push(...obxErrors);
+
+  // Link Observations to Patient and Encounter
+  for (const obs of observations) {
+    obs.subject = patientRef as Observation["subject"];
+    if (encounterRef) {
+      obs.encounter = encounterRef as Observation["encounter"];
+    }
+  }
+
+  // Link Observations to MedicationRequest.supportingInformation
+  if (observations.length > 0) {
+    medicationRequest.supportingInformation = observations.map(
+      (o) => ({ reference: `Observation/${o.id}` } as unknown as Reference<"Resource">),
+    );
+  }
+
+  if (mappingErrors.length > 0) {
+    return { entries: [], mappingErrors };
+  }
+
+  // Add MedicationRequest entry first, then observations
+  entries.unshift(createBundleEntry(medicationRequest));
+  for (const obs of observations) {
+    entries.push(createBundleEntry(obs));
+  }
+
+  return { entries, mappingErrors: [] };
+}
+
+// ============================================================================
 // Main Converter
 // ============================================================================
 
@@ -596,11 +692,17 @@ export async function convertORM_O01(
       allEntries.push(...result.entries);
       allMappingErrors.push(...result.mappingErrors);
       if (result.entries.length > 0) processableGroupCount++;
+    } else if (group.orderChoiceType === "RXO" && group.orderChoice) {
+      const result = await processRXOOrderGroup(
+        group, senderContext, baseMeta, patientRef, encounterRef,
+      );
+      allEntries.push(...result.entries);
+      allMappingErrors.push(...result.mappingErrors);
+      if (result.entries.length > 0) processableGroupCount++;
     } else if (group.orderChoiceType === "unknown" || !group.orderChoice) {
       // ORC without ORDER_DETAIL -- skip this group
       continue;
     }
-    // RXO processing is handled in Task 9
   }
 
   // If mapping errors, return mapping error result
@@ -609,7 +711,7 @@ export async function convertORM_O01(
   }
 
   // If no groups were processable, return error
-  if (processableGroupCount === 0 && orderGroups.every((g) => g.orderChoiceType === "OBR" || g.orderChoiceType === "unknown")) {
+  if (processableGroupCount === 0) {
     return {
       messageUpdate: { status: "error", error: "No processable order groups found in ORM_O01 message" },
     };
