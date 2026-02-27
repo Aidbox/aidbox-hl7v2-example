@@ -697,7 +697,7 @@ OBX|5|DT|29769-7^VIS PRESENTATION DATE^LN|3|20160701||||||F
 
 5. **PV1 policy:** Optional (like ORU). If present, create/link Encounter. If missing, skip Encounter and process normally.
 
-6. **ORDER-level OBX:** Map known LOINC codes directly to Immunization fields. Warning + skip on unknown OBX codes — known codes still mapped correctly, message gets `warning` status.
+6. **ORDER-level OBX:** Map known LOINC codes directly to Immunization fields. Hard error on unknown OBX codes — all ORDER OBX codes are defined by CDC IIS IG (see Decision #2 / ADR).
 
 7. **PERSON_OBSERVATION OBX:** Create standalone Observation resources with `subject: Reference(Patient)`.
 
@@ -998,15 +998,15 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Define the IGEnrichment contract — a minimal interface for IG-specific post-conversion enrichments.
 
-- [ ] Finalize `src/v2-to-fhir/ig-enrichment/ig-enrichment.ts`:
+- [x] Finalize `src/v2-to-fhir/ig-enrichment/ig-enrichment.ts`:
   ```typescript
   export interface IGEnrichment {
     name: string;
     enrich(parsedMessage: HL7v2Message, result: ConversionResult, context: SenderContext): ConversionResult;
   }
   ```
-- [ ] Verify imports are correct (HL7v2Message, ConversionResult, SenderContext types)
-- [ ] Run `bun run typecheck` — must pass
+- [x] Verify imports are correct (HL7v2Message, ConversionResult, SenderContext types)
+- [x] Run `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---

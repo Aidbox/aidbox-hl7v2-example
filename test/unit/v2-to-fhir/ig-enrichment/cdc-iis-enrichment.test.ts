@@ -1,5 +1,5 @@
 /**
- * DESIGN PROTOTYPE: 2026-02-23-vxu-support.md
+ * DESIGN PROTOTYPE: 2026-02-23-vxu-design-final.md
  *
  * Unit tests for CDC IIS Enrichment.
  * Tests ORDER-level OBX mapping and RXA-9 NIP001 interpretation.

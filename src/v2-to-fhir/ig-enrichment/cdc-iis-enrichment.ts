@@ -1,5 +1,5 @@
 /**
- * DESIGN PROTOTYPE: 2026-02-23-vxu-support.md
+ * DESIGN PROTOTYPE: 2026-02-23-vxu-design-final.md
  *
  * CDC IIS (Immunization Information System) Enrichment
  *
@@ -99,7 +99,7 @@ export const cdcIisEnrichment: IGEnrichment = {
     //       - If code is in KNOWN_ORDER_OBX_LOINC_CODES:
     //         Apply the corresponding handler to the Immunization
     //       - If code is NOT known:
-    //         Set messageUpdate.status = "warning", log code, skip OBX (per C6)
+    //         Hard error: set messageUpdate.status = "error", name the unknown code (per ADR)
     //    b. Interpret RXA-9 for NIP001 source coding:
     //       - Set primarySource / reportOrigin on the Immunization
     //
@@ -107,7 +107,7 @@ export const cdcIisEnrichment: IGEnrichment = {
     //    - Collect 69764-9, 29768-9, 29769-7 entries per sub-ID
     //    - Build ImmunizationEducation[] from groups
     //
-    // 5. Return modified result (or warning result on unknown OBX code)
+    // 5. Return modified result (or error result on unknown OBX code)
 
     return result;
   },

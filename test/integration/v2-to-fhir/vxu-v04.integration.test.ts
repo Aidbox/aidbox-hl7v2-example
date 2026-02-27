@@ -1,5 +1,5 @@
 /**
- * DESIGN PROTOTYPE: 2026-02-23-vxu-support.md
+ * DESIGN PROTOTYPE: 2026-02-23-vxu-design-final.md
  *
  * Integration tests for VXU_V04 message processing.
  *
