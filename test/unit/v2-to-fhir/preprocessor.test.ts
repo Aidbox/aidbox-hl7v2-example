@@ -3,7 +3,7 @@ import { parseMessage } from "@atomic-ehr/hl7v2";
 import { preprocessMessage } from "../../../src/v2-to-fhir/preprocessor";
 import type { Hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
 import { clearConfigCache, hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
-import { fromORC, fromPID, fromPV1 } from "../../../src/hl7v2/generated/fields";
+import { fromORC, fromPID, fromPV1, fromRXA } from "../../../src/hl7v2/generated/fields";
 
 /** Minimal valid identity rules for tests that don't focus on identity validation. */
 const minimalRules = [{ assigner: "UNIPAT" }];
@@ -436,6 +436,124 @@ describe("preprocessMessage", () => {
       const result = preprocessMessage(parsed, vxuConfig);
 
       expect(getOrc3(result)).toBeUndefined();
+    });
+  });
+
+  describe("normalize-rxa6-dose", () => {
+    const doseConfig: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "VXU-V04": {
+          preprocess: { RXA: { "6": ["normalize-rxa6-dose"] } },
+        },
+      },
+    };
+
+    function getRxaFields(parsed: ReturnType<typeof parseMessage>) {
+      const rxaSegment = parsed.find((s) => s.segment === "RXA");
+      if (!rxaSegment) return undefined;
+      const rxa = fromRXA(rxaSegment);
+      return {
+        dose: rxa.$6_administeredAmount,
+        unit: rxa.$7_administeredUnit,
+      };
+    }
+
+    test('"999" sentinel is cleared (no doseQuantity)', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+
+      expect(getRxaFields(result)?.dose).toBeUndefined();
+    });
+
+    test('"0" is preserved (valid zero dose)', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|0",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+
+      expect(getRxaFields(result)?.dose).toBe("0");
+    });
+
+    test('"0.3 mL" extracts numeric and moves unit to RXA-7 when empty', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|0.3 mL",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+      const fields = getRxaFields(result);
+
+      expect(fields?.dose).toBe("0.3");
+      expect(fields?.unit?.$1_code).toBe("mL");
+    });
+
+    test('"0.3 mL" with existing RXA-7 does not overwrite unit', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|0.3 mL|mL^milliliter^UCUM",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+      const fields = getRxaFields(result);
+
+      expect(fields?.dose).toBe("0.3");
+      expect(fields?.unit?.$1_code).toBe("mL");
+      expect(fields?.unit?.$2_text).toBe("milliliter");
+      expect(fields?.unit?.$3_system).toBe("UCUM");
+    });
+
+    test('"0.3" is preserved as-is (already numeric)', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|0.3",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+
+      expect(getRxaFields(result)?.dose).toBe("0.3");
+    });
+
+    test('"abc" unparseable is cleared', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|abc",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+
+      expect(getRxaFields(result)?.dose).toBeUndefined();
+    });
+
+    test("empty RXA-6 is no-op", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+
+      expect(getRxaFields(result)?.dose).toBeUndefined();
     });
   });
 });

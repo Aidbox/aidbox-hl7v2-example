@@ -765,7 +765,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 - [x] Verify ORC type already exists (it should — used by ORU) and includes ORC-2, ORC-3, ORC-9, ORC-12
 - [x] Remove the manual RXA/RXR/ORC type stubs from `src/v2-to-fhir/segments/rxa-immunization.ts` (lines 39-62) — these will be replaced by generated types
 - [x] Run `bun run typecheck` and `bun test:all` — must pass (no behavior change, only type generation)
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -793,7 +793,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 - [x] Update `oru-r01.ts` to import from shared module instead of defining locally
 - [x] Verify that `oru-r01.ts` has no remaining local copies of extracted functions
 - [x] Run `bun test:all` and `bun run typecheck` — must pass with zero behavior change (pure refactor)
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -816,7 +816,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 - [x] Extend `MessageTypeConfig.preprocess` type in `src/v2-to-fhir/config.ts` to include `RXA` alongside existing PID/PV1/ORC
 - [x] Verify `preprocessor.ts` iteration logic handles RXA segments (it iterates all segments generically, so adding the type should be sufficient — verify)
 - [x] Run `bun run typecheck` and `bun test:all` — must pass (config validation will fail until preprocessors exist, so may need stub IDs temporarily or add config + preprocessors together)
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -833,7 +833,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - ORC-3 empty (no value) → no change
   - ORC absent → no error
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -841,12 +841,12 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Normalize RXA-6 (Administered Amount) to handle CDC IIS sentinel "999", embedded units, and unparseable values.
 
-- [ ] Add `normalize-rxa6-dose` to `src/v2-to-fhir/preprocessor-registry.ts`:
+- [x] Add `normalize-rxa6-dose` to `src/v2-to-fhir/preprocessor-registry.ts`:
   - `"999"` → clear field (no warning — expected CDC IIS sentinel for unknown amount)
   - `"0"` → preserve (valid zero dose administered)
   - Non-numeric with parseable prefix (e.g., `"0.3 mL"`) → extract numeric value to RXA-6, move unit string to RXA-7 if RXA-7 empty; log warning with original value
   - Completely unparseable → clear field; log warning with original value
-- [ ] Write unit tests:
+- [x] Write unit tests:
   - `"999"` → field cleared, no doseQuantity
   - `"0"` → preserved, doseQuantity.value=0
   - `"0.3 mL"` → RXA-6="0.3", RXA-7="mL" (if empty)
@@ -854,7 +854,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - `"0.3"` → preserved as-is (already numeric)
   - `"abc"` → field cleared
   - Empty → no change
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---

@@ -360,11 +360,65 @@ function injectNamespaceIntoEi(
   eiComponents[2] = namespace;
 }
 
+/**
+ * Normalizes RXA-6 (Administered Amount, NM type):
+ * - "999" → clear (CDC IIS sentinel for unknown amount)
+ * - "0" → preserve (valid zero dose)
+ * - Embedded units like "0.3 mL" → extract numeric to RXA-6, move unit to RXA-7 if empty
+ * - Unparseable → clear field with warning
+ */
 function normalizeRxa6Dose(
   _context: PreprocessorContext,
-  _segment: HL7v2Segment,
+  segment: HL7v2Segment,
 ): void {
-  // Task 5: normalize RXA-6 (999 sentinel, embedded units, unparseable values)
+  if (segment.segment !== "RXA") {
+    return;
+  }
+
+  const rawDose = segment.fields[6];
+  if (rawDose === undefined || rawDose === null) {
+    return;
+  }
+
+  const doseString = typeof rawDose === "string" ? rawDose.trim() : String(rawDose).trim();
+  if (!doseString) {
+    return;
+  }
+
+  if (doseString === "999") {
+    delete segment.fields[6];
+    return;
+  }
+
+  if (isNumeric(doseString)) {
+    return;
+  }
+
+  const numericMatch = doseString.match(/^([0-9]*\.?[0-9]+)\s+(.+)$/);
+  if (numericMatch) {
+    const [, numericPart, unitPart] = numericMatch;
+    segment.fields[6] = numericPart as FieldValue;
+
+    const existingUnit = segment.fields[7];
+    const unitIsEmpty = existingUnit === undefined || existingUnit === null ||
+      (typeof existingUnit === "string" && !existingUnit.trim());
+    if (unitIsEmpty) {
+      segment.fields[7] = unitPart as FieldValue;
+    }
+
+    console.warn(`[normalize-rxa6-dose] Extracted numeric from "${doseString}": value=${numericPart}, unit=${unitPart}`);
+    return;
+  }
+
+  console.warn(`[normalize-rxa6-dose] Unparseable RXA-6 value "${doseString}" — clearing field`);
+  delete segment.fields[6];
+}
+
+function isNumeric(value: string): boolean {
+  if (!value) {
+    return false;
+  }
+  return /^[0-9]*\.?[0-9]+$/.test(value);
 }
 
 function normalizeRxa9Nip001(
