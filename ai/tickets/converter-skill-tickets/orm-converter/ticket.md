@@ -1139,17 +1139,17 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 11: Integration test fixtures
 
-- [ ] Create `test/fixtures/hl7v2/orm-o01/` directory
-- [ ] Create `base-obr.hl7`: single OBR-based order with ORC, OBR, DG1, PV1 (derived from ex1, de-identified with synthetic data)
-- [ ] Create `base-rxo.hl7`: single RXO-based order with ORC, RXO (derived from ex6, simplified to single order, de-identified)
-- [ ] Create `multi-obr.hl7`: two OBR-based orders in one message (derived from ex2, de-identified)
-- [ ] Create `multi-rxo.hl7`: two RXO-based orders with DG1/OBX/NTE per order (derived from ex6, de-identified)
-- [ ] Create `non-standard-orc5.hl7`: ORC-5="Final" (non-standard value triggering mapping_error)
-- [ ] Create `with-insurance.hl7`: ORM with IN1 segments (derived from ex2 or ex6, de-identified)
-- [ ] Create `no-pv1.hl7`: ORM without PV1 segment
-- [ ] Create `new-patient.hl7`: ORM with a patient ID that won't exist in Aidbox (for draft patient creation test)
-- [ ] Verify all fixtures parse correctly with `parseMessage()` (no syntax errors)
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Create `test/fixtures/hl7v2/orm-o01/` directory
+- [x] Create `base-obr.hl7`: single OBR-based order with ORC, OBR, DG1, PV1 (derived from ex1, de-identified with synthetic data)
+- [x] Create `base-rxo.hl7`: single RXO-based order with ORC, RXO (derived from ex6, simplified to single order, de-identified)
+- [x] Create `multi-obr.hl7`: two OBR-based orders in one message (derived from ex2, de-identified)
+- [x] Create `multi-rxo.hl7`: two RXO-based orders with DG1/OBX/NTE per order (derived from ex6, de-identified)
+- [x] Create `non-standard-orc5.hl7`: ORC-5="Final" (non-standard value triggering mapping_error)
+- [x] Create `with-insurance.hl7`: ORM with IN1 segments (derived from ex2 or ex6, de-identified)
+- [x] Create `no-pv1.hl7`: ORM without PV1 segment
+- [x] Create `new-patient.hl7`: ORM with a patient ID that won't exist in Aidbox (for draft patient creation test)
+- [x] Verify all fixtures parse correctly with `parseMessage()` (no syntax errors)
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
