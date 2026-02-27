@@ -886,7 +886,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 - [x] Add HL70163: `"HL70163"` → `"http://terminology.hl7.org/CodeSystem/v2-0163"` (from V2-to-FHIR IG BodySite CSV)
 - [x] Add `VXU_V04` case to switch in `src/v2-to-fhir/converter.ts` + import `convertVXU_V04`
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -896,8 +896,8 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Before writing code:** Use `hl7v2-info` skill to verify RXA field positions. Consult `docs/v2-to-fhir-spec/mappings/segments/` for RXA→Immunization CSV.
 
-- [ ] Replace prototype scaffold in `src/v2-to-fhir/segments/rxa-immunization.ts` with real implementation
-- [ ] Implement `convertRXAToImmunization()` — receives pre-computed Immunization ID from message converter. Core fields:
+- [x] Replace prototype scaffold in `src/v2-to-fhir/segments/rxa-immunization.ts` with real implementation
+- [x] Implement `convertRXAToImmunization()` — receives pre-computed Immunization ID from message converter. Core fields:
   - RXA-3 → `occurrenceDateTime` (required — error if empty)
   - RXA-5 → `vaccineCode` via CWE→CodeableConcept (CVX primary coding, alternate codings preserved)
   - RXA-6/7 → `doseQuantity` (value from RXA-6, unit from RXA-7; omit if RXA-6 cleared by preprocessor)
@@ -905,11 +905,11 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - RXA-16 → `expirationDate` (first value if repeating)
   - RXA-20/21 → `status` via `deriveImmunizationStatus()` (prototype has this — verify/keep)
   - RXA-20=PA → additionally set `isSubpotent=true`
-- [ ] Write unit tests (design test cases #1, #2-6, #34, #41):
+- [x] Write unit tests (design test cases #1, #2-6, #34, #41):
   - Base fields: vaccineCode, status=completed, occurrenceDateTime, doseQuantity, lotNumber
   - Status: RE→not-done, NA→not-done, D→entered-in-error, PA→completed+isSubpotent, empty→completed
   - Dose: "999" cleared (no doseQuantity), "0" preserved (value=0)
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---

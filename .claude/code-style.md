@@ -121,11 +121,6 @@ To avoid cycles:
 - Keep dependencies flowing in one direction (e.g., services -> utilities)
 - If two modules need each other's functionality, extract the shared part into a third module
 
-## Testing
-
-- Never mock Aidbox behavior — if a test depends on Aidbox, make it an integration test against the real test instance
-- Use shared helpers from `test/integration/helpers.ts` for creating test resources; local helpers are OK only when there's a single integration test file for that domain
-
 ## Type Integrity
 
 Types must accurately represent the actual data flow. If there's a mismatch between what the types say and what the code does, fix the types or the code — never silence the compiler.
@@ -144,12 +139,6 @@ When designing configuration or system interfaces, prioritize the operation and 
 
 Example: if the choice is between "elegant internals with fragile config coupling" and "slightly mixed internals with robust single-source-of-truth config" — choose robust config.
 
-## General Principles
-
-- Don't add error handling, fallbacks, or validation for scenarios that can't happen
-- Always use static imports at the top of the file. Never use dynamic `await import()` inside functions or route handlers
-- Remove unused code immediately; do not keep dead code or commented-out code; do not keep code in src/ that is only used in tests
-
 ## Naming
 
 Use semantic variable names. Avoid short abbreviations (`fv`, `val`, `res`) and generic names (`obj`, `data`, `item`, `result`) that don't convey the variable's meaning. Name variables after what they represent in the domain.
@@ -161,8 +150,28 @@ const eiComponents = rawFillerOrder as Record<number, FieldValue>;
 const entityIdentifier = eiComponents[1];
 ```
 
+## Testing
+
+- Never mock Aidbox behavior — if a test depends on Aidbox, make it an integration test against the real test instance
+- Use shared helpers from `test/integration/helpers.ts` for creating test resources; local helpers are OK only when there's a single integration test file for that domain
+
+## General Principles
+
+- Don't add error handling, fallbacks, or validation for scenarios that can't happen
+- Always use static imports at the top of the file. Never use dynamic `await import()` inside functions or route handlers
+- Remove unused code immediately; do not keep dead code or commented-out code; do not keep code in src/ that is only used in tests
+
 ## Code Style
 
 Don't leave `continue` or `return` statements on the same line with the `if` condition.
 
 Line length limit is 120 characters. Don't split a statement across lines if it fits within 120 chars.
+
+# Refactoring
+
+When you touch a file for a task and notice low-risk issues in the same file, fix them in the same change:
+- Local function that duplicates a shared export → replace with the import
+- Unused imports → remove
+- Dead code → remove
+
+"Low-risk" means: identical behavior (you must verify it), no new test coverage needed, verifiable by existing tests.

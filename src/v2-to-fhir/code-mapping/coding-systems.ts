@@ -32,6 +32,12 @@ export function normalizeSystem(system: string | undefined): string | undefined 
   if (upper === "HL70163") {
     return "http://terminology.hl7.org/CodeSystem/v2-0163";
   }
+  if (upper === "UCUM") {
+    return "http://unitsofmeasure.org";
+  }
+  if (upper === "NDC") {
+    return "http://hl7.org/fhir/sid/ndc";
+  }
 
   return system;
 }

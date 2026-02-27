@@ -19,6 +19,21 @@ export function convertDTMToDateTime(dtm: string | undefined): string | undefine
   return `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
 }
 
+/**
+ * Converts HL7v2 DTM (YYYYMMDDHHMMSS) to FHIR date (YYYY-MM-DD).
+ * Handles partial dates: YYYY, YYYY-MM, YYYY-MM-DD.
+ * Time components are truncated.
+ */
+export function convertDTMToDate(dtm: string | undefined): string | undefined {
+  if (!dtm) return undefined;
+  const year = dtm.substring(0, 4);
+  const month = dtm.substring(4, 6);
+  const day = dtm.substring(6, 8);
+  if (dtm.length <= 4) return year;
+  if (dtm.length <= 6) return `${year}-${month}`;
+  return `${year}-${month}-${day}`;
+}
+
 /** Partial Annotation data for time field */
 export interface AnnotationTimeData {
   time: string;

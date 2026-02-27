@@ -13,6 +13,7 @@ import type {
 } from "../../fhir/hl7-fhir-r4-core";
 import { normalizeSystem } from "../code-mapping/coding-systems";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
+import { convertDTMToDateTime, convertDTMToDate } from "../datatypes/dtm-datetime";
 import type { MappingError } from "../../code-mapping/mapping-errors";
 import {
   buildCodeableConcept,
@@ -235,44 +236,6 @@ export function parseStructuredNumeric(sn: string): ParsedStructuredNumeric {
 }
 
 // ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Convert HL7v2 DTM to FHIR dateTime
- */
-function convertDTMToDateTime(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
-
-  const year = dtm.substring(0, 4);
-  const month = dtm.substring(4, 6);
-  const day = dtm.substring(6, 8);
-  const hour = dtm.substring(8, 10) || "00";
-  const minute = dtm.substring(10, 12) || "00";
-  const second = dtm.substring(12, 14) || "00";
-
-  if (dtm.length <= 4) return year;
-  if (dtm.length <= 6) return `${year}-${month}`;
-  if (dtm.length <= 8) return `${year}-${month}-${day}`;
-
-  return `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
-}
-
-/**
- * Convert HL7v2 DTM to FHIR date
- */
-function convertDTMToDate(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
-
-  const year = dtm.substring(0, 4);
-  const month = dtm.substring(4, 6);
-  const day = dtm.substring(6, 8);
-
-  if (dtm.length <= 4) return year;
-  if (dtm.length <= 6) return `${year}-${month}`;
-  return `${year}-${month}-${day}`;
-}
-
 /**
  * Convert HL7v2 TM to FHIR time
  */
