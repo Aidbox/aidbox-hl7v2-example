@@ -1027,15 +1027,15 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
 
 ## Task 6: RXO -> MedicationRequest converter
 
-- [ ] Create `src/v2-to-fhir/segments/rxo-medicationrequest.ts` with `convertRXOToMedicationRequest()` [REQ-RXO-1]
-- [ ] Set `intent = "original-order"` always
-- [ ] Accept resolved status as parameter (from ORC resolution); adapt `"revoked"` to `"cancelled"` for MedicationRequest type compatibility (see Implementation Note above)
-- [ ] Map RXO-1 -> `medicationCodeableConcept` via `convertCEToCodeableConcept()`
-- [ ] Map RXO-2/3/4 -> `dosageInstruction[0].doseAndRate[0].doseRange` (low.value, high.value, units from RXO-4)
-- [ ] Map RXO-9 -> `substitution.allowedCodeableConcept` (map "Y"/"T" to allowed, "N" to not allowed)
-- [ ] Map RXO-11/12 -> `dispenseRequest.quantity` (value and units)
-- [ ] Map RXO-13 -> `dispenseRequest.numberOfRepeatsAllowed` (parse as integer)
-- [ ] Write unit tests in `test/unit/v2-to-fhir/segments/rxo-medicationrequest.test.ts`:
+- [x] Create `src/v2-to-fhir/segments/rxo-medicationrequest.ts` with `convertRXOToMedicationRequest()` [REQ-RXO-1]
+- [x] Set `intent = "original-order"` always
+- [x] Accept resolved status as parameter (from ORC resolution); adapt `"revoked"` to `"cancelled"` for MedicationRequest type compatibility (see Implementation Note above)
+- [x] Map RXO-1 -> `medicationCodeableConcept` via `convertCEToCodeableConcept()`
+- [x] Map RXO-2/3/4 -> `dosageInstruction[0].doseAndRate[0].doseRange` (low.value, high.value, units from RXO-4)
+- [x] Map RXO-9 -> `substitution.allowedCodeableConcept` (map "Y"/"T" to allowed, "N" to not allowed)
+- [x] Map RXO-11/12 -> `dispenseRequest.quantity` (value and units)
+- [x] Map RXO-13 -> `dispenseRequest.numberOfRepeatsAllowed` (parse as integer)
+- [x] Write unit tests in `test/unit/v2-to-fhir/segments/rxo-medicationrequest.test.ts`:
   - RXO-1 maps to medicationCodeableConcept
   - RXO-2/3/4 maps to dosageInstruction doseRange (low, high, units)
   - RXO-2 only (no max) -> doseRange.low only
@@ -1044,7 +1044,7 @@ The `OrderStatus` vocabulary map (D-1) maps CA/DC/RP to `"revoked"`, which is va
   - RXO-13 maps to numberOfRepeatsAllowed
   - Intent is always "original-order"
   - Status "revoked" adapted to "cancelled" for MedicationRequest
-- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [x] Run `bun test:all` and `bun run typecheck` - must pass before next task
 
 ---
 
