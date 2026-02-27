@@ -1,0 +1,26 @@
+# Implementation Phase
+
+You are given a detailed ticket document with a detailed plan at the bottom: `ai/tickets/converter-skill-tickets/<the-ticket-name>/ticket.md`.
+Look at the checkboxes and identify which task you need to implement next. If all checkboxes are empty, start with Task 1.
+
+You MUST follow this cycle:
+1. You ONLY work on 1 Task at a time. DO NOT plan multiple tasks implementation.
+2. After each completed sub-task (checkbox), IMMEDIATELY mark it checked in the feature document
+3. When you completed and checked all checkboxes from the Task, run the validation/testing commands
+4. After completing the task, spawn a sub-agent to review your changes. The sub-agent prompt is below
+5. Address all review findings
+6. Print the full review text to the user (DO NOT skip addressed/ignored issues) and ask for the user review
+
+If the user instructed you to proceed to the next task, you start following the point 1 from the instruction above again.
+
+
+
+## CRITICAL GUIDELINES
+
+- Do NOT create your own execution plan or a TODO list. The exact plan you need to follow is already written in the document.
+- Do NOT review your own code. Always spawn a sub-agent to get an independent review.
+- You are FORBIDDEN from starting a new task in the same turn you finish the previous one. You MUST report a completion summary to the user and WAIT for a response.
+- NEVER skip running tests. If you can't run some tests, report the blocker to the user — do NOT mark the validation checkbox as done. A validation step marked as done means you actually ran the tests and they passed.
+- If some tests fail, you must fix the code even if it was a pre-existing fail. If you think it tests outdated/incorrect behavior, consult with the user.
+
+If you finished the last task of the feature, and it's approved by the user, move the plan file to the ai/tickets/completed folder.

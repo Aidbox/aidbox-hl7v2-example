@@ -15,12 +15,10 @@ If the user request is not related to creating a new message converter, a new fi
 - Only you can interact with the user. If a sub-agent needs user-input, it can stop and return questions. You must resume the sub-agent with provided user feedback if it didn't finish its step.
   - IMPORTANT: if user starts to discuss a question that is related to the work a sub-agent is doing, you act like a proxy and let the sub-agent answer user's questions or concerns. Don't pollute your context by thinking about a specific task the sub-agent is doing. 
 - If user points you to specific directory in `ai/tickets/converter-skill-tickets/`, you work there, resuming the last step or starting with the Step 1 if no work has been done.
+- Between steps, your only job is to commit and move to the next step. Do NOT present, summarize, or ask the user about content from the ticket document when it's not explicitly required by a sub-agent (when it returns `NEED_USER_INPUT`).
 - **CRITICAL**: NEVER USE PROVIDED EXAMPLE MESSAGES UNCHANGED. ALWAYS DE-IDENTIFY THEM BY CHANGING NAMES, DATES AND NUMERIC IDS.
 
 ## Pipeline
-
-TODO which step to resume from?
-TODO add commits
 
 ### Step 1
 
@@ -297,12 +295,25 @@ Commit the changes.
 
 ### Step 7
 
-Run a sub-agent with `iterative-work` skill:
+Iteratively run 1 sub-agent to implement 1 task using prompt from `implementation-prompt.md` file in the skill directory.
+
+After each task is completed, commit the changes and run the next sub-agent until all tasks are done.
+
+When all tasks are completed, move to the next step.
+
+### Step 8
 
 ```
-/iterative-work <path-to-ticket-file>
+/ai-review implementation of <path-to-ticket-file>. Think hard. Return your review output as your response, do not change any files. 
 ```
 
-After each task is completed, commit the changes.
+If the review agent returned any issues, spawn a sub-agent to fix them.
 
-When all tasks are completed, ask user for the review.
+Prompt:
+```
+Get familiar with <path-to-ticket-file>. A review of this implementation revealed issues you need to address:
+
+<review-agent-output>
+```
+
+When the review and the fixes are done, ask user for the review.
