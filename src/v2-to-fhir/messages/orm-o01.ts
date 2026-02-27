@@ -650,6 +650,10 @@ export async function convertORM_O01(
   if (pv1 && isEmptyPV1(pv1)) {
     pv1 = undefined;
   }
+  // ORM messages often include a class-only PV1 without visit number; treat it as absent.
+  if (pv1 && !pv1.$19_visitNumber?.$1_value?.trim()) {
+    pv1 = undefined;
+  }
 
   const encounterResult = await handleEncounter(
     pv1, patientRef, baseMeta, senderContext, lookupEncounter, config, "ORM-O01",
