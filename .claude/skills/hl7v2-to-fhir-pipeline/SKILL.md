@@ -13,7 +13,7 @@ If the user request is not related to creating a new message converter, a new fi
 
 - You are the orchestrator agent. You perform work by creating sub-agents for each step in the pipeline.
 - Only you can interact with the user. If a sub-agent needs user-input, it can stop and return questions. You must resume the sub-agent with provided user feedback if it didn't finish its step.
-  - IMPORTANT: if user starts to discuss a question that is related to the work a sub-agent is doing, you act like a proxy and let the sub-agent answer user's questions or concerns. Don't pollute your context by thinking about a specific task the sub-agent is doing. 
+  - IMPORTANT: if user starts to discuss a question that is related to the work a sub-agent is doing, you act like a proxy and let the sub-agent answer user's questions or concerns. Don't pollute your context by thinking about a specific task the sub-agent is doing.
 - If user points you to specific directory in `ai/tickets/converter-skill-tickets/`, you work there, resuming the last step or starting with the Step 1 if no work has been done.
 - Between steps, your only job is to commit and move to the next step. Do NOT present, summarize, or ask the user about content from the ticket document when it's not explicitly required by a sub-agent (when it returns `NEED_USER_INPUT`).
 - **CRITICAL**: NEVER USE PROVIDED EXAMPLE MESSAGES UNCHANGED. ALWAYS DE-IDENTIFY THEM BY CHANGING NAMES, DATES AND NUMERIC IDS.
@@ -176,9 +176,10 @@ Exploration workflow:
 2. Identify existing converter patterns and reusable modules (parsing, preprocessing, routing, ID generation, mapping, task/error handling, Aidbox I/O, etc).
 3. Trace current end-to-end flow and status/error transitions.
 4. Compare current implementation against spec/mapping expectations for this scope.
-5. Build a gap list: missing behaviors, partial behaviors, test gaps, and doc gaps.
-6. Locate reusable implementation patterns and anti-patterns.
-7. Append a structured exploration report to the ticket document.
+5. Check HL7v2 codegen coverage: Read `scripts/regenerate-hl7v2.sh` to see which message types are included in code generation. If the message type for this converter is NOT listed, it must be noted as the gap (DO NOT specify manually written parsers absense as the gap). Check `node_modules/@atomic-ehr/hl7v2/schema/messages/` to verify the package has the schema.
+6. Build a gap list: missing behaviors, partial behaviors, test gaps, and doc gaps.
+7. Locate reusable implementation patterns and anti-patterns.
+8. Append a structured exploration report to the ticket document.
 
 Required ticket output format:
 ---
@@ -189,7 +190,7 @@ Required ticket output format:
 
 ## What Already Exists (Evidence-Backed)
 - Itemized list with `path:line` references
-- Mapping logic, fallback chains, preprocessors involved, etc. – listed 
+- Mapping logic, fallback chains, preprocessors involved, etc. – listed
 
 ## Reusable Patterns for New Converter
 - Pattern
