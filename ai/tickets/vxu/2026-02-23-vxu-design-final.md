@@ -1015,20 +1015,20 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Implement NIP001 source code interpretation (00=new/primary, 01=historical).
 
-- [ ] Implement `interpretRXA9Source()` in `src/v2-to-fhir/ig-enrichment/cdc-iis-enrichment.ts`:
+- [x] Implement `interpretRXA9Source()` in `src/v2-to-fhir/ig-enrichment/cdc-iis-enrichment.ts`:
   - Find NIP001-coded entry in RXA-9 repeats (CWE.3 = "NIP001" or contains "NIP001")
   - `"00"` → `{ primarySource: true }`
   - `"01"` → `{ primarySource: false, reportOrigin: { coding: [{ code: "01", display: "Historical", system: "urn:oid:2.16.840.1.114222.4.5.274" }] } }`
   - No NIP001 entry → default `{ primarySource: true }`
   - Unknown NIP001 code → default `{ primarySource: true }`
   - Multiple RXA-9 entries → find the NIP001-coded one, ignore others
-- [ ] Write unit tests (design test cases #7, #8):
+- [x] Write unit tests (design test cases #7, #8):
   - NIP001 "01" → primarySource=false, reportOrigin populated
   - NIP001 "00" → primarySource=true
   - No NIP001 entry → primarySource=true
   - Unknown NIP001 code → primarySource=true
   - Multiple RXA-9 entries with one NIP001 → correct one found
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---

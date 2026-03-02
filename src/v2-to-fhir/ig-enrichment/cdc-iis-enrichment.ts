@@ -20,9 +20,7 @@ import type { HL7v2Message } from "../../hl7v2/generated/types";
 import type { ConversionResult } from "../converter";
 import type { SenderContext } from "../../code-mapping/concept-map";
 import type { IGEnrichment } from "./ig-enrichment";
-// TODO: Import generated field types when available:
-// import { fromOBX, fromRXA } from "../../hl7v2/generated/fields";
-// import type { OBX, CE } from "../../hl7v2/generated/fields";
+import type { CE } from "../../hl7v2/generated/fields";
 import type {
   Immunization,
   ImmunizationEducation,
@@ -50,11 +48,49 @@ const VIS_LOINC_CODES = new Set(["69764-9", "29768-9", "29769-7"]);
 // NIP001 Source Interpretation
 // ============================================================================
 
-// TODO: Implement RXA-9 NIP001 interpretation
-// function interpretRXA9Source(administrationNotes: CE[]): {
-//   primarySource: boolean;
-//   reportOrigin?: CodeableConcept;
-// }
+const NIP001_SYSTEM_OID = "urn:oid:2.16.840.1.114222.4.5.274";
+
+interface RXA9SourceResult {
+  primarySource: boolean;
+  reportOrigin?: CodeableConcept;
+}
+
+/**
+ * Interpret RXA-9 NIP001 source codes for Immunization.primarySource/reportOrigin.
+ *
+ * CDC IIS IG defines NIP001 table:
+ * - "00" → new immunization record (primarySource: true)
+ * - "01" → historical information (primarySource: false, reportOrigin populated)
+ *
+ * Finds the NIP001-coded entry among RXA-9 repeats. Non-NIP001 entries are ignored.
+ * Defaults to primarySource: true when no NIP001 entry found or code is unknown.
+ */
+export function interpretRXA9Source(administrationNotes: CE[] | undefined): RXA9SourceResult {
+  if (!administrationNotes?.length) {
+    return { primarySource: true };
+  }
+
+  const nip001Entry = administrationNotes.find((ce) => {
+    const system = ce.$3_system?.toUpperCase();
+    return system === "NIP001" || system === NIP001_SYSTEM_OID.toUpperCase();
+  });
+
+  if (!nip001Entry) {
+    return { primarySource: true };
+  }
+
+  if (nip001Entry.$1_code === "01") {
+    return {
+      primarySource: false,
+      reportOrigin: {
+        coding: [{ code: "01", display: "Historical", system: NIP001_SYSTEM_OID }],
+      },
+    };
+  }
+
+  // "00" and any unknown codes default to primarySource: true
+  return { primarySource: true };
+}
 
 // ============================================================================
 // ORDER OBX → Immunization Field Mapping

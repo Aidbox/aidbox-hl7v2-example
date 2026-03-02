@@ -73,12 +73,7 @@ function extractMessageType(parsed: HL7v2Message): string {
 /**
  * Convert HL7v2 message to FHIR Bundle with message update
  *
- * Reads message type from MSH-9 and routes to appropriate converter:
- * - ADT_A01 -> convertADT_A01
- * - ADT_A08 -> convertADT_A08
- * - ORU_R01 -> convertORU_R01
- * - ORM_O01 -> convertORM_O01
- * - VXU_V04 -> convertVXU_V04
+ * Reads message type from MSH-9 and routes to appropriate converter
  *
  * @param parsed - Already-parsed HL7v2 message
  * @returns ConversionResult with FHIR Bundle and message update fields
