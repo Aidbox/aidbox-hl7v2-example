@@ -128,13 +128,9 @@ Invoice BAR Builder polls pending Invoices and:
 
 V2-to-FHIR Processor polls received IncomingHL7v2Message and:
 1. Parses message, runs config-driven preprocessor (e.g., fix PV1-19 authority from MSH)
-2. Routes by type (ADT_A01, ORU_R01, etc.)
-3. For each OBX-3, resolves to LOINC (checks inline codes first, then sender's ConceptMap; on failure → `mapping_error`, creates Task)
-4. Creates FHIR resources: DiagnosticReport (from OBR), Observation (from OBX), Specimen (from SPM)
-5. If Patient/Encounter not found → creates drafts (`active=false`, `status=unknown`)
-6. PV1 policy per message type: ADT requires valid PV1 (→ `error` if invalid); ORU skips Encounter on invalid PV1 (→ `warning`)
-
-**Deterministic IDs**: Resources get IDs from source data, enabling idempotent reprocessing.
+2. For each OBX-3, resolves to LOINC (checks inline codes first, then sender's ConceptMap; on failure → `mapping_error`, creates Task)
+3. Creates FHIR resources: DiagnosticReport (from OBR), Observation (from OBX), Specimen (from SPM)
+4. If Patient/Encounter not found → creates drafts (`active=false`, `status=unknown`)
 
 → Details: `docs/developer-guide/oru-processing.md`
 
@@ -149,8 +145,6 @@ V2-to-FHIR Processor handles `ORM^O01` messages by:
 4. Creating related Condition (DG1), Observation (OBX), and Coverage (IN1) resources
 5. Treating class-only PV1 (missing PV1-19 visit number) as absent for ORM to avoid false warnings
 
-**Deterministic IDs**: Order and child resources use deterministic IDs for idempotent reprocessing.
-
 ### Code Mapping (Multiple Types)
 
 When HL7v2 codes can't be mapped to valid FHIR values:
@@ -161,15 +155,7 @@ When HL7v2 codes can't be mapped to valid FHIR values:
 
 Mapping types are defined in `src/code-mapping/mapping-types.ts`.
 
-Current mapping types:
-- `observation-code-loinc` (OBX-3 -> Observation.code)
-- `patient-class` (PV1-2 -> Encounter.class)
-- `obr-status` (OBR-25 -> DiagnosticReport.status)
-- `obx-status` (OBX-11 -> Observation.status)
-- `orc-status` (ORC-5 -> ServiceRequest.status; reused for MedicationRequest status resolution in ORM)
-
 **ConceptMap per sender per type**: Same local code from different senders can map to different values.
-
 → Details: `docs/developer-guide/code-mapping.md`
 
 ## Routes
@@ -305,7 +291,3 @@ scripts/hl7v2-inspect.sh <file> --verify RXA.20 # Verify field position by pipe 
 ```
 Handles RTF wrappers, multi-message files, and repeating fields. Use `--verify` to catch pipe count errors in fixtures.
 Reference: working fixture `test/fixtures/hl7v2/oru-r01/encounter/with-visit.hl7` has correct PV1-19.
-
-### Gotchas
-
-- ORM fixtures can include PV1 with only patient class (e.g. `PV1-2`) and no visit number (`PV1-19`). For `ORM^O01`, this should be treated as absent PV1 (skip Encounter, keep `processed`) instead of warning/error.

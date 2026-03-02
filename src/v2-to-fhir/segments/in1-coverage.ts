@@ -259,7 +259,6 @@ export function convertIN1ToCoverage(
  * Format: {patientId}-{payor-identifier}
  * Payor identifier extracted from IN1-3 (Insurance Company ID) or IN1-4 (Insurance Company Name).
  *
- * Shared between ADT and ORM converters to ensure the same patient/insurance
  * produces the same Coverage ID regardless of message type.
  */
 export function generateCoverageId(in1: IN1, patientId: string | undefined): string {
