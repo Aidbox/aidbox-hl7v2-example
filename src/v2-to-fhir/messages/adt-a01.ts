@@ -27,8 +27,6 @@ import {
   type DG1,
   type IN1,
   type AL1,
-  type XON,
-  type CX,
 } from "../../hl7v2/generated/fields";
 import type {
   Bundle,
@@ -47,7 +45,7 @@ import { convertPV1WithMappingSupport } from "../segments/pv1-encounter";
 import { convertNK1ToRelatedPerson } from "../segments/nk1-relatedperson";
 import { convertDG1ToCondition } from "../segments/dg1-condition";
 import { convertAL1ToAllergyIntolerance } from "../segments/al1-allergyintolerance";
-import { convertIN1ToCoverage } from "../segments/in1-coverage";
+import { convertIN1ToCoverage, generateCoverageId, hasValidPayorInfo } from "../segments/in1-coverage";
 import { resourceExists } from "../../aidbox";
 import { toKebabCase } from "../../utils/string";
 import {
@@ -166,62 +164,6 @@ function generateConditionId(dg1: DG1, prefix: string): string {
   return `${prefix}-${kebabName}`;
 }
 
-/**
- * Generate composite coverage ID
- * Format: {patientId}-{payor-identifier}
- * Payor identifier extracted from IN1-3 or IN1-4
- */
-function generateCoverageId(in1: IN1, patientId: string | undefined): string {
-  const prefix = patientId || "unknown";
-
-  // Try to get payor identifier from IN1-3 (Insurance Company ID)
-  let payorId: string | undefined;
-
-  if (in1.$3_insuranceCompanyId && in1.$3_insuranceCompanyId.length > 0) {
-    payorId = in1.$3_insuranceCompanyId[0]?.$1_value;
-  }
-
-  // Fallback to first payor organization name
-  if (
-    !payorId &&
-    in1.$4_insuranceCompanyName &&
-    in1.$4_insuranceCompanyName.length > 0
-  ) {
-    const orgName = in1.$4_insuranceCompanyName[0]?.$1_name;
-    if (orgName) {
-      payorId = toKebabCase(orgName);
-    }
-  }
-
-  // Final fallback to "coverage"
-  if (!payorId) {
-    payorId = "coverage";
-  }
-
-  return `${prefix}-${toKebabCase(payorId)}`;
-}
-
-/**
- * Check if IN1 segment has valid payor information
- * Returns true if IN1 has either:
- * - Insurance Company Name (IN1-4), OR
- * - Insurance Company ID (IN1-3)
- */
-function hasValidPayorInfo(in1: IN1): boolean {
-  // Check for Insurance Company Name (IN1-4)
-  if (in1.$4_insuranceCompanyName && in1.$4_insuranceCompanyName.length > 0) {
-    const hasName = in1.$4_insuranceCompanyName.some((xon: XON) => xon.$1_name);
-    if (hasName) return true;
-  }
-
-  // Check for Insurance Company ID (IN1-3)
-  if (in1.$3_insuranceCompanyId && in1.$3_insuranceCompanyId.length > 0) {
-    const hasId = in1.$3_insuranceCompanyId.some((cx: CX) => cx.$1_value);
-    if (hasId) return true;
-  }
-
-  return false;
-}
 
 /**
  * Generate composite allergy ID

@@ -14,7 +14,6 @@ If you were instructed you to proceed to the next task, you start following the 
 ## CRITICAL GUIDELINES
 
 - Do NOT create your own execution plan or a TODO list. The exact plan you need to follow is already written in the document.
-- Do NOT review your own code. Always spawn a sub-agent to get an independent review.
 - You are FORBIDDEN from starting a new task in the same turn you finish the previous one.
 - NEVER skip running tests. If you can't run some tests, report the blocker to the caller — do NOT mark the validation checkbox as done. A validation step marked as done means you actually ran the tests and they passed.
 - If some tests fail, you must fix the code even if it was a pre-existing fail.

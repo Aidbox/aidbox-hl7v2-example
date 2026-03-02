@@ -15,6 +15,7 @@ import type {
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { convertCXToIdentifier } from "../datatypes/cx-identifier";
 import { convertXONToOrganization } from "../datatypes/xon-organization";
+import { toKebabCase } from "../../utils/string";
 
 // ============================================================================
 // Helper Functions
@@ -247,6 +248,61 @@ export function convertIN1ToCoverage(
   }
 
   return coverage;
+}
+
+// ============================================================================
+// Coverage ID and Validation Helpers
+// ============================================================================
+
+/**
+ * Generate composite coverage ID.
+ * Format: {patientId}-{payor-identifier}
+ * Payor identifier extracted from IN1-3 (Insurance Company ID) or IN1-4 (Insurance Company Name).
+ *
+ * Shared between ADT and ORM converters to ensure the same patient/insurance
+ * produces the same Coverage ID regardless of message type.
+ */
+export function generateCoverageId(in1: IN1, patientId: string | undefined): string {
+  const prefix = patientId || "unknown";
+
+  // Try to get payor identifier from IN1-3 (Insurance Company ID)
+  let payorId: string | undefined;
+
+  if (in1.$3_insuranceCompanyId && in1.$3_insuranceCompanyId.length > 0) {
+    payorId = in1.$3_insuranceCompanyId[0]?.$1_value;
+  }
+
+  // Fallback to first payor organization name
+  if (!payorId && in1.$4_insuranceCompanyName && in1.$4_insuranceCompanyName.length > 0) {
+    const orgName = in1.$4_insuranceCompanyName[0]?.$1_name;
+    if (orgName) {
+      payorId = toKebabCase(orgName);
+    }
+  }
+
+  if (!payorId) {
+    payorId = "coverage";
+  }
+
+  return `${prefix}-${toKebabCase(payorId)}`;
+}
+
+/**
+ * Check if IN1 segment has valid payor information.
+ * Returns true if IN1 has either Insurance Company Name (IN1-4) or Insurance Company ID (IN1-3).
+ */
+export function hasValidPayorInfo(in1: IN1): boolean {
+  if (in1.$4_insuranceCompanyName && in1.$4_insuranceCompanyName.length > 0) {
+    const hasName = in1.$4_insuranceCompanyName.some((xon: XON) => xon.$1_name);
+    if (hasName) return true;
+  }
+
+  if (in1.$3_insuranceCompanyId && in1.$3_insuranceCompanyId.length > 0) {
+    const hasId = in1.$3_insuranceCompanyId.some((cx: CX) => cx.$1_value);
+    if (hasId) return true;
+  }
+
+  return false;
 }
 
 export default convertIN1ToCoverage;

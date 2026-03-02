@@ -19,6 +19,11 @@ describe("normalizeSystem", () => {
     expect(normalizeSystem("I10")).toBe("http://hl7.org/fhir/sid/icd-10");
   });
 
+  test("ICD-10-CM", () => {
+    expect(normalizeSystem("ICD-10-CM")).toBe("http://hl7.org/fhir/sid/icd-10-cm");
+    expect(normalizeSystem("icd-10-cm")).toBe("http://hl7.org/fhir/sid/icd-10-cm");
+  });
+
   test("CVX", () => {
     expect(normalizeSystem("CVX")).toBe("http://hl7.org/fhir/sid/cvx");
     expect(normalizeSystem("cvx")).toBe("http://hl7.org/fhir/sid/cvx");
