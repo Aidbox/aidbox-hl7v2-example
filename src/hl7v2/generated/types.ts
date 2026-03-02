@@ -1,5 +1,5 @@
 // AUTO-GENERATED - HL7v2 Core Types
-// Generated for: BAR_P01, ORU_R01, VXU_V04
+// Generated for: BAR_P01, ORM_O01, ORU_R01, VXU_V04
 
 /**
  * Recursive type for field values:

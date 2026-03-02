@@ -8,7 +8,7 @@
  * MedicationRequest type compatibility.
  */
 
-import type { RXO } from "../../hl7v2/wrappers/rxo";
+import type { RXO } from "../../hl7v2/generated/fields";
 import type {
   MedicationRequest,
   MedicationRequestDispenseRequest,
@@ -58,20 +58,20 @@ function buildUnitQuantity(value: number, unitCE: { $1_code?: string; $2_text?: 
  * When only RXO-2 is present (no max), produces a Range with low only.
  */
 function buildDoseRange(rxo: RXO): Range | undefined {
-  const minStr = rxo.$2_requestedGiveAmountMin;
+  const minStr = rxo.$2_requestedGiveAmountMinimum;
   if (!minStr) return undefined;
 
   const minValue = parseFloat(minStr);
   if (isNaN(minValue)) return undefined;
 
-  const units = rxo.$4_requestedGiveUnits;
+  const units = rxo.$4_requestedGiveUnit;
   const range: Range = {};
 
   range.low = units
     ? buildUnitQuantity(minValue, units)
     : { value: minValue };
 
-  const maxStr = rxo.$3_requestedGiveAmountMax;
+  const maxStr = rxo.$3_requestedGiveAmountMaximum;
   if (maxStr) {
     const maxValue = parseFloat(maxStr);
     if (!isNaN(maxValue)) {
@@ -119,7 +119,7 @@ function buildDispenseRequest(rxo: RXO): MedicationRequestDispenseRequest | unde
     const dispenseValue = parseFloat(rxo.$11_requestedDispenseAmount);
     if (!isNaN(dispenseValue)) {
       const quantity: Quantity = { value: dispenseValue };
-      const units = rxo.$12_requestedDispenseUnits;
+      const units = rxo.$12_requestedDispenseUnit;
       if (units?.$1_code) {
         quantity.code = units.$1_code;
         quantity.unit = units.$1_code;

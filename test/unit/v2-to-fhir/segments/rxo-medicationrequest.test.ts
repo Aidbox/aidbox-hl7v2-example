@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import type { RXO } from "../../../../src/hl7v2/wrappers/rxo";
+import type { RXO } from "../../../../src/hl7v2/generated/fields";
 import { convertRXOToMedicationRequest } from "../../../../src/v2-to-fhir/segments/rxo-medicationrequest";
 
 function makeRXO(overrides: Partial<RXO> = {}): RXO {
@@ -128,9 +128,9 @@ describe("RXO-1 -> medicationCodeableConcept", () => {
 describe("RXO-2/3/4 -> dosageInstruction doseRange", () => {
   test("RXO-2/3/4 maps to doseRange with low, high, and units", () => {
     const rxo = makeRXO({
-      $2_requestedGiveAmountMin: "500",
-      $3_requestedGiveAmountMax: "1000",
-      $4_requestedGiveUnits: { $1_code: "mg", $3_system: "http://unitsofmeasure.org" },
+      $2_requestedGiveAmountMinimum: "500",
+      $3_requestedGiveAmountMaximum: "1000",
+      $4_requestedGiveUnit: { $1_code: "mg", $3_system: "http://unitsofmeasure.org" },
     });
 
     const result = convertRXOToMedicationRequest(rxo, "active");
@@ -150,9 +150,9 @@ describe("RXO-2/3/4 -> dosageInstruction doseRange", () => {
 
   test("RXO-2 only (no max) -> doseRange.low only", () => {
     const rxo = makeRXO({
-      $2_requestedGiveAmountMin: "250",
-      $3_requestedGiveAmountMax: undefined,
-      $4_requestedGiveUnits: { $1_code: "mg" },
+      $2_requestedGiveAmountMinimum: "250",
+      $3_requestedGiveAmountMaximum: undefined,
+      $4_requestedGiveUnit: { $1_code: "mg" },
     });
 
     const result = convertRXOToMedicationRequest(rxo, "active");
@@ -166,9 +166,9 @@ describe("RXO-2/3/4 -> dosageInstruction doseRange", () => {
 
   test("RXO-2 without units -> doseRange with value only", () => {
     const rxo = makeRXO({
-      $2_requestedGiveAmountMin: "10",
-      $3_requestedGiveAmountMax: "20",
-      $4_requestedGiveUnits: undefined,
+      $2_requestedGiveAmountMinimum: "10",
+      $3_requestedGiveAmountMaximum: "20",
+      $4_requestedGiveUnit: undefined,
     });
 
     const result = convertRXOToMedicationRequest(rxo, "active");
@@ -183,9 +183,9 @@ describe("RXO-2/3/4 -> dosageInstruction doseRange", () => {
 
   test("no RXO-2 -> no dosageInstruction", () => {
     const rxo = makeRXO({
-      $2_requestedGiveAmountMin: undefined,
-      $3_requestedGiveAmountMax: "1000",
-      $4_requestedGiveUnits: { $1_code: "mg" },
+      $2_requestedGiveAmountMinimum: undefined,
+      $3_requestedGiveAmountMaximum: "1000",
+      $4_requestedGiveUnit: { $1_code: "mg" },
     });
 
     const result = convertRXOToMedicationRequest(rxo, "active");
@@ -264,7 +264,7 @@ describe("RXO-11/12 -> dispenseRequest.quantity", () => {
   test("RXO-11/12 maps to dispenseRequest quantity with units", () => {
     const rxo = makeRXO({
       $11_requestedDispenseAmount: "30",
-      $12_requestedDispenseUnits: { $1_code: "TAB", $3_system: "http://unitsofmeasure.org" },
+      $12_requestedDispenseUnit: { $1_code: "TAB", $3_system: "http://unitsofmeasure.org" },
     });
 
     const result = convertRXOToMedicationRequest(rxo, "active");
@@ -279,7 +279,7 @@ describe("RXO-11/12 -> dispenseRequest.quantity", () => {
   test("RXO-11 without units -> quantity with value only", () => {
     const rxo = makeRXO({
       $11_requestedDispenseAmount: "60",
-      $12_requestedDispenseUnits: undefined,
+      $12_requestedDispenseUnit: undefined,
     });
 
     const result = convertRXOToMedicationRequest(rxo, "active");
@@ -291,7 +291,7 @@ describe("RXO-11/12 -> dispenseRequest.quantity", () => {
   test("no RXO-11 -> no dispenseRequest quantity", () => {
     const rxo = makeRXO({
       $11_requestedDispenseAmount: undefined,
-      $12_requestedDispenseUnits: { $1_code: "TAB" },
+      $12_requestedDispenseUnit: { $1_code: "TAB" },
     });
 
     const result = convertRXOToMedicationRequest(rxo, "active");
@@ -337,7 +337,7 @@ describe("RXO-13 -> dispenseRequest.numberOfRepeatsAllowed", () => {
   test("RXO-11 and RXO-13 both present -> dispenseRequest has both", () => {
     const rxo = makeRXO({
       $11_requestedDispenseAmount: "30",
-      $12_requestedDispenseUnits: { $1_code: "TAB" },
+      $12_requestedDispenseUnit: { $1_code: "TAB" },
       $13_numberOfRefills: "5",
     });
 

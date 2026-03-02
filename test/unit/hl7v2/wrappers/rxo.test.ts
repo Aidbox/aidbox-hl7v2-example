@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { fromRXO } from "../../../../src/hl7v2/wrappers";
+import { fromRXO } from "../../../../src/hl7v2/generated/fields";
 import type { HL7v2Segment } from "../../../../src/hl7v2/generated/types";
 
 describe("fromRXO", () => {
@@ -31,9 +31,9 @@ describe("fromRXO", () => {
       $2_text: "Medication Name",
       $3_system: "RxNorm",
     });
-    expect(rxo.$2_requestedGiveAmountMin).toBe("10");
-    expect(rxo.$3_requestedGiveAmountMax).toBe("20");
-    expect(rxo.$4_requestedGiveUnits).toEqual({
+    expect(rxo.$2_requestedGiveAmountMinimum).toBe("10");
+    expect(rxo.$3_requestedGiveAmountMaximum).toBe("20");
+    expect(rxo.$4_requestedGiveUnit).toEqual({
       $1_code: "mg",
       $2_text: "milligrams",
       $3_system: "UCUM",
@@ -45,23 +45,23 @@ describe("fromRXO", () => {
     });
     expect(rxo.$9_allowSubstitutions).toBe("T");
     expect(rxo.$11_requestedDispenseAmount).toBe("500");
-    expect(rxo.$12_requestedDispenseUnits).toEqual({
+    expect(rxo.$12_requestedDispenseUnit).toEqual({
       $1_code: "mg",
       $2_text: "milligrams",
       $3_system: "UCUM",
     });
     expect(rxo.$13_numberOfRefills).toBe("10");
-    expect(rxo.$14_orderingProviderDea).toEqual([
+    expect(rxo.$14_orderingProvidersDeaNumber).toEqual([
       { $1_value: "DEA123", $2_family: { $1_family: "Smith" }, $3_given: "John" },
     ]);
     expect(rxo.$18_requestedGiveStrength).toBe("50");
-    expect(rxo.$19_requestedGiveStrengthUnits).toEqual({
+    expect(rxo.$19_requestedGiveStrengthUnit).toEqual({
       $1_code: "mL/hr",
       $2_text: "milliliter per hour",
       $3_system: "UCUM",
     });
     expect(rxo.$25_requestedDrugStrengthVolume).toBe("300");
-    expect(rxo.$26_requestedDrugStrengthVolumeUnits).toEqual({
+    expect(rxo.$26_requestedDrugStrengthVolumeUnit).toEqual({
       $1_code: "mL",
       $2_text: "milliliter",
       $3_system: "UCUM",
@@ -83,19 +83,19 @@ describe("fromRXO", () => {
       $2_text: "Aspirin",
       $3_system: "NDC",
     });
-    expect(rxo.$2_requestedGiveAmountMin).toBeUndefined();
-    expect(rxo.$3_requestedGiveAmountMax).toBeUndefined();
-    expect(rxo.$4_requestedGiveUnits).toBeUndefined();
+    expect(rxo.$2_requestedGiveAmountMinimum).toBeUndefined();
+    expect(rxo.$3_requestedGiveAmountMaximum).toBeUndefined();
+    expect(rxo.$4_requestedGiveUnit).toBeUndefined();
     expect(rxo.$5_requestedDosageForm).toBeUndefined();
     expect(rxo.$9_allowSubstitutions).toBeUndefined();
     expect(rxo.$11_requestedDispenseAmount).toBeUndefined();
-    expect(rxo.$12_requestedDispenseUnits).toBeUndefined();
+    expect(rxo.$12_requestedDispenseUnit).toBeUndefined();
     expect(rxo.$13_numberOfRefills).toBeUndefined();
-    expect(rxo.$14_orderingProviderDea).toBeUndefined();
+    expect(rxo.$14_orderingProvidersDeaNumber).toBeUndefined();
     expect(rxo.$18_requestedGiveStrength).toBeUndefined();
-    expect(rxo.$19_requestedGiveStrengthUnits).toBeUndefined();
+    expect(rxo.$19_requestedGiveStrengthUnit).toBeUndefined();
     expect(rxo.$25_requestedDrugStrengthVolume).toBeUndefined();
-    expect(rxo.$26_requestedDrugStrengthVolumeUnits).toBeUndefined();
+    expect(rxo.$26_requestedDrugStrengthVolumeUnit).toBeUndefined();
   });
 
   test("parses empty RXO segment", () => {
@@ -121,7 +121,7 @@ describe("fromRXO", () => {
     const rxo = fromRXO(segment);
 
     expect(rxo.$1_requestedGiveCode).toEqual({ $1_code: "simple-code" });
-    expect(rxo.$4_requestedGiveUnits).toEqual({ $1_code: "mg" });
+    expect(rxo.$4_requestedGiveUnit).toEqual({ $1_code: "mg" });
   });
 
   test("parses CWE field with alternate coding (RXO-26)", () => {
@@ -144,7 +144,7 @@ describe("fromRXO", () => {
 
     const rxo = fromRXO(segment);
 
-    expect(rxo.$26_requestedDrugStrengthVolumeUnits).toEqual({
+    expect(rxo.$26_requestedDrugStrengthVolumeUnit).toEqual({
       $1_code: "mL",
       $2_text: "milliliter",
       $3_system: "UCUM",
@@ -170,7 +170,7 @@ describe("fromRXO", () => {
 
     const rxo = fromRXO(segment);
 
-    expect(rxo.$14_orderingProviderDea).toEqual([
+    expect(rxo.$14_orderingProvidersDeaNumber).toEqual([
       { $1_value: "DEA-001", $2_family: { $1_family: "Smith" }, $3_given: "John" },
       { $1_value: "DEA-002", $2_family: { $1_family: "Doe" }, $3_given: "Jane" },
     ]);
@@ -213,27 +213,26 @@ describe("fromRXO", () => {
 
     const rxo = fromRXO(segment);
 
-    expect(rxo.$14_orderingProviderDea).toEqual([{ $1_value: "DEA-ONLY-ID" }]);
+    expect(rxo.$14_orderingProvidersDeaNumber).toEqual([{ $1_value: "DEA-ONLY-ID" }]);
   });
 
-  test("skips gaps in field numbering (fields 6-8, 10, 15-17, 20-24 not parsed)", () => {
+  test("parses all fields including those the manual wrapper skipped", () => {
     const segment: HL7v2Segment = {
       segment: "RXO",
       fields: {
-        6: "should-be-ignored",
-        7: "should-be-ignored",
-        8: "should-be-ignored",
-        10: "should-be-ignored",
-        15: "should-be-ignored",
-        16: "should-be-ignored",
-        17: "should-be-ignored",
-        20: "should-be-ignored",
+        6: "pharmacy-instructions",
+        10: "dispense-code",
+        16: "Y",
+        17: "Q8H",
       },
     };
 
     const rxo = fromRXO(segment);
 
-    // None of the ignored fields should appear on the result
-    expect(rxo).toEqual({});
+    // Generated parser handles all 28 fields
+    expect(rxo.$6_providersPharmacyTreatmentInstructions).toEqual([{ $1_code: "pharmacy-instructions" }]);
+    expect(rxo.$10_requestedDispenseCode).toEqual({ $1_code: "dispense-code" });
+    expect(rxo.$16_needsHumanReview).toBe("Y");
+    expect(rxo.$17_requestedGivePer).toBe("Q8H");
   });
 });

@@ -1,11 +1,12 @@
 // AUTO-GENERATED - HL7v2 Message Builders
-// Generated for: BAR_P01, ORU_R01, VXU_V04
+// Generated for: BAR_P01, ORM_O01, ORU_R01, VXU_V04
 
 import type { HL7v2Segment, HL7v2Message } from "./types";
 import {
   toSegment,
   type ACC,
   type AL1,
+  type BLG,
   type CTD,
   type CTI,
   type DB1,
@@ -23,6 +24,8 @@ import {
   type NTE,
   type OBR,
   type OBX,
+  type ODS,
+  type ODT,
   type ORC,
   type PD1,
   type PID,
@@ -30,7 +33,10 @@ import {
   type PV1,
   type PV2,
   type ROL,
+  type RQ1,
+  type RQD,
   type RXA,
+  type RXO,
   type RXR,
   type SFT,
   type SPM,
@@ -313,6 +319,376 @@ export class BAR_P01Builder {
       if (group.acc) segments.push(group.acc);
       if (group.ub1) segments.push(group.ub1);
       if (group.ub2) segments.push(group.ub2);
+    }
+    return segments;
+  }
+}
+
+export interface ORM_O01_PATIENT_VISIT {
+  pv1: HL7v2Segment;
+  pv2?: HL7v2Segment;
+}
+
+export class ORM_O01_PATIENT_VISITBuilder {
+  private group: Partial<ORM_O01_PATIENT_VISIT> = {};
+
+  pv1(segment: PV1): this {
+    this.group.pv1 = toSegment("PV1", segment);
+    return this;
+  }
+
+  pv2(segment: PV2): this {
+    this.group.pv2 = toSegment("PV2", segment);
+    return this;
+  }
+
+  build(): ORM_O01_PATIENT_VISIT {
+    return this.group as ORM_O01_PATIENT_VISIT;
+  }
+}
+
+export interface ORM_O01_INSURANCE {
+  in1: HL7v2Segment;
+  in2?: HL7v2Segment;
+  in3?: HL7v2Segment;
+}
+
+export class ORM_O01_INSURANCEBuilder {
+  private group: Partial<ORM_O01_INSURANCE> = {};
+
+  in1(segment: IN1): this {
+    this.group.in1 = toSegment("IN1", segment);
+    return this;
+  }
+
+  in2(segment: IN2): this {
+    this.group.in2 = toSegment("IN2", segment);
+    return this;
+  }
+
+  in3(segment: IN3): this {
+    this.group.in3 = toSegment("IN3", segment);
+    return this;
+  }
+
+  build(): ORM_O01_INSURANCE {
+    return this.group as ORM_O01_INSURANCE;
+  }
+}
+
+export interface ORM_O01_PATIENT {
+  pid: HL7v2Segment;
+  pd1?: HL7v2Segment;
+  nte?: HL7v2Segment[];
+  patient_visit?: ORM_O01_PATIENT_VISIT;
+  insurance?: ORM_O01_INSURANCE[];
+  gt1?: HL7v2Segment;
+  al1?: HL7v2Segment[];
+}
+
+export class ORM_O01_PATIENTBuilder {
+  private group: Partial<ORM_O01_PATIENT> = {};
+
+  pid(segment: PID): this {
+    this.group.pid = toSegment("PID", segment);
+    return this;
+  }
+
+  pd1(segment: PD1): this {
+    this.group.pd1 = toSegment("PD1", segment);
+    return this;
+  }
+
+  addNTE(segment: NTE): this {
+    if (!this.group.nte) this.group.nte = [];
+    this.group.nte.push(toSegment("NTE", segment));
+    return this;
+  }
+
+  patient_visit(group: ORM_O01_PATIENT_VISIT | ((builder: ORM_O01_PATIENT_VISITBuilder) => ORM_O01_PATIENT_VISITBuilder)): this {
+    if (typeof group === "function") this.group.patient_visit = group(new ORM_O01_PATIENT_VISITBuilder()).build();
+    else this.group.patient_visit = group;
+    return this;
+  }
+
+  addINSURANCE(group: ORM_O01_INSURANCE | ((builder: ORM_O01_INSURANCEBuilder) => ORM_O01_INSURANCEBuilder)): this {
+    let g: ORM_O01_INSURANCE;
+    if (typeof group === "function") g = group(new ORM_O01_INSURANCEBuilder()).build();
+    else g = group;
+    if (!this.group.insurance) this.group.insurance = [];
+    this.group.insurance.push(g);
+    return this;
+  }
+
+  gt1(segment: GT1): this {
+    this.group.gt1 = toSegment("GT1", segment);
+    return this;
+  }
+
+  addAL1(segment: AL1): this {
+    if (!this.group.al1) this.group.al1 = [];
+    this.group.al1.push(toSegment("AL1", segment));
+    return this;
+  }
+
+  build(): ORM_O01_PATIENT {
+    return this.group as ORM_O01_PATIENT;
+  }
+}
+
+export interface ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRP {
+  obr?: HL7v2Segment;
+  rqd?: HL7v2Segment;
+  rq1?: HL7v2Segment;
+  rxo?: HL7v2Segment;
+  ods?: HL7v2Segment;
+  odt?: HL7v2Segment;
+}
+
+export class ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRPBuilder {
+  private group: Partial<ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRP> = {};
+
+  obr(segment: OBR): this {
+    this.group.obr = toSegment("OBR", segment);
+    return this;
+  }
+
+  rqd(segment: RQD): this {
+    this.group.rqd = toSegment("RQD", segment);
+    return this;
+  }
+
+  rq1(segment: RQ1): this {
+    this.group.rq1 = toSegment("RQ1", segment);
+    return this;
+  }
+
+  rxo(segment: RXO): this {
+    this.group.rxo = toSegment("RXO", segment);
+    return this;
+  }
+
+  ods(segment: ODS): this {
+    this.group.ods = toSegment("ODS", segment);
+    return this;
+  }
+
+  odt(segment: ODT): this {
+    this.group.odt = toSegment("ODT", segment);
+    return this;
+  }
+
+  build(): ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRP {
+    return this.group as ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRP;
+  }
+}
+
+export interface ORM_O01_OBSERVATION {
+  obx: HL7v2Segment;
+  nte?: HL7v2Segment[];
+}
+
+export class ORM_O01_OBSERVATIONBuilder {
+  private group: Partial<ORM_O01_OBSERVATION> = {};
+
+  obx(segment: OBX): this {
+    this.group.obx = toSegment("OBX", segment);
+    return this;
+  }
+
+  addNTE(segment: NTE): this {
+    if (!this.group.nte) this.group.nte = [];
+    this.group.nte.push(toSegment("NTE", segment));
+    return this;
+  }
+
+  build(): ORM_O01_OBSERVATION {
+    return this.group as ORM_O01_OBSERVATION;
+  }
+}
+
+export interface ORM_O01_ORDER_DETAIL {
+  obrrqdrq1rxoodsodt_suppgrp: ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRP;
+  nte?: HL7v2Segment[];
+  ctd?: HL7v2Segment;
+  dg1?: HL7v2Segment[];
+  observation?: ORM_O01_OBSERVATION[];
+}
+
+export class ORM_O01_ORDER_DETAILBuilder {
+  private group: Partial<ORM_O01_ORDER_DETAIL> = {};
+
+  obrrqdrq1rxoodsodt_suppgrp(group: ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRP | ((builder: ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRPBuilder) => ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRPBuilder)): this {
+    if (typeof group === "function") this.group.obrrqdrq1rxoodsodt_suppgrp = group(new ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRPBuilder()).build();
+    else this.group.obrrqdrq1rxoodsodt_suppgrp = group;
+    return this;
+  }
+
+  addNTE(segment: NTE): this {
+    if (!this.group.nte) this.group.nte = [];
+    this.group.nte.push(toSegment("NTE", segment));
+    return this;
+  }
+
+  ctd(segment: CTD): this {
+    this.group.ctd = toSegment("CTD", segment);
+    return this;
+  }
+
+  addDG1(segment: DG1): this {
+    if (!this.group.dg1) this.group.dg1 = [];
+    this.group.dg1.push(toSegment("DG1", segment));
+    return this;
+  }
+
+  addOBSERVATION(group: ORM_O01_OBSERVATION | ((builder: ORM_O01_OBSERVATIONBuilder) => ORM_O01_OBSERVATIONBuilder)): this {
+    let g: ORM_O01_OBSERVATION;
+    if (typeof group === "function") g = group(new ORM_O01_OBSERVATIONBuilder()).build();
+    else g = group;
+    if (!this.group.observation) this.group.observation = [];
+    this.group.observation.push(g);
+    return this;
+  }
+
+  build(): ORM_O01_ORDER_DETAIL {
+    return this.group as ORM_O01_ORDER_DETAIL;
+  }
+}
+
+export interface ORM_O01_ORDER {
+  orc: HL7v2Segment;
+  order_detail?: ORM_O01_ORDER_DETAIL;
+  ft1?: HL7v2Segment[];
+  cti?: HL7v2Segment[];
+  blg?: HL7v2Segment;
+}
+
+export class ORM_O01_ORDERBuilder {
+  private group: Partial<ORM_O01_ORDER> = {};
+
+  orc(segment: ORC): this {
+    this.group.orc = toSegment("ORC", segment);
+    return this;
+  }
+
+  order_detail(group: ORM_O01_ORDER_DETAIL | ((builder: ORM_O01_ORDER_DETAILBuilder) => ORM_O01_ORDER_DETAILBuilder)): this {
+    if (typeof group === "function") this.group.order_detail = group(new ORM_O01_ORDER_DETAILBuilder()).build();
+    else this.group.order_detail = group;
+    return this;
+  }
+
+  addFT1(segment: FT1): this {
+    if (!this.group.ft1) this.group.ft1 = [];
+    this.group.ft1.push(toSegment("FT1", segment));
+    return this;
+  }
+
+  addCTI(segment: CTI): this {
+    if (!this.group.cti) this.group.cti = [];
+    this.group.cti.push(toSegment("CTI", segment));
+    return this;
+  }
+
+  blg(segment: BLG): this {
+    this.group.blg = toSegment("BLG", segment);
+    return this;
+  }
+
+  build(): ORM_O01_ORDER {
+    return this.group as ORM_O01_ORDER;
+  }
+}
+
+/**
+ * ORM_O01 Message Structure
+ */
+export interface ORM_O01_Message {
+  msh: HL7v2Segment;
+  nte?: HL7v2Segment[];
+  patient?: ORM_O01_PATIENT;
+  order: ORM_O01_ORDER[];
+}
+
+/**
+ * Builder for ORM_O01 messages
+ */
+export class ORM_O01Builder {
+  private msg: Partial<ORM_O01_Message> = {};
+
+  msh(segment: MSH): this {
+    this.msg.msh = toSegment("MSH", segment);
+    return this;
+  }
+
+  addNTE(segment: NTE): this {
+    if (!this.msg.nte) this.msg.nte = [];
+    this.msg.nte.push(toSegment("NTE", segment));
+    return this;
+  }
+
+  patient(group: ORM_O01_PATIENT | ((builder: ORM_O01_PATIENTBuilder) => ORM_O01_PATIENTBuilder)): this {
+    if (typeof group === "function") this.msg.patient = group(new ORM_O01_PATIENTBuilder()).build();
+    else this.msg.patient = group;
+    return this;
+  }
+
+  addORDER(group: ORM_O01_ORDER | ((builder: ORM_O01_ORDERBuilder) => ORM_O01_ORDERBuilder)): this {
+    let g: ORM_O01_ORDER;
+    if (typeof group === "function") g = group(new ORM_O01_ORDERBuilder()).build();
+    else g = group;
+    if (!this.msg.order) this.msg.order = [];
+    this.msg.order.push(g);
+    return this;
+  }
+
+  build(): HL7v2Message {
+    if (!this.msg.msh) throw new Error("ORM_O01: msh is required");
+    if (!this.msg.order) throw new Error("ORM_O01: order is required");
+    const segments: HL7v2Message = [];
+    if (this.msg.msh) segments.push(this.msg.msh);
+    if (this.msg.nte) for (const seg of this.msg.nte) segments.push(seg);
+    if (this.msg.patient) {
+      const group = this.msg.patient;
+      if (group.pid) segments.push(group.pid);
+      if (group.pd1) segments.push(group.pd1);
+      if (group.nte) for (const seg of group.nte) segments.push(seg);
+      if (group.patient_visit) {
+        const subgroup = group.patient_visit;
+        if (subgroup.pv1) segments.push(subgroup.pv1);
+        if (subgroup.pv2) segments.push(subgroup.pv2);
+      }
+      if (group.insurance) for (const subgroup of group.insurance) {
+        if (subgroup.in1) segments.push(subgroup.in1);
+        if (subgroup.in2) segments.push(subgroup.in2);
+        if (subgroup.in3) segments.push(subgroup.in3);
+      }
+      if (group.gt1) segments.push(group.gt1);
+      if (group.al1) for (const seg of group.al1) segments.push(seg);
+    }
+    if (this.msg.order) for (const group of this.msg.order) {
+      if (group.orc) segments.push(group.orc);
+      if (group.order_detail) {
+        const subgroup = group.order_detail;
+        if (subgroup.obrrqdrq1rxoodsodt_suppgrp) {
+          const subgroup = subgroup.obrrqdrq1rxoodsodt_suppgrp;
+          if (subgroup.obr) segments.push(subgroup.obr);
+          if (subgroup.rqd) segments.push(subgroup.rqd);
+          if (subgroup.rq1) segments.push(subgroup.rq1);
+          if (subgroup.rxo) segments.push(subgroup.rxo);
+          if (subgroup.ods) segments.push(subgroup.ods);
+          if (subgroup.odt) segments.push(subgroup.odt);
+        }
+        if (subgroup.nte) for (const seg of subgroup.nte) segments.push(seg);
+        if (subgroup.ctd) segments.push(subgroup.ctd);
+        if (subgroup.dg1) for (const seg of subgroup.dg1) segments.push(seg);
+        if (subgroup.observation) for (const subgroup of subgroup.observation) {
+          if (subgroup.obx) segments.push(subgroup.obx);
+          if (subgroup.nte) for (const seg of subgroup.nte) segments.push(seg);
+        }
+      }
+      if (group.ft1) for (const seg of group.ft1) segments.push(seg);
+      if (group.cti) for (const seg of group.cti) segments.push(seg);
+      if (group.blg) segments.push(group.blg);
     }
     return segments;
   }
@@ -996,6 +1372,121 @@ export function toBAR_P01(input: BAR_P01_Input): HL7v2Message {
     if (group.ACC) segments.push(toSegment("ACC", group.ACC));
     if (group.UB1) segments.push(toSegment("UB1", group.UB1));
     if (group.UB2) segments.push(toSegment("UB2", group.UB2));
+  }
+  return segments;
+}
+
+export interface ORM_O01_PATIENT_VISIT_Input {
+  PV1: PV1;
+  PV2?: PV2;
+}
+
+export interface ORM_O01_INSURANCE_Input {
+  IN1: IN1;
+  IN2?: IN2;
+  IN3?: IN3;
+}
+
+export interface ORM_O01_PATIENT_Input {
+  PID: PID;
+  PD1?: PD1;
+  NTE?: NTE[];
+  PATIENT_VISIT?: ORM_O01_PATIENT_VISIT_Input;
+  INSURANCE?: ORM_O01_INSURANCE_Input[];
+  GT1?: GT1;
+  AL1?: AL1[];
+}
+
+export interface ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRP_Input {
+  OBR?: OBR;
+  RQD?: RQD;
+  RQ1?: RQ1;
+  RXO?: RXO;
+  ODS?: ODS;
+  ODT?: ODT;
+}
+
+export interface ORM_O01_OBSERVATION_Input {
+  OBX: OBX;
+  NTE?: NTE[];
+}
+
+export interface ORM_O01_ORDER_DETAIL_Input {
+  OBRRQDRQ1RXOODSODT_SUPPGRP: ORM_O01_OBRRQDRQ1RXOODSODT_SUPPGRP_Input;
+  NTE?: NTE[];
+  CTD?: CTD;
+  DG1?: DG1[];
+  OBSERVATION?: ORM_O01_OBSERVATION_Input[];
+}
+
+export interface ORM_O01_ORDER_Input {
+  ORC: ORC;
+  ORDER_DETAIL?: ORM_O01_ORDER_DETAIL_Input;
+  FT1?: FT1[];
+  CTI?: CTI[];
+  BLG?: BLG;
+}
+
+/**
+ * ORM_O01 Input - typed segment data
+ */
+export interface ORM_O01_Input {
+  type: "ORM_O01";
+  MSH: MSH;
+  NTE?: NTE[];
+  PATIENT?: ORM_O01_PATIENT_Input;
+  ORDER: ORM_O01_ORDER_Input[];
+}
+
+/**
+ * Convert ORM_O01_Input to HL7v2Message
+ */
+export function toORM_O01(input: ORM_O01_Input): HL7v2Message {
+  const segments: HL7v2Message = [];
+  if (input.MSH) segments.push(toSegment("MSH", input.MSH));
+  if (input.NTE) for (const seg of input.NTE) segments.push(toSegment("NTE", seg));
+  if (input.PATIENT) {
+    const group = input.PATIENT;
+    if (group.PID) segments.push(toSegment("PID", group.PID));
+    if (group.PD1) segments.push(toSegment("PD1", group.PD1));
+    if (group.NTE) for (const seg of group.NTE) segments.push(toSegment("NTE", seg));
+    if (group.PATIENT_VISIT) {
+      const group = group.PATIENT_VISIT;
+      if (group.PV1) segments.push(toSegment("PV1", group.PV1));
+      if (group.PV2) segments.push(toSegment("PV2", group.PV2));
+    }
+    if (group.INSURANCE) for (const group of group.INSURANCE) {
+      if (group.IN1) segments.push(toSegment("IN1", group.IN1));
+      if (group.IN2) segments.push(toSegment("IN2", group.IN2));
+      if (group.IN3) segments.push(toSegment("IN3", group.IN3));
+    }
+    if (group.GT1) segments.push(toSegment("GT1", group.GT1));
+    if (group.AL1) for (const seg of group.AL1) segments.push(toSegment("AL1", seg));
+  }
+  if (input.ORDER) for (const group of input.ORDER) {
+    if (group.ORC) segments.push(toSegment("ORC", group.ORC));
+    if (group.ORDER_DETAIL) {
+      const group = group.ORDER_DETAIL;
+      if (group.OBRRQDRQ1RXOODSODT_SUPPGRP) {
+        const group = group.OBRRQDRQ1RXOODSODT_SUPPGRP;
+        if (group.OBR) segments.push(toSegment("OBR", group.OBR));
+        if (group.RQD) segments.push(toSegment("RQD", group.RQD));
+        if (group.RQ1) segments.push(toSegment("RQ1", group.RQ1));
+        if (group.RXO) segments.push(toSegment("RXO", group.RXO));
+        if (group.ODS) segments.push(toSegment("ODS", group.ODS));
+        if (group.ODT) segments.push(toSegment("ODT", group.ODT));
+      }
+      if (group.NTE) for (const seg of group.NTE) segments.push(toSegment("NTE", seg));
+      if (group.CTD) segments.push(toSegment("CTD", group.CTD));
+      if (group.DG1) for (const seg of group.DG1) segments.push(toSegment("DG1", seg));
+      if (group.OBSERVATION) for (const group of group.OBSERVATION) {
+        if (group.OBX) segments.push(toSegment("OBX", group.OBX));
+        if (group.NTE) for (const seg of group.NTE) segments.push(toSegment("NTE", seg));
+      }
+    }
+    if (group.FT1) for (const seg of group.FT1) segments.push(toSegment("FT1", seg));
+    if (group.CTI) for (const seg of group.CTI) segments.push(toSegment("CTI", seg));
+    if (group.BLG) segments.push(toSegment("BLG", group.BLG));
   }
   return segments;
 }

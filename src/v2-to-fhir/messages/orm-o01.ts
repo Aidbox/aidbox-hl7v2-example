@@ -16,7 +16,8 @@
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
 import type { ORC, PV1, EI } from "../../hl7v2/generated/fields";
 import { fromORC, fromPID, fromOBR, fromDG1, fromIN1, fromNTE } from "../../hl7v2/generated/fields";
-import { fromOBX, fromRXO } from "../../hl7v2/wrappers";
+import { fromOBX } from "../../hl7v2/wrappers";
+import { fromRXO } from "../../hl7v2/generated/fields";
 import { sanitizeForId } from "../identity-system/utils";
 import { findSegment, findAllSegments, type ConversionResult } from "../converter";
 import type {

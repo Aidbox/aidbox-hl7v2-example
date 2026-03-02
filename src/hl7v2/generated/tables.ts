@@ -1,5 +1,5 @@
 // AUTO-GENERATED - HL7v2 Table Value Types
-// Generated for: BAR_P01, ORU_R01, VXU_V04
+// Generated for: BAR_P01, ORM_O01, ORU_R01, VXU_V04
 
 /** Table 0001 - AdministrativeSex */
 export const AdministrativeSex = {
@@ -805,6 +805,16 @@ export const TypeOfAgreement = {
 } as const;
 export type TypeOfAgreement = typeof TypeOfAgreement[keyof typeof TypeOfAgreement];
 
+/** Table 0100 - InvocationEvent */
+export const InvocationEvent = {
+  OnDischarge: "D",
+  OnReceiptOfOrder: "O",
+  AtTimeServiceIsCompleted: "R",
+  AtTimeServiceIsStarted: "S",
+  AtADesignatedDateTime: "T",
+} as const;
+export type InvocationEvent = typeof InvocationEvent[keyof typeof InvocationEvent];
+
 /** Table 0105 - SourceOfComment */
 export const SourceOfComment = {
   AncillaryFillerDepartmentIsSourceOfComment: "L",
@@ -896,6 +906,19 @@ export const ResponseFlag = {
   OnlyTheMsaSegmentIsReturned: "N",
 } as const;
 export type ResponseFlag = typeof ResponseFlag[keyof typeof ResponseFlag];
+
+/** Table 0122 - ChargeType */
+export const ChargeType = {
+  Charge: "CH",
+  Contract: "CO",
+  Credit: "CR",
+  Department: "DP",
+  Grant: "GR",
+  NoCharge: "NC",
+  Professional: "PC",
+  Research: "RS",
+} as const;
+export type ChargeType = typeof ChargeType[keyof typeof ChargeType];
 
 /** Table 0123 - ResultStatus */
 export const ResultStatus = {
@@ -1034,6 +1057,32 @@ export const AcceptApplicationAcknowledgmentConditions = {
   SuccessfulCompletionOnly: "SU",
 } as const;
 export type AcceptApplicationAcknowledgmentConditions = typeof AcceptApplicationAcknowledgmentConditions[keyof typeof AcceptApplicationAcknowledgmentConditions];
+
+/** Table 0159 - DietCodeSpecificationType */
+export const DietCodeSpecificationType = {
+  Diet: "D",
+  Supplement: "S",
+  Preference: "P",
+} as const;
+export type DietCodeSpecificationType = typeof DietCodeSpecificationType[keyof typeof DietCodeSpecificationType];
+
+/** Table 0160 - TrayType */
+export const TrayType = {
+  EarlyTray: "EARLY",
+  LateTray: "LATE",
+  GuestTray: "GUEST",
+  NoTray: "NO",
+  TrayMessageOnly: "MSG",
+} as const;
+export type TrayType = typeof TrayType[keyof typeof TrayType];
+
+/** Table 0161 - AllowSubstitution */
+export const AllowSubstitution = {
+  SubstitutionsAreNotAuthorizedThisIsTheDefaultNull: "N",
+  AllowGenericSubstitutions: "G",
+  AllowTherapeuticSubstitutions: "T",
+} as const;
+export type AllowSubstitution = typeof AllowSubstitution[keyof typeof AllowSubstitution];
 
 /** Table 0162 - RouteOfAdministration */
 export const RouteOfAdministration = {
@@ -2038,6 +2087,16 @@ export const IdentityReliability = {
   PatientPersonNameIsAnAlias: "AL",
 } as const;
 export type IdentityReliability = typeof IdentityReliability[keyof typeof IdentityReliability];
+
+/** Table 0475 - ChargeTypeReason */
+export const ChargeTypeReason = {
+  Allergy: "01",
+  Intolerance: "02",
+  TreatmentFailure: "03",
+  PatientRequest: "04",
+  NoException: "05",
+} as const;
+export type ChargeTypeReason = typeof ChargeTypeReason[keyof typeof ChargeTypeReason];
 
 /** Table 0480 - PharmacyOrderTypes */
 export const PharmacyOrderTypes = {
