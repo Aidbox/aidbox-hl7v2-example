@@ -1065,28 +1065,28 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Implement `groupVXUOrders()` and `extractPersonObservations()` — the segment grouping logic that splits the flat VXU segment list into structured groups. These are HL7v2 message structure concerns (correcting library gaps), so they live in `src/hl7v2/wrappers/vxu-v04.ts`.
 
-- [ ] Create `src/hl7v2/wrappers/vxu-v04.ts` with `VXUOrderGroup` interface and grouping functions:
+- [x] Create `src/hl7v2/wrappers/vxu-v04.ts` with `VXUOrderGroup` interface and grouping functions:
   - `VXUOrderGroup`: interface with `orc?` (optional — library marks ORC required per v2.5 spec, but real-world senders omit it)
   - `groupVXUOrders()`: groups flat segment list into ORDER groups
   - `extractPersonObservations()`: extracts OBX before first ORC/RXA (PERSON_OBSERVATION — v2.8.2 addition not in library's v2.5 schema)
-- [ ] Implement `groupVXUOrders()`:
+- [x] Implement `groupVXUOrders()`:
   - Start new ORDER group on ORC or RXA (whichever appears)
   - RXA without preceding ORC is a valid group (ORC optional)
   - Collect optional RXR and OBX+NTE for each group
   - Error if an ORDER group has no RXA
   - Return `VXUOrderGroup[]`
-- [ ] Implement `extractPersonObservations()`:
+- [x] Implement `extractPersonObservations()`:
   - Collect OBX (+ optional NTE) segments before the first ORC or RXA
   - These are PERSON_OBSERVATION (patient-level, not order-level)
-- [ ] Remove the `VXUOrderGroup` interface and stub functions from `src/v2-to-fhir/messages/vxu-v04.ts`, import from wrapper instead
-- [ ] Write unit tests:
+- [x] Remove the `VXUOrderGroup` interface and stub functions from `src/v2-to-fhir/messages/vxu-v04.ts`, import from wrapper instead
+- [x] Write unit tests:
   - Single ORC+RXA+RXR+OBX → one group with all parts
   - RXA without ORC → valid group with orc=undefined
   - Multiple ORDER groups → correct count and contents
   - ORC without following RXA → error
   - OBX before first ORC/RXA → extracted as person observations
   - No ORDER segments → empty array
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---

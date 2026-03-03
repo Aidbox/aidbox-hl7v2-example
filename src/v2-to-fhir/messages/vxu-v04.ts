@@ -37,7 +37,8 @@ import {
   type ORC,
   type OBX,
 } from "../../hl7v2/generated/fields";
-import { fromOBX } from "../../hl7v2/wrappers";
+import { fromOBX, groupVXUOrders, extractPersonObservations } from "../../hl7v2/wrappers";
+import type { VXUOrderGroup } from "../../hl7v2/wrappers";
 import type {
   Bundle,
   BundleEntry,
@@ -59,56 +60,6 @@ import type { PatientLookupFn, EncounterLookupFn } from "../aidbox-lookups";
 import type { PatientIdResolver } from "../identity-system/patient-id";
 import { applyOrderOBXFields, interpretRXA9Source } from "../cdc-iis-ig";
 import { createBundleEntry } from "../fhir-bundle";
-
-// ============================================================================
-// Types
-// ============================================================================
-
-interface VXUOrderGroup {
-  orc?: HL7v2Segment; // Optional per C1: real-world senders may omit ORC
-  rxa: HL7v2Segment;
-  rxr?: HL7v2Segment;
-  observations: Array<{ obx: HL7v2Segment; ntes: HL7v2Segment[] }>;
-}
-
-// ============================================================================
-// ORDER Group Extraction
-// ============================================================================
-
-/**
- * Group VXU_V04 segments into ORDER groups.
- *
- * Each ORDER starts with ORC or RXA (whichever appears first in the group).
- * Per C1: real-world senders may omit ORC entirely. RXA without preceding
- * ORC is a valid group.
- *
- * Contains RXA (required), optional ORC, optional RXR, and optional OBX.
- *
- * Segments before the first ORC or RXA are not part of any ORDER group
- * (PERSON_OBSERVATION OBX are handled separately).
- */
-function groupVXUOrders(_message: HL7v2Message): VXUOrderGroup[] {
-  // TODO: Implement:
-  // Walk through segments sequentially:
-  // - On ORC: start new group (or attach to current if no RXA yet)
-  // - On RXA: start new group if no current group, or attach to current
-  // - On RXR: attach to current group (optional)
-  // - On OBX after RXA: start observation entry in current group
-  // - On NTE after OBX: attach to current observation
-  // - Segments before first ORC/RXA are PERSON_OBSERVATION (handled separately)
-  return [];
-}
-
-/**
- * Extract PERSON_OBSERVATION OBX segments (before first ORC or RXA).
- * These are patient-level observations, not order-specific.
- * Per C1: first ORDER may start with RXA instead of ORC.
- */
-function extractPersonObservations(_message: HL7v2Message): HL7v2Segment[] {
-  // TODO: Implement:
-  // Collect OBX segments that appear before the first ORC or RXA segment
-  return [];
-}
 
 // ============================================================================
 // Patient Handling (reuse ORU pattern)
