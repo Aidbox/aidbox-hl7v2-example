@@ -10,6 +10,8 @@
  */
 
 import { describe, test, expect, afterEach } from "bun:test";
+import { generateImmunizationId } from "../../../../src/v2-to-fhir/messages/vxu-v04";
+import type { ORC } from "../../../../src/hl7v2/generated/fields";
 // TODO: import { parseMessage } from "@atomic-ehr/hl7v2";
 // TODO: import { convertVXU_V04 } from "../../../../src/v2-to-fhir/messages/vxu-v04";
 // TODO: import type { Immunization, Observation } from "../../../../src/fhir/hl7-fhir-r4-core";
@@ -92,10 +94,111 @@ describe("convertVXU_V04", () => {
   });
 
   describe("ID generation", () => {
-    test.todo("ORC-3 with authority produces scoped Immunization ID", TODO);
-    test.todo("ORC-2 used when ORC-3 is missing", TODO);
-    test.todo("ORC present but ORC-3/ORC-2 both empty uses fallback ID", TODO);
-    test.todo("ORDER group without ORC uses fallback ID from MSH-10 + order index", TODO);
+    // Default fallback args for ORC-based tests (ORC paths don't use these)
+    const fallbackArgs = { patientId: "patient-1", cvxCode: "08", adminDateTime: "20160701" };
+
+    test("ORC-3 with namespace authority produces scoped Immunization ID", () => {
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $3_fillerOrderNumber: { $1_value: "65930", $2_namespace: "DCS" },
+      };
+      const id = generateImmunizationId(orc, "MyEMR", fallbackArgs.patientId, fallbackArgs.cvxCode, fallbackArgs.adminDateTime);
+      expect(id).toBe("dcs-65930");
+    });
+
+    test("ORC-3 with system authority (EI.3) when namespace (EI.2) empty", () => {
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $3_fillerOrderNumber: { $1_value: "65930", $3_system: "urn:oid:1.2.3" },
+      };
+      const id = generateImmunizationId(orc, "MyEMR", fallbackArgs.patientId, fallbackArgs.cvxCode, fallbackArgs.adminDateTime);
+      expect(id).toBe("urn-oid-1-2-3-65930");
+    });
+
+    test("ORC-2 used when ORC-3 is missing", () => {
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $2_placerOrderNumber: { $1_value: "PL-100", $2_namespace: "CLINIC" },
+      };
+      const id = generateImmunizationId(orc, "MyEMR", fallbackArgs.patientId, fallbackArgs.cvxCode, fallbackArgs.adminDateTime);
+      expect(id).toBe("clinic-pl-100");
+    });
+
+    test("ORC present but ORC-3 and ORC-2 both empty uses natural-key fallback", () => {
+      const orc: ORC = { $1_orderControl: "RE" };
+      const id = generateImmunizationId(orc, "MyEMR", "patient-1", "08", "20160701");
+      expect(id).toBe("myemr-patient-1-08-20160701");
+    });
+
+    test("ORC absent uses natural-key fallback (patient + vaccine + date)", () => {
+      const id = generateImmunizationId(undefined, "MyEMR", "patient-1", "08", "20160701");
+      expect(id).toBe("myemr-patient-1-08-20160701");
+    });
+
+    test("same vaccine+patient+date in two calls produces same ID (cross-message idempotency)", () => {
+      const id1 = generateImmunizationId(undefined, "MyEMR", "patient-1", "08", "20160701");
+      const id2 = generateImmunizationId(undefined, "MyEMR", "patient-1", "08", "20160701");
+      expect(id1).toBe(id2);
+    });
+
+    test("different vaccine same date produces different ID", () => {
+      const id1 = generateImmunizationId(undefined, "MyEMR", "patient-1", "08", "20160701");
+      const id2 = generateImmunizationId(undefined, "MyEMR", "patient-1", "21", "20160701");
+      expect(id1).not.toBe(id2);
+    });
+
+    test("same vaccine different date produces different ID", () => {
+      const id1 = generateImmunizationId(undefined, "MyEMR", "patient-1", "08", "20160701");
+      const id2 = generateImmunizationId(undefined, "MyEMR", "patient-1", "08", "20170315");
+      expect(id1).not.toBe(id2);
+    });
+
+    test("ORC-3 without authority still uses value (no authority prefix)", () => {
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $3_fillerOrderNumber: { $1_value: "65930" },
+      };
+      const id = generateImmunizationId(orc, "MyEMR", fallbackArgs.patientId, fallbackArgs.cvxCode, fallbackArgs.adminDateTime);
+      expect(id).toBe("65930");
+    });
+
+    test("sanitizes special characters in ID", () => {
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $3_fillerOrderNumber: { $1_value: "ORDER #123", $2_namespace: "MY EMR" },
+      };
+      const id = generateImmunizationId(orc, "MyEMR", fallbackArgs.patientId, fallbackArgs.cvxCode, fallbackArgs.adminDateTime);
+      expect(id).toBe("my-emr-order--123");
+    });
+
+    test("ORC-3 preferred over ORC-2 when both present", () => {
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $2_placerOrderNumber: { $1_value: "PL-100", $2_namespace: "CLINIC" },
+        $3_fillerOrderNumber: { $1_value: "65930", $2_namespace: "DCS" },
+      };
+      const id = generateImmunizationId(orc, "MyEMR", fallbackArgs.patientId, fallbackArgs.cvxCode, fallbackArgs.adminDateTime);
+      expect(id).toBe("dcs-65930");
+    });
+
+    test("whitespace-only EI value falls through to natural-key fallback", () => {
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $3_fillerOrderNumber: { $1_value: "   " },
+      };
+      const id = generateImmunizationId(orc, "MyEMR", "patient-1", "08", "20160701");
+      expect(id).toBe("myemr-patient-1-08-20160701");
+    });
+
+    test("whitespace-only namespace falls through to system authority", () => {
+      const orc: ORC = {
+        $1_orderControl: "RE",
+        $3_fillerOrderNumber: { $1_value: "65930", $2_namespace: "  ", $3_system: "urn:oid:1.2.3" },
+      };
+      const id = generateImmunizationId(orc, "MyEMR", fallbackArgs.patientId, fallbackArgs.cvxCode, fallbackArgs.adminDateTime);
+      expect(id).toBe("urn-oid-1-2-3-65930");
+    });
+
     test.todo("ORDER group without ORC: no FILL/PLAC identifiers, no ordering provider", TODO);
     test.todo("ORDER group without ORC: recorded from RXA-22 fallback if RXA-21=A", TODO);
   });

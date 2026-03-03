@@ -1093,20 +1093,33 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 ## Task 18: VXU message converter — Immunization ID generation
 
-**Goal:** Implement `generateImmunizationId()` — deterministic ID from ORC-3/ORC-2/MSH fallback.
+**Goal:** Implement `generateImmunizationId()` — deterministic ID from ORC-3/ORC-2/natural-key fallback.
 
-- [ ] Implement `generateImmunizationId()` in `vxu-v04.ts`:
+### Task 18a: ORC-based paths (done)
+
+- [x] Implement `generateImmunizationId()` in `vxu-v04.ts`:
   - Path 1: ORC present with ORC-3 (filler) → `sanitize(${authority}-${value})`
   - Path 2: ORC present with ORC-2 (placer), ORC-3 empty → `sanitize(${authority}-${value})`
-  - Path 3: ORC absent or both empty → `sanitize(${mshNamespace}-${messageControlId}-imm-${orderIndex})`
+  - Path 3 (old, replaced by 18b): ORC absent or both empty → MSH-10 fallback
   - `sanitize()`: lowercase, replace non-alphanumeric with hyphens
-- [ ] Write unit tests (design test cases #11, #12, #13, #32):
-  - ORC-3 with authority → authority-scoped ID
-  - ORC-3 empty, ORC-2 with authority → placer-based ID
-  - ORC present, both empty → MSH fallback ID
-  - ORC absent → MSH fallback ID with orderIndex
-  - Sanitization: special characters replaced
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Write unit tests for ORC-based paths
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
+
+### Task 18b: Change ORC-less fallback to natural-key ID
+
+**Rationale:** ORC is optional in HL7 v2.3.1 and v2.4 (confirmed via HAPI source: `ORC.class, false` in VXU_V04 ORDER group). ORC-less messages are spec-compliant, not broken. The original fallback `{mshNamespace}-{messageControlId}-imm-{orderIndex}` used MSH-10 (message ID), which is wrong: same immunization in two messages → different FHIR IDs → duplicates. The natural key for an immunization event is **who got what, when** — patient + vaccine + administration date.
+
+- [x] Change fallback from `{mshNamespace}-{messageControlId}-imm-{orderIndex}` to `{mshNamespace}-{patientId}-{cvxCode}-{adminDateTime}`
+  - `patientId`: FHIR Patient resource ID (already resolved before ORDER processing)
+  - `cvxCode`: RXA-5.1 (required, always present)
+  - `adminDateTime`: RXA-3 (required, converter errors before ID gen if empty)
+- [x] Update function signature: replace `messageControlId: string, orderIndex: number` with `patientId: string, cvxCode: string, adminDateTime: string`
+- [x] Update JSDoc to document the natural-key rationale and HL7 version context
+- [x] Update existing fallback tests to use new signature and expected values
+- [x] Add test: same vaccine+patient+date in two calls → same ID (cross-message idempotency)
+- [x] Add test: different vaccine same date → different ID
+- [x] Add test: same vaccine different date → different ID
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---
@@ -1242,6 +1255,61 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 - [ ] Update design document status to `implemented`
 - [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-23-vxu-design-final" src/ test/`
 - [ ] Run `bun test:all` and `bun run typecheck` — final verification
+
+---
+
+## Task 27: Preprocessor — `fallback-rxa3-from-msh7`
+
+**Goal:** Opt-in preprocessor that injects MSH-7 (Message Date/Time) into RXA-3 when RXA-3 is empty. Escape hatch for broken senders that omit administration date.
+
+**Context:** Real-world sample `data/local/vxu/vxu_sample_1.txt` has empty RXA-3. Without this preprocessor, such messages are hard-rejected (RXA-3 is required for `occurrenceDateTime` and for the natural-key ID fallback). Some deployments may prefer to ingest broken data with a warning rather than reject it entirely.
+
+**Architectural boundary violation:** This preprocessor intentionally crosses the "preprocessors normalize, never fabricate" principle. Existing preprocessors fix *representation* of data the sender sent (authority injection, unit extraction). This one fabricates a value that doesn't exist — MSH-7 is message creation time, not administration time. For historical immunizations reported days/weeks later, MSH-7 can be wildly wrong.
+
+**Implementation:**
+- [ ] Add `fallback-rxa3-from-msh7` to `src/v2-to-fhir/preprocessor-registry.ts`:
+  - If RXA-3 is empty → copy MSH-7 value into RXA-3
+  - Log WARNING: `"RXA-3 empty — using MSH-7 (message date) as fallback administration date. This is clinically incorrect. Fix at the sender."`
+  - If MSH-7 is also empty → do nothing (converter will still error)
+- [ ] Do NOT add to the default `VXU-V04` config in `config/hl7v2-to-fhir.json` — this must be explicitly enabled per sender
+- [ ] Add a commented-out example in config showing how to enable it:
+  ```json
+  // "RXA": { "3": ["fallback-rxa3-from-msh7"], "6": [...], "9": [...] }
+  // WARNING: fallback-rxa3-from-msh7 fabricates administration date from message
+  // send time. Clinically incorrect. Only enable for senders that cannot fix their data.
+  ```
+- [ ] Write unit tests:
+  - RXA-3 empty + MSH-7 present → RXA-3 populated from MSH-7
+  - RXA-3 already present → no change
+  - RXA-3 empty + MSH-7 empty → no change (error flows naturally)
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 28: Preprocessor documentation
+
+**Goal:** Write comprehensive documentation for the preprocessor system in `docs/developer-guide/preprocessors.md`.
+
+- [ ] Document the preprocessor architecture:
+  - What preprocessors are and how they work (config-driven, per-segment, per-field)
+  - How to add a new preprocessor (registry, config, testing)
+  - How the preprocessor iteration loop works (`preprocessor.ts`)
+- [ ] Document every existing preprocessor with its purpose, behavior, and config:
+  - `inject-authority-from-msh` — PID-3 authority injection
+  - `move-pid2-into-pid3` — PID-2 → PID-3 migration
+  - `fix-pv1-authority-with-msh` — PV1-19 authority fix
+  - `inject-authority-into-orc3` — ORC-3 authority injection
+  - `normalize-rxa6-dose` — RXA-6 dose normalization (999 sentinel, embedded units)
+  - `normalize-rxa9-nip001` — RXA-9 NIP001 system injection
+  - `fallback-rxa3-from-msh7` — RXA-3 fallback from MSH-7 (**include prominent warning**)
+- [ ] Document the architectural principle: "preprocessors normalize, converter stays honest"
+  - Explain the boundary: preprocessors fix *representation* of data the sender sent
+  - Explicitly call out `fallback-rxa3-from-msh7` as the one exception that crosses this boundary
+  - Explain why it exists (pragmatic escape hatch for broken senders) and the risks (clinically incorrect dates, false idempotency)
+- [ ] Add cross-reference from CLAUDE.md preprocessor section to the new doc
+- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [ ] Stop and request user feedback before proceeding
 
 ---
 
