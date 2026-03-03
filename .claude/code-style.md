@@ -151,6 +151,32 @@ const entityIdentifier = eiComponents[1];
 - Never mock Aidbox behavior — if a test depends on Aidbox, make it an integration test against the real test instance
 - Use shared helpers from `test/integration/helpers.ts` for creating test resources; local helpers are OK only when there's a single integration test file for that domain
 
+## Prefer immutable handlers over in-place mutation
+
+When a function transforms data, return new values instead of mutating the input. This makes data flow explicit and avoids partially-mutated state on error paths.
+
+```typescript
+/* BAD — mutates input, error leaves object half-modified */
+function applyUpdate(resource: Immunization, data: Data): string | undefined {
+  resource.field1 = data.a;
+  if (badCondition) return "error";
+  resource.field2 = data.b;
+  return undefined;
+}
+
+/* GOOD — returns new fields or a typed error, caller merges */
+type UpdateResult = { fields: Partial<Immunization> } | { error: string };
+
+function applyUpdate(data: Data): UpdateResult {
+  if (badCondition) return { error: "error" };
+  return { fields: { field1: data.a, field2: data.b } };
+}
+
+const result = applyUpdate(data);
+if ("error" in result) { /* handle error */ }
+const updated = { ...original, ...result.fields };
+```
+
 ## General Principles
 
 - Don't add error handling, fallbacks, or validation for scenarios that can't happen

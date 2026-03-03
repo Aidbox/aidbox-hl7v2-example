@@ -16,9 +16,12 @@
  * 1. Parse MSH, PID, PV1 (reuse ORU patterns)
  * 2. Extract PERSON_OBSERVATION OBX -> standalone Observations
  * 3. Group ORDER segments (ORC+RXA+RXR+OBX)
- * 4. Convert each ORDER -> base Immunization
- * 5. Apply CDC IIS enrichment (ORDER OBX -> Immunization fields, RXA-9 NIP001)
- * 6. Build transaction bundle
+ * 4. Convert each ORDER -> Immunization:
+ *    a. RXA -> base Immunization fields
+ *    b. RXR -> route
+ *    c. ORDER OBX -> CDC IIS fields (applyOrderOBXFields)
+ *    d. RXA-9 -> primarySource/reportOrigin (interpretRXA9Source)
+ * 5. Build transaction bundle
  */
 
 import type { HL7v2Message, HL7v2Segment } from "../../hl7v2/generated/types";
@@ -54,7 +57,7 @@ import type { ConverterContext } from "../converter-context";
 import type { Hl7v2ToFhirConfig } from "../config";
 import type { PatientLookupFn, EncounterLookupFn } from "../aidbox-lookups";
 import type { PatientIdResolver } from "../identity-system/patient-id";
-import { cdcIisEnrichment } from "../ig-enrichment/cdc-iis-enrichment";
+import { applyOrderOBXFields, interpretRXA9Source } from "../cdc-iis-ig";
 import { createBundleEntry } from "../fhir-bundle";
 
 // ============================================================================
@@ -177,20 +180,14 @@ export async function convertVXU_V04(
   // 6. For each ORDER group:
   //    a. Parse ORC, RXA, RXR segments
   //    b. Convert to base Immunization via convertRXAToImmunization()
-  //    c. Link patient reference
-  //    d. Link encounter reference (if present)
-  //    e. Add meta tags
+  //    c. Apply CDC IIS ORDER OBX fields: applyOrderOBXFields(group.obxSegments)
+  //    d. Apply RXA-9 NIP001: interpretRXA9Source(rxa.$9_administrationNotes)
+  //    e. Link patient/encounter references, add meta tags
   //    f. Collect Immunization + Practitioner entries
   //
-  // 7. Build initial ConversionResult with bundle
+  // 7. Build transaction bundle with all entries
   //
-  // 8. Apply CDC IIS enrichment:
-  //    result = cdcIisEnrichment.enrich(parsed, result, senderContext);
-  //    If enrichment returns error -> return error result
-  //
-  // 9. Add draft patient/encounter entries to bundle
-  //
-  // 10. Return final ConversionResult
+  // 8. Return ConversionResult
 
   // Placeholder return -- will be replaced during implementation
   return {

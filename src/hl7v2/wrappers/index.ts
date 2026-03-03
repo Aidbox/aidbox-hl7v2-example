@@ -5,3 +5,4 @@
  */
 
 export { fromOBX } from "./obx";
+export type { WrappedOBX } from "./obx";
