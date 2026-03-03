@@ -23,7 +23,8 @@ import type { CE } from "../hl7v2/generated/fields";
 import type { WrappedOBX } from "../hl7v2/wrappers";
 import { fromOBX } from "../hl7v2/wrappers";
 import { convertCEToCodeableConcept } from "./datatypes/ce-codeableconcept";
-import type { Immunization, CodeableConcept } from "../fhir/hl7-fhir-r4-core";
+import type { Immunization, CodeableConcept, ImmunizationEducation } from "../fhir/hl7-fhir-r4-core";
+import { convertDTMToDate } from "./datatypes/dtm-datetime";
 
 // ============================================================================
 // Known ORDER-level OBX LOINC codes (CDC IIS IG)
@@ -106,21 +107,27 @@ type OrderOBXResult =
  * CDC IIS code set, and accumulates the resulting Immunization fields.
  * Returns an error on the first unknown/invalid OBX code.
  *
- * VIS codes (69764-9, 29768-9, 29769-7, 30956-7) are skipped here — they
- * will be handled by VIS grouping logic (Task 16).
+ * VIS codes (69764-9, 29768-9, 29769-7, 30956-7) are grouped by OBX-4 sub-ID
+ * into `education[]` entries per CDC IIS IG.
  */
 export function applyOrderOBXFields(
   obxSegments: HL7v2Segment[],
 ): { fields: Partial<Immunization> } | { error: string } {
   let fields: Partial<Immunization> = {};
+  const visGroupsBySubId = new Map<string, ImmunizationEducation>();
 
   for (const segment of obxSegments) {
     const obx = fromOBX(segment);
-    const result = applyOrderOBX(obx);
+    const result = applyOrderOBX(obx, visGroupsBySubId);
     if ("error" in result) {
       return result;
     }
     fields = { ...fields, ...result.fields };
+  }
+
+  const education = buildEducationEntries(visGroupsBySubId);
+  if (education.length > 0) {
+    fields = { ...fields, education };
   }
 
   return { fields };
@@ -130,9 +137,12 @@ export function applyOrderOBXFields(
  * Map a single ORDER OBX to Immunization fields.
  *
  * Returns new field values to merge into the Immunization, or an error.
- * VIS codes are skipped here (handled by VIS grouping in Task 16).
+ * VIS codes are collected into visGroups by OBX-4 sub-ID for later grouping.
  */
-function applyOrderOBX(obx: WrappedOBX): OrderOBXResult {
+function applyOrderOBX(
+  obx: WrappedOBX,
+  visGroups: Map<string, Partial<ImmunizationEducation>>,
+): OrderOBXResult {
   const obxCode = obx.$3_observationIdentifier?.$1_code;
   const obxSystem = obx.$3_observationIdentifier?.$3_system;
 
@@ -149,8 +159,8 @@ function applyOrderOBX(obx: WrappedOBX): OrderOBXResult {
     };
   }
 
-  // VIS codes are handled by grouping logic (Task 16) — skip here
   if (VIS_LOINC_CODES.has(obxCode)) {
+    collectVISField(obx, obxCode, visGroups);
     return { fields: {} };
   }
 
@@ -186,6 +196,58 @@ function applyOrderOBX(obx: WrappedOBX): OrderOBXResult {
     default:
       return { fields: {} };
   }
+}
+
+/**
+ * Collect a VIS OBX field into the group map keyed by OBX-4 sub-ID.
+ *
+ * CDC IIS IG uses OBX-4 to correlate VIS document type, publication date,
+ * presentation date, and reference URI into a single education[] entry.
+ * OBX segments sharing the same sub-ID form one ImmunizationEducation entry.
+ */
+function collectVISField(
+  obx: WrappedOBX,
+  loincCode: string,
+  visGroups: Map<string, ImmunizationEducation>,
+): void {
+  const subId = obx.$4_observationSubId || "_default";
+  let group = visGroups.get(subId);
+  if (!group) {
+    group = {} as ImmunizationEducation;
+    visGroups.set(subId, group);
+  }
+
+  const obxValue = obx.$5_observationValue?.[0];
+  if (!obxValue) return;
+
+  switch (loincCode) {
+    case "69764-9":
+      group.documentType = obxValue;
+      break;
+    case "29768-9":
+      group.publicationDate = convertDTMToDate(obxValue);
+      break;
+    case "29769-7":
+      group.presentationDate = convertDTMToDate(obxValue);
+      break;
+    case "30956-7":
+      group.reference = obxValue;
+      break;
+  }
+}
+
+/** Build education[] entries from VIS groups, preserving insertion order. */
+function buildEducationEntries(
+  visGroups: Map<string, ImmunizationEducation>,
+): ImmunizationEducation[] {
+  const entries: ImmunizationEducation[] = [];
+  for (const group of visGroups.values()) {
+    const hasAnyField = group.documentType || group.publicationDate || group.presentationDate || group.reference;
+    if (hasAnyField) {
+      entries.push(group);
+    }
+  }
+  return entries;
 }
 
 /**

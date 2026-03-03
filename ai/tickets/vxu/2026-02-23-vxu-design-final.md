@@ -1044,19 +1044,19 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Implement VIS (Vaccine Information Statement) OBX grouping by OBX-4 sub-ID into `education[]` entries.
 
-- [ ] Implement VIS OBX handlers in `src/v2-to-fhir/cdc-iis-ig.ts` (inside `applyOrderOBXFields`):
+- [x] Implement VIS OBX handlers in `src/v2-to-fhir/cdc-iis-ig.ts` (inside `applyOrderOBXFields`):
   - `69764-9` → `education[].documentType` (VIS document type)
   - `29768-9` → `education[].publicationDate` (VIS publication date)
   - `29769-7` → `education[].presentationDate` (VIS presentation date)
   - `30956-7` → `education[].reference` (VIS document URI)
-- [ ] Implement grouping by OBX-4 sub-ID: entries sharing same sub-ID form a single `education[]` entry
-- [ ] Handle partial VIS entries (e.g., doc type without dates) — still valid
-- [ ] Write unit tests (design test cases #21, #43):
+- [x] Implement grouping by OBX-4 sub-ID: entries sharing same sub-ID form a single `education[]` entry
+- [x] Handle partial VIS entries (e.g., doc type without dates) — still valid
+- [x] Write unit tests (design test cases #21, #43):
   - VIS OBX group (69764-9 + 29768-9 + 29769-7) with same OBX-4 → single education[] entry
   - VIS OBX 30956-7 → education.reference
   - Multiple VIS groups with different OBX-4 → multiple education[] entries
   - Partial VIS (doc type without dates) → education entry with only documentType
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---
