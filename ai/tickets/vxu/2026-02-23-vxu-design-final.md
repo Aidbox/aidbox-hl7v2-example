@@ -1120,7 +1120,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 - [x] Add test: different vaccine same date → different ID
 - [x] Add test: same vaccine different date → different ID
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -1128,7 +1128,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Wire everything together in `convertVXU_V04()` — the main entry point.
 
-- [ ] Implement `convertVXU_V04()` in `vxu-v04.ts` following the design's conversion flow:
+- [x] Implement `convertVXU_V04()` in `vxu-v04.ts` following the design's conversion flow:
   1. `parseMSH()` → sender context + meta tags (from shared module)
   2. Parse PID → `handlePatient()` → Patient resource (from shared module)
   3. Parse PV1 (optional) → `handleEncounter()` with `"VXU-V04"` key (from shared module)
@@ -1142,14 +1142,14 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
      - Collect Immunization + Practitioner entries
   7. Build transaction bundle with all entries
   8. Return `ConversionResult` with bundle + messageUpdate
-- [ ] Handle mapping errors from PERSON_OBSERVATION OBX (same pattern as ORU)
-- [ ] Write unit tests (design test cases #14, #17, #24-26):
+- [x] Handle mapping errors from PERSON_OBSERVATION OBX (same pattern as ORU)
+- [x] Write unit tests (design test cases #14, #17, #24-26):
   - Missing RXA → error status
   - Multiple ORDER groups → multiple Immunizations with distinct IDs
   - PV1 missing → no Encounter, Immunization.encounter omitted
   - PV1 present → Encounter created, Immunization.encounter reference set
   - Unknown patient → draft Patient with active=false
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---

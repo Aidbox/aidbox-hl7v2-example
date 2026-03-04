@@ -1,6 +1,4 @@
 /**
- * DESIGN PROTOTYPE: 2026-02-23-vxu-design-final.md
- *
  * CDC IIS (Immunization Information System) IG — ORDER-level helpers
  *
  * Maps ORDER-level OBX segments to FHIR Immunization fields per CDC IIS IG:
