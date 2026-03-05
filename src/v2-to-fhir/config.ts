@@ -19,6 +19,7 @@ export type MessageTypeConfig = {
       "3"?: SegmentPreprocessorId[];
     };
     RXA?: {
+      "3"?: SegmentPreprocessorId[];
       "6"?: SegmentPreprocessorId[];
       "9"?: SegmentPreprocessorId[];
     };
@@ -70,7 +71,7 @@ export function hl7v2ToFhirConfig(): Hl7v2ToFhirConfig {
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(fileContent);
+    parsed = JSON.parse(stripJsonComments(fileContent));
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown parse error";
     throw new Error(
@@ -176,4 +177,78 @@ function validatePreprocessorIds(config: Hl7v2ToFhirConfig): void {
  */
 export function clearConfigCache(): void {
   cachedConfig = null;
+}
+
+/**
+ * Strips JSONC-style comments while preserving comment-like tokens inside strings.
+ * Supports `// line` and `/* block *\/` comments.
+ */
+function stripJsonComments(input: string): string {
+  let output = "";
+  let inString = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i]!;
+    const nextChar = input[i + 1];
+
+    if (inLineComment) {
+      if (char === "\n") {
+        inLineComment = false;
+        output += char;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (char === "*" && nextChar === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inString) {
+      output += char;
+
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escapeNext = true;
+        continue;
+      }
+
+      if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      output += char;
+      continue;
+    }
+
+    if (char === "/" && nextChar === "/") {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+
+    if (char === "/" && nextChar === "*") {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+
+    output += char;
+  }
+
+  return output;
 }

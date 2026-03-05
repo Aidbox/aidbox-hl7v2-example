@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 reviewer-iterations: 4
 prototype-files:
   - src/v2-to-fhir/messages/vxu-v04.ts
@@ -1242,17 +1242,17 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - `generateImmunizationId()` — explain 3-level fallback
   - VIS OBX grouping by sub-ID — explain correlation logic
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
 ## Task 26: Cleanup design artifacts
 
-- [ ] Remove all `DESIGN PROTOTYPE: 2026-02-23-vxu-design-final.md` comments from codebase
-- [ ] Delete any empty scaffold files that were replaced
-- [ ] Update design document status to `implemented`
-- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-23-vxu-design-final" src/ test/`
-- [ ] Run `bun test:all` and `bun run typecheck` — final verification
+- [x] Remove all `DESIGN PROTOTYPE: 2026-02-23-vxu-design-final.md` comments from codebase
+- [x] Delete any empty scaffold files that were replaced
+- [x] Update design document status to `implemented`
+- [x] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-23-vxu-design-final" src/ test/`
+- [x] Run `bun test:all` and `bun run typecheck` — final verification
 
 ---
 
@@ -1265,23 +1265,23 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 **Architectural boundary violation:** This preprocessor intentionally crosses the "preprocessors normalize, never fabricate" principle. Existing preprocessors fix *representation* of data the sender sent (authority injection, unit extraction). This one fabricates a value that doesn't exist — MSH-7 is message creation time, not administration time. For historical immunizations reported days/weeks later, MSH-7 can be wildly wrong.
 
 **Implementation:**
-- [ ] Add `fallback-rxa3-from-msh7` to `src/v2-to-fhir/preprocessor-registry.ts`:
+- [x] Add `fallback-rxa3-from-msh7` to `src/v2-to-fhir/preprocessor-registry.ts`:
   - If RXA-3 is empty → copy MSH-7 value into RXA-3
   - Log WARNING: `"RXA-3 empty — using MSH-7 (message date) as fallback administration date. This is clinically incorrect. Fix at the sender."`
   - If MSH-7 is also empty → do nothing (converter will still error)
-- [ ] Do NOT add to the default `VXU-V04` config in `config/hl7v2-to-fhir.json` — this must be explicitly enabled per sender
-- [ ] Add a commented-out example in config showing how to enable it:
+- [x] Do NOT add to the default `VXU-V04` config in `config/hl7v2-to-fhir.json` — this must be explicitly enabled per sender
+- [x] Add a commented-out example in config showing how to enable it:
   ```json
   // "RXA": { "3": ["fallback-rxa3-from-msh7"], "6": [...], "9": [...] }
   // WARNING: fallback-rxa3-from-msh7 fabricates administration date from message
   // send time. Clinically incorrect. Only enable for senders that cannot fix their data.
   ```
-- [ ] Write unit tests:
+- [x] Write unit tests:
   - RXA-3 empty + MSH-7 present → RXA-3 populated from MSH-7
   - RXA-3 already present → no change
   - RXA-3 empty + MSH-7 empty → no change (error flows naturally)
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Stop and request user feedback before proceeding
 
 ---
 

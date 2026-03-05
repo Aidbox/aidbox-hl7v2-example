@@ -231,7 +231,7 @@ describe("preprocessMessage", () => {
       expect(getPv1_19Authority(result)).toBeUndefined();
     });
 
-    test("processes only when configured field is present", () => {
+    test("standard preprocessors run only when configured field is present", () => {
       const rawMessage = [
         "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
         "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
@@ -684,6 +684,90 @@ describe("preprocessMessage", () => {
       expect(notes).toHaveLength(1);
       expect(notes![0]!.$1_code).toBe("00");
       expect(notes![0]!.$3_system).toBe("OTHERSYS");
+    });
+  });
+
+  describe("fallback-rxa3-from-msh7", () => {
+    const fallbackConfig: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "VXU-V04": {
+          preprocess: { RXA: { "3": ["fallback-rxa3-from-msh7"] } },
+        },
+      },
+    };
+
+    function getRxa3(parsed: ReturnType<typeof parseMessage>): string | undefined {
+      const rxaSegment = parsed.find((segment) => segment.segment === "RXA");
+      if (!rxaSegment) {
+        return undefined;
+      }
+      return fromRXA(rxaSegment).$3_startAdministrationDateTime;
+    }
+
+    test("RXA-3 empty + MSH-7 present uses MSH-7 as fallback", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105123000||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1||20260101|08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, fallbackConfig);
+
+      expect(getRxa3(result)).toBe("20260105123000");
+    });
+
+    test("RXA-3 already present is unchanged", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105123000||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20251231110000|20251231110000|08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, fallbackConfig);
+
+      expect(getRxa3(result)).toBe("20251231110000");
+    });
+
+    test("RXA-3 empty + MSH-7 empty stays empty", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1||20260101|08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, fallbackConfig);
+
+      expect(getRxa3(result)).toBeUndefined();
+    });
+
+    test("misconfigured field key does not trigger fallback", () => {
+      const misconfiguredFieldConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "VXU-V04": {
+            preprocess: {
+              RXA: {
+                "99": ["fallback-rxa3-from-msh7"],
+              },
+            },
+          },
+        },
+      } as unknown as Hl7v2ToFhirConfig;
+
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105123000||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1||20260101|08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, misconfiguredFieldConfig);
+
+      expect(getRxa3(result)).toBeUndefined();
     });
   });
 });

@@ -41,6 +41,59 @@ describe("hl7v2ToFhirConfig", () => {
     );
   });
 
+  test("config supports full-line // comments", () => {
+    readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(`{
+  // Comment line should be ignored
+  "identitySystem": { "patient": { "rules": [{ "assigner": "UNIPAT" }] } },
+  "messages": {
+    "VXU-V04": {
+      "preprocess": {
+        // This preprocessor remains opt-in by default
+        "RXA": { "6": ["normalize-rxa6-dose"] }
+      }
+    }
+  }
+}`);
+
+    const config = hl7v2ToFhirConfig();
+
+    expect(config.messages?.["VXU-V04"]?.preprocess?.RXA?.["6"]?.[0]).toBe("normalize-rxa6-dose");
+  });
+
+  test("config supports inline // comments and /* block */ comments", () => {
+    readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(`{
+  "identitySystem": { "patient": { "rules": [{ "assigner": "UNIPAT" }] } }, // inline
+  "messages": {
+    "VXU-V04": {
+      /* block comment */
+      "preprocess": { "RXA": { "9": ["normalize-rxa9-nip001"] } }
+    }
+  }
+}`);
+
+    const config = hl7v2ToFhirConfig();
+
+    expect(config.messages?.["VXU-V04"]?.preprocess?.RXA?.["9"]?.[0]).toBe("normalize-rxa9-nip001");
+  });
+
+  test("comment stripping does not alter // inside string values", () => {
+    readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(`{
+  "identitySystem": { "patient": { "rules": [{ "assigner": "UNIPAT" }] } },
+  "messages": {
+    "ORU-R01": {
+      "converter": { "PV1": { "required": false } },
+      "exampleUrl": "https://example.org/path//keep"
+    }
+  }
+}`);
+
+    const config = hl7v2ToFhirConfig() as Hl7v2ToFhirConfig & {
+      messages?: Record<string, { exampleUrl?: string } | undefined>;
+    };
+
+    expect(config.messages?.["ORU-R01"]?.exampleUrl).toBe("https://example.org/path//keep");
+  });
+
   test("valid config returns typed object with correct structure", () => {
     const validConfig: Hl7v2ToFhirConfig = {
       identitySystem: { patient: { rules: minimalRules } },

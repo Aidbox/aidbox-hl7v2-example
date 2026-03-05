@@ -22,6 +22,7 @@ export const SEGMENT_PREPROCESSORS: Record<string, SegmentPreprocessorFn> = {
   "move-pid2-into-pid3": movePid2IntoPid3,
   "inject-authority-from-msh": injectAuthorityFromMsh,
   "inject-authority-into-orc3": injectAuthorityIntoOrc3,
+  "fallback-rxa3-from-msh7": fallbackRxa3FromMsh7,
   "normalize-rxa6-dose": normalizeRxa6Dose,
   "normalize-rxa9-nip001": normalizeRxa9Nip001,
 };
@@ -320,6 +321,41 @@ function injectAuthorityIntoOrc3(
 }
 
 /**
+ * If RXA-3 is empty, copy MSH-7 as a fallback administration date.
+ * This is intentionally opt-in and clinically unsafe for delayed reporting.
+ */
+function fallbackRxa3FromMsh7(
+  context: PreprocessorContext,
+  segment: HL7v2Segment,
+): void {
+  if (segment.segment !== "RXA") {
+    return;
+  }
+
+  const rxa3 = segment.fields[3];
+  if (hasNonEmptyFieldValue(rxa3)) {
+    return;
+  }
+
+  const mshSegment = findSegment(context.parsedMessage, "MSH");
+  if (!mshSegment) {
+    return;
+  }
+
+  const msh = fromMSH(mshSegment);
+  const msh7 = msh.$7_messageDateTime?.trim();
+  if (!msh7) {
+    return;
+  }
+
+  segment.fields[3] = msh7 as FieldValue;
+  console.warn(
+    "RXA-3 empty - using MSH-7 (message date) as fallback administration date. " +
+      "This is clinically incorrect. Fix at the sender.",
+  );
+}
+
+/**
  * Inject namespace into an EI field (EI.2) when EI.1 is present but EI.2/EI.3 are both empty.
  * Modifies the segment in place.
  */
@@ -358,6 +394,18 @@ function injectNamespaceIntoEi(
   }
 
   eiComponents[2] = namespace;
+}
+
+function hasNonEmptyFieldValue(fieldValue: FieldValue | undefined): boolean {
+  if (fieldValue === undefined || fieldValue === null) {
+    return false;
+  }
+
+  if (typeof fieldValue === "string") {
+    return fieldValue.trim().length > 0;
+  }
+
+  return true;
 }
 
 /**
