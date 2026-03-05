@@ -145,6 +145,25 @@ V2-to-FHIR Processor handles `ORM^O01` messages by:
 4. Creating related Condition (DG1), Observation (OBX), and Coverage (IN1) resources
 5. Treating class-only PV1 (missing PV1-19 visit number) as absent for ORM to avoid false warnings
 
+### VXU Processing (HL7v2 → FHIR)
+
+V2-to-FHIR Processor handles `VXU^V04` (Unsolicited Vaccination Record Update) messages by:
+1. Parsing PID (required), PV1 (optional, config-driven — same as ORU)
+2. Extracting PERSON_OBSERVATION OBX (before first ORC/RXA) → standalone Observations
+3. Grouping ORDER segments: optional ORC + RXA + optional RXR + optional OBX
+4. Converting each ORDER group → FHIR Immunization:
+   - RXA → core fields (vaccineCode, status, occurrenceDateTime, doseQuantity, lotNumber)
+   - RXR → route/site
+   - ORC → identifiers (FILL/PLAC), ordering provider, recorded date
+   - ORDER OBX → CDC IIS IG fields (programEligibility, fundingSource, education[], protocolApplied, note)
+   - RXA-9 NIP001 → primarySource/reportOrigin (CDC IIS IG)
+5. Creating Practitioner (RXA-10, function=AP) and PractitionerRole (ORC-12, function=OP)
+6. ORC is optional — real-world senders frequently omit it. Fallback ID uses natural key (patient+vaccine+date).
+
+**Key design decisions:** Unknown LOINC codes in ORDER-level OBX produce a hard error (not a generic Observation fallback). See ADR: `docs/developer-guide/adr/001-unknown-order-obx-hard-error.md`.
+
+→ Details: `src/v2-to-fhir/messages/vxu-v04.ts`, `src/v2-to-fhir/cdc-iis-ig.ts`
+
 ### Code Mapping (Multiple Types)
 
 When HL7v2 codes can't be mapped to valid FHIR values:
@@ -210,8 +229,9 @@ src/
 │   ├── config.ts         # Config loader for config/hl7v2-to-fhir.json
 │   ├── preprocessor.ts   # Config-driven preprocessing before conversion
 │   ├── id-generation.ts  # Encounter ID from PV1-19 (HL7 v2.8.2 CX rules)
+│   ├── cdc-iis-ig.ts     # CDC IIS IG helpers: ORDER OBX → Immunization fields, NIP001 source
 │   ├── messages/         # ADT_A01, ADT_A08, ORU_R01, ORM_O01, VXU_V04 converters
-│   └── segments/         # PID, OBX, etc. converters
+│   └── segments/         # PID, OBX, RXA→Immunization, etc. converters
 ├── code-mapping/         # Code mapping for multiple field types
 │   ├── mapping-types.ts  # Mapping type registry (CRITICAL: add new types here)
 │   ├── mapping-errors.ts # MappingError types and builders
@@ -240,6 +260,7 @@ For implementation details, see `docs/developer-guide/`:
 | HL7v2 builders, field naming (`$N_fieldName`)                                            | `hl7v2-module.md` |
 | HL7 reference JSON generation (XSD+PDF → data/hl7v2-reference), used by hl7v2-info skill | `how-to/hl7v2-reference-generation.md` |
 | Testing, integration infra, codegen/debug workflows                                      | `how-to/development-guide.md` |
+| VXU ORDER OBX hard error decision                                                        | `adr/001-unknown-order-obx-hard-error.md` |
 | Coding standards                                                                         | `.claude/code-style.md` |
 
 ## Bun Guidelines

@@ -1231,17 +1231,17 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 ## Task 25: Documentation
 
-- [ ] Update CLAUDE.md:
+- [x] Update CLAUDE.md:
   - Add VXU_V04 to the "Workflows" section alongside ORU/ADT
   - Add `rxa-immunization.ts` to segment converters list in Project Structure
   - Add `cdc-iis-ig.ts` to Project Structure
   - Mention VXU in the "ORU Processing" section title (rename to "Incoming Message Processing" or similar if appropriate)
-- [ ] Record the ADR for "Unknown ORDER OBX LOINC Codes → Hard Error" in project documentation (the design specifies `docs/developer-guide/adr/` or equivalent)
-- [ ] Add inline documentation for complex functions:
+- [x] Record the ADR for "Unknown ORDER OBX LOINC Codes → Hard Error" in project documentation (the design specifies `docs/developer-guide/adr/` or equivalent)
+- [x] Add inline documentation for complex functions:
   - `groupVXUOrders()` — explain grouping algorithm
   - `generateImmunizationId()` — explain 3-level fallback
   - VIS OBX grouping by sub-ID — explain correlation logic
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 - [ ] Stop and request user feedback before proceeding
 
 ---
