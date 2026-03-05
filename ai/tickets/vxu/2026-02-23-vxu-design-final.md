@@ -922,7 +922,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - ORC-9 empty + RXA-21≠A → no recorded
   - ORC absent + RXA-21=A + RXA-22 present → recorded from RXA-22
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -941,7 +941,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - RXR with empty RXR-1 → route omitted, site preserved
   - RXR absent → no route, no site
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -960,7 +960,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - ORC present but ORC-3 and ORC-2 both empty → no identifiers
   - ORC absent → no identifiers
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -981,7 +981,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - RXA-10 empty → no administering performer
   - ORC absent → no ordering performer
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -1011,7 +1011,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - Unknown NIP001 code → primarySource=true
   - Multiple RXA-9 entries with one NIP001 → correct one found
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -1036,7 +1036,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - Unknown LOINC → hard error
   - Non-LOINC OBX-3 → hard error
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -1057,7 +1057,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - Multiple VIS groups with different OBX-4 → multiple education[] entries
   - Partial VIS (doc type without dates) → education entry with only documentType
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -1087,7 +1087,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - OBX before first ORC/RXA → extracted as person observations
   - No ORDER segments → empty array
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -1150,7 +1150,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - PV1 present → Encounter created, Immunization.encounter reference set
   - Unknown patient → draft Patient with active=false
 - [x] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -1158,7 +1158,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Cover remaining message-level test cases: PERSON_OBSERVATION handling, ORC-less orders, and preprocessor integration.
 
-- [ ] Write unit tests (design test cases #18, #32-33, #34-36, #41):
+- [x] Write unit tests (design test cases #18, #32-33, #34-36, #41):
   - PERSON_OBSERVATION OBX before first ORC/RXA → standalone Observation with subject=Patient
   - ORDER without ORC → Immunization with fallback ID, no FILL/PLAC identifiers, no ordering provider
   - ORDER without ORC + RXA-21=A + RXA-22 → recorded from RXA-22 fallback
@@ -1166,9 +1166,9 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - Preprocessor integration: RXA-6 "0.3 mL" → extracted value
   - Preprocessor integration: RXA-9 bare "00" → NIP001 injected, primarySource=true
   - RXA-6 "0" → doseQuantity.value=0
-- [ ] Fix any issues discovered during testing
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Fix any issues discovered during testing
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -1176,7 +1176,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Verify all 10 VXU test fixtures have correct field positions before integration tests.
 
-- [ ] Run `scripts/hl7v2-inspect.sh` on each fixture to verify field positions:
+- [x] Run `scripts/hl7v2-inspect.sh` on each fixture to verify field positions:
   - `test/fixtures/hl7v2/vxu-v04/base.hl7` — verify RXA-5 (vaccineCode), RXA-6 (dose), RXA-20 (status), ORC-3 (filler), ORC-12 (ordering provider), RXR-1 (route), RXR-2 (site)
   - `test/fixtures/hl7v2/vxu-v04/not-administered.hl7` — verify RXA-20=RE, RXA-18 (statusReason)
   - `test/fixtures/hl7v2/vxu-v04/historical.hl7` — verify RXA-9 (NIP001 "01")
@@ -1187,8 +1187,7 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - `test/fixtures/hl7v2/vxu-v04/no-orc-identifiers.hl7` — verify ORC present but empty fields
   - `test/fixtures/hl7v2/vxu-v04/error/missing-rxa.hl7` — verify ORC without RXA
   - `test/fixtures/hl7v2/vxu-v04/error/unknown-order-obx.hl7` — verify unknown LOINC code
-- [ ] Fix any field position errors discovered
-- [ ] Stop and request user feedback before proceeding
+- [x] Fix any field position errors discovered
 
 ---
 
@@ -1196,12 +1195,11 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** E2E test: submit VXU via processing pipeline, verify Immunization + Patient created in Aidbox.
 
-- [ ] Read existing integration test patterns in `test/integration/v2-to-fhir/oru-r01.integration.test.ts`
-- [ ] Implement in `test/integration/v2-to-fhir/vxu-v04.integration.test.ts`:
+- [x] Read existing integration test patterns in `test/integration/v2-to-fhir/oru-r01.integration.test.ts`
+- [x] Implement in `test/integration/v2-to-fhir/vxu-v04.integration.test.ts`:
   - #27: Happy path — submit `base.hl7`, verify Immunization resource in Aidbox with correct vaccineCode, status, occurrenceDateTime, route, site, performers
   - #31: Idempotent reprocessing — same VXU processed twice produces same resources (deterministic IDs)
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
 
 ---
 
@@ -1209,12 +1207,12 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** E2E tests for CDC IIS IG fields, person observations, and multiple ORDER groups.
 
-- [ ] Implement in `vxu-v04.integration.test.ts`:
+- [x] Implement in `vxu-v04.integration.test.ts`:
   - #28: Submit message with CDC IIS OBX → verify programEligibility and education on Immunization
   - #29: Submit `with-person-observations.hl7` → verify standalone Observation created
   - #30: Submit `multiple-orders.hl7` → verify multiple Immunizations with distinct IDs
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Stop and request user feedback before proceeding
 
 ---
 
@@ -1222,12 +1220,12 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** E2E tests for no-ORC, not-administered, and error conditions.
 
-- [ ] Implement in `vxu-v04.integration.test.ts`:
+- [x] Implement in `vxu-v04.integration.test.ts`:
   - #39: Submit `no-orc.hl7` → verify Immunization created with fallback ID
   - Not-administered: submit `not-administered.hl7` → verify status=not-done
   - Error: submit `error/unknown-order-obx.hl7` → verify message gets error status
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Stop and request user feedback before proceeding
 
 ---
 

@@ -299,8 +299,9 @@ export async function convertVXU_V04(
   // 5. Group ORDER segments
   const groupResult = groupVXUOrders(parsed);
   if ("error" in groupResult) {
+    // Omit patient ref: bundle not submitted yet, Patient doesn't exist in Aidbox
     return {
-      messageUpdate: { status: "error", error: groupResult.error, patient: patientRef },
+      messageUpdate: { status: "error", error: groupResult.error },
     };
   }
 
@@ -314,8 +315,9 @@ export async function convertVXU_V04(
       group, mshNamespace, patientId, patientRef, encounterRef, baseMeta,
     );
     if (result.error) {
+      // Omit patient ref: bundle not submitted yet, Patient doesn't exist in Aidbox
       return {
-        messageUpdate: { status: "error", error: result.error, patient: patientRef },
+        messageUpdate: { status: "error", error: result.error },
       };
     }
     orderEntries.push(...result.entries);

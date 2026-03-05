@@ -11,8 +11,9 @@ import { describe, test, expect, afterEach } from "bun:test";
 import { parseMessage } from "@atomic-ehr/hl7v2";
 import { generateImmunizationId, convertVXU_V04 } from "../../../../src/v2-to-fhir/messages/vxu-v04";
 import type { ORC } from "../../../../src/hl7v2/generated/fields";
-import type { Immunization, Patient, Encounter } from "../../../../src/fhir/hl7-fhir-r4-core";
-import { clearConfigCache } from "../../../../src/v2-to-fhir/config";
+import type { Immunization, Observation, Patient, Encounter } from "../../../../src/fhir/hl7-fhir-r4-core";
+import { clearConfigCache, hl7v2ToFhirConfig } from "../../../../src/v2-to-fhir/config";
+import { preprocessMessage } from "../../../../src/v2-to-fhir/preprocessor";
 import { makeTestContext } from "../helpers";
 import { readFileSync } from "fs";
 import { resolve } from "path";
@@ -349,8 +350,56 @@ describe("convertVXU_V04", () => {
       expect(id).toBe("urn-oid-1-2-3-65930");
     });
 
-    test.todo("ORDER group without ORC: no FILL/PLAC identifiers, no ordering provider", TODO);
-    test.todo("ORDER group without ORC: recorded from RXA-22 fallback if RXA-21=A", TODO);
+  });
+
+  describe("ORC-less orders", () => {
+    test("natural-key fallback ID, no FILL/PLAC identifiers, no ordering provider", async () => {
+      const msg = [
+        "MSH|^~\\&|SenderApp|DE-000002||DEST|20160701||VXU^V04^VXU_V04|CA0010|P|2.5.1",
+        "PID|1||PA789012^^^DE-000002^MR||DOE^JANE||20100415|F",
+        "RXA|0|1|20160701||08^HEPB^CVX|999|||00^NEW^NIP001|||||||||||CP|A",
+        "RXR|IM^INTRAMUSCULAR^NCIT|LA^LEFT ARM^HL70163",
+      ].join("\r");
+      const parsed = parseMessage(msg);
+      const result = await convertVXU_V04(parsed, makeTestContext());
+
+      const imm = findResources<Immunization>(result, "Immunization")[0]!;
+
+      // Natural-key fallback: {mshNamespace}-{patientId}-{cvxCode}-{adminDateTime}
+      expect(imm.id).toBeDefined();
+      expect(imm.id).toContain("08"); // CVX code in fallback ID
+      expect(imm.id).toContain("20160701"); // admin date in fallback ID
+
+      // No FILL or PLAC identifiers
+      const fillId = imm.identifier?.find(
+        (id) => id.type?.coding?.[0]?.code === "FILL",
+      );
+      const placId = imm.identifier?.find(
+        (id) => id.type?.coding?.[0]?.code === "PLAC",
+      );
+      expect(fillId).toBeUndefined();
+      expect(placId).toBeUndefined();
+
+      // No ordering provider (ORC-12)
+      const opPerformer = imm.performer?.find(
+        (p) => p.function?.coding?.[0]?.code === "OP",
+      );
+      expect(opPerformer).toBeUndefined();
+    });
+
+    test("RXA-21=A + RXA-22: recorded from RXA-22 fallback", async () => {
+      const msg = [
+        "MSH|^~\\&|SenderApp|DE-000002||DEST|20160701||VXU^V04^VXU_V04|CA0010|P|2.5.1",
+        "PID|1||PA789012^^^DE-000002^MR||DOE^JANE||20100415|F",
+        "RXA|0|1|20160701||08^HEPB^CVX|999|||00^NEW^NIP001|||||||||||CP|A|20160705120000",
+      ].join("\r");
+      const parsed = parseMessage(msg);
+      const result = await convertVXU_V04(parsed, makeTestContext());
+
+      const imm = findResources<Immunization>(result, "Immunization")[0]!;
+      // ORC absent → ORC-9 empty → fallback to RXA-22 (since RXA-21=A)
+      expect(imm.recorded).toContain("2016-07-05");
+    });
   });
 
   describe("performers", () => {
@@ -392,15 +441,96 @@ describe("convertVXU_V04", () => {
   });
 
   describe("PERSON_OBSERVATION", () => {
-    test.todo("OBX before first ORC/RXA creates standalone Observation with subject=Patient", TODO);
+    test("OBX before first ORC/RXA creates standalone Observation with subject=Patient", async () => {
+      const msg = readVXUFixture("with-person-observations.hl7");
+      const parsed = parseMessage(msg);
+      const result = await convertVXU_V04(parsed, makeTestContext());
+
+      const observations = findResources<Observation>(result, "Observation");
+      expect(observations).toHaveLength(1);
+
+      const obs = observations[0]!;
+      // subject references the patient
+      expect(obs.subject).toBeDefined();
+      expect(obs.subject!.reference).toContain("Patient/");
+
+      // OBX-3 LOINC code preserved
+      expect(obs.code.coding?.[0]?.code).toBe("59784-9");
+      expect(obs.code.coding?.[0]?.system).toBe("http://loinc.org");
+
+      // OBX-5 CE value converted
+      expect(obs.valueCodeableConcept).toBeDefined();
+      expect(obs.valueCodeableConcept?.coding?.[0]?.code).toBe("VXC20");
+
+      // Standalone — not linked to any Immunization
+      expect((obs as unknown as Record<string, unknown>).partOf).toBeUndefined();
+    });
+
     test.todo("PERSON_OBSERVATION OBX uses normal LOINC resolution pipeline", TODO);
   });
 
-  describe("preprocessors", () => {
-    test.todo("RXA-6 preprocessor: '999' cleared, no doseQuantity", TODO);
-    test.todo("RXA-6 preprocessor: '0.3 mL' extracts value=0.3, unit=mL in RXA-7", TODO);
-    test.todo("RXA-6 preprocessor: '0' preserved, doseQuantity.value=0", TODO);
-    test.todo("RXA-9 preprocessor: bare '00' gets NIP001 system injected", TODO);
+  describe("preprocessor integration", () => {
+    function parseWithPreprocessing(raw: string) {
+      const parsed = parseMessage(raw);
+      return preprocessMessage(parsed, hl7v2ToFhirConfig());
+    }
+
+    test("RXA-6 '999' cleared by preprocessor → no doseQuantity", async () => {
+      // base.hl7 has RXA-6=999, preprocessor should clear it
+      const msg = readVXUFixture("base.hl7");
+      const preprocessed = parseWithPreprocessing(msg);
+      const result = await convertVXU_V04(preprocessed, makeTestContext());
+
+      const imm = findResources<Immunization>(result, "Immunization")[0]!;
+      expect(imm.doseQuantity).toBeUndefined();
+    });
+
+    test("RXA-6 '0.3 mL' extracts value=0.3, unit=mL", async () => {
+      const msg = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20160701||VXU^V04^VXU_V04|CA0099|P|2.5.1",
+        "PID|1||PA123456^^^MYEMR^MR||JONES^GEORGE||20140227|M",
+        "ORC|RE||65930^DCS||||||20160701",
+        "RXA|0|1|20160701||08^HEPB^CVX|0.3 mL|||00^NEW^NIP001|||||||||||CP|A",
+      ].join("\r");
+      const preprocessed = parseWithPreprocessing(msg);
+      const result = await convertVXU_V04(preprocessed, makeTestContext());
+
+      const imm = findResources<Immunization>(result, "Immunization")[0]!;
+      expect(imm.doseQuantity).toBeDefined();
+      expect(imm.doseQuantity!.value).toBe(0.3);
+      expect(imm.doseQuantity!.unit).toBe("mL");
+    });
+
+    test("RXA-6 '0' preserved → doseQuantity.value=0", async () => {
+      const msg = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20160701||VXU^V04^VXU_V04|CA0099|P|2.5.1",
+        "PID|1||PA123456^^^MYEMR^MR||JONES^GEORGE||20140227|M",
+        "ORC|RE||65930^DCS||||||20160701",
+        "RXA|0|1|20160701||08^HEPB^CVX|0|||00^NEW^NIP001|||||||||||CP|A",
+      ].join("\r");
+      const preprocessed = parseWithPreprocessing(msg);
+      const result = await convertVXU_V04(preprocessed, makeTestContext());
+
+      const imm = findResources<Immunization>(result, "Immunization")[0]!;
+      expect(imm.doseQuantity).toBeDefined();
+      expect(imm.doseQuantity!.value).toBe(0);
+    });
+
+    test("RXA-9 bare '00' gets NIP001 system injected → primarySource=true", async () => {
+      // Bare "00" without coding system — preprocessor injects NIP001
+      const msg = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20160701||VXU^V04^VXU_V04|CA0099|P|2.5.1",
+        "PID|1||PA123456^^^MYEMR^MR||JONES^GEORGE||20140227|M",
+        "ORC|RE||65930^DCS||||||20160701",
+        "RXA|0|1|20160701||08^HEPB^CVX|999|||00^NEW|||||||||||CP|A",
+      ].join("\r");
+      const preprocessed = parseWithPreprocessing(msg);
+      const result = await convertVXU_V04(preprocessed, makeTestContext());
+
+      const imm = findResources<Immunization>(result, "Immunization")[0]!;
+      expect(imm.primarySource).toBe(true);
+    });
+
     test.todo("RXR with empty RXR-1: route omitted, site preserved", TODO);
   });
 });

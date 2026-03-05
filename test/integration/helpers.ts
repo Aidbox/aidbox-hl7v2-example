@@ -12,6 +12,7 @@ import type {
   Invoice,
   ServiceRequest,
   MedicationRequest,
+  Immunization,
 } from "../../src/fhir/hl7-fhir-r4-core";
 import type { OutgoingBarMessage } from "../../src/fhir/aidbox-hl7v2-custom";
 import type { IncomingHL7v2Message } from "../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
@@ -217,6 +218,13 @@ export async function getMedicationRequests(patientRef: string): Promise<Medicat
   return bundle.entry?.map((e) => e.resource) ?? [];
 }
 
+export async function getImmunizations(patientRef: string): Promise<Immunization[]> {
+  const bundle = await aidboxFetch<Bundle<Immunization>>(
+    `/fhir/Immunization?patient=${encodeURIComponent(patientRef)}`,
+  );
+  return bundle.entry?.map((e) => e.resource) ?? [];
+}
+
 export async function getOutgoingBarMessages(): Promise<OutgoingBarMessage[]> {
   const bundle = await aidboxFetch<Bundle<OutgoingBarMessage>>(
     `/fhir/OutgoingBarMessage`,
@@ -256,7 +264,7 @@ export async function cleanupTestResources(): Promise<void> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify([
-      "TRUNCATE task, incominghl7v2message, diagnosticreport, observation, specimen, encounter, patient, condition, allergyintolerance, coverage, relatedperson, invoice, outgoingbarmessage, account, organization, practitioner, chargeitem, immunization, medicationrequest, servicerequest CASCADE",
+      "TRUNCATE task, incominghl7v2message, diagnosticreport, observation, specimen, encounter, patient, condition, allergyintolerance, coverage, relatedperson, invoice, outgoingbarmessage, account, organization, practitioner, practitionerrole, chargeitem, immunization, medicationrequest, servicerequest CASCADE",
     ]),
   });
 
