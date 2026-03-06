@@ -1,34 +1,109 @@
 ---
-status: explored
+status: ready-for-review
 reviewer-iterations: 0
-prototype-files: []
+prototype-files:
+  - src/v2-to-fhir/segments/pid-patient.ts
+  - src/v2-to-fhir/segments/us-core-patient-extensions.ts
+  - test/unit/v2-to-fhir/segments/pid-patient.test.ts
 ---
 
 # Design: US Core Patient Extensions — Race & Ethnicity
 
 ## Problem Statement
-[To be filled in Phase 4]
+`PID-10` (Race) and `PID-22` (Ethnic Group) are currently dropped during PID -> Patient conversion, so produced Patient resources miss US Core demographic extensions. This creates a conformance gap for US Core Patient and loses clinically relevant demographic context used by downstream US systems. The gap is cross-cutting because all message flows that produce or draft Patient resources depend on `convertPIDToPatient()`.
+
+We need a deterministic, reusable mapping for `us-core-race` and `us-core-ethnicity` that fits existing converter behavior (best-effort conversion without introducing new hard message failures).
 
 ## Proposed Approach
-[To be filled in Phase 4]
+Add a focused helper module for US Core demographic extension construction and call it from `convertPIDToPatient()`. The helper will parse PID-10/PID-22 coded repeats, normalize coding systems where needed, build canonical US Core complex extensions (`ombCategory`, `detailed`, `text`), and return zero-to-two Patient extensions.
+
+Keep behavior aligned with current PID converter patterns: if values are absent or unusable, omit only the affected extension and continue processing. Add targeted unit tests for extension shape and code mapping logic (especially PID-22 `H/N/U`) while keeping integration tests centered on existing message converters that already consume `convertPIDToPatient()`.
 
 ## Key Decisions
-[To be filled in Phase 4]
+| Decision | Options Considered | Chosen | Rationale |
+|----------|-------------------|--------|-----------|
+| Where to implement mapping logic | A) Inline in `pid-patient.ts`, B) Dedicated helper module | B | Keeps `pid-patient.ts` readable and isolates a US-specific concern that may evolve independently. |
+| Scope of impact | A) VXU-only wiring, B) `convertPIDToPatient()` shared path | B | Existing architecture already centralizes PID conversion; single integration point covers ADT/ORU/VXU and draft flows consistently. |
+| Error behavior for unmappable values | A) Hard error / mapping_error, B) Best-effort omission with preserved text/detail | B | Matches existing PID extension handling and avoids introducing a new failure mode in a demographic enhancement ticket. |
+| PID-22 normalization | A) Preserve `H/N/U` only, B) Map to US Core OMB categories where possible | B | US Core ethnicity expects OMB-category semantics; deterministic map `H -> 2135-2`, `N -> 2186-5` improves conformance. |
+| Dependency strategy | A) Wait for profile-validation ticket, B) Deliver standalone conversion now | B | Requirement explicitly positions this as a prerequisite; implementation can be validated now and tightened later by profile checks. |
 
 ## Trade-offs
-[To be filled in Phase 4]
+- **Pro**: Centralized helper yields consistent behavior across all converters that rely on PID conversion.
+- **Con**: Adds US-specific logic inside a general HL7v2 -> FHIR converter layer.
+- **Mitigated by**: Keep the new logic in a dedicated module with explicit naming (`us-core-*`) and narrow API surface.
+- **Pro**: Deterministic PID-22 mapping improves US Core readiness immediately.
+- **Con**: `U`/local variants can still be ambiguous relative to strict profile expectations.
+- **Mitigated by**: Preserve values in `detailed`/`text` and defer strict enforcement to profile validation workflow.
 
 ## Affected Components
-[To be filled in Phase 4]
+| File | Change Type | Description |
+|------|-------------|-------------|
+| `src/v2-to-fhir/segments/us-core-patient-extensions.ts` | Create | New helper module for building `us-core-race` / `us-core-ethnicity` extensions. |
+| `src/v2-to-fhir/segments/pid-patient.ts` | Modify | Wire helper output into existing Patient extension assembly flow. |
+| `test/unit/v2-to-fhir/segments/pid-patient.test.ts` | Modify | Add tests for PID-10/PID-22 extension mapping and edge behavior. |
 
 ## Technical Details
-[To be filled in Phase 4]
+Canonical extension URLs:
+
+- `http://hl7.org/fhir/us/core/StructureDefinition/us-core-race`
+- `http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity`
+
+Complex extension shape:
+
+- sub-extensions:
+  - `ombCategory` (0..6 for race, 0..1 for ethnicity)
+  - `detailed` (0..*)
+  - `text` (1..1, human-readable summary)
+
+Proposed helper API (prototype-level):
+
+```ts
+buildUsCorePatientExtensionsFromPid(pid: PID): Extension[]
+buildUsCoreRaceExtension(raceRepeats: Array<CWE | CE> | undefined): Extension | undefined
+buildUsCoreEthnicityExtension(ethnicityRepeats: Array<CWE | CE> | undefined): Extension | undefined
+```
+
+PID-22 OMB mapping strategy:
+
+| PID-22 code | OMB category code | Display |
+|-------------|-------------------|---------|
+| `H` | `2135-2` | Hispanic or Latino |
+| `N` | `2186-5` | Not Hispanic or Latino |
+| `U` | none | no ombCategory; preserve via `detailed`/`text` when possible |
+
+Coding normalization rules (for extension codings):
+
+- Prefer canonical CDC race/ethnicity system URI when source indicates CDC race & ethnicity coding.
+- Preserve original code/text when normalization is uncertain.
+- De-duplicate identical codings across repeats before writing `detailed`.
+
+Integration point in PID converter:
+
+```ts
+const extensions: Extension[] = [];
+extensions.push(...buildUsCorePatientExtensionsFromPid(pid));
+// existing PID extension mapping follows
+```
 
 ## Edge Cases and Error Handling
-[To be filled in Phase 4]
+- PID-10/PID-22 absent: no US Core demographic extension added.
+- Repeats present but all entries empty/unusable: extension omitted.
+- PID-22 includes `U`: omit `ombCategory`; still populate `text` and optionally `detailed` from available coding/text.
+- Incoming coding system identifiers are non-standard (`CDCREC`, table aliases, local): attempt normalization; if unresolved, keep source system value instead of dropping code.
+- Mixed valid/invalid repeats: keep valid mapped content; ignore invalid fragments.
+- Existing non-US extensions in Patient: preserved unchanged; new US Core extensions are additive.
 
 ## Test Cases
-[To be filled in Phase 4]
+| Test Case | Type | Description |
+|-----------|------|-------------|
+| PID-10 single CDC code maps to `us-core-race.ombCategory` | Unit | Verifies canonical race extension URL and expected coded sub-extension. |
+| PID-10 repeated entries map to `detailed` with stable text | Unit | Verifies repeat handling, de-duplication, and required `text` generation. |
+| PID-22 `H` maps to OMB `2135-2` | Unit | Verifies deterministic administrative -> OMB mapping for Hispanic value. |
+| PID-22 `N` maps to OMB `2186-5` | Unit | Verifies deterministic administrative -> OMB mapping for Not Hispanic value. |
+| PID-22 `U` does not force OMB category | Unit | Verifies best-effort behavior and retained `text`/detail without invalid ombCategory. |
+| Existing PID extension mappings remain intact | Unit | Ensures religion/citizenship/etc. behavior is unchanged after helper integration. |
+| ADT/ORU/VXU/ORM flows still reuse shared PID mapping | Integration | Ensures extension changes propagate through shared conversion path without regressions. |
 
 # Context
 

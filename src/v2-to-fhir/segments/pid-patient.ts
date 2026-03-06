@@ -40,6 +40,10 @@ const EXT_BIRTH_PLACE = "http://hl7.org/fhir/StructureDefinition/patient-birthPl
 const EXT_CITIZENSHIP = "http://hl7.org/fhir/StructureDefinition/patient-citizenship";
 const EXT_NATIONALITY = "http://hl7.org/fhir/StructureDefinition/patient-nationality";
 const EXT_ANIMAL = "http://hl7.org/fhir/StructureDefinition/patient-animal";
+// DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
+// Add US Core extension URLs and helper wiring:
+// - http://hl7.org/fhir/us/core/StructureDefinition/us-core-race
+// - http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity
 
 // ============================================================================
 // Code Systems
@@ -412,6 +416,11 @@ export function convertPIDToPatient(pid: PID): Patient {
   // =========================================================================
 
   const extensions: Extension[] = [];
+
+  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
+  // Build PID-10/PID-22 US Core demographic extensions before generic extensions:
+  // const usCoreExtensions = buildUsCorePatientExtensionsFromPid(pid);
+  // extensions.push(...usCoreExtensions);
 
   // PID-6: Mother's Maiden Name -> extension
   if (pid.$6_mothersMaidenName && pid.$6_mothersMaidenName.length > 0) {

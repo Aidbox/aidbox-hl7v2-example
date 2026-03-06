@@ -360,6 +360,12 @@ describe("convertPIDToPatient", () => {
   });
 
   describe("extensions", () => {
+    // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
+    // Add coverage:
+    // - PID-10 -> us-core-race (ombCategory/detailed/text)
+    // - PID-22 H/N/U -> us-core-ethnicity mapping behavior
+    // - co-existence with existing PID extension mappings
+
     test("converts PID-6 Mother's Maiden Name to extension", () => {
       const pid: PID = {
         $3_identifier: [],
@@ -534,4 +540,3 @@ describe("convertPIDToPatient", () => {
     });
   });
 });
-
