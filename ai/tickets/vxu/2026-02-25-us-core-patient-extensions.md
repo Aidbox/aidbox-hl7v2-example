@@ -1,5 +1,5 @@
 ---
-status: ready-for-review
+status: ai-reviewed
 reviewer-iterations: 0
 prototype-files:
   - src/v2-to-fhir/segments/pid-patient.ts
@@ -161,7 +161,22 @@ extensions.push(...buildUsCorePatientExtensionsFromPid(pid));
 - Source: https://build.fhir.org/ig/HL7/v2-to-fhir/ConceptMap-segment-pid-to-patient.html
 
 ## AI Review Notes
-[To be filled in Phase 5]
+### Review verdict
+APPROVED FOR USER REVIEW
+
+### Findings (sorted by severity)
+- **Low**: Dependency reference still mentions `2026-02-24-profiles-support.md`, while current ticket present in repo is `2026-02-24-profiles-validation.md`.
+  - **Impact**: could cause planning confusion when sequencing follow-up work.
+  - **Resolution**: keep this ticket self-contained; clarify dependency naming during user approval phase.
+- **Low**: Terminology normalization behavior for non-standard source coding-system labels (e.g., local aliases) is intentionally high-level in this design.
+  - **Impact**: implementation may make inconsistent normalization choices without an explicit helper map.
+  - **Resolution**: define a small deterministic normalization map during implementation (same pattern as existing coding-system normalization utilities).
+
+### Completeness check
+- Requirements coverage: PID-10 and PID-22 extension mapping addressed.
+- Cross-message reuse: handled through shared `convertPIDToPatient()` integration.
+- Error behavior: aligned with current best-effort conversion strategy.
+- Test strategy: unit-focused with integration regression checks.
 
 ## User Feedback
 [To be filled in Phase 6]
