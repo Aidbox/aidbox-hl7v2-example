@@ -36,6 +36,16 @@ export type Hl7v2ToFhirConfig = {
   // DESIGN PROTOTYPE: 2026-02-24-profiles-support.md
   // Add profile/IG conformance configuration for post-conversion validation.
   // profileConformance?: ProfileConformanceConfig;
+  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
+  // Reuse IG config for demographic extension activation:
+  // profileConformance?: {
+  //   implementationGuides?: Array<{
+  //     id: string;           // "us-core"
+  //     package: string;      // "hl7.fhir.us.core"
+  //     version: string;
+  //     enabled?: boolean;
+  //   }>;
+  // };
   messages?: Record<string, MessageTypeConfig | undefined>;
 };
 

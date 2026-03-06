@@ -272,6 +272,15 @@ export async function convertVXU_V04(
   const senderTag = extractSenderTag(pid);
   addSenderTagToMeta(baseMeta, senderTag);
 
+  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
+  // Pass config-driven activation option:
+  // const patientResult = await handlePatient(
+  //   pid,
+  //   baseMeta,
+  //   lookupPatient,
+  //   resolvePatientId,
+  //   { usCorePatientExtensionsEnabled: context.usCorePatientExtensionsEnabled },
+  // );
   const patientResult = await handlePatient(pid, baseMeta, lookupPatient, resolvePatientId);
   if ("error" in patientResult) {
     return { messageUpdate: { status: "error", error: patientResult.error } };

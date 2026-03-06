@@ -176,6 +176,13 @@ export function extractSenderTag(pid: PID): Coding | undefined {
  * - PID-40 -> telecom[3]
  */
 export function convertPIDToPatient(pid: PID): Patient {
+  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
+  // Signature becomes:
+  // convertPIDToPatient(
+  //   pid: PID,
+  //   options?: { usCorePatientExtensionsEnabled?: boolean },
+  // ): Patient
+
   const patient: Patient = {
     resourceType: "Patient",
   };
@@ -576,6 +583,10 @@ export type PatientHandlingResult =
  * it as a new patient since the previous record no longer exists.
  */
 export function createDraftPatient(pid: PID, patientId: string, baseMeta: Meta): Patient {
+  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
+  // Accept and forward activation option:
+  // createDraftPatient(..., options?: { usCorePatientExtensionsEnabled?: boolean })
+  // const patient = convertPIDToPatient(pid, options);
   const patient = convertPIDToPatient(pid);
   patient.id = patientId;
   patient.active = false;
@@ -620,6 +631,10 @@ export async function handlePatient(
   lookupPatient: PatientLookupFn,
   resolvePatientId: PatientIdResolver,
 ): Promise<PatientHandlingResult> {
+  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
+  // Accept and thread activation option through to draft creation:
+  // handlePatient(..., options?: { usCorePatientExtensionsEnabled?: boolean })
+
   const idResult = await resolvePatientId(pid.$3_identifier ?? []);
   if ("error" in idResult) {
     return { error: idResult.error };
@@ -634,6 +649,8 @@ export async function handlePatient(
     return { patientRef, patientEntry: null };
   }
 
+  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
+  // const draftPatient = createDraftPatient(pid, patientId, baseMeta, options);
   const draftPatient = createDraftPatient(pid, patientId, baseMeta);
   const patientEntry = createConditionalPatientEntry(draftPatient);
 

@@ -1,9 +1,16 @@
 ---
-status: changes-requested
+status: ready-for-review
 reviewer-iterations: 0
 prototype-files:
+  - src/v2-to-fhir/config.ts
+  - src/v2-to-fhir/converter-context.ts
   - src/v2-to-fhir/segments/pid-patient.ts
   - src/v2-to-fhir/segments/us-core-patient-extensions.ts
+  - src/v2-to-fhir/messages/adt-a01.ts
+  - src/v2-to-fhir/messages/adt-a08.ts
+  - src/v2-to-fhir/messages/oru-r01.ts
+  - src/v2-to-fhir/messages/vxu-v04.ts
+  - src/v2-to-fhir/messages/orm-o01.ts
   - test/unit/v2-to-fhir/segments/pid-patient.test.ts
 ---
 
@@ -12,12 +19,12 @@ prototype-files:
 ## Problem Statement
 `PID-10` (Race) and `PID-22` (Ethnic Group) are currently dropped during PID -> Patient conversion, so produced Patient resources miss US Core demographic extensions. This creates a conformance gap for US Core Patient and loses clinically relevant demographic context used by downstream US systems. The gap is cross-cutting because all message flows that produce or draft Patient resources depend on `convertPIDToPatient()`.
 
-We need a deterministic, reusable mapping for `us-core-race` and `us-core-ethnicity` that fits existing converter behavior (best-effort conversion without introducing new hard message failures).
+We need a deterministic, reusable mapping for `us-core-race` and `us-core-ethnicity` that fits existing converter behavior (best-effort conversion without introducing new hard message failures) and can be enabled by deployers through configuration (US Core IG presence).
 
 ## Proposed Approach
-Add a focused helper module for US Core demographic extension construction and call it from `convertPIDToPatient()`. The helper will parse PID-10/PID-22 coded repeats, normalize coding systems where needed, build canonical US Core complex extensions (`ombCategory`, `detailed`, `text`), and return zero-to-two Patient extensions.
+Add a focused helper module for US Core demographic extension construction and call it from `convertPIDToPatient()` only when US Core is configured in `hl7v2-to-fhir.json`. The helper will parse PID-10/PID-22 coded repeats, normalize coding systems where needed, build canonical US Core complex extensions (`ombCategory`, `detailed`, `text`), and return zero-to-two Patient extensions.
 
-Keep behavior aligned with current PID converter patterns: if values are absent or unusable, omit only the affected extension and continue processing. Add targeted unit tests for extension shape and code mapping logic (especially PID-22 `H/N/U`) while keeping integration tests centered on existing message converters that already consume `convertPIDToPatient()`.
+Activation will be config-driven and extensible: if deployer declares US Core IG in profile-conformance config, race/ethnicity extension mapping is applied; if not declared, converter behavior remains unchanged. Keep behavior aligned with current PID converter patterns: if values are absent or unusable, omit only the affected extension and continue processing. Add targeted unit tests for extension shape and code mapping logic (especially PID-22 `H/N/U`) and config-activation behavior.
 
 ## Key Decisions
 | Decision | Options Considered | Chosen | Rationale |
@@ -26,7 +33,8 @@ Keep behavior aligned with current PID converter patterns: if values are absent 
 | Scope of impact | A) VXU-only wiring, B) `convertPIDToPatient()` shared path | B | Existing architecture already centralizes PID conversion; single integration point covers ADT/ORU/VXU and draft flows consistently. |
 | Error behavior for unmappable values | A) Hard error / mapping_error, B) Best-effort omission with preserved text/detail | B | Matches existing PID extension handling and avoids introducing a new failure mode in a demographic enhancement ticket. |
 | PID-22 normalization | A) Preserve `H/N/U` only, B) Map to US Core OMB categories where possible | B | US Core ethnicity expects OMB-category semantics; deterministic map `H -> 2135-2`, `N -> 2186-5` improves conformance. |
-| Dependency strategy | A) Wait for profile-validation ticket, B) Deliver standalone conversion now | B | Requirement explicitly positions this as a prerequisite; implementation can be validated now and tightened later by profile checks. |
+| Activation model | A) Always apply US Core extension logic, B) Apply only when US Core IG configured | B | Meets deployer extensibility requirement and prevents US-specific shaping in non-US deployments. |
+| IG detection source | A) New dedicated flag, B) Reuse profile-conformance IG config | B | Avoids config duplication and keeps IG-related behavior controlled from one place. |
 
 ## Trade-offs
 - **Pro**: Centralized helper yields consistent behavior across all converters that rely on PID conversion.
@@ -35,12 +43,22 @@ Keep behavior aligned with current PID converter patterns: if values are absent 
 - **Pro**: Deterministic PID-22 mapping improves US Core readiness immediately.
 - **Con**: `U`/local variants can still be ambiguous relative to strict profile expectations.
 - **Mitigated by**: Preserve values in `detailed`/`text` and defer strict enforcement to profile validation workflow.
+- **Pro**: IG-driven activation is deployer-controlled and extensible across environments.
+- **Con**: Misconfigured or missing IG entry can silently disable extension mapping.
+- **Mitigated by**: Explicit startup validation helper and unit tests for detection semantics (`id`, `package`, `enabled`).
 
 ## Affected Components
 | File | Change Type | Description |
 |------|-------------|-------------|
+| `src/v2-to-fhir/config.ts` | Modify | Extend config types with stable profile-conformance shape used for IG detection. |
+| `src/v2-to-fhir/converter-context.ts` | Modify | Derive `usCorePatientExtensionsEnabled` flag from config once and expose in converter context. |
 | `src/v2-to-fhir/segments/us-core-patient-extensions.ts` | Create | New helper module for building `us-core-race` / `us-core-ethnicity` extensions. |
-| `src/v2-to-fhir/segments/pid-patient.ts` | Modify | Wire helper output into existing Patient extension assembly flow. |
+| `src/v2-to-fhir/segments/pid-patient.ts` | Modify | Accept activation option and wire helper output conditionally into Patient extension assembly flow. |
+| `src/v2-to-fhir/messages/adt-a01.ts` | Modify | Pass context activation flag into PID conversion. |
+| `src/v2-to-fhir/messages/adt-a08.ts` | Modify | Pass context activation flag into PID conversion. |
+| `src/v2-to-fhir/messages/oru-r01.ts` | Modify | Pass context activation flag into shared `handlePatient()` flow. |
+| `src/v2-to-fhir/messages/vxu-v04.ts` | Modify | Pass context activation flag into shared `handlePatient()` flow. |
+| `src/v2-to-fhir/messages/orm-o01.ts` | Modify | Pass context activation flag into shared `handlePatient()` flow. |
 | `test/unit/v2-to-fhir/segments/pid-patient.test.ts` | Modify | Add tests for PID-10/PID-22 extension mapping and edge behavior. |
 
 ## Technical Details
@@ -64,6 +82,34 @@ buildUsCoreRaceExtension(raceRepeats: Array<CWE | CE> | undefined): Extension | 
 buildUsCoreEthnicityExtension(ethnicityRepeats: Array<CWE | CE> | undefined): Extension | undefined
 ```
 
+Config contract for activation (reuse IG config):
+
+```ts
+type ImplementationGuidePolicy = {
+  id: string;          // e.g. "us-core"
+  package: string;     // e.g. "hl7.fhir.us.core"
+  version: string;
+  enabled?: boolean;   // default true
+};
+
+type Hl7v2ToFhirConfig = {
+  profileConformance?: {
+    implementationGuides?: ImplementationGuidePolicy[];
+  };
+};
+```
+
+US Core activation detection:
+
+```ts
+function isUsCoreConfigured(config: Hl7v2ToFhirConfig): boolean {
+  return (config.profileConformance?.implementationGuides ?? []).some((ig) =>
+    ig.enabled !== false &&
+    (ig.id.toLowerCase() === "us-core" || ig.package === "hl7.fhir.us.core")
+  );
+}
+```
+
 PID-22 OMB mapping strategy:
 
 | PID-22 code | OMB category code | Display |
@@ -82,11 +128,16 @@ Integration point in PID converter:
 
 ```ts
 const extensions: Extension[] = [];
-extensions.push(...buildUsCorePatientExtensionsFromPid(pid));
+if (options.usCorePatientExtensionsEnabled) {
+  extensions.push(...buildUsCorePatientExtensionsFromPid(pid));
+}
 // existing PID extension mapping follows
 ```
 
 ## Edge Cases and Error Handling
+- US Core IG not configured: PID-10/PID-22 mapping is intentionally skipped.
+- US Core IG configured with `enabled: false`: mapping skipped.
+- IG config present but malformed (missing id/package): fail fast in config validation.
 - PID-10/PID-22 absent: no US Core demographic extension added.
 - Repeats present but all entries empty/unusable: extension omitted.
 - PID-22 includes `U`: omit `ombCategory`; still populate `text` and optionally `detailed` from available coding/text.
@@ -102,6 +153,9 @@ extensions.push(...buildUsCorePatientExtensionsFromPid(pid));
 | PID-22 `H` maps to OMB `2135-2` | Unit | Verifies deterministic administrative -> OMB mapping for Hispanic value. |
 | PID-22 `N` maps to OMB `2186-5` | Unit | Verifies deterministic administrative -> OMB mapping for Not Hispanic value. |
 | PID-22 `U` does not force OMB category | Unit | Verifies best-effort behavior and retained `text`/detail without invalid ombCategory. |
+| US Core IG configured enables mapping | Unit | Verifies detection helper + converter option turns on race/ethnicity extensions. |
+| US Core IG absent disables mapping | Unit | Verifies converters preserve old behavior when IG is not declared. |
+| US Core IG explicitly disabled | Unit | Verifies `enabled: false` prevents extension mapping. |
 | Existing PID extension mappings remain intact | Unit | Ensures religion/citizenship/etc. behavior is unchanged after helper integration. |
 | ADT/ORU/VXU/ORM flows still reuse shared PID mapping | Integration | Ensures extension changes propagate through shared conversion path without regressions. |
 
@@ -135,6 +189,7 @@ extensions.push(...buildUsCorePatientExtensionsFromPid(pid));
 - **PID-22 → `us-core-ethnicity`** extension on Patient (complex: ombCategory 0..1, detailed 0..*, text 1..1)
 - Cross-cutting: affects all message types that use PID (ADT_A01, ADT_A08, ORU_R01, VXU_V04)
 - PID-8 (Sex) already maps to `Patient.gender` — no extension needed
+- Deployer extensibility requirement: apply this mapping only when US Core IG is configured in deploy-time config
 
 ### HL7v2 Code Systems
 
@@ -153,6 +208,7 @@ extensions.push(...buildUsCorePatientExtensionsFromPid(pid));
 - Assumption: this ticket remains best-effort conversion and does not introduce new `mapping_error` flows for PID-10/PID-22.
 - Assumption: PID-22 code `H`/`N` maps to US Core ethnicity OMB category codes via deterministic mapping; `U` is kept as detailed/text without forcing an OMB category.
 - Assumption: explicit terminology normalization for these new extensions is included in this ticket, not deferred to profile-validation work.
+- Assumption: US Core activation comes from IG configuration in `profileConformance.implementationGuides`, not from a separate feature flag.
 
 ### V2-to-FHIR IG References
 
@@ -161,22 +217,7 @@ extensions.push(...buildUsCorePatientExtensionsFromPid(pid));
 - Source: https://build.fhir.org/ig/HL7/v2-to-fhir/ConceptMap-segment-pid-to-patient.html
 
 ## AI Review Notes
-### Review verdict
-APPROVED FOR USER REVIEW
-
-### Findings (sorted by severity)
-- **Low**: Dependency reference still mentions `2026-02-24-profiles-support.md`, while current ticket present in repo is `2026-02-24-profiles-validation.md`.
-  - **Impact**: could cause planning confusion when sequencing follow-up work.
-  - **Resolution**: keep this ticket self-contained; clarify dependency naming during user approval phase.
-- **Low**: Terminology normalization behavior for non-standard source coding-system labels (e.g., local aliases) is intentionally high-level in this design.
-  - **Impact**: implementation may make inconsistent normalization choices without an explicit helper map.
-  - **Resolution**: define a small deterministic normalization map during implementation (same pattern as existing coding-system normalization utilities).
-
-### Completeness check
-- Requirements coverage: PID-10 and PID-22 extension mapping addressed.
-- Cross-message reuse: handled through shared `convertPIDToPatient()` integration.
-- Error behavior: aligned with current best-effort conversion strategy.
-- Test strategy: unit-focused with integration regression checks.
+[To be filled in Phase 5]
 
 ## User Feedback
 - 2026-03-06: Request to make activation extensible via deploy-time config.

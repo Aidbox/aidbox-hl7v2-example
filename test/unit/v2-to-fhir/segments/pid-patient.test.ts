@@ -364,6 +364,7 @@ describe("convertPIDToPatient", () => {
     // Add coverage:
     // - PID-10 -> us-core-race (ombCategory/detailed/text)
     // - PID-22 H/N/U -> us-core-ethnicity mapping behavior
+    // - options.usCorePatientExtensionsEnabled toggles extension mapping on/off
     // - co-existence with existing PID extension mappings
 
     test("converts PID-6 Mother's Maiden Name to extension", () => {
