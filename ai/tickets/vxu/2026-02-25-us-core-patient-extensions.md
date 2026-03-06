@@ -1,5 +1,5 @@
 ---
-status: ready-for-review
+status: ai-reviewed
 reviewer-iterations: 0
 prototype-files:
   - src/v2-to-fhir/config.ts
@@ -217,7 +217,21 @@ if (options.usCorePatientExtensionsEnabled) {
 - Source: https://build.fhir.org/ig/HL7/v2-to-fhir/ConceptMap-segment-pid-to-patient.html
 
 ## AI Review Notes
-[To be filled in Phase 5]
+### Review verdict
+APPROVED FOR USER REVIEW
+
+### Findings (sorted by severity)
+- **Low**: IG detection currently depends on the planned `profileConformance` shape from the profiles-validation ticket.
+  - **Impact**: if schema names diverge between tickets, activation may fail open/closed.
+  - **Resolution**: lock exact field names in `config.ts` during implementation and add startup validation + unit tests.
+- **Low**: Activation is intentionally tied to US Core IG declaration only; no per-message override is included in this design revision.
+  - **Impact**: deployers cannot selectively enable this for only one message type.
+  - **Resolution**: acceptable for current requirement; introduce per-message override in a follow-up ticket if needed.
+
+### Completeness check
+- Config-driven deployer control requirement addressed.
+- Existing behavior preserved when US Core IG is absent or disabled.
+- Cross-flow threading (ADT/ORU/VXU/ORM) documented in prototype markers.
 
 ## User Feedback
 - 2026-03-06: Request to make activation extensible via deploy-time config.
