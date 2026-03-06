@@ -1,5 +1,5 @@
 ---
-status: ready-for-review
+status: ai-reviewed
 reviewer-iterations: 0
 prototype-files:
   - src/v2-to-fhir/config.ts
@@ -232,7 +232,21 @@ if (policy.demographicExtensionMode === "us-core") {
 - Source: https://build.fhir.org/ig/HL7/v2-to-fhir/ConceptMap-segment-pid-to-patient.html
 
 ## AI Review Notes
-[To be filled in Phase 5]
+### Review verdict
+APPROVED FOR USER REVIEW
+
+### Findings (sorted by severity)
+- **Low**: Policy type currently models only `demographicExtensionMode`.
+  - **Impact**: future patient conversion rules may append fields quickly.
+  - **Resolution**: acceptable for now; keep the type focused and extend only when a second policy concern appears.
+- **Low**: Activation still depends on profile-conformance schema alignment with the profiles-validation ticket.
+  - **Impact**: config key drift could break policy derivation.
+  - **Resolution**: enforce exact config typing and add policy-builder unit tests against real config fixtures during implementation.
+
+### Completeness check
+- Boolean threading concern addressed via focused policy object.
+- Policy is built once in context, not per converter.
+- Message converters and `handlePatient` call chain are updated in prototypes to consume `context.patientPolicy`.
 
 ## User Feedback
 - 2026-03-06: Request to make activation extensible via deploy-time config.
