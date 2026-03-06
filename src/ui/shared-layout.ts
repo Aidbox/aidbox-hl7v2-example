@@ -154,6 +154,29 @@ export function renderLayout(
     ${content}
   </div>
   <script>
+    function mergeHl7Tooltips(root) {
+      const scope = root || document;
+      const fieldWrappers = scope.querySelectorAll('.hl7-message-container .hl7-field-wrap[data-tooltip]');
+
+      fieldWrappers.forEach((fieldWrapper) => {
+        const fieldTooltip = fieldWrapper.getAttribute('data-tooltip');
+        if (!fieldTooltip) return;
+
+        const componentFields = fieldWrapper.querySelectorAll('.hl7-field[data-tooltip]');
+        if (componentFields.length === 0) return;
+
+        componentFields.forEach((componentField) => {
+          const componentTooltip = componentField.getAttribute('data-tooltip');
+          if (!componentTooltip) return;
+          componentField.setAttribute('data-tooltip', fieldTooltip + ' -> ' + componentTooltip);
+        });
+
+        fieldWrapper.removeAttribute('data-tooltip');
+      });
+    }
+
+    window.mergeHl7Tooltips = mergeHl7Tooltips;
+
     // LOINC Autocomplete
     (function() {
       const DEBOUNCE_MS = 400;
@@ -321,8 +344,12 @@ export function renderLayout(
 
       // Initialize on DOM ready and after any dynamic content loads
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initAutocomplete);
+        document.addEventListener('DOMContentLoaded', () => {
+          mergeHl7Tooltips();
+          initAutocomplete();
+        });
       } else {
+        mergeHl7Tooltips();
         initAutocomplete();
       }
     })();

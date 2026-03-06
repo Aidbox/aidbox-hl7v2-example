@@ -386,6 +386,7 @@ function renderMLLPClientPage(
           });
           const data = await res.json();
           content.innerHTML = data.html;
+          window.mergeHl7Tooltips?.(content);
           previewDirty = false;
         } catch {
           content.innerHTML = '<span class="text-red-500 text-sm">Failed to load preview.</span>';
