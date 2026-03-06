@@ -1,6 +1,12 @@
 import { describe, test, expect } from "bun:test";
 import { convertPIDToPatient } from "../../../../src/v2-to-fhir/segments/pid-patient";
 import type { PID } from "../../../../src/hl7v2/generated/fields";
+import type { PatientConversionPolicy } from "../../../../src/v2-to-fhir/policy/patient-conversion-policy";
+import {
+  OMB_RACE_ETHNICITY_SYSTEM,
+  US_CORE_ETHNICITY_URL,
+  US_CORE_RACE_URL,
+} from "../../../../src/v2-to-fhir/segments/us-core-patient-extensions";
 
 describe("convertPIDToPatient", () => {
   describe("identifiers", () => {
@@ -360,6 +366,95 @@ describe("convertPIDToPatient", () => {
   });
 
   describe("extensions", () => {
+    const usCorePolicy: PatientConversionPolicy = {
+      demographicExtensionMode: "us-core",
+    };
+
+    test("does not map PID-10/PID-22 US Core extensions when policy mode is none", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $10_race: [{ $1_code: "2106-3", $2_text: "White", $3_system: "CDCREC" }],
+        $22_ethnicity: [{ $1_code: "H", $2_text: "Hispanic or Latino", $3_system: "HL70189" }],
+      };
+
+      const patient = convertPIDToPatient(pid);
+      expect(patient.extension?.find((ext) => ext.url === US_CORE_RACE_URL)).toBeUndefined();
+      expect(patient.extension?.find((ext) => ext.url === US_CORE_ETHNICITY_URL)).toBeUndefined();
+    });
+
+    test("maps PID-10 race to us-core-race when policy mode is us-core", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $10_race: [{ $1_code: "2106-3", $2_text: "White", $3_system: "CDCREC" }],
+      };
+
+      const patient = convertPIDToPatient(pid, usCorePolicy);
+      const raceExtension = patient.extension?.find((ext) => ext.url === US_CORE_RACE_URL);
+      const ombCategory = raceExtension?.extension?.find((nested) => nested.url === "ombCategory");
+      const text = raceExtension?.extension?.find((nested) => nested.url === "text");
+
+      expect(raceExtension).toBeDefined();
+      expect(ombCategory?.valueCoding?.code).toBe("2106-3");
+      expect(ombCategory?.valueCoding?.system).toBe(OMB_RACE_ETHNICITY_SYSTEM);
+      expect(text?.valueString).toBe("White, 2106-3");
+    });
+
+    test("maps PID-22 H to us-core-ethnicity ombCategory", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $22_ethnicity: [{ $1_code: "H", $2_text: "Hispanic or Latino", $3_system: "HL70189" }],
+      };
+
+      const patient = convertPIDToPatient(pid, usCorePolicy);
+      const ethnicityExtension = patient.extension?.find((ext) => ext.url === US_CORE_ETHNICITY_URL);
+      const ombCategory = ethnicityExtension?.extension?.find((nested) => nested.url === "ombCategory");
+
+      expect(ethnicityExtension).toBeDefined();
+      expect(ombCategory?.valueCoding?.code).toBe("2135-2");
+      expect(ombCategory?.valueCoding?.system).toBe(OMB_RACE_ETHNICITY_SYSTEM);
+    });
+
+    test("maps PID-22 U without ombCategory but with text", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $22_ethnicity: [{ $1_code: "U", $2_text: "Unknown", $3_system: "HL70189" }],
+      };
+
+      const patient = convertPIDToPatient(pid, usCorePolicy);
+      const ethnicityExtension = patient.extension?.find((ext) => ext.url === US_CORE_ETHNICITY_URL);
+      const ombCategory = ethnicityExtension?.extension?.find((nested) => nested.url === "ombCategory");
+      const text = ethnicityExtension?.extension?.find((nested) => nested.url === "text");
+
+      expect(ethnicityExtension).toBeDefined();
+      expect(ombCategory).toBeUndefined();
+      expect(text?.valueString).toBe("Unknown, U");
+    });
+
+    test("keeps existing extension mappings when us-core policy is enabled", () => {
+      const pid: PID = {
+        $3_identifier: [],
+        $5_name: [],
+        $10_race: [{ $1_code: "2106-3", $2_text: "White", $3_system: "CDCREC" }],
+        $17_religion: {
+          $1_code: "CHR",
+          $2_text: "Christian",
+        },
+      };
+
+      const patient = convertPIDToPatient(pid, usCorePolicy);
+      const raceExtension = patient.extension?.find((ext) => ext.url === US_CORE_RACE_URL);
+      const religionExtension = patient.extension?.find(
+        (ext) => ext.url === "http://hl7.org/fhir/StructureDefinition/patient-religion",
+      );
+
+      expect(raceExtension).toBeDefined();
+      expect(religionExtension?.valueCodeableConcept?.coding?.[0]?.code).toBe("CHR");
+    });
+
     test("converts PID-6 Mother's Maiden Name to extension", () => {
       const pid: PID = {
         $3_identifier: [],
@@ -534,4 +629,3 @@ describe("convertPIDToPatient", () => {
     });
   });
 });
-

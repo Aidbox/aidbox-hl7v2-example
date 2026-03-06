@@ -41,16 +41,69 @@ describe("hl7v2ToFhirConfig", () => {
     );
   });
 
+  test("config supports full-line // comments", () => {
+    readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(`{
+  // Comment line should be ignored
+  "identitySystem": { "patient": { "rules": [{ "assigner": "UNIPAT" }] } },
+  "messages": {
+    "VXU-V04": {
+      "preprocess": {
+        // This preprocessor remains opt-in by default
+        "RXA": { "6": ["normalize-rxa6-dose"] }
+      }
+    }
+  }
+}`);
+
+    const config = hl7v2ToFhirConfig();
+
+    expect(config.messages?.["VXU-V04"]?.preprocess?.RXA?.["6"]?.[0]).toBe("normalize-rxa6-dose");
+  });
+
+  test("config supports inline // comments and /* block */ comments", () => {
+    readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(`{
+  "identitySystem": { "patient": { "rules": [{ "assigner": "UNIPAT" }] } }, // inline
+  "messages": {
+    "VXU-V04": {
+      /* block comment */
+      "preprocess": { "RXA": { "9": ["normalize-rxa9-nip001"] } }
+    }
+  }
+}`);
+
+    const config = hl7v2ToFhirConfig();
+
+    expect(config.messages?.["VXU-V04"]?.preprocess?.RXA?.["9"]?.[0]).toBe("normalize-rxa9-nip001");
+  });
+
+  test("comment stripping does not alter // inside string values", () => {
+    readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(`{
+  "identitySystem": { "patient": { "rules": [{ "assigner": "UNIPAT" }] } },
+  "messages": {
+    "ORU-R01": {
+      "converter": { "PV1": { "required": false } },
+      "exampleUrl": "https://example.org/path//keep"
+    }
+  }
+}`);
+
+    const config = hl7v2ToFhirConfig() as Hl7v2ToFhirConfig & {
+      messages?: Record<string, { exampleUrl?: string } | undefined>;
+    };
+
+    expect(config.messages?.["ORU-R01"]?.exampleUrl).toBe("https://example.org/path//keep");
+  });
+
   test("valid config returns typed object with correct structure", () => {
     const validConfig: Hl7v2ToFhirConfig = {
       identitySystem: { patient: { rules: minimalRules } },
       messages: {
         "ORU-R01": {
-          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+          preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
           converter: { PV1: { required: false } },
         },
         "ADT-A01": {
-          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+          preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
           converter: { PV1: { required: true } },
         },
       },
@@ -86,12 +139,12 @@ describe("hl7v2ToFhirConfig", () => {
     expect(config.messages?.["ORU-R01"]?.converter?.PV1?.required).toBe(false);
   });
 
-  test("config navigation works: ADT-A01 preprocess PV1.19 has fix-authority-with-msh", () => {
+  test("config navigation works: ADT-A01 preprocess PV1.19 has fix-pv1-authority-with-msh", () => {
     const validConfig: Hl7v2ToFhirConfig = {
       identitySystem: { patient: { rules: minimalRules } },
       messages: {
         "ADT-A01": {
-          preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+          preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
         },
       },
     };
@@ -103,7 +156,7 @@ describe("hl7v2ToFhirConfig", () => {
     const config = hl7v2ToFhirConfig();
 
     expect(config.messages?.["ADT-A01"]?.preprocess?.PV1?.["19"]?.[0]).toBe(
-      "fix-authority-with-msh",
+      "fix-pv1-authority-with-msh",
     );
   });
 
@@ -304,7 +357,7 @@ describe("hl7v2ToFhirConfig", () => {
       );
 
       expect(() => hl7v2ToFhirConfig()).toThrow(
-        /Unknown preprocessor ID "unknown-preprocessor".*Valid IDs: fix-authority-with-msh/,
+        /Unknown preprocessor ID "unknown-preprocessor".*Valid IDs: fix-pv1-authority-with-msh/,
       );
     });
 
@@ -313,7 +366,7 @@ describe("hl7v2ToFhirConfig", () => {
         identitySystem: { patient: { rules: minimalRules } },
         messages: {
           "ORU-R01": {
-            preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+            preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
           },
         },
       };
@@ -330,7 +383,7 @@ describe("hl7v2ToFhirConfig", () => {
         identitySystem: { patient: { rules: minimalRules } },
         messages: {
           "ORU-R01": {
-            preprocess: { PV1: { "19": ["fix-authority-with-msh", "bad-one"] } },
+            preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh", "bad-one"] } },
           },
         },
       };
@@ -383,7 +436,7 @@ describe("hl7v2ToFhirConfig", () => {
         identitySystem: { patient: { rules: minimalRules } },
         messages: {
           "ORU-R01": {
-            preprocess: { PV1: { "19": "fix-authority-with-msh" } },
+            preprocess: { PV1: { "19": "fix-pv1-authority-with-msh" } },
           },
         },
       };
@@ -431,6 +484,99 @@ describe("hl7v2ToFhirConfig", () => {
       );
 
       expect(() => hl7v2ToFhirConfig()).not.toThrow();
+    });
+  });
+
+  describe("profile conformance IG validation", () => {
+    test("valid profileConformance.implementationGuides passes validation", () => {
+      const validConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        profileConformance: {
+          implementationGuides: [
+            {
+              id: "us-core",
+              package: "hl7.fhir.us.core",
+              version: "6.1.0",
+              enabled: true,
+            },
+          ],
+        },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(validConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).not.toThrow();
+      const config = hl7v2ToFhirConfig();
+      expect(config.profileConformance?.implementationGuides?.[0]?.id).toBe("us-core");
+    });
+
+    test("non-array implementationGuides throws startup error", () => {
+      const invalidConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        profileConformance: {
+          implementationGuides: "us-core",
+        },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /profileConformance\.implementationGuides.*must be an array/,
+      );
+    });
+
+    test("implementation guide missing id throws startup error", () => {
+      const invalidConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        profileConformance: {
+          implementationGuides: [
+            {
+              package: "hl7.fhir.us.core",
+              version: "6.1.0",
+            },
+          ],
+        },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /implementationGuides\[0\]\.id/,
+      );
+    });
+
+    test("implementation guide with non-boolean enabled throws startup error", () => {
+      const invalidConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        profileConformance: {
+          implementationGuides: [
+            {
+              id: "us-core",
+              package: "hl7.fhir.us.core",
+              version: "6.1.0",
+              enabled: "yes",
+            },
+          ],
+        },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /implementationGuides\[0\]\.enabled/,
+      );
     });
   });
 });

@@ -5,7 +5,7 @@ status: draft
 # Draft: Preprocessor for Missing PV1-19
 
 ## Problem Statement
-The current `fix-authority-with-msh` preprocessor only handles the case where PV1-19 exists but is missing authority components (CX.4/9/10). It does not handle the case where PV1-19 is missing entirely.
+The current `fix-pv1-authority-with-msh` preprocessor only handles the case where PV1-19 exists but is missing authority components (CX.4/9/10). It does not handle the case where PV1-19 is missing entirely.
 
 Some HL7v2 senders may not include PV1-19 at all, requiring a preprocessor to generate a visit number from other available data.
 

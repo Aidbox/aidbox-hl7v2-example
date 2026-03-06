@@ -20,5 +20,7 @@ export function getMappingTypeShortLabel(typeName: MappingTypeName): string {
       return "OBR Status";
     case "obx-status":
       return "OBX Status";
+    case "orc-status":
+      return "ORC Status";
   }
 }

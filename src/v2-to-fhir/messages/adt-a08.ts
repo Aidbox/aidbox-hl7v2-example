@@ -17,12 +17,12 @@ import {
 import type {
   Patient,
   Bundle,
-  BundleEntry,
   Coding,
   Meta,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertPIDToPatient } from "../segments/pid-patient";
 import type { ConverterContext } from "../converter-context";
+import { createBundleEntry } from "../fhir-bundle";
 
 // ============================================================================
 // Helper Functions
@@ -57,20 +57,6 @@ function extractMetaTags(msh: MSH): Coding[] {
   return tags;
 }
 
-/**
- * Create a bundle entry for a resource
- */
-function createBundleEntry(resource: Patient): BundleEntry {
-  const id = resource.id;
-
-  return {
-    resource,
-    request: {
-      method: "PUT",
-      url: id ? `/Patient/${id}` : "/Patient",
-    },
-  };
-}
 
 // ============================================================================
 // Main Converter Function
@@ -117,7 +103,7 @@ export async function convertADT_A08(
   // =========================================================================
   // Convert PID to Patient
   // =========================================================================
-  const patient = convertPIDToPatient(pid);
+  const patient = convertPIDToPatient(pid, context.patientPolicy);
 
   const patientIdResult = await resolvePatientId(pid.$3_identifier ?? []);
   if ("error" in patientIdResult) {

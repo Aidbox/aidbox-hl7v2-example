@@ -1,8 +1,10 @@
 /**
- * Wrappers for generated HL7v2 segment parsers.
+ * Wrappers for HL7v2 segment parsers.
  *
- * These wrappers fix issues with the auto-generated parsers that can't
- * be fixed in the generator itself.
+ * Includes fixes for auto-generated parsers (OBX).
  */
 
 export { fromOBX } from "./obx";
+export type { WrappedOBX } from "./obx";
+export { groupVXUOrders, extractPersonObservations } from "./vxu-v04";
+export type { VXUOrderGroup } from "./vxu-v04";

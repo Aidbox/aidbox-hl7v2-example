@@ -1,0 +1,28 @@
+MSH|^~\&|REG||||||ORM^O01
+PID|||patient-1^^^UNIPAT^PE|||||||||||||||encounter-1
+PV1|
+IN1||||Company Name 1|792 Vczkgtj Xsvp^^Zywbhl^PA^44055^USA
+IN1||||Company Name 2|792 Vczkgtj Xsvp^^Zywbhl^PA^44055^USA
+IN1||||Company Name 3|792 Vczkgtj Xsvp^^Zywbhl^PA^44055^USA
+ORC||order-1^assigning-authority|||SC||||20250701|||requester-1^family^given^BJ^^^^^^^^^XX|||20250101
+RXO|medication-code-1^medication-display-1^medication-system-1|10|20|mg^milligrams^UCUM|PILL^Pill^form-system-1|TAKE_WITH_FOOD^Take with food|MORNING_DOSE^Take in morning||T||500|mg^milligrams^UCUM|10||||h|||reason-code-1^reason-display-1^reason-system-1|50|mL/hr^milliliter per hour^UCUM|20^mg&milligrams&UCUM|||||300
+NTE||note-source-1|note-content-1
+NTE||note-source-2|note-content-2
+NTE||note-source-3|note-content-3
+DG1|||^headache-1
+DG1|||^headache-2
+DG1|||^headache-3
+OBX||ST|observation-code-1||observation-value-1|||||||||20250101
+OBX||ST|observation-code-2||observation-value-2|||||||||20250202
+OBX||ST|observation-code-3||observation-value-3|||||||||20250303
+ORC||order-2^assigning-authority|||SC||||20250702|||requester-2^family^given^BJ^^^^^^^^^XX|||20250102
+RXO|medication-code-2^medication-display-2^medication-system-2|5||mg^milligrams^UCUM|PILL^Pill^form-system-2|TAKE_WITH_FOOD^Take with food|MORNING_DOSE^Take in morning||N||1000|mg^milligrams^UCUM|20||||h|||reason-code-2^reason-display-2^reason-system-2|100|mL/hr^milliliter per hour^UCUM|30^mg&milligrams&UCUM|||||200
+NTE||note-source-4|note-content-4
+NTE||note-source-5|note-content-5
+NTE||note-source-6|note-content-6
+DG1|||^headache-4
+DG1|||^headache-5
+DG1|||^headache-6
+OBX||ST|observation-code-4||observation-value-4|||||||||20250404
+OBX||ST|observation-code-5||observation-value-5|||||||||20250505
+OBX||ST|observation-code-6||observation-value-6|||||||||20250606

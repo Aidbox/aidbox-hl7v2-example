@@ -17,7 +17,7 @@
           "2": ["move-pid2-into-pid3"],
           "3": ["inject-authority-from-msh"]
         },
-        "PV1": { "19": ["fix-authority-with-msh"] }
+        "PV1": { "19": ["fix-pv1-authority-with-msh"] }
       },
       "converter": { "PV1": { "required": true } }
     },
@@ -27,7 +27,7 @@
           "2": ["move-pid2-into-pid3"],
           "3": ["inject-authority-from-msh"]
         },
-        "PV1": { "19": ["fix-authority-with-msh"] }
+        "PV1": { "19": ["fix-pv1-authority-with-msh"] }
       },
       "converter": { "PV1": { "required": false } }
     }

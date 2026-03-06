@@ -265,7 +265,7 @@ Stub implementation returns `{ status: 'not-found' }` for all queries. When MPI 
 Encounter.id = `{authority}-{visit-number}` from PV1-19 directly.
 
 - PV1-19 is a single CX (not repeating) — no priority list needed.
-- Authority is required after preprocessing. Existing preprocessor rule `fix-authority-with-msh` already injects authority from MSH when PV1-19 lacks one.
+- Authority is required after preprocessing. Existing preprocessor rule `fix-pv1-authority-with-msh` already injects authority from MSH when PV1-19 lacks one.
 - If PV1-19 is missing or has no value → error (for message types requiring PV1) or skip Encounter (for types where PV1 is optional, like ORU_R01).
 - Visits don't cross EHR boundaries, so cross-system linking isn't needed.
 

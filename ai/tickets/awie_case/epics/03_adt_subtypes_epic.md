@@ -11,7 +11,7 @@ Only ADT_A01 (admit) and ADT_A08 (update) are implemented. The Awie Case data co
 
 ## What A01 Currently Does
 
-See `src/v2-to-fhir/messages/adt-a01.ts`. Creates: Patient (PID), Encounter (PV1), RelatedPerson (NK1), Condition (DG1), AllergyIntolerance (AL1), Coverage (IN1). PV1 required per `config/hl7v2-to-fhir.json`. PV1-19 preprocessor `fix-authority-with-msh` applied.
+See `src/v2-to-fhir/messages/adt-a01.ts`. Creates: Patient (PID), Encounter (PV1), RelatedPerson (NK1), Condition (DG1), AllergyIntolerance (AL1), Coverage (IN1). PV1 required per `config/hl7v2-to-fhir.json`. PV1-19 preprocessor `fix-pv1-authority-with-msh` applied.
 
 ## Subtype Summary
 

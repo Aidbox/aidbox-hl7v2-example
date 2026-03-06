@@ -32,8 +32,7 @@ export function defaultPatientIdResolver(config: Hl7v2ToFhirConfig): PatientIdRe
   return (ids) => selectPatientId(ids, config.identitySystem!.patient!.rules, mpiClient);
 }
 
-const sanitizeForId = (s: string) =>
-  s.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+import { sanitizeForId } from "./utils";
 
 /**
  * Select Patient.id from CX identifiers using ordered priority rules.

@@ -1,0 +1,6 @@
+MSH|^\~\&|ACME|Lakeside Clinic||IRIS|20210615102030|RK456|ORM^O01|20210615102030|T|2.4
+PID|1||TestMrn2847||DEMOTEST^PATRICIA||19680419|F||W|789 Sample LN^UNIT B^Asheville^NC^28801^US^^^|BUNCOMBE|(828)555-0173^^PH^^^828^5550173|||M||5678|222-334444|||
+PV1||O|IrisTest|||||||||||||||||||||||||||||||||||||||||20210615102030|||||
+ORC|NW|Order891234|||||^^^06152021_102030^^R||20210615102030|RK456^CARTER^RACHEL||jlee@retinalscreen.com^Lee^Jennifer^^^^^^OPTOMED^^^^OPTOMED|EYE^^^30502^^^^^VISION CLINIC|(828)555-0199^^^^^828^5550199||||M52044^M52044^^30502001^VISION CLINIC|||||||||||O|||
+OBR|1|2021061510^ACME||92250^FUNDUS PHOTOGRAPHY^EAP^^FUNDAL PHOTO||2021061510|||||L|||||jlee@retinalscreen.com^Lee^Jennifer^^^^^^OPTOMED^^^^OPTOMED|(828)555-0188^^^^^828^5550188|||||||OPHTHALMOLOG|||^^^2021061510^^R|||||||||2021061510|||||||
+DG1|1|ICD-10-CM|E11.9^Type 2 diabetes mellitus without complications^ICD-10-CM|E11.9Type 2diabetes mellitus without complications||ICD-9 to Order

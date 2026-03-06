@@ -16,27 +16,31 @@ Evaluate against these criteria:
 - Are there missing components or flows?
 - Are there hidden complexities not addressed?
 
-### 2. Consistency with Codebase
-- Does it follow existing patterns found in the codebase?
-- Does it follow best practices?
-- Does it use established conventions?
+### 2. Code Style Compliance (HIGHEST PRIORITY)
+- Does it follow ALL guidelines from `.claude/code-style.md`? Read it before reviewing.
+- **The code style guide overrides existing codebase patterns.** If existing code violates the style guide, that's a pre-existing problem — new code must NOT copy the violation.
+- Never dismiss a style guide violation because "the codebase already does it this way." Flag it as an issue.
 
-### 3. Clean Architecture
+### 3. Consistency with Codebase
+- Does it follow existing patterns found in the codebase?
+- Does it use established conventions?
+- If existing patterns conflict with `code-style.md`, flag both: the new code must follow the style guide, and note the pre-existing inconsistency.
+
+### 4. Clean Architecture
 - Is there clear separation of concerns?
 - Are dependencies pointing in the right direction?
 - Is the design testable?
 
-### 4. Best Practices
-- Does it follow ALL guidelines from `code-style.md`?
+### 5. Best Practices
 - Does it follow SOLID principles?
 - Is error handling appropriate?
 - Are edge cases considered?
 
-### 5. Simpler Alternatives
+### 6. Simpler Alternatives
 - Is there a simpler approach that would work?
 - Is the design over-engineered for the problem?
 
-### 6. Test Coverage
+### 7. Test Coverage
 - Are the test cases comprehensive?
 - Is the unit vs integration split appropriate?
 - Are edge cases covered by tests?

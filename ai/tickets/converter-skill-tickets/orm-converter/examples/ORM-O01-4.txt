@@ -1,0 +1,7 @@
+MSH|^\~\&|ACME|Metro Hospital||IRIS|20210809163722|RK456|ORM^O01|20210809163722|T|2.4||||||||
+PID|1||TestMrn5531||DEMOTEST^BRIAN||19910708|M||W|321 Example RD^STE 4^Charlotte^NC^28202^US^^^|MECKLENBURG|(704)555-0162^^PH^^^704^5550162|||M||7890|333-445555|||
+PV1||O|207|||||||||||||||||||||||||||||||||||||||||20210809163722|||||
+ORC|NW|Order602847|||||^^^08092021_163722^^R||20210809163722|RK456^CARTER^RACHEL||jlee@retinalscreen.com^Lee^Jennifer^^^^^^OPTOMED^^^^OPTOMED|EYE^^^30502^^^^^VISION CLINIC|(704)555-0133^^^^^704^5550133||||M52044^M52044^^30502001^VISION CLINIC|||||||||||O|||
+OBR|1|2021080916^ACME||92250^FUNDUS PHOTOGRAPHY^EAP^^FUNDAL PHOTO||2021080916|||||L|||||jlee@retinalscreen.com^Lee^Jennifer^^^^^^OPTOMED^^^^OPTOMED|(704)555-0177^^^^^704^5550177|||||||OPHTHALMOLOG|||^^^2021080916^^R|||||||||2021080916|||||||
+DG1|1|ICD-10-CM|E11.3299^Type 2 diabetes mellitus with mild nonproliferative diabetic retinopathy without macular edema, unspecified eye^I10|Type 2 diabetes mellitus with mild nonproliferative diabetic retinopathy without macular edema, unspecified eye||ICD-9 to Order
+DG1|1|ICD-10-CM|E11.65^Type 2 diabetes mellitus with hyperglycemia^I10|Type 2 diabetes mellitus with hyperglycemia||ICD-9 to Order

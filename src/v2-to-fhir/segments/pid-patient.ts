@@ -12,8 +12,18 @@ import type {
   Address,
   ContactPoint,
   CodeableConcept,
+  Coding,
   Extension,
+  BundleEntry,
+  Meta,
+  Reference,
 } from "../../fhir/hl7-fhir-r4-core";
+import type { PatientIdResolver } from "../identity-system/patient-id";
+import type { PatientLookupFn } from "../aidbox-lookups";
+import {
+  type PatientConversionPolicy,
+  DEFAULT_PATIENT_CONVERSION_POLICY,
+} from "../policy/patient-conversion-policy";
 import { convertCXToIdentifier } from "../datatypes/cx-identifier";
 import { convertXPNToHumanName, convertXPNToString } from "../datatypes/xpn-humanname";
 import { convertXADToAddress } from "../datatypes/xad-address";
@@ -22,6 +32,7 @@ import { convertCWEToCodeableConcept } from "../datatypes/cwe-codeableconcept";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { convertDLNToIdentifier } from "../datatypes/dln-identifier";
 import { convertIDToBoolean } from "../datatypes/id-converters";
+import { buildUsCorePatientExtensionsFromPid } from "./us-core-patient-extensions";
 
 // ============================================================================
 // Extension URLs
@@ -109,6 +120,25 @@ function convertCEOrCWEToCodeableConcept(
   return convertCEToCodeableConcept(value as CE);
 }
 
+/**
+ * Extract sender tag from PID-3 (MR identifier assigning authority).
+ * Returns undefined if no MR identifier with assigning authority is found.
+ */
+export function extractSenderTag(pid: PID): Coding | undefined {
+  if (!pid.$3_identifier) return undefined;
+
+  for (const cx of pid.$3_identifier) {
+    if (cx.$5_type === "MR" && cx.$4_system?.$1_namespace) {
+      return {
+        code: cx.$4_system.$1_namespace.toLowerCase(),
+        system: "urn:aidbox:hl7v2:sender",
+      };
+    }
+  }
+
+  return undefined;
+}
+
 // ============================================================================
 // Main Converter Function
 // ============================================================================
@@ -146,7 +176,10 @@ function convertCEOrCWEToCodeableConcept(
  * - PID-39 -> extension (Tribal Citizenship)
  * - PID-40 -> telecom[3]
  */
-export function convertPIDToPatient(pid: PID): Patient {
+export function convertPIDToPatient(
+  pid: PID,
+  policy: PatientConversionPolicy = DEFAULT_PATIENT_CONVERSION_POLICY,
+): Patient {
   const patient: Patient = {
     resourceType: "Patient",
   };
@@ -388,6 +421,11 @@ export function convertPIDToPatient(pid: PID): Patient {
 
   const extensions: Extension[] = [];
 
+  if (policy.demographicExtensionMode === "us-core") {
+    const usCoreExtensions = buildUsCorePatientExtensionsFromPid(pid);
+    extensions.push(...usCoreExtensions);
+  }
+
   // PID-6: Mother's Maiden Name -> extension
   if (pid.$6_mothersMaidenName && pid.$6_mothersMaidenName.length > 0) {
     const maidenName = convertXPNToString(pid.$6_mothersMaidenName[0]);
@@ -524,3 +562,90 @@ export function convertPIDToPatient(pid: PID): Patient {
 }
 
 export default convertPIDToPatient;
+
+// ============================================================================
+// Patient Lookup and Draft Creation (non-ADT converters)
+// ============================================================================
+
+export type PatientHandlingResult =
+  | { patientRef: Reference<"Patient">; patientEntry: BundleEntry | null }
+  | { error: string };
+
+/**
+ * Create a draft patient from PID segment with active=false.
+ * Draft patients are unverified and will be updated when ADT message arrives.
+ *
+ * Note: If a patient was previously created via ADT and then deleted, receiving
+ * a new message will recreate them as a draft. This is intentional — we treat
+ * it as a new patient since the previous record no longer exists.
+ */
+export function createDraftPatient(
+  pid: PID,
+  patientId: string,
+  baseMeta: Meta,
+  policy: PatientConversionPolicy = DEFAULT_PATIENT_CONVERSION_POLICY,
+): Patient {
+  const patient = convertPIDToPatient(pid, policy);
+  patient.id = patientId;
+  patient.active = false;
+  patient.meta = { ...patient.meta, ...baseMeta };
+  return patient;
+}
+
+/**
+ * Create a conditional bundle entry for draft Patient creation.
+ * Uses POST with If-None-Exist to prevent race conditions when multiple
+ * messages for the same non-existent patient arrive simultaneously.
+ */
+export function createConditionalPatientEntry(patient: Patient): BundleEntry {
+  const patientId = patient.id;
+  return {
+    resource: patient,
+    request: {
+      method: "POST",
+      url: "Patient",
+      ifNoneExist: `_id=${patientId}`,
+    },
+  };
+}
+
+/**
+ * Handle patient lookup and draft creation.
+ *
+ * ADT owns the Patient resource (creates/updates). ORU/VXU only look up
+ * existing patients or create drafts (active=false) when not found.
+ *
+ * - Resolves patient ID via priority-list rules (identitySystem.patient.rules)
+ * - Looks up existing patient (does NOT update — ADT is source of truth)
+ * - Creates draft patient with active=false if not found
+ *
+ * Race condition handling: Uses POST with If-None-Exist to ensure only one
+ * draft patient is created even if multiple messages for the same
+ * non-existent patient arrive simultaneously.
+ */
+export async function handlePatient(
+  pid: PID,
+  baseMeta: Meta,
+  lookupPatient: PatientLookupFn,
+  resolvePatientId: PatientIdResolver,
+  policy: PatientConversionPolicy = DEFAULT_PATIENT_CONVERSION_POLICY,
+): Promise<PatientHandlingResult> {
+  const idResult = await resolvePatientId(pid.$3_identifier ?? []);
+  if ("error" in idResult) {
+    return { error: idResult.error };
+  }
+
+  const patientId = idResult.id;
+  const patientRef = { reference: `Patient/${patientId}` } as Reference<"Patient">;
+
+  const existingPatient = await lookupPatient(patientId);
+
+  if (existingPatient) {
+    return { patientRef, patientEntry: null };
+  }
+
+  const draftPatient = createDraftPatient(pid, patientId, baseMeta, policy);
+  const patientEntry = createConditionalPatientEntry(draftPatient);
+
+  return { patientRef, patientEntry };
+}

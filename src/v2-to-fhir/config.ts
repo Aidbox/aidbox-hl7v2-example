@@ -15,16 +15,36 @@ export type MessageTypeConfig = {
       "2"?: SegmentPreprocessorId[];
       "3"?: SegmentPreprocessorId[];
     };
+    ORC?: {
+      "3"?: SegmentPreprocessorId[];
+    };
+    RXA?: {
+      "3"?: SegmentPreprocessorId[];
+      "6"?: SegmentPreprocessorId[];
+      "9"?: SegmentPreprocessorId[];
+    };
   };
   converter?: {
     PV1?: { required?: boolean };
   };
 };
 
+export type ImplementationGuidePolicy = {
+  id: string;
+  package: string;
+  version: string;
+  enabled?: boolean;
+};
+
+export type ProfileConformanceConfig = {
+  implementationGuides?: ImplementationGuidePolicy[];
+};
+
 export type Hl7v2ToFhirConfig = {
   identitySystem?: {
     patient?: { rules: IdentifierPriorityRule[] };
   };
+  profileConformance?: ProfileConformanceConfig;
   messages?: Record<string, MessageTypeConfig | undefined>;
 };
 
@@ -60,7 +80,7 @@ export function hl7v2ToFhirConfig(): Hl7v2ToFhirConfig {
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(fileContent);
+    parsed = JSON.parse(stripJsonComments(fileContent));
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown parse error";
     throw new Error(
@@ -77,6 +97,7 @@ export function hl7v2ToFhirConfig(): Hl7v2ToFhirConfig {
   const config = parsed as Hl7v2ToFhirConfig;
 
   validateIdentitySystemRules(config);
+  validateProfileConformance(config);
   validatePreprocessorIds(config);
 
   cachedConfig = config;
@@ -116,6 +137,73 @@ function validateIdentitySystemRules(config: Hl7v2ToFhirConfig): void {
             `"assigner", "type", or "any".`,
         );
       }
+    }
+  }
+}
+
+/**
+ * Validates profile conformance IG definitions at startup.
+ * @throws Error if profileConformance shape is invalid
+ */
+function validateProfileConformance(config: Hl7v2ToFhirConfig): void {
+  const rawProfileConformance = (config as { profileConformance?: unknown }).profileConformance;
+
+  if (rawProfileConformance === undefined) {
+    return;
+  }
+
+  if (
+    typeof rawProfileConformance !== "object" ||
+    rawProfileConformance === null ||
+    Array.isArray(rawProfileConformance)
+  ) {
+    throw new Error(
+      `Invalid HL7v2-to-FHIR config: "profileConformance" must be an object if provided.`,
+    );
+  }
+
+  const rawGuides = (rawProfileConformance as { implementationGuides?: unknown }).implementationGuides;
+  if (rawGuides === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(rawGuides)) {
+    throw new Error(
+      `Invalid HL7v2-to-FHIR config: "profileConformance.implementationGuides" must be an array if provided.`,
+    );
+  }
+
+  for (let index = 0; index < rawGuides.length; index++) {
+    const rawGuide = rawGuides[index];
+    if (typeof rawGuide !== "object" || rawGuide === null || Array.isArray(rawGuide)) {
+      throw new Error(
+        `Invalid profileConformance.implementationGuides[${index}]: expected object.`,
+      );
+    }
+
+    const guide = rawGuide as Record<string, unknown>;
+    if (typeof guide.id !== "string" || guide.id.trim().length === 0) {
+      throw new Error(
+        `Invalid profileConformance.implementationGuides[${index}].id: expected non-empty string.`,
+      );
+    }
+
+    if (typeof guide.package !== "string" || guide.package.trim().length === 0) {
+      throw new Error(
+        `Invalid profileConformance.implementationGuides[${index}].package: expected non-empty string.`,
+      );
+    }
+
+    if (typeof guide.version !== "string" || guide.version.trim().length === 0) {
+      throw new Error(
+        `Invalid profileConformance.implementationGuides[${index}].version: expected non-empty string.`,
+      );
+    }
+
+    if (guide.enabled !== undefined && typeof guide.enabled !== "boolean") {
+      throw new Error(
+        `Invalid profileConformance.implementationGuides[${index}].enabled: expected boolean when provided.`,
+      );
     }
   }
 }
@@ -166,4 +254,78 @@ function validatePreprocessorIds(config: Hl7v2ToFhirConfig): void {
  */
 export function clearConfigCache(): void {
   cachedConfig = null;
+}
+
+/**
+ * Strips JSONC-style comments while preserving comment-like tokens inside strings.
+ * Supports `// line` and `/* block *\/` comments.
+ */
+function stripJsonComments(input: string): string {
+  let output = "";
+  let inString = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i]!;
+    const nextChar = input[i + 1];
+
+    if (inLineComment) {
+      if (char === "\n") {
+        inLineComment = false;
+        output += char;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (char === "*" && nextChar === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inString) {
+      output += char;
+
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escapeNext = true;
+        continue;
+      }
+
+      if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      output += char;
+      continue;
+    }
+
+    if (char === "/" && nextChar === "/") {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+
+    if (char === "/" && nextChar === "*") {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+
+    output += char;
+  }
+
+  return output;
 }

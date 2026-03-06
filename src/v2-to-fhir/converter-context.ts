@@ -3,6 +3,10 @@ import { defaultPatientIdResolver } from "./identity-system/patient-id";
 import type { Hl7v2ToFhirConfig } from "./config";
 import { hl7v2ToFhirConfig } from "./config";
 import {
+  buildPatientConversionPolicy,
+  type PatientConversionPolicy,
+} from "./policy/patient-conversion-policy";
+import {
   type PatientLookupFn,
   type EncounterLookupFn,
   defaultPatientLookup,
@@ -11,6 +15,7 @@ import {
 
 export interface ConverterContext {
   config: Hl7v2ToFhirConfig;
+  patientPolicy: PatientConversionPolicy;
   resolvePatientId: PatientIdResolver;
   lookupPatient: PatientLookupFn;
   lookupEncounter: EncounterLookupFn;
@@ -20,6 +25,7 @@ export function createConverterContext(): ConverterContext {
   const config = hl7v2ToFhirConfig();
   return {
     config,
+    patientPolicy: buildPatientConversionPolicy(config),
     resolvePatientId: defaultPatientIdResolver(config),
     lookupPatient: defaultPatientLookup,
     lookupEncounter: defaultEncounterLookup,

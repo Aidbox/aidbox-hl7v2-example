@@ -31,9 +31,17 @@ if (!mapsToLoinc || !matchingSystem) {
 }
 ```
 
-Don't add comments that restate what names and types already convey. 
-Comments should explain WHY or document non-obvious contracts/requirements, not describe WHAT the code does.
-If the name is descriptive, a comment is redundant. Delete it.
+Comments are useful when they tell you something you can't quickly see from the code:
+- WHY something is done (business reason, non-obvious constraint, workaround)
+- Contracts (`@param`/`@returns` with semantic context beyond the type signature — e.g., "HL7v2 coding system identifier", "returns original value if no mapping exists")
+- Edge case behavior that would surprise a reader
+- References to external specs, tickets, or standards
+
+Comments are redundant (delete them) when they restate what names and types already convey:
+- `@param id - the id` (pure type restatement)
+- `// Check if patient exists` before `if (patientExists)`
+- `// Loop through items` before `for (const item of items)`
+- Lists of specific values that will go stale as the code evolves
 
 ### Prefer functions over big commented blocks
 
@@ -100,10 +108,6 @@ This ensures:
 - Internal implementation can change without breaking consumers
 - Each module owns its logic; consumers don't orchestrate it
 
-### File Creation
-
-Before creating a file, ask yourself: does the amount of code justify a separate module? A small handler, helper, or type that has exactly one consumer belongs in the consumer's file (or in a shared file that already exists). Pattern-matching on directory conventions is not a reason to create a file — the code's size and reuse are.
-
 ## Avoid Cyclic Dependencies
 
 Never create circular imports between modules. If module A imports from module B, then module B must not import from module A (directly or indirectly).
@@ -112,11 +116,6 @@ To avoid cycles:
 - Place shared utilities, types, and constants in a dedicated `shared/` module
 - Keep dependencies flowing in one direction (e.g., services -> utilities)
 - If two modules need each other's functionality, extract the shared part into a third module
-
-## Testing
-
-- Never mock Aidbox behavior — if a test depends on Aidbox, make it an integration test against the real test instance
-- Use shared helpers from `test/integration/helpers.ts` for creating test resources; local helpers are OK only when there's a single integration test file for that domain
 
 ## Type Integrity
 
@@ -136,6 +135,48 @@ When designing configuration or system interfaces, prioritize the operation and 
 
 Example: if the choice is between "elegant internals with fragile config coupling" and "slightly mixed internals with robust single-source-of-truth config" — choose robust config.
 
+## Naming
+
+Use semantic variable names. Avoid short abbreviations (`fv`, `val`, `res`) and generic names (`obj`, `data`, `item`, `result`) that don't convey the variable's meaning. Name variables after what they represent in the domain.
+
+```typescript
+/* GOOD */
+const rawFillerOrder = segment.fields[3];
+const eiComponents = rawFillerOrder as Record<number, FieldValue>;
+const entityIdentifier = eiComponents[1];
+```
+
+## Testing
+
+- Never mock Aidbox behavior — if a test depends on Aidbox, make it an integration test against the real test instance
+- Use shared helpers from `test/integration/helpers.ts` for creating test resources; local helpers are OK only when there's a single integration test file for that domain
+
+## Prefer immutable handlers over in-place mutation
+
+When a function transforms data, return new values instead of mutating the input. This makes data flow explicit and avoids partially-mutated state on error paths.
+
+```typescript
+/* BAD — mutates input, error leaves object half-modified */
+function applyUpdate(resource: Immunization, data: Data): string | undefined {
+  resource.field1 = data.a;
+  if (badCondition) return "error";
+  resource.field2 = data.b;
+  return undefined;
+}
+
+/* GOOD — returns new fields or a typed error, caller merges */
+type UpdateResult = { fields: Partial<Immunization> } | { error: string };
+
+function applyUpdate(data: Data): UpdateResult {
+  if (badCondition) return { error: "error" };
+  return { fields: { field1: data.a, field2: data.b } };
+}
+
+const result = applyUpdate(data);
+if ("error" in result) { /* handle error */ }
+const updated = { ...original, ...result.fields };
+```
+
 ## General Principles
 
 - Don't add error handling, fallbacks, or validation for scenarios that can't happen
@@ -145,3 +186,14 @@ Example: if the choice is between "elegant internals with fragile config couplin
 ## Code Style
 
 Don't leave `continue` or `return` statements on the same line with the `if` condition.
+
+Line length limit is 120 characters. Don't split a statement across lines if it fits within 120 chars.
+
+# Refactoring
+
+When you touch a file for a task and notice low-risk issues related to your code, fix them in the same change:
+- Local function that duplicates a shared export → replace with the import
+- Unused imports → remove
+- Dead code → remove
+
+"Low-risk" means: identical behavior (you must verify it), no new test coverage needed, verifiable by existing tests.

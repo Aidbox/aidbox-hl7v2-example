@@ -28,7 +28,7 @@ services:
     environment:
       BOX_INIT_BUNDLE: file:///init-bundle.json
       BOX_ADMIN_PASSWORD: OAivtAQqak
-      BOX_BOOTSTRAP_FHIR_PACKAGES: hl7.fhir.r4.core#4.0.1
+      BOX_BOOTSTRAP_FHIR_PACKAGES: hl7.fhir.us.core#6.1.0
       BOX_COMPATIBILITY_VALIDATION_JSON__SCHEMA_REGEX: '#{:fhir-datetime}'
       BOX_DB_DATABASE: aidbox
       BOX_DB_HOST: postgres

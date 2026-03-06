@@ -1,14 +1,31 @@
 /**
- * Wrapper for fromOBX that fixes SN (Structured Numeric) value parsing.
+ * Wrapper for fromOBX that fixes value parsing for SN and CE/CWE types.
  *
- * The HL7v2 parser treats `^` as a component separator, but in SN values
- * the caret is part of the data format (e.g., ">^90" means "greater than 90").
- * This wrapper reconstructs SN values from the raw parsed components.
+ * The generated parser has two bugs with OBX-5 (Observation Value):
+ *
+ * 1. SN (Structured Numeric): treats `^` as a component separator, but in SN values
+ *    the caret is part of the data format (e.g., ">^90" means "greater than 90").
+ *
+ * 2. CE/CWE (Coded Entry): when the raw field is a parsed object (component structure),
+ *    the generated parser only handles string and array cases, silently dropping the value.
+ *    This wrapper reconstructs the string for $5_observationValue and also provides
+ *    the structured CE in $5_observationValueCE.
  */
 
-import type { HL7v2Segment } from "../generated/types";
-import type { OBX } from "../generated/fields";
+import type { HL7v2Segment, FieldValue } from "../generated/types";
+import { getComponent } from "../generated/types";
+import type { OBX, CE } from "../generated/fields";
 import { fromOBX as fromOBXGenerated } from "../generated/fields";
+
+/**
+ * Extended OBX with a structured CE field for coded observation values.
+ *
+ * The generated OBX type only has `$5_observationValue: string[]`, which loses
+ * CE/CWE structure. This adds `$5_observationValueCE` populated when OBX-2 is CE or CWE.
+ */
+export interface WrappedOBX extends OBX {
+  $5_observationValueCE?: CE;
+}
 
 /**
  * Reconstruct SN (Structured Numeric) value from parsed components.
@@ -40,19 +57,64 @@ function reconstructSNValue(rawField: unknown): string | undefined {
 }
 
 /**
- * Parse OBX segment with proper SN value handling.
+ * Parse CE/CWE value from raw OBX-5 field components.
  *
- * This wrapper calls the generated fromOBX function, then fixes SN values
- * that were incorrectly parsed due to the caret being treated as a component separator.
+ * When OBX-2 is CE or CWE, the raw field 5 is a component structure
+ * {1: code, 2: text, 3: system, ...} that the generated parser drops.
+ * This extracts it as a typed CE and also reconstructs the string representation
+ * (e.g., "V02^VFC ELIGIBLE^HL70064") for backward-compatible consumers.
  */
-export function fromOBX(segment: HL7v2Segment): OBX {
-  const obx = fromOBXGenerated(segment);
+function parseCEValue(rawField: FieldValue | undefined): { ce: CE; stringValue: string } | undefined {
+  if (!rawField || typeof rawField !== "object" || Array.isArray(rawField)) {
+    return undefined;
+  }
 
-  if (obx.$2_valueType?.toUpperCase() === "SN") {
+  const ce: CE = {
+    $1_code: getComponent(rawField, 1) || undefined,
+    $2_text: getComponent(rawField, 2) || undefined,
+    $3_system: getComponent(rawField, 3) || undefined,
+    $4_altCode: getComponent(rawField, 4) || undefined,
+    $5_altDisplay: getComponent(rawField, 5) || undefined,
+    $6_altSystem: getComponent(rawField, 6) || undefined,
+  };
+
+  // Reconstruct string: "code^text^system^altCode^altText^altSystem", trimming trailing empties
+  const parts = [ce.$1_code, ce.$2_text, ce.$3_system, ce.$4_altCode, ce.$5_altDisplay, ce.$6_altSystem];
+  let lastNonEmpty = -1;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (parts[i]) {
+      lastNonEmpty = i;
+      break;
+    }
+  }
+  const stringValue = parts.slice(0, lastNonEmpty + 1).map((p) => p ?? "").join("^");
+
+  return { ce, stringValue };
+}
+
+/**
+ * Parse OBX segment with proper SN and CE/CWE value handling.
+ *
+ * Fixes two bugs in the generated fromOBX:
+ * - SN values: reconstructs the caret-separated string from parsed components
+ * - CE/CWE values: extracts the structured CE and reconstructs the string representation
+ */
+export function fromOBX(segment: HL7v2Segment): WrappedOBX {
+  const obx: WrappedOBX = fromOBXGenerated(segment);
+  const valueType = obx.$2_valueType?.toUpperCase();
+
+  if (valueType === "SN") {
     const rawField = segment.fields[5];
     const reconstructed = reconstructSNValue(rawField);
     if (reconstructed) {
       obx.$5_observationValue = [reconstructed];
+    }
+  } else if (valueType === "CE" || valueType === "CWE") {
+    const rawField = segment.fields[5];
+    const parsed = parseCEValue(rawField);
+    if (parsed) {
+      obx.$5_observationValueCE = parsed.ce;
+      obx.$5_observationValue = [parsed.stringValue];
     }
   }
 

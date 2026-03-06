@@ -9,7 +9,9 @@
  * - Per segment and field (e.g., PV1.19)
  * - Uses a list of preprocessor IDs that compose in order
  *
- * Preprocessors run for every matching segment only when the configured field is present.
+ * Preprocessors run for every matching segment and configured field in listed order.
+ * By default, preprocessors run only when the configured field has a non-empty value.
+ * Select preprocessors may opt into empty-field execution for specific field keys.
  */
 
 import type { HL7v2Message, HL7v2Segment } from "../hl7v2/generated/types";
@@ -85,12 +87,12 @@ function applyPreprocessors(
     for (const [field, preprocessorIds] of Object.entries(segmentConfig)) {
       if (!Array.isArray(preprocessorIds)) continue;
 
-      // Only process if the field is present in the segment
-      if (!isFieldPresentInSegment(segment, field))
-        continue;
-
       // Apply each preprocessor in order (each wrapped in try-catch)
       for (const id of preprocessorIds) {
+        if (!shouldRunPreprocessorForField(segment, field, id)) {
+          continue;
+        }
+
         try {
           const preprocessor = getPreprocessor(id);
           preprocessor(context, segment);
@@ -105,6 +107,20 @@ function applyPreprocessors(
   }
 
   return parsed;
+}
+
+function shouldRunPreprocessorForField(
+  segment: HL7v2Segment,
+  field: string,
+  preprocessorId: string,
+): boolean {
+  // Special-case: this fallback must be scoped to RXA-3 and allowed to run
+  // when RXA-3 is empty/missing so it can backfill from MSH-7.
+  if (preprocessorId === "fallback-rxa3-from-msh7") {
+    return segment.segment === "RXA" && field === "3";
+  }
+
+  return isFieldPresentInSegment(segment, field);
 }
 
 function isFieldPresentInSegment(segment: HL7v2Segment, field: string): boolean {

@@ -10,6 +10,16 @@
       ]
     }
   },
+  "profileConformance": {
+    "implementationGuides": [
+      {
+        "id": "us-core",
+        "package": "hl7.fhir.us.core",
+        "version": "6.1.0",
+        "enabled": true
+      }
+    ]
+  },
   "messages": {
     "ADT-A01": {
       "preprocess": {
@@ -17,7 +27,7 @@
           "2": ["move-pid2-into-pid3"],
           "3": ["inject-authority-from-msh"]
         },
-        "PV1": { "19": ["fix-authority-with-msh"] }
+        "PV1": { "19": ["fix-pv1-authority-with-msh"] }
       },
       "converter": { "PV1": { "required": true } }
     },
@@ -35,7 +45,33 @@
           "2": ["move-pid2-into-pid3"],
           "3": ["inject-authority-from-msh"]
         },
-        "PV1": { "19": ["fix-authority-with-msh"] }
+        "PV1": { "19": ["fix-pv1-authority-with-msh"] }
+      },
+      "converter": { "PV1": { "required": false } }
+    },
+    "VXU-V04": {
+      "preprocess": {
+        "PID": {
+          "2": ["move-pid2-into-pid3"],
+          "3": ["inject-authority-from-msh"]
+        },
+        "PV1": { "19": ["fix-pv1-authority-with-msh"] },
+        "ORC": { "3": ["inject-authority-into-orc3"] },
+        "RXA": {
+          // "3": ["fallback-rxa3-from-msh7"], // WARNING: fabricates administration date from message send time. Clinically incorrect. Only enable for senders that cannot fix their data.
+          "6": ["normalize-rxa6-dose"],
+          "9": ["normalize-rxa9-nip001"]
+        }
+      },
+      "converter": { "PV1": { "required": false } }
+    },
+    "ORM-O01": {
+      "preprocess": {
+        "PID": {
+          "2": ["move-pid2-into-pid3"],
+          "3": ["inject-authority-from-msh"]
+        },
+        "PV1": { "19": ["fix-pv1-authority-with-msh"] }
       },
       "converter": { "PV1": { "required": false } }
     }

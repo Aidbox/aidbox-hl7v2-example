@@ -684,7 +684,7 @@ describe("ORU_R01 E2E Integration", () => {
 
     test("preprocessor fixes missing authority from MSH before conversion", async () => {
       // with-visit.hl7 has PV1-19=ENC-12345 without authority; MSH-3=LAB, MSH-4=HOSPITAL
-      // preprocessor fix-authority-with-msh populates CX.4 from MSH → Encounter created
+      // preprocessor fix-pv1-authority-with-msh populates CX.4 from MSH → Encounter created
       const hl7Message = await loadFixture("oru-r01/encounter/with-visit.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 

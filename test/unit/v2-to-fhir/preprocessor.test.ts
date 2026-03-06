@@ -3,21 +3,21 @@ import { parseMessage } from "@atomic-ehr/hl7v2";
 import { preprocessMessage } from "../../../src/v2-to-fhir/preprocessor";
 import type { Hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
 import { clearConfigCache, hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
-import { fromPID, fromPV1 } from "../../../src/hl7v2/generated/fields";
+import { fromORC, fromPID, fromPV1, fromRXA } from "../../../src/hl7v2/generated/fields";
 
 /** Minimal valid identity rules for tests that don't focus on identity validation. */
 const minimalRules = [{ assigner: "UNIPAT" }];
 
-// Config with fix-authority-with-msh preprocessor enabled for both message types
+// Config with fix-pv1-authority-with-msh preprocessor enabled for both message types
 const configWithMshFallback: Hl7v2ToFhirConfig = {
   identitySystem: { patient: { rules: minimalRules } },
   messages: {
     "ORU-R01": {
-      preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+      preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
       converter: { PV1: { required: false } },
     },
     "ADT-A01": {
-      preprocess: { PV1: { "19": ["fix-authority-with-msh"] } },
+      preprocess: { PV1: { "19": ["fix-pv1-authority-with-msh"] } },
       converter: { PV1: { required: true } },
     },
   },
@@ -76,7 +76,7 @@ describe("preprocessMessage", () => {
     });
   });
 
-  describe("ORU with missing PV1-19 authority and fix-authority-with-msh enabled", () => {
+  describe("ORU with missing PV1-19 authority and fix-pv1-authority-with-msh enabled", () => {
     test("populates CX.4 from MSH-3 and MSH-4 namespaces when PV1-19 has no authority", () => {
       const rawMessage = [
         "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
@@ -147,7 +147,7 @@ describe("preprocessMessage", () => {
     });
   });
 
-  describe("ADT with missing PV1-19 authority and fix-authority-with-msh enabled", () => {
+  describe("ADT with missing PV1-19 authority and fix-pv1-authority-with-msh enabled", () => {
     test("populates CX.4 from MSH-3 and MSH-4 for ADT-A01", () => {
       const rawMessage = [
         "MSH|^~\\&|ADMISSIONS|HOSPITAL||DEST|20260105||ADT^A01|MSG001|P|2.5.1",
@@ -231,7 +231,7 @@ describe("preprocessMessage", () => {
       expect(getPv1_19Authority(result)).toBeUndefined();
     });
 
-    test("processes only when configured field is present", () => {
+    test("standard preprocessors run only when configured field is present", () => {
       const rawMessage = [
         "MSH|^~\\&|LAB|HOSPITAL||DEST|20260105||ORU^R01|MSG001|P|2.5.1",
         "PID|1||TEST-001^^^HOSP^MR||DOE^JOHN||19800101|M",
@@ -342,6 +342,432 @@ describe("preprocessMessage", () => {
         clearConfigCache();
         require("fs").unlinkSync(tmpPath);
       }
+    });
+  });
+
+  describe("inject-authority-into-orc3", () => {
+    const vxuConfig: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "VXU-V04": {
+          preprocess: { ORC: { "3": ["inject-authority-into-orc3"] } },
+        },
+      },
+    };
+
+    function getOrc3(parsed: ReturnType<typeof parseMessage>) {
+      const orcSegment = parsed.find((s) => s.segment === "ORC");
+      if (!orcSegment) return undefined;
+      return fromORC(orcSegment).$3_fillerOrderNumber;
+    }
+
+    test("injects MSH namespace into ORC-3 EI.2 when authority is missing", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "ORC|RE||65930",
+        "RXA|0|1|20260101||08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, vxuConfig);
+      const orc3 = getOrc3(result);
+
+      expect(orc3?.$1_value).toBe("65930");
+      expect(orc3?.$2_namespace).toBe("MyEMR-DE-000001");
+    });
+
+    test("does not override existing EI.2 authority", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "ORC|RE||65930^ExistingNS",
+        "RXA|0|1|20260101||08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, vxuConfig);
+      const orc3 = getOrc3(result);
+
+      expect(orc3?.$1_value).toBe("65930");
+      expect(orc3?.$2_namespace).toBe("ExistingNS");
+    });
+
+    test("does not override existing EI.3 universal ID", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "ORC|RE||65930^^1.2.3.4.5",
+        "RXA|0|1|20260101||08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, vxuConfig);
+      const orc3 = getOrc3(result);
+
+      expect(orc3?.$1_value).toBe("65930");
+      expect(orc3?.$2_namespace).toBeUndefined();
+      expect(orc3?.$3_system).toBe("1.2.3.4.5");
+    });
+
+    test("no change when ORC-3 is empty (no EI.1 value)", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "ORC|RE||",
+        "RXA|0|1|20260101||08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, vxuConfig);
+      const orc3 = getOrc3(result);
+
+      expect(orc3).toBeUndefined();
+    });
+
+    test("no error when ORC segment is absent", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|DE-000001||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, vxuConfig);
+
+      expect(getOrc3(result)).toBeUndefined();
+    });
+  });
+
+  describe("normalize-rxa6-dose", () => {
+    const doseConfig: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "VXU-V04": {
+          preprocess: { RXA: { "6": ["normalize-rxa6-dose"] } },
+        },
+      },
+    };
+
+    function getRxaFields(parsed: ReturnType<typeof parseMessage>) {
+      const rxaSegment = parsed.find((s) => s.segment === "RXA");
+      if (!rxaSegment) return undefined;
+      const rxa = fromRXA(rxaSegment);
+      return {
+        dose: rxa.$6_administeredAmount,
+        unit: rxa.$7_administeredUnit,
+      };
+    }
+
+    test('"999" sentinel is cleared (no doseQuantity)', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+
+      expect(getRxaFields(result)?.dose).toBeUndefined();
+    });
+
+    test('"0" is preserved (valid zero dose)', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|0",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+
+      expect(getRxaFields(result)?.dose).toBe("0");
+    });
+
+    test('"0.3 mL" extracts numeric and moves unit to RXA-7 when empty', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|0.3 mL",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+      const fields = getRxaFields(result);
+
+      expect(fields?.dose).toBe("0.3");
+      expect(fields?.unit?.$1_code).toBe("mL");
+    });
+
+    test('"0.3 mL" with existing RXA-7 does not overwrite unit', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|0.3 mL|mL^milliliter^UCUM",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+      const fields = getRxaFields(result);
+
+      expect(fields?.dose).toBe("0.3");
+      expect(fields?.unit?.$1_code).toBe("mL");
+      expect(fields?.unit?.$2_text).toBe("milliliter");
+      expect(fields?.unit?.$3_system).toBe("UCUM");
+    });
+
+    test('"0.3" is preserved as-is (already numeric)', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|0.3",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+
+      expect(getRxaFields(result)?.dose).toBe("0.3");
+    });
+
+    test('"abc" unparseable is cleared', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|abc",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+
+      expect(getRxaFields(result)?.dose).toBeUndefined();
+    });
+
+    test("empty RXA-6 is no-op", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, doseConfig);
+
+      expect(getRxaFields(result)?.dose).toBeUndefined();
+    });
+  });
+
+  describe("normalize-rxa9-nip001", () => {
+    const nip001Config: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "VXU-V04": {
+          preprocess: { RXA: { "9": ["normalize-rxa9-nip001"] } },
+        },
+      },
+    };
+
+    function getRxa9(parsed: ReturnType<typeof parseMessage>) {
+      const rxaSegment = parsed.find((s) => s.segment === "RXA");
+      if (!rxaSegment) return undefined;
+      return fromRXA(rxaSegment).$9_administrationNotes;
+    }
+
+    test('bare "00" without system gets NIP001 injected', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||00",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(1);
+      expect(notes![0]!.$1_code).toBe("00");
+      expect(notes![0]!.$3_system).toBe("NIP001");
+    });
+
+    test('bare "01" without system gets NIP001 injected', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||01^Historical",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(1);
+      expect(notes![0]!.$1_code).toBe("01");
+      expect(notes![0]!.$2_text).toBe("Historical");
+      expect(notes![0]!.$3_system).toBe("NIP001");
+    });
+
+    test('"00" with NIP001 already set is unchanged', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||00^New Record^NIP001",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(1);
+      expect(notes![0]!.$1_code).toBe("00");
+      expect(notes![0]!.$3_system).toBe("NIP001");
+    });
+
+    test('"02" without system is not modified (not a NIP001 code)', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||02^Other",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(1);
+      expect(notes![0]!.$1_code).toBe("02");
+      expect(notes![0]!.$3_system).toBeUndefined();
+    });
+
+    test("empty RXA-9 is no error", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+
+      expect(getRxa9(result)).toBeUndefined();
+    });
+
+    test("repeating RXA-9: injects NIP001 into bare 01, leaves non-NIP001 code unchanged", () => {
+      // ~ is the HL7v2 repeat separator
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||01~02^Other",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(2);
+      expect(notes![0]!.$1_code).toBe("01");
+      expect(notes![0]!.$3_system).toBe("NIP001");
+      expect(notes![1]!.$1_code).toBe("02");
+      expect(notes![1]!.$3_system).toBeUndefined();
+    });
+
+    test('"00" with non-NIP001 system is not overwritten', () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20260101||08^HEPB^CVX|999|||00^New^OTHERSYS",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, nip001Config);
+      const notes = getRxa9(result);
+
+      expect(notes).toHaveLength(1);
+      expect(notes![0]!.$1_code).toBe("00");
+      expect(notes![0]!.$3_system).toBe("OTHERSYS");
+    });
+  });
+
+  describe("fallback-rxa3-from-msh7", () => {
+    const fallbackConfig: Hl7v2ToFhirConfig = {
+      identitySystem: { patient: { rules: minimalRules } },
+      messages: {
+        "VXU-V04": {
+          preprocess: { RXA: { "3": ["fallback-rxa3-from-msh7"] } },
+        },
+      },
+    };
+
+    function getRxa3(parsed: ReturnType<typeof parseMessage>): string | undefined {
+      const rxaSegment = parsed.find((segment) => segment.segment === "RXA");
+      if (!rxaSegment) {
+        return undefined;
+      }
+      return fromRXA(rxaSegment).$3_startAdministrationDateTime;
+    }
+
+    test("RXA-3 empty + MSH-7 present uses MSH-7 as fallback", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105123000||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1||20260101|08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, fallbackConfig);
+
+      expect(getRxa3(result)).toBe("20260105123000");
+    });
+
+    test("RXA-3 already present is unchanged", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105123000||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1|20251231110000|20251231110000|08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, fallbackConfig);
+
+      expect(getRxa3(result)).toBe("20251231110000");
+    });
+
+    test("RXA-3 empty + MSH-7 empty stays empty", () => {
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1||20260101|08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, fallbackConfig);
+
+      expect(getRxa3(result)).toBeUndefined();
+    });
+
+    test("misconfigured field key does not trigger fallback", () => {
+      const misconfiguredFieldConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        messages: {
+          "VXU-V04": {
+            preprocess: {
+              RXA: {
+                "99": ["fallback-rxa3-from-msh7"],
+              },
+            },
+          },
+        },
+      } as unknown as Hl7v2ToFhirConfig;
+
+      const rawMessage = [
+        "MSH|^~\\&|MyEMR|HOSP||DEST|20260105123000||VXU^V04|MSG001|P|2.5.1",
+        "PID|1||PA123^^^MYEMR^MR||DOE^JOHN||19800101|M",
+        "RXA|0|1||20260101|08^HEPB^CVX",
+      ].join("\r");
+
+      const parsed = parseMessage(rawMessage);
+      const result = preprocessMessage(parsed, misconfiguredFieldConfig);
+
+      expect(getRxa3(result)).toBeUndefined();
     });
   });
 });

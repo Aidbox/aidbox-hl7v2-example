@@ -18,9 +18,13 @@ export type SegmentPreprocessorFn = (
 ) => void;
 
 export const SEGMENT_PREPROCESSORS: Record<string, SegmentPreprocessorFn> = {
-  "fix-authority-with-msh": fixAuthorityWithMsh,
+  "fix-pv1-authority-with-msh": fixAuthorityWithMsh,
   "move-pid2-into-pid3": movePid2IntoPid3,
   "inject-authority-from-msh": injectAuthorityFromMsh,
+  "inject-authority-into-orc3": injectAuthorityIntoOrc3,
+  "fallback-rxa3-from-msh7": fallbackRxa3FromMsh7,
+  "normalize-rxa6-dose": normalizeRxa6Dose,
+  "normalize-rxa9-nip001": normalizeRxa9Nip001,
 };
 
 export type SegmentPreprocessorId = keyof typeof SEGMENT_PREPROCESSORS;
@@ -282,4 +286,260 @@ function insertAuthorityIntoPv1Segment(
     // Complex value - set component 4
     (pv1_19 as Record<number, FieldValue>)[4] = { 1: namespace };
   }
+}
+
+/**
+ * If ORC-3 (Filler Order Number, EI type) has a value (EI.1) but no authority
+ * (EI.2 and EI.3 both empty), inject MSH-3/MSH-4 derived namespace into EI.2.
+ * Prevents cross-sender ID collisions for deterministic Immunization ID generation.
+ */
+function injectAuthorityIntoOrc3(
+  context: PreprocessorContext,
+  segment: HL7v2Segment,
+): void {
+  if (segment.segment !== "ORC") {
+    return;
+  }
+
+  const mshSegment = findSegment(context.parsedMessage, "MSH");
+  if (!mshSegment) {
+    return;
+  }
+
+  const msh = fromMSH(mshSegment);
+  const namespace = deriveMshNamespace(msh);
+  if (!namespace) {
+    return;
+  }
+
+  const orc3 = segment.fields[3];
+  if (orc3 === undefined || orc3 === null) {
+    return;
+  }
+
+  injectNamespaceIntoEi(segment, 3, orc3, namespace);
+}
+
+/**
+ * If RXA-3 is empty, copy MSH-7 as a fallback administration date.
+ * This is intentionally opt-in and clinically unsafe for delayed reporting.
+ */
+function fallbackRxa3FromMsh7(
+  context: PreprocessorContext,
+  segment: HL7v2Segment,
+): void {
+  if (segment.segment !== "RXA") {
+    return;
+  }
+
+  const rxa3 = segment.fields[3];
+  if (hasNonEmptyFieldValue(rxa3)) {
+    return;
+  }
+
+  const mshSegment = findSegment(context.parsedMessage, "MSH");
+  if (!mshSegment) {
+    return;
+  }
+
+  const msh = fromMSH(mshSegment);
+  const msh7 = msh.$7_messageDateTime?.trim();
+  if (!msh7) {
+    return;
+  }
+
+  segment.fields[3] = msh7 as FieldValue;
+  console.warn(
+    "RXA-3 empty - using MSH-7 (message date) as fallback administration date. " +
+      "This is clinically incorrect. Fix at the sender.",
+  );
+}
+
+/**
+ * Inject namespace into an EI field (EI.2) when EI.1 is present but EI.2/EI.3 are both empty.
+ * Modifies the segment in place.
+ */
+function injectNamespaceIntoEi(
+  segment: HL7v2Segment,
+  fieldIndex: number,
+  fieldValue: FieldValue,
+  namespace: string,
+): void {
+  if (typeof fieldValue === "string") {
+    if (!fieldValue.trim()) {
+      return;
+    }
+    segment.fields[fieldIndex] = { 1: fieldValue, 2: namespace } as FieldValue;
+    return;
+  }
+
+  if (Array.isArray(fieldValue)) {
+    return;
+  }
+
+  const eiComponents = fieldValue as Record<number, FieldValue>;
+  const entityIdentifier = eiComponents[1];
+  if (entityIdentifier === undefined || entityIdentifier === null) {
+    return;
+  }
+  if (typeof entityIdentifier === "string" && !entityIdentifier.trim()) {
+    return;
+  }
+
+  const hasNamespaceId = hasSubcomponent(eiComponents[2], 1);
+  const hasUniversalId = hasSubcomponent(eiComponents[3], 1);
+
+  if (hasNamespaceId || hasUniversalId) {
+    return;
+  }
+
+  eiComponents[2] = namespace;
+}
+
+function hasNonEmptyFieldValue(fieldValue: FieldValue | undefined): boolean {
+  if (fieldValue === undefined || fieldValue === null) {
+    return false;
+  }
+
+  if (typeof fieldValue === "string") {
+    return fieldValue.trim().length > 0;
+  }
+
+  return true;
+}
+
+/**
+ * Normalizes RXA-6 (Administered Amount, NM type):
+ * - "999" → clear (CDC IIS sentinel for unknown amount)
+ * - "0" → preserve (valid zero dose)
+ * - Embedded units like "0.3 mL" → extract numeric to RXA-6, move unit to RXA-7 if empty
+ * - Unparseable → clear field with warning
+ */
+function normalizeRxa6Dose(
+  _context: PreprocessorContext,
+  segment: HL7v2Segment,
+): void {
+  if (segment.segment !== "RXA") {
+    return;
+  }
+
+  const rawDose = segment.fields[6];
+  if (rawDose === undefined || rawDose === null) {
+    return;
+  }
+
+  const doseString = typeof rawDose === "string" ? rawDose.trim() : String(rawDose).trim();
+  if (!doseString) {
+    return;
+  }
+
+  if (doseString === "999") {
+    delete segment.fields[6];
+    return;
+  }
+
+  if (isNumeric(doseString)) {
+    return;
+  }
+
+  const numericMatch = doseString.match(/^([0-9]*\.?[0-9]+)\s+(.+)$/);
+  if (numericMatch) {
+    const [, numericPart, unitPart] = numericMatch;
+    segment.fields[6] = numericPart as FieldValue;
+
+    const existingUnit = segment.fields[7];
+    const unitIsEmpty = existingUnit === undefined || existingUnit === null ||
+      (typeof existingUnit === "string" && !existingUnit.trim());
+    if (unitIsEmpty) {
+      segment.fields[7] = unitPart as FieldValue;
+    }
+
+    console.warn(`[normalize-rxa6-dose] Extracted numeric from "${doseString}": value=${numericPart}, unit=${unitPart}`);
+    return;
+  }
+
+  console.warn(`[normalize-rxa6-dose] Unparseable RXA-6 value "${doseString}" — clearing field`);
+  delete segment.fields[6];
+}
+
+function isNumeric(value: string): boolean {
+  if (!value) {
+    return false;
+  }
+  return /^[0-9]*\.?[0-9]+$/.test(value);
+}
+
+/**
+ * If any RXA-9 CWE repeat has code "00" or "01" but empty CWE.3 (coding system),
+ * inject "NIP001" as the system. These are CDC IIS NIP001 table codes that senders
+ * sometimes send without the coding system identifier.
+ */
+function normalizeRxa9Nip001(
+  _context: PreprocessorContext,
+  segment: HL7v2Segment,
+): void {
+  if (segment.segment !== "RXA") {
+    return;
+  }
+
+  const rxa9 = segment.fields[9];
+  if (rxa9 === undefined || rxa9 === null) {
+    return;
+  }
+
+  if (Array.isArray(rxa9)) {
+    for (let i = 0; i < rxa9.length; i++) {
+      const replaced = injectNip001SystemIntoCwe(rxa9[i]!);
+      if (replaced) {
+        rxa9[i] = replaced;
+      }
+    }
+  } else {
+    const replaced = injectNip001SystemIntoCwe(rxa9);
+    if (replaced) {
+      segment.fields[9] = replaced;
+    }
+  }
+}
+
+const NIP001_CODES = new Set(["00", "01"]);
+
+/**
+ * If a CWE has code "00" or "01" with no coding system (CWE.3), inject "NIP001".
+ * Returns a replacement FieldValue when the original is a bare string, or undefined
+ * when modified in place.
+ */
+function injectNip001SystemIntoCwe(fieldValue: FieldValue): FieldValue | undefined {
+  if (typeof fieldValue === "string") {
+    if (NIP001_CODES.has(fieldValue.trim())) {
+      return { 1: fieldValue, 3: "NIP001" } as FieldValue;
+    }
+    return undefined;
+  }
+
+  if (Array.isArray(fieldValue)) {
+    return undefined;
+  }
+
+  const cweComponents = fieldValue as Record<number, FieldValue>;
+  const code = cweComponents[1];
+  if (code === undefined || code === null) {
+    return undefined;
+  }
+
+  const codeString = typeof code === "string" ? code.trim() : undefined;
+  if (!codeString || !NIP001_CODES.has(codeString)) {
+    return undefined;
+  }
+
+  const existingSystem = cweComponents[3];
+  const systemIsEmpty = existingSystem === undefined || existingSystem === null ||
+    (typeof existingSystem === "string" && !existingSystem.trim());
+
+  if (!systemIsEmpty) {
+    return undefined;
+  }
+
+  cweComponents[3] = "NIP001";
+  return undefined;
 }

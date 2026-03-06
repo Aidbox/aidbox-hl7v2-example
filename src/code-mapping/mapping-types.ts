@@ -55,6 +55,11 @@ export const MAPPING_TYPES = {
     target: { resource: "Observation", field: "status" },
     targetSystem: "http://hl7.org/fhir/observation-status",
   },
+  "orc-status": {
+    source: { segment: "ORC", field: 5 },
+    target: { resource: "ServiceRequest", field: "status" },
+    targetSystem: "http://hl7.org/fhir/request-status",
+  },
 } as const;
 
 /** Valid mapping type names (keys of MAPPING_TYPES) */

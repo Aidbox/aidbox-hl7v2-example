@@ -1,0 +1,13 @@
+MSH|^~\&|ORMAPP|FACB||DEST|20260220104500||ORM^O01|ORM-MULTI-RXO-001|P|2.5.1
+PID|1||ORMP-2002^^^FACB^MR||NGUYEN^SAM||19891230|M
+PV1|1|O|||||||||||||||||VIS-2002^^^FACB&urn:oid:1.2.840.114351&ISO
+ORC|NW|RX-2001|||SC
+RXO|00054-4725-25^Azithromycin 250 MG Tablet^NDC|1||TAB^Tablet^UCUM
+DG1|1||J20.9^Acute bronchitis^I10
+NTE|1||Take with food
+OBX|1|ST|AOE-2^Recent antibiotic use^99LCL||NO||||||F
+ORC|NW|RX-2002|||SC
+RXO|00527-1363-01^Ibuprofen 200 MG Tablet^NDC|1||TAB^Tablet^UCUM
+DG1|1||M54.5^Low back pain^I10
+NTE|1||Avoid on empty stomach
+OBX|1|ST|AOE-3^Current pain score^99LCL||6||||||F
