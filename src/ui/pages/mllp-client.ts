@@ -115,38 +115,85 @@ function renderMLLPClientPage(
   navData: NavData,
   state: MLLPClientState = { host: "localhost", port: 2575, message: "" },
 ): string {
-  const sampleMessages = [
+  const now = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+  const nowDate = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 8);
+  const msgId = Date.now();
+  const vnSuffix = Date.now().toString().slice(-6);
+
+  const sampleMessageGroups = [
     {
-      name: "ADT^A01 (Admit - Simple)",
-      message: `MSH|^~\\&|SENDING_APP|SENDING_FAC|RECEIVING_APP|RECEIVING_FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ADT^A01|MSG${Date.now()}|P|2.4\rEVN|A01|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rPID|1||12345^^^HOSPITAL^MR||Smith^John^A||19800101|M|||123 Main St^^Anytown^CA^12345||555-555-5555\rPV1|1|I|ICU^101^A|E|||12345^Jones^Mary^A|||MED||||1|||12345^Jones^Mary^A|IN||||||||||||||||||||||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}`,
+      type: "ADT",
+      label: "ADT (Admit/Discharge/Transfer)",
+      messages: [
+        {
+          name: "ADT^A01 (Admit - Simple)",
+          message: `MSH|^~\\&|SENDING_APP|SENDING_FAC|RECEIVING_APP|RECEIVING_FAC|${now}||ADT^A01|MSG${msgId}|P|2.4\rEVN|A01|${now}\rPID|1||12345^^^HOSPITAL^MR||Smith^John^A||19800101|M|||123 Main St^^Anytown^CA^12345||555-555-5555\rPV1|1|I|ICU^101^A|E|||12345^Jones^Mary^A|||MED||||1|||12345^Jones^Mary^A|IN||||||||||||||||||||||||||${now}`,
+        },
+        {
+          name: "ADT^A01 (Admit - Full)",
+          message: `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|${now}||ADT^A01^ADT_A01|MSG${msgId}|P|2.5.1|||AL|AL\rEVN|A01|${now}|||OPERATOR\rPID|1||P12345^^^HOSPITAL^MR||Smith^John^Robert||19850315|M|||123 Main St^^Anytown^CA^12345^USA||^PRN^PH^^1^555^1234567|^WPN^PH^^1^555^9876543||M||P12345\rPV1|1|I|WARD1^ROOM1^BED1||||123^ATTENDING^DOCTOR|||MED||||ADM|||||VN001|||||||||||||||||||||||||||${now}\rNK1|1|Smith^Jane||456 Oak St^^Othertown^CA^54321^USA|^PRN^PH^^1^555^5551234||||||||||||||||||||||||||||||||\rDG1|1||I10^Essential Hypertension^ICD10||${nowDate}|||||||||||001^PHYSICIAN^DIAGNOSING\rAL1|1|DA|PCN^Penicillin^RXNORM|SV|Rash||\rIN1|1|BCBS^Blue Cross Blue Shield||Blue Cross||||GRP001|Blue Cross Group|||20230101|20231231||HMO||SEL|||||||||||||||||||POL123`,
+        },
+        {
+          name: "ADT^A08 (Update)",
+          message: `MSH|^~\\&|SENDING_APP|SENDING_FAC|RECEIVING_APP|RECEIVING_FAC|${now}||ADT^A08|MSG${msgId}|P|2.4\rEVN|A08|${now}\rPID|1||12345^^^HOSPITAL^MR||Smith^John^A||19800101|M|||456 New St^^Newtown^CA^54321||555-555-1234`,
+        },
+      ],
     },
     {
-      name: "ADT^A01 (Admit - Full)",
-      message: `MSH|^~\\&|SENDER|FACILITY|RECEIVER|DEST|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ADT^A01^ADT_A01|MSG${Date.now()}|P|2.5.1|||AL|AL\rEVN|A01|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}|||OPERATOR\rPID|1||P12345^^^HOSPITAL^MR||Smith^John^Robert||19850315|M|||123 Main St^^Anytown^CA^12345^USA||^PRN^PH^^1^555^1234567|^WPN^PH^^1^555^9876543||M||P12345\rPV1|1|I|WARD1^ROOM1^BED1||||123^ATTENDING^DOCTOR|||MED||||ADM|||||VN001|||||||||||||||||||||||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rNK1|1|Smith^Jane||456 Oak St^^Othertown^CA^54321^USA|^PRN^PH^^1^555^5551234||||||||||||||||||||||||||||||||\rDG1|1||I10^Essential Hypertension^ICD10||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 8)}|||||||||||001^PHYSICIAN^DIAGNOSING\rAL1|1|DA|PCN^Penicillin^RXNORM|SV|Rash||\rIN1|1|BCBS^Blue Cross Blue Shield||Blue Cross||||GRP001|Blue Cross Group|||20230101|20231231||HMO||SEL|||||||||||||||||||POL123`,
+      type: "BAR",
+      label: "BAR (Billing Account Record)",
+      messages: [
+        {
+          name: "BAR^P01 (Add Account)",
+          message: `MSH|^~\\&|BILLING|HOSPITAL|RECEIVER|FAC|${now}||BAR^P01|MSG${msgId}|P|2.5\rEVN|P01|${now}\rPID|1||MRN12345||Doe^Jane^M||19850315|F\rPV1|1|O|CLINIC^201||||||12345^Smith^Robert|||||||||||ACCT001`,
+        },
+      ],
     },
     {
-      name: "ADT^A08 (Update)",
-      message: `MSH|^~\\&|SENDING_APP|SENDING_FAC|RECEIVING_APP|RECEIVING_FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ADT^A08|MSG${Date.now()}|P|2.4\rEVN|A08|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rPID|1||12345^^^HOSPITAL^MR||Smith^John^A||19800101|M|||456 New St^^Newtown^CA^54321||555-555-1234`,
+      type: "ORM",
+      label: "ORM (Orders)",
+      messages: [
+        {
+          name: "ORM^O01 (Order)",
+          message: `MSH|^~\\&|ORDER_SYS|HOSPITAL|LAB|LAB_FAC|${now}||ORM^O01|MSG${msgId}|P|2.4\rPID|1||PAT001^^^HOSP^MR||Johnson^Mary||19900520|F\rORC|NW|ORD001||||||||||12345^Doctor^Test\rOBR|1|ORD001||CBC^Complete Blood Count^L|||${now}`,
+        },
+      ],
     },
     {
-      name: "BAR^P01 (Add Account)",
-      message: `MSH|^~\\&|BILLING|HOSPITAL|RECEIVER|FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||BAR^P01|MSG${Date.now()}|P|2.5\rEVN|P01|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rPID|1||MRN12345||Doe^Jane^M||19850315|F\rPV1|1|O|CLINIC^201||||||12345^Smith^Robert|||||||||||ACCT001`,
+      type: "ORU",
+      label: "ORU (Observation Results)",
+      messages: [
+        {
+          name: "ORU^R01 (Lab Result, Inline LOINC)",
+          message: `MSH|^~\\&|LAB|HOSPITAL|EMR|DEST|${now}||ORU^R01|MSG${msgId}|P|2.5.1\rPID|1||TEST-0001^^^HOSPITAL^MR||TESTPATIENT^ALPHA||20000101|M\rPV1|1|O|LAB||||||||||||||||VN${vnSuffix}\rORC|RE|ORD001|FIL001\rOBR|1|ORD001|FIL001|LAB100^METABOLIC PANEL^LOCAL|||${now}|||||||||PROV001^TEST^PROVIDER||||||${now}||Lab|F\rOBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F|||${now}\rOBX|2|NM|2951-2^Sodium^LN||140|mmol/L|136-145||||F|||${now}\rOBX|3|NM|2160-0^Creatinine^LN||1.1|mg/dL|0.7-1.3||||F|||${now}\rNTE|1|L|All results within normal limits.`,
+        },
+        {
+          name: "ORU^R01 (Lab Result, Known LOINC)",
+          message: `MSH|^~\\&|ACME_LAB|ACME_HOSP|EMR|DEST|${now}||ORU^R01|MSG${msgId}|P|2.5.1\rPID|1||TEST-0002^^^HOSPITAL^MR||TESTPATIENT^BETA||19850515|F\rPV1|1|O|LAB||||||||||||||||VN${vnSuffix}\rORC|RE|ORD002|FIL002\rOBR|1|ORD002|FIL002|CHEM7^CHEMISTRY PANEL^LOCAL|||${now}|||||||||PROV002^LAB^DOCTOR||||||${now}||Lab|F\rOBX|1|NM|K_SERUM^Potassium [Serum/Plasma]^LOCAL||4.5|mmol/L|3.5-5.5||||F|||${now}\rOBX|2|NM|NA_SERUM^Sodium [Serum/Plasma]^LOCAL||142|mmol/L|136-145||||F|||${now}\rOBX|3|NM|GLU_FASTING^Glucose Fasting^LOCAL||95|mg/dL|70-100||||F|||${now}\rNTE|1|L|Local codes used - LOINC mapping required.`,
+        },
+        {
+          name: "ORU^R01 (Lab Result, Unknown LOINC)",
+          message: `MSH|^~\\&|ACME_LAB|ACME_HOSP|EMR|DEST|${now}||ORU^R01|MSG${msgId}|P|2.5.1\rPID|1||TEST-0003^^^HOSPITAL^MR||TESTPATIENT^GAMMA||19901225|M\rPV1|1|O|LAB||||||||||||||||VN${vnSuffix}\rORC|RE|ORD003|FIL003\rOBR|1|ORD003|FIL003|CHEM7^CHEMISTRY PANEL^LOCAL|||${now}|||||||||PROV003^LAB^DOCTOR||||||${now}||Lab|F\rOBX|1|NM|UNKNOWN_TEST^Unknown Lab Test^LOCAL||123|units|0-200||||F|||${now}\rNTE|1|L|This code has no LOINC mapping in ConceptMap.`,
+        },
+      ],
     },
     {
-      name: "ORM^O01 (Order)",
-      message: `MSH|^~\\&|ORDER_SYS|HOSPITAL|LAB|LAB_FAC|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORM^O01|MSG${Date.now()}|P|2.4\rPID|1||PAT001^^^HOSP^MR||Johnson^Mary||19900520|F\rORC|NW|ORD001||||||||||12345^Doctor^Test\rOBR|1|ORD001||CBC^Complete Blood Count^L|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}`,
-    },
-    {
-      name: "ORU^R01 (Lab Result, Inline LOINC)",
-      message: `MSH|^~\\&|LAB|HOSPITAL|EMR|DEST|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORU^R01|MSG${Date.now()}|P|2.5.1\rPID|1||TEST-0001^^^HOSPITAL^MR||TESTPATIENT^ALPHA||20000101|M\rPV1|1|O|LAB||||||||||||||||VN${Date.now().toString().slice(-6)}\rORC|RE|ORD001|FIL001\rOBR|1|ORD001|FIL001|LAB100^METABOLIC PANEL^LOCAL|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}|||||||||PROV001^TEST^PROVIDER||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||Lab|F\rOBX|1|NM|2823-3^Potassium^LN||4.2|mmol/L|3.5-5.5||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|2|NM|2951-2^Sodium^LN||140|mmol/L|136-145||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|3|NM|2160-0^Creatinine^LN||1.1|mg/dL|0.7-1.3||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rNTE|1|L|All results within normal limits.`,
-    },
-    {
-      name: "ORU^R01 (Lab Result, Known LOINC)",
-      message: `MSH|^~\\&|ACME_LAB|ACME_HOSP|EMR|DEST|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORU^R01|MSG${Date.now()}|P|2.5.1\rPID|1||TEST-0002^^^HOSPITAL^MR||TESTPATIENT^BETA||19850515|F\rPV1|1|O|LAB||||||||||||||||VN${Date.now().toString().slice(-6)}\rORC|RE|ORD002|FIL002\rOBR|1|ORD002|FIL002|CHEM7^CHEMISTRY PANEL^LOCAL|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}|||||||||PROV002^LAB^DOCTOR||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||Lab|F\rOBX|1|NM|K_SERUM^Potassium [Serum/Plasma]^LOCAL||4.5|mmol/L|3.5-5.5||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|2|NM|NA_SERUM^Sodium [Serum/Plasma]^LOCAL||142|mmol/L|136-145||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rOBX|3|NM|GLU_FASTING^Glucose Fasting^LOCAL||95|mg/dL|70-100||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rNTE|1|L|Local codes used - LOINC mapping required.`,
-    },
-    {
-      name: "ORU^R01 (Lab Result, Unknown LOINC)",
-      message: `MSH|^~\\&|ACME_LAB|ACME_HOSP|EMR|DEST|${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||ORU^R01|MSG${Date.now()}|P|2.5.1\rPID|1||TEST-0003^^^HOSPITAL^MR||TESTPATIENT^GAMMA||19901225|M\rPV1|1|O|LAB||||||||||||||||VN${Date.now().toString().slice(-6)}\rORC|RE|ORD003|FIL003\rOBR|1|ORD003|FIL003|CHEM7^CHEMISTRY PANEL^LOCAL|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}|||||||||PROV003^LAB^DOCTOR||||||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}||Lab|F\rOBX|1|NM|UNKNOWN_TEST^Unknown Lab Test^LOCAL||123|units|0-200||||F|||${new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14)}\rNTE|1|L|This code has no LOINC mapping in ConceptMap.`,
+      type: "VXU",
+      label: "VXU (Vaccination Update)",
+      messages: [
+        {
+          name: "VXU^V04 (v2.8.2, COVID-19 + Influenza)",
+          message: `MSH|^~\\&|EHR_APP|CLINIC_A^54321|IIS_RECV|STATE_DOH|${now}||VXU^V04^VXU_V04|VXU${now}-001|P|2.8.2|||AL|AL|||||Z32^CDCPHINVS\rPID|1||PAT100^^^CLINIC_A^MR||TESTPATIENT^DELTA^M^^^L||20100615|M||2054-5^Black or African American^CDCREC|100 ELM ST^^PORTLAND^OR^97201^USA||^PRN^PH^^^503^5550100\rPD1|||CLINIC_A^54321^L|||||02^Reminder/Recall - any method^HL70215\rNK1|1|TESTPATIENT^ALICE^L|MTH^Mother^HL70063|100 ELM ST^^PORTLAND^OR^97201^USA|^PRN^PH^^^503^5550101\rORC|RE||IMM${now}-001^CLINIC_A||||||${nowDate}|||5678^PROVIDER^SARAH^J^^^MD^NPI^L|||CLINIC_A^54321^L\rRXA|0|1|${nowDate}|${nowDate}|207^COVID-19 mRNA, LNP-S, PF, 30 mcg/0.3 mL dose^CVX|0.3|mL^milliliter^UCUM||00^New immunization record^NIP001|5678^PROVIDER^SARAH^J^^^MD^NPI^L|^^^CLINIC_A^54321^L||||LOT12345|20271231|PFR^Pfizer^MVX|||CP|A\rRXR|IM^Intramuscular^HL70162|LD^Left Deltoid^HL70163\rOBX|1|CE|64994-7^Vaccine funding program eligibility category^LN|1|V02^VFC eligible - Medicaid^HL70064||||||F\rOBX|2|CE|69764-9^Document type^LN|2|253088698300026411121116^COVID-19 Vaccine^cdcgs1vis||||||F\rOBX|3|TS|29768-9^Date vaccine information statement published^LN|2|20230806||||||F\rOBX|4|TS|29769-7^Date vaccine information statement presented^LN|2|${nowDate}||||||F\rORC|RE||IMM${now}-002^CLINIC_A||||||${nowDate}|||5678^PROVIDER^SARAH^J^^^MD^NPI^L|||CLINIC_A^54321^L\rRXA|0|1|${nowDate}|${nowDate}|158^Influenza, injectable, quadrivalent^CVX|0.5|mL^milliliter^UCUM||00^New immunization record^NIP001|5678^PROVIDER^SARAH^J^^^MD^NPI^L|^^^CLINIC_A^54321^L||||FLULOT789|20270601|SKB^GlaxoSmithKline^MVX|||CP|A\rRXR|IM^Intramuscular^HL70162|RD^Right Deltoid^HL70163\rOBX|1|CE|64994-7^Vaccine funding program eligibility category^LN|1|V02^VFC eligible - Medicaid^HL70064||||||F`,
+        },
+        {
+          name: "VXU^V04 (v2.5.1, Full with PD1/NK1/OBX)",
+          message: `MSH|^~\\&|EMR_SYS|SAMPLE_CLINIC^99999|STATE_IIS|STATE_DOH|20260211103000-0800||VXU^V04^VXU_V04|VXU20260211-00001|P|2.5.1|||AL|AL|||||Z32^CDCPHINVS\rPID|1||PAT200^^^SAMPLE_CLINIC^MR||TESTPATIENT^ECHO^A^^^L||20141023|F||2106-3^White^CDCREC|500 MAPLE AVE^^ANYTOWN^WA^98000^USA||^PRN^PH^^^555^5550200|^NET^Internet^test@example.com||S\rPD1|||SAMPLE_CLINIC^99999^L|||||02^Reminder/Recall - any method^HL70215|||N^No^HL70136\rNK1|1|TESTPATIENT^FRANK^B|FTH^Father^HL70063|500 MAPLE AVE^^ANYTOWN^WA^98000^USA|^PRN^PH^^^555^5550201\rORC|RE||IMM20260211-990011^SAMPLE_CLINIC||||||20260211|||9876^DOCTOR^LISA^M^^^MD^NPI^L|||SAMPLE_CLINIC^99999^L\rRXA|0|1|20260211|20260211|207^COVID-19 mRNA, LNP-S, PF, 30 mcg/0.3 mL dose^CVX|0.3|mL^milliliter^UCUM||00^New immunization record^NIP001|9876^DOCTOR^LISA^M^^^MD^NPI^L|^^^SAMPLE_CLINIC^99999^L||||SAMPLELT456|20270131|PFR^Pfizer^MVX|||CP|A\rRXR|IM^Intramuscular^HL70162|RA^Right Arm^HL70163\rOBX|1|CE|64994-7^Vaccine funding program eligibility category^LN|1|V02^VFC eligible - Medicaid^HL70064||||||F\rOBX|2|CE|69764-9^Document type^LN|2|253088698300026411121116^COVID-19 Vaccine^cdcgs1vis||||||F\rOBX|3|TS|29768-9^Date vaccine information statement published^LN|2|20230806||||||F\rOBX|4|TS|29769-7^Date vaccine information statement presented^LN|2|20260211||||||F`,
+        },
+        {
+          name: "VXU^V04 (Broken - SNOMED in RXA, missing dates)",
+          message: `MSH|^~\\&||TEST_CLINIC|||20231005162929.774+0000||VXU^V04^VXU_V04|MSG0000020000001|P|2.5.1\rPID|1||PAT300^^^^FI||TESTPATIENT^ZETA||20000101|U||2076-8^Native Hawaiian or Other Pacific Islander^HL70005|100 TEST ST^^ANYTOWN^CA^99999^USA|||||||||||U^Unknown^HL70189\rPV1|1|R||||||||||||||||||||||||||||||||||||||||||20230906050813\rRXA|0|1|||387934009^Lisinopril^CVX|20-40 mg|||||||||1|20190815|^Generic\rRXR|78421000^ID (Intradermal) Route^HL70162|368209003^Left Deltoid (Upper arm)^HL70163`,
+        },
+      ],
     },
   ];
 
@@ -253,14 +300,25 @@ function renderMLLPClientPage(
       <div>
         <div class="bg-white rounded-lg shadow p-6">
           <h2 class="text-lg font-semibold text-gray-800 mb-4">Sample Messages</h2>
-          <div class="space-y-2">
-            ${sampleMessages
+          <div class="space-y-1">
+            ${sampleMessageGroups
               .map(
-                (sample, i) => `
-              <button type="button" onclick="document.querySelector('textarea[name=message]').value = decodeURIComponent('${encodeURIComponent(sample.message)}'); previewDirty = true; switchTab('edit')"
-                class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors">
-                ${sample.name}
-              </button>
+                (group) => `
+              <details class="rounded-lg border border-gray-200">
+                <summary class="px-3 py-2 cursor-pointer text-sm font-semibold text-gray-700 hover:bg-gray-50 select-none">${group.label}</summary>
+                <div class="px-2 pb-2 space-y-1">
+                  ${group.messages
+                    .map(
+                      (sample) => `
+                    <button type="button" onclick="document.querySelector('textarea[name=message]').value = decodeURIComponent('${encodeURIComponent(sample.message)}'); previewDirty = true; switchTab('edit')"
+                      class="w-full text-left px-3 py-1.5 bg-gray-50 hover:bg-gray-100 rounded text-sm text-gray-700 transition-colors">
+                      ${sample.name}
+                    </button>
+                  `,
+                    )
+                    .join("")}
+                </div>
+              </details>
             `,
               )
               .join("")}

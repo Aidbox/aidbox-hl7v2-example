@@ -234,14 +234,14 @@ function collectVISField(
   }
 }
 
-/** Build education[] entries from VIS groups, preserving insertion order. */
+/** Build education[] entries from VIS groups, preserving insertion order.
+ *  FHIR constraint imm-1: documentType or reference must be present. */
 function buildEducationEntries(
   visGroups: Map<string, ImmunizationEducation>,
 ): ImmunizationEducation[] {
   const entries: ImmunizationEducation[] = [];
   for (const group of visGroups.values()) {
-    const hasAnyField = group.documentType || group.publicationDate || group.presentationDate || group.reference;
-    if (hasAnyField) {
+    if (group.documentType || group.reference) {
       entries.push(group);
     }
   }
