@@ -38,6 +38,7 @@ export type Hl7v2ToFhirConfig = {
   // profileConformance?: ProfileConformanceConfig;
   // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
   // Reuse IG config for demographic extension activation:
+  // This config is consumed by buildPatientConversionPolicy().
   // profileConformance?: {
   //   implementationGuides?: Array<{
   //     id: string;           // "us-core"

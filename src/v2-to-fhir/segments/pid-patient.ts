@@ -180,7 +180,7 @@ export function convertPIDToPatient(pid: PID): Patient {
   // Signature becomes:
   // convertPIDToPatient(
   //   pid: PID,
-  //   options?: { usCorePatientExtensionsEnabled?: boolean },
+  //   policy?: PatientConversionPolicy,
   // ): Patient
 
   const patient: Patient = {
@@ -584,9 +584,9 @@ export type PatientHandlingResult =
  */
 export function createDraftPatient(pid: PID, patientId: string, baseMeta: Meta): Patient {
   // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-  // Accept and forward activation option:
-  // createDraftPatient(..., options?: { usCorePatientExtensionsEnabled?: boolean })
-  // const patient = convertPIDToPatient(pid, options);
+  // Accept and forward patient conversion policy:
+  // createDraftPatient(..., policy?: PatientConversionPolicy)
+  // const patient = convertPIDToPatient(pid, policy);
   const patient = convertPIDToPatient(pid);
   patient.id = patientId;
   patient.active = false;
@@ -632,8 +632,8 @@ export async function handlePatient(
   resolvePatientId: PatientIdResolver,
 ): Promise<PatientHandlingResult> {
   // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-  // Accept and thread activation option through to draft creation:
-  // handlePatient(..., options?: { usCorePatientExtensionsEnabled?: boolean })
+  // Accept and thread patient conversion policy through to draft creation:
+  // handlePatient(..., policy?: PatientConversionPolicy)
 
   const idResult = await resolvePatientId(pid.$3_identifier ?? []);
   if ("error" in idResult) {
@@ -650,7 +650,7 @@ export async function handlePatient(
   }
 
   // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-  // const draftPatient = createDraftPatient(pid, patientId, baseMeta, options);
+  // const draftPatient = createDraftPatient(pid, patientId, baseMeta, policy);
   const draftPatient = createDraftPatient(pid, patientId, baseMeta);
   const patientEntry = createConditionalPatientEntry(draftPatient);
 

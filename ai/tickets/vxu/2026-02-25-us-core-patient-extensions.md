@@ -1,9 +1,10 @@
 ---
-status: ai-reviewed
+status: ready-for-review
 reviewer-iterations: 0
 prototype-files:
   - src/v2-to-fhir/config.ts
   - src/v2-to-fhir/converter-context.ts
+  - src/v2-to-fhir/policy/patient-conversion-policy.ts
   - src/v2-to-fhir/segments/pid-patient.ts
   - src/v2-to-fhir/segments/us-core-patient-extensions.ts
   - src/v2-to-fhir/messages/adt-a01.ts
@@ -22,9 +23,9 @@ prototype-files:
 We need a deterministic, reusable mapping for `us-core-race` and `us-core-ethnicity` that fits existing converter behavior (best-effort conversion without introducing new hard message failures) and can be enabled by deployers through configuration (US Core IG presence).
 
 ## Proposed Approach
-Add a focused helper module for US Core demographic extension construction and call it from `convertPIDToPatient()` only when US Core is configured in `hl7v2-to-fhir.json`. The helper will parse PID-10/PID-22 coded repeats, normalize coding systems where needed, build canonical US Core complex extensions (`ombCategory`, `detailed`, `text`), and return zero-to-two Patient extensions.
+Add a focused helper module for US Core demographic extension construction and call it from `convertPIDToPatient()` using a focused `PatientConversionPolicy` object. The policy is built once from config in `createConverterContext()` and then reused by all message converters. The helper will parse PID-10/PID-22 coded repeats, normalize coding systems where needed, build canonical US Core complex extensions (`ombCategory`, `detailed`, `text`), and return zero-to-two Patient extensions.
 
-Activation will be config-driven and extensible: if deployer declares US Core IG in profile-conformance config, race/ethnicity extension mapping is applied; if not declared, converter behavior remains unchanged. Keep behavior aligned with current PID converter patterns: if values are absent or unusable, omit only the affected extension and continue processing. Add targeted unit tests for extension shape and code mapping logic (especially PID-22 `H/N/U`) and config-activation behavior.
+Activation remains config-driven and extensible: if deployer declares US Core IG in profile-conformance config, policy enables race/ethnicity extension mapping; if not declared, policy disables it and converter behavior remains unchanged. Keep behavior aligned with current PID converter patterns: if values are absent or unusable, omit only the affected extension and continue processing. Add targeted unit tests for extension shape, code mapping logic (especially PID-22 `H/N/U`), and policy construction behavior.
 
 ## Key Decisions
 | Decision | Options Considered | Chosen | Rationale |
@@ -35,6 +36,7 @@ Activation will be config-driven and extensible: if deployer declares US Core IG
 | PID-22 normalization | A) Preserve `H/N/U` only, B) Map to US Core OMB categories where possible | B | US Core ethnicity expects OMB-category semantics; deterministic map `H -> 2135-2`, `N -> 2186-5` improves conformance. |
 | Activation model | A) Always apply US Core extension logic, B) Apply only when US Core IG configured | B | Meets deployer extensibility requirement and prevents US-specific shaping in non-US deployments. |
 | IG detection source | A) New dedicated flag, B) Reuse profile-conformance IG config | B | Avoids config duplication and keeps IG-related behavior controlled from one place. |
+| Converter input shape | A) Pass booleans through call chain, B) Pass focused policy object | B | Avoids flag proliferation and keeps converter API extensible for future IG-driven patient rules. |
 
 ## Trade-offs
 - **Pro**: Centralized helper yields consistent behavior across all converters that rely on PID conversion.
@@ -46,19 +48,23 @@ Activation will be config-driven and extensible: if deployer declares US Core IG
 - **Pro**: IG-driven activation is deployer-controlled and extensible across environments.
 - **Con**: Misconfigured or missing IG entry can silently disable extension mapping.
 - **Mitigated by**: Explicit startup validation helper and unit tests for detection semantics (`id`, `package`, `enabled`).
+- **Pro**: Focused policy object scales as additional patient-related IG behaviors appear.
+- **Con**: Adds one more abstraction layer compared to direct boolean checks.
+- **Mitigated by**: Build policy once in context and keep policy shape small and explicit.
 
 ## Affected Components
 | File | Change Type | Description |
 |------|-------------|-------------|
 | `src/v2-to-fhir/config.ts` | Modify | Extend config types with stable profile-conformance shape used for IG detection. |
-| `src/v2-to-fhir/converter-context.ts` | Modify | Derive `usCorePatientExtensionsEnabled` flag from config once and expose in converter context. |
+| `src/v2-to-fhir/policy/patient-conversion-policy.ts` | Create | Build `PatientConversionPolicy` from config (including US Core IG detection). |
+| `src/v2-to-fhir/converter-context.ts` | Modify | Derive `patientPolicy` once from config and expose in converter context. |
 | `src/v2-to-fhir/segments/us-core-patient-extensions.ts` | Create | New helper module for building `us-core-race` / `us-core-ethnicity` extensions. |
-| `src/v2-to-fhir/segments/pid-patient.ts` | Modify | Accept activation option and wire helper output conditionally into Patient extension assembly flow. |
-| `src/v2-to-fhir/messages/adt-a01.ts` | Modify | Pass context activation flag into PID conversion. |
-| `src/v2-to-fhir/messages/adt-a08.ts` | Modify | Pass context activation flag into PID conversion. |
-| `src/v2-to-fhir/messages/oru-r01.ts` | Modify | Pass context activation flag into shared `handlePatient()` flow. |
-| `src/v2-to-fhir/messages/vxu-v04.ts` | Modify | Pass context activation flag into shared `handlePatient()` flow. |
-| `src/v2-to-fhir/messages/orm-o01.ts` | Modify | Pass context activation flag into shared `handlePatient()` flow. |
+| `src/v2-to-fhir/segments/pid-patient.ts` | Modify | Accept `PatientConversionPolicy` and wire helper output conditionally via policy decisions. |
+| `src/v2-to-fhir/messages/adt-a01.ts` | Modify | Pass `context.patientPolicy` into PID conversion. |
+| `src/v2-to-fhir/messages/adt-a08.ts` | Modify | Pass `context.patientPolicy` into PID conversion. |
+| `src/v2-to-fhir/messages/oru-r01.ts` | Modify | Pass `context.patientPolicy` into shared `handlePatient()` flow. |
+| `src/v2-to-fhir/messages/vxu-v04.ts` | Modify | Pass `context.patientPolicy` into shared `handlePatient()` flow. |
+| `src/v2-to-fhir/messages/orm-o01.ts` | Modify | Pass `context.patientPolicy` into shared `handlePatient()` flow. |
 | `test/unit/v2-to-fhir/segments/pid-patient.test.ts` | Modify | Add tests for PID-10/PID-22 extension mapping and edge behavior. |
 
 ## Technical Details
@@ -82,7 +88,7 @@ buildUsCoreRaceExtension(raceRepeats: Array<CWE | CE> | undefined): Extension | 
 buildUsCoreEthnicityExtension(ethnicityRepeats: Array<CWE | CE> | undefined): Extension | undefined
 ```
 
-Config contract for activation (reuse IG config):
+Config contract for policy construction (reuse IG config):
 
 ```ts
 type ImplementationGuidePolicy = {
@@ -99,14 +105,22 @@ type Hl7v2ToFhirConfig = {
 };
 ```
 
-US Core activation detection:
+Policy model and builder:
 
 ```ts
-function isUsCoreConfigured(config: Hl7v2ToFhirConfig): boolean {
-  return (config.profileConformance?.implementationGuides ?? []).some((ig) =>
+type PatientConversionPolicy = {
+  demographicExtensionMode: "none" | "us-core";
+};
+
+function buildPatientConversionPolicy(config: Hl7v2ToFhirConfig): PatientConversionPolicy {
+  const hasUsCore = (config.profileConformance?.implementationGuides ?? []).some((ig) =>
     ig.enabled !== false &&
     (ig.id.toLowerCase() === "us-core" || ig.package === "hl7.fhir.us.core")
   );
+
+  return {
+    demographicExtensionMode: hasUsCore ? "us-core" : "none",
+  };
 }
 ```
 
@@ -128,15 +142,15 @@ Integration point in PID converter:
 
 ```ts
 const extensions: Extension[] = [];
-if (options.usCorePatientExtensionsEnabled) {
+if (policy.demographicExtensionMode === "us-core") {
   extensions.push(...buildUsCorePatientExtensionsFromPid(pid));
 }
 // existing PID extension mapping follows
 ```
 
 ## Edge Cases and Error Handling
-- US Core IG not configured: PID-10/PID-22 mapping is intentionally skipped.
-- US Core IG configured with `enabled: false`: mapping skipped.
+- US Core IG not configured: patient policy sets `demographicExtensionMode = "none"`; PID-10/PID-22 mapping skipped.
+- US Core IG configured with `enabled: false`: policy mode remains `"none"`.
 - IG config present but malformed (missing id/package): fail fast in config validation.
 - PID-10/PID-22 absent: no US Core demographic extension added.
 - Repeats present but all entries empty/unusable: extension omitted.
@@ -153,9 +167,9 @@ if (options.usCorePatientExtensionsEnabled) {
 | PID-22 `H` maps to OMB `2135-2` | Unit | Verifies deterministic administrative -> OMB mapping for Hispanic value. |
 | PID-22 `N` maps to OMB `2186-5` | Unit | Verifies deterministic administrative -> OMB mapping for Not Hispanic value. |
 | PID-22 `U` does not force OMB category | Unit | Verifies best-effort behavior and retained `text`/detail without invalid ombCategory. |
-| US Core IG configured enables mapping | Unit | Verifies detection helper + converter option turns on race/ethnicity extensions. |
-| US Core IG absent disables mapping | Unit | Verifies converters preserve old behavior when IG is not declared. |
-| US Core IG explicitly disabled | Unit | Verifies `enabled: false` prevents extension mapping. |
+| Policy builder sets `us-core` mode when US Core IG configured | Unit | Verifies config -> policy derivation. |
+| Policy builder sets `none` when US Core IG absent | Unit | Verifies converters preserve old behavior when IG is not declared. |
+| Policy builder keeps `none` when US Core IG explicitly disabled | Unit | Verifies `enabled: false` prevents extension mapping. |
 | Existing PID extension mappings remain intact | Unit | Ensures religion/citizenship/etc. behavior is unchanged after helper integration. |
 | ADT/ORU/VXU/ORM flows still reuse shared PID mapping | Integration | Ensures extension changes propagate through shared conversion path without regressions. |
 
@@ -209,6 +223,7 @@ if (options.usCorePatientExtensionsEnabled) {
 - Assumption: PID-22 code `H`/`N` maps to US Core ethnicity OMB category codes via deterministic mapping; `U` is kept as detailed/text without forcing an OMB category.
 - Assumption: explicit terminology normalization for these new extensions is included in this ticket, not deferred to profile-validation work.
 - Assumption: US Core activation comes from IG configuration in `profileConformance.implementationGuides`, not from a separate feature flag.
+- Assumption: patient converters receive one focused policy object (`context.patientPolicy`) rather than multiple booleans.
 
 ### V2-to-FHIR IG References
 
@@ -217,22 +232,9 @@ if (options.usCorePatientExtensionsEnabled) {
 - Source: https://build.fhir.org/ig/HL7/v2-to-fhir/ConceptMap-segment-pid-to-patient.html
 
 ## AI Review Notes
-### Review verdict
-APPROVED FOR USER REVIEW
-
-### Findings (sorted by severity)
-- **Low**: IG detection currently depends on the planned `profileConformance` shape from the profiles-validation ticket.
-  - **Impact**: if schema names diverge between tickets, activation may fail open/closed.
-  - **Resolution**: lock exact field names in `config.ts` during implementation and add startup validation + unit tests.
-- **Low**: Activation is intentionally tied to US Core IG declaration only; no per-message override is included in this design revision.
-  - **Impact**: deployers cannot selectively enable this for only one message type.
-  - **Resolution**: acceptable for current requirement; introduce per-message override in a follow-up ticket if needed.
-
-### Completeness check
-- Config-driven deployer control requirement addressed.
-- Existing behavior preserved when US Core IG is absent or disabled.
-- Cross-flow threading (ADT/ORU/VXU/ORM) documented in prototype markers.
+[To be filled in Phase 5]
 
 ## User Feedback
 - 2026-03-06: Request to make activation extensible via deploy-time config.
 - Specific ask: deployer should be able to specify US Core IG in config, and race/ethnicity extension mapping should be applied based on that config.
+- 2026-03-06: Request to avoid boolean threading and use Option 4 (focused policy object built once in context).

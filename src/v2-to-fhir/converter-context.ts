@@ -12,8 +12,8 @@ import {
 export interface ConverterContext {
   config: Hl7v2ToFhirConfig;
   // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-  // Derived once from config.profileConformance.implementationGuides.
-  // usCorePatientExtensionsEnabled: boolean;
+  // Derived once from config and reused by all message converters.
+  // patientPolicy: PatientConversionPolicy;
   resolvePatientId: PatientIdResolver;
   lookupPatient: PatientLookupFn;
   lookupEncounter: EncounterLookupFn;
@@ -24,7 +24,7 @@ export function createConverterContext(): ConverterContext {
   return {
     config,
     // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-    // usCorePatientExtensionsEnabled: isUsCoreConfigured(config),
+    // patientPolicy: buildPatientConversionPolicy(config),
     resolvePatientId: defaultPatientIdResolver(config),
     lookupPatient: defaultPatientLookup,
     lookupEncounter: defaultEncounterLookup,

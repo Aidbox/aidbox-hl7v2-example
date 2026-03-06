@@ -279,7 +279,7 @@ export async function convertVXU_V04(
   //   baseMeta,
   //   lookupPatient,
   //   resolvePatientId,
-  //   { usCorePatientExtensionsEnabled: context.usCorePatientExtensionsEnabled },
+  //   context.patientPolicy,
   // );
   const patientResult = await handlePatient(pid, baseMeta, lookupPatient, resolvePatientId);
   if ("error" in patientResult) {

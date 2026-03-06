@@ -253,10 +253,8 @@ export async function convertADT_A01(
   }
   const pid = fromPID(pidSegment);
   // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-  // Pass config-driven activation flag:
-  // const patient = convertPIDToPatient(pid, {
-  //   usCorePatientExtensionsEnabled: context.usCorePatientExtensionsEnabled,
-  // });
+  // Pass focused patient conversion policy:
+  // const patient = convertPIDToPatient(pid, context.patientPolicy);
   const patient = convertPIDToPatient(pid);
   const mappingErrors: MappingError[] = [];
 
