@@ -1,5 +1,5 @@
 ---
-status: ai-reviewed
+status: planned
 reviewer-iterations: 0
 prototype-files:
   - src/v2-to-fhir/config.ts
@@ -252,3 +252,113 @@ APPROVED FOR USER REVIEW
 - 2026-03-06: Request to make activation extensible via deploy-time config.
 - Specific ask: deployer should be able to specify US Core IG in config, and race/ethnicity extension mapping should be applied based on that config.
 - 2026-03-06: Request to avoid boolean threading and use Option 4 (focused policy object built once in context).
+
+# Implementation Plan
+
+## Overview
+Implement US Core race/ethnicity Patient extension mapping from PID-10/PID-22 behind deploy-time IG configuration, without adding new hard conversion failures. The work introduces a focused patient conversion policy derived once from config and reused across converters, plus a dedicated US Core extension builder module integrated into shared PID conversion. This keeps current best-effort behavior intact while enabling US-specific conformance when configured.
+
+## Development Approach
+- Complete each task fully before moving to the next
+- Make small, focused changes
+- **CRITICAL: all tests must pass before starting next task**
+- **CRITICAL: update this plan when scope changes**
+
+## Validation Commands
+- `bun test:all` - Run unit and integration tests
+- `bun run typecheck` - Type checking
+
+---
+
+## Task 1: Finalize config contract for IG-driven activation
+- [ ] Replace prototype in `src/v2-to-fhir/config.ts` with concrete `profileConformance.implementationGuides` types used by this ticket
+- [ ] Add config validation for `implementationGuides` entries (required `id`, `package`, `version`; optional `enabled`) with clear startup errors
+- [ ] Extend `test/unit/v2-to-fhir/config.test.ts` with valid/invalid IG config cases for this schema
+- [ ] Ensure `config/hl7v2-to-fhir.json` and `test/fixtures/config/hl7v2-to-fhir.json` include a US Core IG example entry
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 2: Implement patient policy module
+- [ ] Replace scaffold in `src/v2-to-fhir/policy/patient-conversion-policy.ts` with `PatientConversionPolicy` type and `buildPatientConversionPolicy(config)` implementation
+- [ ] Implement US Core detection by normalized IG `id` and canonical `package`, respecting `enabled: false`
+- [ ] Add dedicated unit tests for policy derivation in `test/unit/v2-to-fhir/policy/patient-conversion-policy.test.ts` (US Core present, absent, disabled)
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 3: Wire policy into converter context
+- [ ] Update `src/v2-to-fhir/converter-context.ts` to include `patientPolicy` in `ConverterContext`
+- [ ] Build `patientPolicy` once in `createConverterContext()` via `buildPatientConversionPolicy(config)`
+- [ ] Update `test/unit/v2-to-fhir/helpers.ts` to populate `patientPolicy` in `makeTestContext()`
+- [ ] Add or update unit test coverage for context construction behavior (policy is present and derived from config)
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 4: Implement US Core demographic extension builder
+- [ ] Replace scaffold in `src/v2-to-fhir/segments/us-core-patient-extensions.ts` with production implementation for race and ethnicity extension construction
+- [ ] Implement `buildUsCoreRaceExtension` and `buildUsCoreEthnicityExtension` with canonical URLs and sub-extensions (`ombCategory`, `detailed`, `text`)
+- [ ] Implement deterministic PID-22 `H/N/U` handling (`H -> 2135-2`, `N -> 2186-5`, `U -> no ombCategory`) while preserving useful detailed/text content
+- [ ] Add helper-level unit tests in `test/unit/v2-to-fhir/segments/us-core-patient-extensions.test.ts` for extension shape, duplicate handling, and text fallback behavior
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 5: Integrate policy-driven extensions into PID converter
+- [ ] Update `src/v2-to-fhir/segments/pid-patient.ts` signatures to accept `PatientConversionPolicy` in `convertPIDToPatient`, `createDraftPatient`, and `handlePatient`
+- [ ] Apply policy gate in extension block so US Core extensions are added only when `demographicExtensionMode === "us-core"`
+- [ ] Keep existing extension mappings unchanged and additive when US Core mapping is enabled
+- [ ] Expand `test/unit/v2-to-fhir/segments/pid-patient.test.ts` with policy-on/off behavior and coexistence checks with existing extensions
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 6: Thread policy through message converters
+- [ ] Update `src/v2-to-fhir/messages/adt-a01.ts` and `src/v2-to-fhir/messages/adt-a08.ts` to pass `context.patientPolicy` to `convertPIDToPatient`
+- [ ] Update `src/v2-to-fhir/messages/oru-r01.ts`, `src/v2-to-fhir/messages/vxu-v04.ts`, and `src/v2-to-fhir/messages/orm-o01.ts` to pass `context.patientPolicy` into `handlePatient`
+- [ ] Update affected unit tests (ADT/ORU/VXU/ORM suites) only where context assumptions need adjustment
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 7: Add regression coverage for shared patient flow
+- [ ] Add targeted tests proving draft-patient creation paths (ORU/VXU/ORM) inherit policy-driven PID mapping
+- [ ] Add regression checks that behavior remains unchanged when US Core IG is not configured
+- [ ] Validate no new `mapping_error` or hard-failure paths are introduced for PID-10/PID-22 data quality issues
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 8: Update documentation
+- [ ] Update `CLAUDE.md` project memory with the new patient-policy pattern and IG-driven activation rule (if this becomes a reusable convention)
+- [ ] Add succinct inline comments only where logic is non-obvious (policy gating and PID-22 mapping rationale)
+- [ ] Document config expectations for US Core IG activation in developer docs if needed
+- [ ] Run `bun test:all` and `bun run typecheck` - must pass before next task
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Task 9: Cleanup design artifacts
+- [ ] Remove all `DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md` comments from codebase
+- [ ] Delete or fully replace scaffold-only files created for this design (`src/v2-to-fhir/policy/patient-conversion-policy.ts`, `src/v2-to-fhir/segments/us-core-patient-extensions.ts`)
+- [ ] Update design document status to `implemented`
+- [ ] Verify no prototype markers remain: `grep -r "DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions" src/ test/`
+- [ ] Run `bun test:all` and `bun run typecheck` - final verification
+- [ ] Stop and request user feedback before proceeding
+
+---
+
+## Post-Completion Verification
+1. **Functional test**: Process one ADT and one VXU fixture containing PID-10/PID-22 with US Core IG enabled and verify `Patient.extension` includes US Core race/ethnicity.
+2. **Edge case test**: Process fixture with PID-22=`U` and confirm no `ombCategory` is emitted while `text` (and `detailed` when available) is preserved.
+3. **Integration check**: Process ORU/ORM flows that create draft patients and verify identical policy-driven extension behavior.
+4. **No regressions**: All existing tests pass.
+5. **Cleanup verified**: No `DESIGN PROTOTYPE` markers remain for this ticket.
