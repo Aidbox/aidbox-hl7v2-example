@@ -133,6 +133,7 @@ V2-to-FHIR Processor polls received IncomingHL7v2Message and:
 4. If Patient/Encounter not found → creates drafts (`active=false`, `status=unknown`)
 
 → Details: `docs/developer-guide/oru-processing.md`
+→ Preprocessor details: `docs/developer-guide/preprocessors.md`
 
 ### ORM Processing (HL7v2 → FHIR)
 
@@ -255,6 +256,7 @@ For implementation details, see `docs/developer-guide/`:
 | System diagrams, polling pattern details                                                 | `architecture.md` |
 | FHIR→HL7v2 field mappings, segment builders                                              | `bar-generation.md` |
 | HL7v2→FHIR conversion, ORU processing                                                    | `oru-processing.md` |
+| Preprocessor architecture, registry, and config                                           | `preprocessors.md` |
 | ConceptMap workflow, Task lifecycle                                                      | `code-mapping.md` |
 | MLLP protocol, ACK generation                                                            | `mllp-server.md` |
 | HL7v2 builders, field naming (`$N_fieldName`)                                            | `hl7v2-module.md` |

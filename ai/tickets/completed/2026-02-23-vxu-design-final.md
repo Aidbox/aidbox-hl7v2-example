@@ -1289,11 +1289,11 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
 
 **Goal:** Write comprehensive documentation for the preprocessor system in `docs/developer-guide/preprocessors.md`.
 
-- [ ] Document the preprocessor architecture:
+- [x] Document the preprocessor architecture:
   - What preprocessors are and how they work (config-driven, per-segment, per-field)
   - How to add a new preprocessor (registry, config, testing)
   - How the preprocessor iteration loop works (`preprocessor.ts`)
-- [ ] Document every existing preprocessor with its purpose, behavior, and config:
+- [x] Document every existing preprocessor with its purpose, behavior, and config:
   - `inject-authority-from-msh` — PID-3 authority injection
   - `move-pid2-into-pid3` — PID-2 → PID-3 migration
   - `fix-pv1-authority-with-msh` — PV1-19 authority fix
@@ -1301,13 +1301,13 @@ Implement VXU_V04 (Unsolicited Vaccination Record Update) to FHIR conversion, in
   - `normalize-rxa6-dose` — RXA-6 dose normalization (999 sentinel, embedded units)
   - `normalize-rxa9-nip001` — RXA-9 NIP001 system injection
   - `fallback-rxa3-from-msh7` — RXA-3 fallback from MSH-7 (**include prominent warning**)
-- [ ] Document the architectural principle: "preprocessors normalize, converter stays honest"
+- [x] Document the architectural principle: "preprocessors normalize, converter stays honest"
   - Explain the boundary: preprocessors fix *representation* of data the sender sent
   - Explicitly call out `fallback-rxa3-from-msh7` as the one exception that crosses this boundary
   - Explain why it exists (pragmatic escape hatch for broken senders) and the risks (clinically incorrect dates, false idempotency)
-- [ ] Add cross-reference from CLAUDE.md preprocessor section to the new doc
-- [ ] Run `bun test:all` and `bun run typecheck` — must pass
-- [ ] Stop and request user feedback before proceeding
+- [x] Add cross-reference from CLAUDE.md preprocessor section to the new doc
+- [x] Run `bun test:all` and `bun run typecheck` — must pass
+- [x] Stop and request user feedback before proceeding
 
 ---
 
