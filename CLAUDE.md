@@ -165,6 +165,8 @@ V2-to-FHIR Processor handles `VXU^V04` (Unsolicited Vaccination Record Update) m
 
 → Details: `src/v2-to-fhir/messages/vxu-v04.ts`, `src/v2-to-fhir/cdc-iis-ig.ts`
 
+**US Core demographic extension runtime note:** If `profileConformance.implementationGuides` enables US Core (`hl7.fhir.us.core`), PID-10/PID-22 mapping adds `us-core-race` / `us-core-ethnicity` on Patient. Aidbox must have US Core package loaded and CodeSystem `urn:oid:2.16.840.1.113883.6.238` available (seeded in `init-bundle.json`) or Patient writes can fail with terminology-binding errors.
+
 ### Code Mapping (Multiple Types)
 
 When HL7v2 codes can't be mapped to valid FHIR values:

@@ -103,10 +103,7 @@ export async function convertADT_A08(
   // =========================================================================
   // Convert PID to Patient
   // =========================================================================
-  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-  // Pass focused patient conversion policy:
-  // const patient = convertPIDToPatient(pid, context.patientPolicy);
-  const patient = convertPIDToPatient(pid);
+  const patient = convertPIDToPatient(pid, context.patientPolicy);
 
   const patientIdResult = await resolvePatientId(pid.$3_identifier ?? []);
   if ("error" in patientIdResult) {

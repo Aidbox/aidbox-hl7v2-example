@@ -29,24 +29,22 @@ export type MessageTypeConfig = {
   };
 };
 
+export type ImplementationGuidePolicy = {
+  id: string;
+  package: string;
+  version: string;
+  enabled?: boolean;
+};
+
+export type ProfileConformanceConfig = {
+  implementationGuides?: ImplementationGuidePolicy[];
+};
+
 export type Hl7v2ToFhirConfig = {
   identitySystem?: {
     patient?: { rules: IdentifierPriorityRule[] };
   };
-  // DESIGN PROTOTYPE: 2026-02-24-profiles-support.md
-  // Add profile/IG conformance configuration for post-conversion validation.
-  // profileConformance?: ProfileConformanceConfig;
-  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-  // Reuse IG config for demographic extension activation:
-  // This config is consumed by buildPatientConversionPolicy().
-  // profileConformance?: {
-  //   implementationGuides?: Array<{
-  //     id: string;           // "us-core"
-  //     package: string;      // "hl7.fhir.us.core"
-  //     version: string;
-  //     enabled?: boolean;
-  //   }>;
-  // };
+  profileConformance?: ProfileConformanceConfig;
   messages?: Record<string, MessageTypeConfig | undefined>;
 };
 
@@ -99,6 +97,7 @@ export function hl7v2ToFhirConfig(): Hl7v2ToFhirConfig {
   const config = parsed as Hl7v2ToFhirConfig;
 
   validateIdentitySystemRules(config);
+  validateProfileConformance(config);
   validatePreprocessorIds(config);
 
   cachedConfig = config;
@@ -138,6 +137,73 @@ function validateIdentitySystemRules(config: Hl7v2ToFhirConfig): void {
             `"assigner", "type", or "any".`,
         );
       }
+    }
+  }
+}
+
+/**
+ * Validates profile conformance IG definitions at startup.
+ * @throws Error if profileConformance shape is invalid
+ */
+function validateProfileConformance(config: Hl7v2ToFhirConfig): void {
+  const rawProfileConformance = (config as { profileConformance?: unknown }).profileConformance;
+
+  if (rawProfileConformance === undefined) {
+    return;
+  }
+
+  if (
+    typeof rawProfileConformance !== "object" ||
+    rawProfileConformance === null ||
+    Array.isArray(rawProfileConformance)
+  ) {
+    throw new Error(
+      `Invalid HL7v2-to-FHIR config: "profileConformance" must be an object if provided.`,
+    );
+  }
+
+  const rawGuides = (rawProfileConformance as { implementationGuides?: unknown }).implementationGuides;
+  if (rawGuides === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(rawGuides)) {
+    throw new Error(
+      `Invalid HL7v2-to-FHIR config: "profileConformance.implementationGuides" must be an array if provided.`,
+    );
+  }
+
+  for (let index = 0; index < rawGuides.length; index++) {
+    const rawGuide = rawGuides[index];
+    if (typeof rawGuide !== "object" || rawGuide === null || Array.isArray(rawGuide)) {
+      throw new Error(
+        `Invalid profileConformance.implementationGuides[${index}]: expected object.`,
+      );
+    }
+
+    const guide = rawGuide as Record<string, unknown>;
+    if (typeof guide.id !== "string" || guide.id.trim().length === 0) {
+      throw new Error(
+        `Invalid profileConformance.implementationGuides[${index}].id: expected non-empty string.`,
+      );
+    }
+
+    if (typeof guide.package !== "string" || guide.package.trim().length === 0) {
+      throw new Error(
+        `Invalid profileConformance.implementationGuides[${index}].package: expected non-empty string.`,
+      );
+    }
+
+    if (typeof guide.version !== "string" || guide.version.trim().length === 0) {
+      throw new Error(
+        `Invalid profileConformance.implementationGuides[${index}].version: expected non-empty string.`,
+      );
+    }
+
+    if (guide.enabled !== undefined && typeof guide.enabled !== "boolean") {
+      throw new Error(
+        `Invalid profileConformance.implementationGuides[${index}].enabled: expected boolean when provided.`,
+      );
     }
   }
 }

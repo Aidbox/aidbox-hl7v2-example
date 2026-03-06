@@ -449,6 +449,33 @@
     {
       "request": {
         "method": "PUT",
+        "url": "CodeSystem/cdc-race-ethnicity"
+      },
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "cdc-race-ethnicity",
+        "url": "urn:oid:2.16.840.1.113883.6.238",
+        "version": "1.2",
+        "name": "CDCRECRaceEthnicity",
+        "title": "CDC Race and Ethnicity",
+        "status": "active",
+        "caseSensitive": true,
+        "content": "complete",
+        "concept": [
+          { "code": "1002-5", "display": "American Indian or Alaska Native" },
+          { "code": "2028-9", "display": "Asian" },
+          { "code": "2054-5", "display": "Black or African American" },
+          { "code": "2076-8", "display": "Native Hawaiian or Other Pacific Islander" },
+          { "code": "2106-3", "display": "White" },
+          { "code": "2131-1", "display": "Other Race" },
+          { "code": "2135-2", "display": "Hispanic or Latino" },
+          { "code": "2186-5", "display": "Not Hispanic or Latino" }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
         "url": "ValueSet/loinc-all"
       },
       "resource": {

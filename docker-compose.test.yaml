@@ -35,7 +35,7 @@ services:
       AIDBOX_LICENSE: ${AIDBOX_LICENSE}
       BOX_INIT_BUNDLE: file:///init-bundle.json
       BOX_ADMIN_PASSWORD: test_admin_password
-      BOX_BOOTSTRAP_FHIR_PACKAGES: hl7.fhir.r4.core#4.0.1
+      BOX_BOOTSTRAP_FHIR_PACKAGES: hl7.fhir.us.core#6.1.0
       BOX_COMPATIBILITY_VALIDATION_JSON__SCHEMA_REGEX: '#{:fhir-datetime}'
       BOX_DB_DATABASE: aidbox_test
       BOX_DB_HOST: postgres-test

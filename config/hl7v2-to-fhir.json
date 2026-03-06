@@ -10,6 +10,16 @@
       ]
     }
   },
+  "profileConformance": {
+    "implementationGuides": [
+      {
+        "id": "us-core",
+        "package": "hl7.fhir.us.core",
+        "version": "6.1.0",
+        "enabled": true
+      }
+    ]
+  },
   "messages": {
     "ADT-A01": {
       "preprocess": {

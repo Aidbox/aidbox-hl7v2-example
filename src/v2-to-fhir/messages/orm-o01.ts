@@ -639,16 +639,13 @@ export async function convertORM_O01(
   addSenderTagToMeta(baseMeta, senderTag);
 
   // Handle Patient (lookup or create draft)
-  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-  // Pass config-driven activation option into shared patient handling:
-  // const patientResult = await handlePatient(
-  //   pid,
-  //   baseMeta,
-  //   lookupPatient,
-  //   resolvePatientId,
-  //   context.patientPolicy,
-  // );
-  const patientResult = await handlePatient(pid, baseMeta, lookupPatient, resolvePatientId);
+  const patientResult = await handlePatient(
+    pid,
+    baseMeta,
+    lookupPatient,
+    resolvePatientId,
+    context.patientPolicy,
+  );
   if ("error" in patientResult) {
     return {
       messageUpdate: { status: "error", error: patientResult.error },

@@ -1,5 +1,5 @@
 ---
-status: planned
+status: implemented
 reviewer-iterations: 0
 prototype-files:
   - src/v2-to-fhir/config.ts

@@ -252,10 +252,7 @@ export async function convertADT_A01(
     throw new Error("PID segment not found in ADT_A01 message");
   }
   const pid = fromPID(pidSegment);
-  // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-  // Pass focused patient conversion policy:
-  // const patient = convertPIDToPatient(pid, context.patientPolicy);
-  const patient = convertPIDToPatient(pid);
+  const patient = convertPIDToPatient(pid, context.patientPolicy);
   const mappingErrors: MappingError[] = [];
 
   const patientIdResult = await resolvePatientId(pid.$3_identifier ?? []);

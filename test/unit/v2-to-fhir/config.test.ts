@@ -486,4 +486,97 @@ describe("hl7v2ToFhirConfig", () => {
       expect(() => hl7v2ToFhirConfig()).not.toThrow();
     });
   });
+
+  describe("profile conformance IG validation", () => {
+    test("valid profileConformance.implementationGuides passes validation", () => {
+      const validConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        profileConformance: {
+          implementationGuides: [
+            {
+              id: "us-core",
+              package: "hl7.fhir.us.core",
+              version: "6.1.0",
+              enabled: true,
+            },
+          ],
+        },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(validConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).not.toThrow();
+      const config = hl7v2ToFhirConfig();
+      expect(config.profileConformance?.implementationGuides?.[0]?.id).toBe("us-core");
+    });
+
+    test("non-array implementationGuides throws startup error", () => {
+      const invalidConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        profileConformance: {
+          implementationGuides: "us-core",
+        },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /profileConformance\.implementationGuides.*must be an array/,
+      );
+    });
+
+    test("implementation guide missing id throws startup error", () => {
+      const invalidConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        profileConformance: {
+          implementationGuides: [
+            {
+              package: "hl7.fhir.us.core",
+              version: "6.1.0",
+            },
+          ],
+        },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /implementationGuides\[0\]\.id/,
+      );
+    });
+
+    test("implementation guide with non-boolean enabled throws startup error", () => {
+      const invalidConfig = {
+        identitySystem: { patient: { rules: minimalRules } },
+        profileConformance: {
+          implementationGuides: [
+            {
+              id: "us-core",
+              package: "hl7.fhir.us.core",
+              version: "6.1.0",
+              enabled: "yes",
+            },
+          ],
+        },
+        messages: {},
+      };
+
+      readFileSyncSpy = spyOn(fs, "readFileSync").mockReturnValue(
+        JSON.stringify(invalidConfig),
+      );
+
+      expect(() => hl7v2ToFhirConfig()).toThrow(
+        /implementationGuides\[0\]\.enabled/,
+      );
+    });
+  });
 });

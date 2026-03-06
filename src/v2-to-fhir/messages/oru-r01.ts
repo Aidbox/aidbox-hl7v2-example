@@ -483,8 +483,7 @@ export async function convertORU_R01(
     baseMeta,
     lookupPatient,
     resolvePatientId,
-    // DESIGN PROTOTYPE: 2026-02-25-us-core-patient-extensions.md
-    // context.patientPolicy,
+    context.patientPolicy,
   );
 
   if ("error" in patientResult) {
