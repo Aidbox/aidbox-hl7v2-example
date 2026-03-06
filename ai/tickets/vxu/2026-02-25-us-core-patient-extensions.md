@@ -1,5 +1,5 @@
 ---
-status: ai-reviewed
+status: changes-requested
 reviewer-iterations: 0
 prototype-files:
   - src/v2-to-fhir/segments/pid-patient.ts
@@ -179,4 +179,5 @@ APPROVED FOR USER REVIEW
 - Test strategy: unit-focused with integration regression checks.
 
 ## User Feedback
-[To be filled in Phase 6]
+- 2026-03-06: Request to make activation extensible via deploy-time config.
+- Specific ask: deployer should be able to specify US Core IG in config, and race/ethnicity extension mapping should be applied based on that config.
