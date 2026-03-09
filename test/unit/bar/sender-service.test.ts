@@ -5,7 +5,7 @@ const testOutgoingMessage = {
   resourceType: "OutgoingBarMessage" as const,
   id: "msg-1",
   patient: { reference: "Patient/patient-1" },
-  invoice: { reference: "Invoice/invoice-1" },
+  account: { reference: "Account/account-1" },
   status: "pending",
   hl7v2: "MSH|^~\\&|SENDER|FAC|RECV|FAC|202312151000||BAR^P01|MSG001|P|2.5\rPID|1||MRN12345||Smith^John",
 };

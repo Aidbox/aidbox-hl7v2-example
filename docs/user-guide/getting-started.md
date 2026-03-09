@@ -71,8 +71,8 @@ This creates 5 patients with related resources for testing.
 The web UI triggers processing on-demand via buttons. For continuous background processing, run these services separately:
 
 ```sh
-# Process pending invoices → generate BAR messages
-bun src/bar/invoice-builder-service.ts
+# Process pending accounts → generate BAR messages
+bun src/bar/account-builder-service.ts
 
 # Send pending outgoing messages
 bun src/bar/sender-service.ts
@@ -86,8 +86,8 @@ bun run mllp
 
 ## Quick Workflow Test
 
-1. Open http://localhost:3000/invoices
-2. Create a new invoice (select a patient, add encounters/procedures)
+1. Open http://localhost:3000/accounts
+2. Create a new account (select a patient, add encounters/procedures)
 3. Click "Build BAR" to generate a BAR message
 4. Go to "Outgoing Messages" to see the generated HL7v2 message
 5. Click "Send Messages" to send it to the incoming queue

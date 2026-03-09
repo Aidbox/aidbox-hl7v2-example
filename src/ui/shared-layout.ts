@@ -12,7 +12,7 @@ export function highlightHL7WithDataTooltip(
 }
 
 export type NavTab =
-  | "invoices"
+  | "accounts"
   | "outgoing"
   | "incoming"
   | "mllp-client"
@@ -30,7 +30,7 @@ export function renderNav(active: NavTab, navData: NavData): string {
     label: string;
     badge?: number;
   }> = [
-    { id: "invoices", href: "/invoices", label: "Invoices" },
+    { id: "accounts", href: "/accounts", label: "Accounts" },
     { id: "outgoing", href: "/outgoing-messages", label: "Outgoing Messages" },
     { id: "incoming", href: "/incoming-messages", label: "Incoming Messages" },
     {

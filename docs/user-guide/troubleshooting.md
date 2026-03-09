@@ -21,7 +21,7 @@ For background on message types, statuses, and terminology, see [Concepts](conce
 | `sent` | Successfully sent | No action needed |
 | `error` | Send failed | Check logs, retry |
 
-### Invoice Processing Status
+### Account Processing Status
 
 | Status | Meaning | Action |
 |--------|---------|--------|
@@ -132,29 +132,28 @@ docker compose logs aidbox
    - PID-3 value must match Patient.identifier[].value in Aidbox
    - PV1-19 value must match Encounter.identifier[].value in Aidbox
 
-### Invoice BAR generation fails
+### Account BAR generation fails
 
-**Symptoms:** Invoice stays in `pending` or `error` status, no BAR message created.
+**Symptoms:** Account stays in `pending` or `error` status, no BAR message created.
 
 **Check the error:**
-- Query the invoice to see the error:
+- Query the account to see the error:
   ```sh
   curl -u root:Vbro4upIT1 \
-    "http://localhost:8080/fhir/Invoice?processing-status=error"
+    "http://localhost:8080/fhir/Account?processing-status=error"
   ```
 
 **Common causes:**
 
 1. **Missing required references**
-   - Invoice must have a `subject` (Patient reference)
+   - Account must have a `subject` (Patient reference)
    - Need at least one related Encounter
 
-2. **Missing Account**
-   - Create an Account resource linked to the Patient
-   - The Account provides the PID-18 account number
+2. **Missing Condition/Procedure references**
+   - Condition and Procedure references are carried via `account-diagnosis` and `account-procedure` extensions on the Account resource
 
 3. **Builder service not running**
-   - For automatic processing: `bun src/bar/invoice-builder-service.ts`
+   - For automatic processing: `bun src/bar/account-builder-service.ts`
    - Or click "Build BAR" button in the UI
 
 ### Web UI not loading

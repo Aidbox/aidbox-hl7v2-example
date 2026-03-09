@@ -74,7 +74,7 @@ Read `docs/developer-guide/how-to/development-guide.md` for: test infrastructure
 |-----------|----------|---------|
 | Web UI | `src/index.ts`, `src/ui/` | Server-rendered pages, manual triggers |
 | Aidbox Client | `src/aidbox.ts` | `aidboxFetch`, `getResources`, `putResource` |
-| Invoice BAR Builder | `src/bar/invoice-builder-service.ts` | Polls pending Invoices → generates BAR messages |
+| Account BAR Builder | `src/bar/account-builder-service.ts` | Polls pending Accounts → generates BAR messages |
 | BAR Sender | `src/bar/sender-service.ts` | Polls pending OutgoingBarMessage → delivers |
 | MLLP Server | `src/mllp/` | TCP server receiving HL7v2 messages (port 2575) |
 | V2-to-FHIR Processor | `src/v2-to-fhir/processor-service.ts` | Polls received messages → converts to FHIR |
@@ -85,7 +85,7 @@ Read `docs/developer-guide/how-to/development-guide.md` for: test infrastructure
 
 **Outgoing (FHIR → HL7v2):**
 ```
-Invoice (pending) → Invoice BAR Builder → OutgoingBarMessage (pending) → Sender → sent
+Account (pending) → Account BAR Builder → OutgoingBarMessage (pending) → Sender → sent
 ```
 
 **Incoming (HL7v2 → FHIR):**
@@ -96,7 +96,7 @@ MLLP receives → IncomingHL7v2Message (received) → Processor → FHIR resourc
 ### Custom FHIR Resources
 
 **OutgoingBarMessage** - Queued BAR messages
-- `patient`, `invoice` (References) - required
+- `patient`, `account` (References) - required
 - `status`: `pending` → `sent`
 - `hl7v2` (string) - the message content
 
@@ -107,18 +107,20 @@ MLLP receives → IncomingHL7v2Message (received) → Processor → FHIR resourc
 - `sendingApplication`, `sendingFacility` - from MSH-3, MSH-4
 - `unmappedCodes[]` - unresolved OBX codes (when `mapping_error`)
 
-**Invoice extensions** (processing status):
-- `http://example.org/invoice-processing-status`: `pending` | `completed` | `error` | `failed`
-- `http://example.org/invoice-processing-retry-count`: number (max 3 retries)
+**Account extensions** (processing status):
+- `http://example.org/account-processing-status`: `pending` | `completed` | `error` | `failed`
+- `http://example.org/account-processing-retry-count`: number (max 3 retries)
+- `http://example.org/account-diagnosis`: complex extension with `condition` sub-extension (valueReference → Condition)
+- `http://example.org/account-procedure`: complex extension with `procedure` sub-extension (valueReference → Procedure)
 
 ## Workflows
 
 ### BAR Generation (FHIR → HL7v2)
 
-Invoice BAR Builder polls pending Invoices and:
-1. Fetches related resources: Patient, Account, Coverage[], Encounter, Condition[], Procedure[]
+Account BAR Builder polls pending Accounts and:
+1. Fetches related resources: Patient (from subject), Coverage[] (from account.coverage), Encounter (by patient query), Condition[] (from account-diagnosis extensions), Procedure[] (from account-procedure extensions)
 2. Calls `generateBarMessage()` in `src/bar/generator.ts` (pure function)
-3. Creates OutgoingBarMessage, updates Invoice status
+3. Creates OutgoingBarMessage, updates Account processing status
 
 **Trigger events**: P01 (add account), P05 (update), P06 (end account).
 
@@ -185,7 +187,7 @@ Mapping types are defined in `src/code-mapping/mapping-types.ts`.
 **UI Pages:**
 | Route | Purpose |
 |-------|---------|
-| `/invoices` | List invoices with status filter |
+| `/accounts` | List accounts with processing status filter |
 | `/outgoing-messages` | Outgoing BAR messages |
 | `/incoming-messages` | Incoming HL7v2 messages |
 | `/mapping/tasks` | Pending code mapping tasks |
@@ -195,10 +197,10 @@ Mapping types are defined in `src/code-mapping/mapping-types.ts`.
 **Actions (POST, trigger manually or via polling services):**
 | Route | Purpose |
 |-------|---------|
-| `/build-bar` | Generate BAR from pending invoices |
+| `/build-bar` | Generate BAR from pending accounts |
 | `/send-messages` | Send pending outgoing messages |
 | `/process-incoming-messages` | Process received HL7v2 → FHIR |
-| `/reprocess-errors` | Retry failed invoices (max 3) |
+| `/reprocess-errors` | Retry failed accounts (max 3) |
 
 **API:**
 | Route | Purpose |
@@ -224,7 +226,7 @@ src/
 │   └── wrappers/         # Fixes for gaps in @atomic-ehr/hl7v2 (e.g., segment parsing, message structure, etc.)
 ├── bar/                  # FHIR → HL7v2 BAR generation
 │   ├── generator.ts      # generateBarMessage() - pure transformation
-│   ├── invoice-builder-service.ts  # Polling service
+│   ├── account-builder-service.ts  # Polling service
 │   └── sender-service.ts # Delivery service
 ├── v2-to-fhir/           # HL7v2 → FHIR conversion
 │   ├── converter.ts      # Message type routing

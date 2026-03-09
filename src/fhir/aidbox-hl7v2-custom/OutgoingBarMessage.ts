@@ -12,7 +12,7 @@ export interface OutgoingBarMessage extends DomainResource {
     resourceType: "OutgoingBarMessage";
 
     hl7v2?: string;
-    invoice: Reference<"Invoice">;
+    account: Reference<"Account">;
     patient: Reference<"Patient">;
     status: string;
 }

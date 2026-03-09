@@ -4,7 +4,6 @@ import type { Coverage } from "../fhir/hl7-fhir-r4-core/Coverage";
 import type { Encounter } from "../fhir/hl7-fhir-r4-core/Encounter";
 import type { Organization } from "../fhir/hl7-fhir-r4-core/Organization";
 import type { Patient } from "../fhir/hl7-fhir-r4-core/Patient";
-import type { Practitioner } from "../fhir/hl7-fhir-r4-core/Practitioner";
 import type { Procedure } from "../fhir/hl7-fhir-r4-core/Procedure";
 import type { RelatedPerson } from "../fhir/hl7-fhir-r4-core/RelatedPerson";
 
@@ -26,7 +25,6 @@ export interface BarMessageInput {
   // Optional resources
   conditions?: Condition[] | null;
   procedures?: Procedure[] | null;
-  practitioners?: Map<string, Practitioner> | null;
   organizations?: Map<string, Organization> | null;
 
   // Message metadata
@@ -45,6 +43,5 @@ export type {
   Encounter,
   Organization,
   Patient,
-  Practitioner,
   Procedure,
   RelatedPerson} from "../fhir/hl7-fhir-r4-core";

@@ -21,7 +21,7 @@ import { PAGE_SIZE } from "../pagination";
 // Types (internal)
 // ============================================================================
 
-interface Invoice {
+interface AccountRef {
   id: string;
   status: string;
 }
@@ -45,28 +45,28 @@ export async function handleOutgoingMessagesPage(req: Request): Promise<Response
   const url = new URL(req.url);
   const statusFilter = url.searchParams.get("status") || undefined;
 
-  const [messages, patients, invoicesResult, navData] = await Promise.all([
+  const [messages, patients, accountsResult, navData] = await Promise.all([
     getOutgoingMessages(statusFilter),
     getPatients(),
-    getInvoices(),
+    getAccountRefs(),
     getNavData(),
   ]);
 
   return htmlResponse(
-    renderOutgoingMessagesPage(navData, messages, patients, invoicesResult.invoices, statusFilter),
+    renderOutgoingMessagesPage(navData, messages, patients, accountsResult.accounts, statusFilter),
   );
 }
 
 export async function createOutgoingMessage(req: Request): Promise<Response> {
   const formData = await req.formData();
   const patient = formData.get("patient") as string;
-  const invoice = formData.get("invoice") as string;
+  const account = formData.get("account") as string;
   const hl7v2 = formData.get("hl7v2") as string;
 
   const newMessage = {
     resourceType: "OutgoingBarMessage",
     patient: { reference: patient },
-    invoice: { reference: invoice },
+    account: { reference: account },
     status: "pending",
     ...(hl7v2 && { hl7v2 }),
   };
@@ -123,10 +123,10 @@ function formatError(error: string): string {
 
 const getPatients = () => getResources<Patient>("Patient");
 
-async function getInvoices(): Promise<{ invoices: Invoice[]; total: number }> {
-  const bundle = await aidboxFetch<Bundle<Invoice>>(`/fhir/Invoice?_sort=-lastUpdated&_count=${PAGE_SIZE}`);
+async function getAccountRefs(): Promise<{ accounts: AccountRef[]; total: number }> {
+  const bundle = await aidboxFetch<Bundle<AccountRef>>(`/fhir/Account?_sort=-lastUpdated&_count=${PAGE_SIZE}`);
   return {
-    invoices: bundle.entry?.map((e) => e.resource) || [],
+    accounts: bundle.entry?.map((e) => e.resource) || [],
     total: bundle.total ?? 0,
   };
 }
@@ -244,7 +244,7 @@ function renderOutgoingMessagesPage(
   navData: NavData,
   messages: OutgoingBarMessage[],
   patients: Patient[],
-  invoices: Invoice[],
+  accounts: AccountRef[],
   statusFilter?: string,
 ): string {
   const listItems: MessageListItem[] = messages.map((msg) => ({
@@ -262,7 +262,7 @@ function renderOutgoingMessagesPage(
     },
     meta: [
       msg.patient?.reference?.replace("Patient/", "") || "-",
-      msg.invoice?.reference?.replace("Invoice/", "") || "-",
+      msg.account?.reference?.replace("Account/", "") || "-",
       msg.meta?.lastUpdated
         ? new Date(msg.meta.lastUpdated).toLocaleString()
         : "-",
@@ -329,10 +329,10 @@ function renderOutgoingMessagesPage(
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
-          <select name="invoice" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option value="">Select an invoice...</option>
-            ${invoices.map((inv) => `<option value="Invoice/${inv.id}">${inv.id} (${inv.status})</option>`).join("")}
+          <label class="block text-sm font-medium text-gray-700 mb-1">Account</label>
+          <select name="account" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <option value="">Select an account...</option>
+            ${accounts.map((acct) => `<option value="Account/${acct.id}">${acct.id} (${acct.status})</option>`).join("")}
           </select>
         </div>
         <div>

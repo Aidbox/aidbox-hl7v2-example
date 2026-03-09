@@ -1,15 +1,15 @@
 import { aidboxFetch, putResource, type Bundle } from "./aidbox";
 import { processNextMessage } from "./bar/sender-service";
 import {
-  processNextInvoice,
-  pollPendingInvoice,
-  updateInvoiceStatus,
+  processNextAccount,
+  pollPendingAccount,
+  updateAccountStatus,
   getRetryCount,
-} from "./bar/invoice-builder-service";
+} from "./bar/account-builder-service";
 import type { IncomingHL7v2Message } from "./fhir/aidbox-hl7v2-custom";
 
 // Handler Functions from UI Modules
-import { handleInvoicesPage, createInvoice } from "./ui/pages/invoices";
+import { handleAccountsPage, createAccount } from "./ui/pages/accounts";
 import {
   handleOutgoingMessagesPage,
   createOutgoingMessage,
@@ -38,10 +38,10 @@ Bun.serve({
     // =========================================================================
     // UI Routes - HTTP methods are explicit
     // =========================================================================
-    "/": handleInvoicesPage,
-    "/invoices": {
-      GET: handleInvoicesPage,
-      POST: createInvoice,
+    "/": handleAccountsPage,
+    "/accounts": {
+      GET: handleAccountsPage,
+      POST: createAccount,
     },
     "/outgoing-messages": {
       GET: handleOutgoingMessagesPage,
@@ -132,14 +132,14 @@ Bun.serve({
     "/build-bar": {
       POST: async () => {
         (async () => {
-          while (await pollPendingInvoice()) {
-            await processNextInvoice();
+          while (await pollPendingAccount()) {
+            await processNextAccount();
           }
         })().catch(console.error);
 
         return new Response(null, {
           status: 302,
-          headers: { Location: "/invoices" },
+          headers: { Location: "/accounts" },
         });
       },
     },
@@ -151,24 +151,24 @@ Bun.serve({
           let hasMore = true;
           while (hasMore) {
             const bundle = await aidboxFetch<Bundle<{ id?: string }>>(
-              "/fhir/Invoice?processing-status=error&_count=100",
+              "/fhir/Account?processing-status=error&_count=100",
             );
-            const errorInvoices = bundle.entry?.map((e) => e.resource) || [];
+            const errorAccounts = bundle.entry?.map((e) => e.resource) || [];
 
-            if (errorInvoices.length === 0) {
+            if (errorAccounts.length === 0) {
               hasMore = false;
             } else {
-              for (const invoice of errorInvoices) {
-                if (invoice?.id && "resourceType" in invoice) {
-                  const currentRetryCount = getRetryCount(invoice as any);
+              for (const account of errorAccounts) {
+                if (account?.id && "resourceType" in account) {
+                  const currentRetryCount = getRetryCount(account as any);
                   const newRetryCount = currentRetryCount + 1;
 
                   if (newRetryCount >= MAX_RETRIES) {
-                    await updateInvoiceStatus(invoice.id, "failed", {
+                    await updateAccountStatus(account.id, "failed", {
                       retryCount: newRetryCount,
                     });
                   } else {
-                    await updateInvoiceStatus(invoice.id, "pending", {
+                    await updateAccountStatus(account.id, "pending", {
                       retryCount: newRetryCount,
                     });
                   }
@@ -177,14 +177,14 @@ Bun.serve({
             }
           }
 
-          while (await pollPendingInvoice()) {
-            await processNextInvoice();
+          while (await pollPendingAccount()) {
+            await processNextAccount();
           }
         })().catch(console.error);
 
         return new Response(null, {
           status: 302,
-          headers: { Location: "/invoices" },
+          headers: { Location: "/accounts" },
         });
       },
     },
