@@ -17,7 +17,7 @@ flowchart TB
     end
 
     subgraph "Background Services"
-        Builder[Invoice BAR Builder]
+        Builder[Account BAR Builder]
         Sender[BAR Message Sender]
         MLLP[MLLP Server :2575]
     end
@@ -36,7 +36,7 @@ flowchart TB
 
 [Aidbox](https://www.health-samurai.io/aidbox) is a FHIR R4 compliant server that serves as the central data store and API layer. See `docker-compose.yaml` for configuration details.
 
-**Standard FHIR Resources:** Patient, Invoice, Coverage, Encounter, Condition, Procedure, Organization, RelatedPerson. See [User Guide > Concepts](../user-guide/concepts.md#fhir-resources) for descriptions.
+**Standard FHIR Resources:** Patient, Account, Coverage, Encounter, Condition, Procedure, Organization, RelatedPerson. See [User Guide > Concepts](../user-guide/concepts.md#fhir-resources) for descriptions.
 
 **Custom Resources (defined via StructureDefinition):**
 - `OutgoingBarMessage` - Queued BAR messages (status: pending → sent)
@@ -48,18 +48,18 @@ Aidbox executes the init bundle at startup before the HTTP server starts. Used f
 
 **Current contents:**
 - Custom StructureDefinitions for IncomingHL7v2Message and OutgoingBarMessage
-- Invoice processing status extensions (status, retry count, error reason)
-- SearchParameters for custom resources and invoice extensions
+- Account processing status extensions (status, retry count, error reason)
+- SearchParameters for custom resources and account extensions
 - LOINC ValueSet used by the terminology workflow
-- PostgreSQL partial index for pending invoices
+- PostgreSQL partial index for pending accounts
 
 ```sql
-CREATE INDEX IF NOT EXISTS invoice_pending_ts_idx
-ON invoice (ts ASC)
-WHERE resource @> '{"extension": [{"url": "http://example.org/invoice-processing-status", "value": {"code": "pending"}}]}'
+CREATE INDEX IF NOT EXISTS account_pending_ts_idx
+ON account (ts ASC)
+WHERE resource @> '{"extension": [{"url": "http://example.org/account-processing-status", "value": {"code": "pending"}}]}'
 ```
 
-This index optimizes the Invoice BAR Builder polling query by indexing only pending invoices.
+This index optimizes the Account BAR Builder polling query by indexing only pending accounts.
 
 ### Aidbox Client (`src/aidbox.ts`)
 
@@ -81,18 +81,18 @@ putResource<T>(type, id, res)  // Create/update resource
 
 Bun HTTP server serving server-rendered HTML pages with Tailwind CSS.
 
-**Routes:** The Web UI provides pages for managing invoices, messages, and code mappings. See [User Guide > Overview](../user-guide/overview.md#web-ui-pages) for the complete list.
+**Routes:** The Web UI provides pages for managing accounts, messages, and code mappings. See [User Guide > Overview](../user-guide/overview.md#web-ui-pages) for the complete list.
 
-### Invoice BAR Builder Service (`src/bar/invoice-builder-service.ts`)
+### Account BAR Builder Service (`src/bar/account-builder-service.ts`)
 
 Background service that transforms FHIR resources into HL7v2 BAR messages.
 
 **Process:**
-1. Poll for oldest `Invoice` with `processing-status=pending` (custom extension)
-2. Fetch related resources (Patient, Coverage, Encounter, Condition, Procedure)
+1. Poll for oldest `Account` with `processing-status=pending` (custom extension)
+2. Fetch related resources (Patient, Coverage, Encounter, Condition, Procedure via `account-diagnosis`/`account-procedure` extensions)
 3. Generate HL7v2 BAR message using segment builders
 4. Create `OutgoingBarMessage` with `status=pending`
-5. Update `Invoice`: set `status=issued` and `processing-status=completed`
+5. Update `Account`: set `processing-status=completed`
 
 ### BAR Message Sender Service (`src/bar/sender-service.ts`)
 
@@ -150,32 +150,32 @@ stateDiagram-v2
 
 ## Data Flow
 
-### Invoice to BAR Message
+### Account to BAR Message
 
 ```mermaid
 sequenceDiagram
     participant User
     participant UI as Web UI
     participant Aidbox
-    participant Builder as Invoice BAR Builder
+    participant Builder as Account BAR Builder
     participant Sender as BAR Message Sender
 
-    User->>UI: Create Invoice (draft)
-    UI->>Aidbox: POST /Invoice
+    User->>UI: Create/update Account
+    UI->>Aidbox: POST /Account
 
     Note over Builder: Polling loop
-    Builder->>Aidbox: GET /Invoice?processing-status=pending&_sort=_lastUpdated&_count=1
-    Aidbox-->>Builder: Invoice
+    Builder->>Aidbox: GET /Account?processing-status=pending&_sort=_lastUpdated&_count=1
+    Aidbox-->>Builder: Account
 
     Builder->>Aidbox: GET /Patient/{id}
     Builder->>Aidbox: GET /Coverage?beneficiary=Patient/{id}
-    Builder->>Aidbox: GET /Encounter?patient=Patient/{id}
-    Builder->>Aidbox: GET /Condition?patient=Patient/{id}
-    Builder->>Aidbox: GET /Procedure?patient=Patient/{id}
+    Builder->>Aidbox: GET /Encounter?account=Account/{id}
+    Builder->>Aidbox: GET /Condition (from account-diagnosis extensions)
+    Builder->>Aidbox: GET /Procedure (from account-procedure extensions)
 
     Builder->>Builder: Generate HL7v2 BAR message
     Builder->>Aidbox: POST /OutgoingBarMessage (status=pending)
-    Builder->>Aidbox: PATCH /Invoice (status=issued, processing-status=completed)
+    Builder->>Aidbox: PATCH /Account (processing-status=completed)
 
     Note over Sender: Polling loop
     Sender->>Aidbox: GET /OutgoingBarMessage?status=pending&_count=1
@@ -189,7 +189,7 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-    state "Invoice (processing-status extension)" as Invoice {
+    state "Account (processing-status extension)" as Account {
         [*] --> pending: Created
         pending --> completed: BAR Builder
         pending --> error: Build failed
@@ -213,9 +213,9 @@ stateDiagram-v2
     }
 ```
 
-### Invoice Retry Mechanism
+### Account Retry Mechanism
 
-Failed invoices can be retried up to 3 times before being marked as permanently failed. See [BAR Generation > Error Handling](bar-generation.md#error-handling) for the retry logic and extension details.
+Failed accounts can be retried up to 3 times before being marked as permanently failed. See [BAR Generation > Error Handling](bar-generation.md#error-handling) for the retry logic and extension details.
 
 ## HL7v2 Message Generation
 

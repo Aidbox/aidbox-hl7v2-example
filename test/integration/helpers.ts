@@ -9,7 +9,6 @@ import type {
   AllergyIntolerance,
   Coverage,
   RelatedPerson,
-  Invoice,
   ServiceRequest,
   MedicationRequest,
   Immunization,
@@ -193,13 +192,6 @@ export async function getCoverages(patientRef: string): Promise<Coverage[]> {
 export async function getRelatedPersons(patientRef: string): Promise<RelatedPerson[]> {
   const bundle = await aidboxFetch<Bundle<RelatedPerson>>(
     `/fhir/RelatedPerson?patient=${encodeURIComponent(patientRef)}`,
-  );
-  return bundle.entry?.map((e) => e.resource) ?? [];
-}
-
-export async function getInvoices(patientRef: string): Promise<Invoice[]> {
-  const bundle = await aidboxFetch<Bundle<Invoice>>(
-    `/fhir/Invoice?subject=${encodeURIComponent(patientRef)}`,
   );
   return bundle.entry?.map((e) => e.resource) ?? [];
 }

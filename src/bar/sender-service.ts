@@ -4,7 +4,7 @@ export interface OutgoingBarMessage {
   resourceType: "OutgoingBarMessage";
   id: string;
   patient: { reference: string };
-  invoice: { reference: string };
+  account: { reference: string };
   status: string;
   hl7v2?: string;
 }

@@ -29,7 +29,6 @@ export type {
   Coverage,
   RelatedPerson,
   Organization,
-  Practitioner,
   Condition,
   Procedure,
 } from "./types";
@@ -42,8 +41,8 @@ export {
 } from "./sender-service";
 export type { OutgoingBarMessage, IncomingHL7v2Message } from "./sender-service";
 export {
-  createInvoiceBarBuilderService,
-  pollPendingInvoice,
-  buildBarFromInvoice,
-  processNextInvoice,
-} from "./invoice-builder-service";
+  createAccountBarBuilderService,
+  pollPendingAccount,
+  buildBarFromAccount,
+  processNextAccount,
+} from "./account-builder-service";

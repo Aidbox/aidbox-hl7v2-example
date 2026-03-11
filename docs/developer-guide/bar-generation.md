@@ -10,30 +10,31 @@ The `src/bar/` module handles BAR message generation:
 |------|---------|
 | `generator.ts` | Pure function that transforms FHIR resources into BAR message structure |
 | `types.ts` | `BarMessageInput` type definition |
-| `invoice-builder-service.ts` | Polling service that fetches Invoices and orchestrates generation |
+| `account-builder-service.ts` | Polling service that fetches Accounts and orchestrates generation |
 | `sender-service.ts` | Polling service that delivers OutgoingBarMessage resources |
 | `index.ts` | Module exports |
 
 **Key entry points:**
 
 - `generateBarMessage(input)` in `generator.ts` - Core generation logic, returns `HL7v2Message`
-- `processNextInvoice()` in `invoice-builder-service.ts` - Polls and processes one Invoice
+- `processNextAccount()` in `account-builder-service.ts` - Polls and processes one Account
 - `sendNextMessage()` in `sender-service.ts` - Polls and delivers one OutgoingBarMessage
 
 ## Implementation Walkthrough
 
-### Invoice to BAR Message Flow
+### Account to BAR Message Flow
 
-The Invoice BAR Builder service (`invoice-builder-service.ts`) orchestrates the full flow:
+The Account BAR Builder service (`account-builder-service.ts`) orchestrates the full flow:
 
 ```
-processNextInvoice()
+processNextAccount()
     │
-    ├─► pollPendingInvoice()         // Query: Invoice?processing-status=pending&_sort=_lastUpdated&_count=1
+    ├─► pollPendingAccount()         // Query: Account?processing-status=pending&_sort=_lastUpdated&_count=1
     │
-    ├─► fetchRelatedResources()      // Fetch Patient, Account, Coverage[], Condition[], Procedure[]
+    ├─► fetchRelatedResources()      // Fetch Patient, Coverage[], Encounter, Condition[], Procedure[]
+    │                                // Condition/Procedure refs from account-diagnosis/account-procedure extensions
     │
-    ├─► buildBarFromInvoice()
+    ├─► buildBarFromAccount()
     │       │
     │       └─► generateBarMessage() // Pure transformation in generator.ts
     │               │
@@ -46,7 +47,7 @@ processNextInvoice()
     │
     ├─► createOutgoingBarMessage()   // POST /OutgoingBarMessage with status=pending
     │
-    └─► updateInvoiceStatus()        // PATCH Invoice processing-status=completed
+    └─► updateAccountStatus()        // PATCH Account processing-status=completed
 ```
 
 ### Message Generation Detail
@@ -133,19 +134,19 @@ const eventDateTime = input.triggerEvent === "P01"
 
 ## Error Handling
 
-### Invoice Retry Mechanism
+### Account Retry Mechanism
 
-Invoices that fail BAR generation are marked with `processing-status=error`. The Web UI provides a "Reprocess Errors" button that:
+Accounts that fail BAR generation are marked with `processing-status=error`. The Web UI provides a "Reprocess Errors" button that:
 
-1. Fetches all invoices with `processing-status=error`
-2. Checks retry count (stored in `invoice-processing-retry-count` extension)
+1. Fetches all accounts with `processing-status=error`
+2. Checks retry count (stored in `account-processing-retry-count` extension)
 3. If retry count < 3: increments retry count and sets status to `pending`
 4. If retry count >= 3: marks as `failed` (terminal state)
 
 **Extensions used:**
-- `http://example.org/invoice-processing-status` - processing status (pending/completed/error/failed)
-- `http://example.org/invoice-processing-error-reason` - error message from last failure
-- `http://example.org/invoice-processing-retry-count` - number of retry attempts
+- `http://example.org/account-processing-status` - processing status (pending/completed/error/failed)
+- `http://example.org/account-processing-error-reason` - error message from last failure
+- `http://example.org/account-processing-retry-count` - number of retry attempts
 
 ## Extension Points
 
