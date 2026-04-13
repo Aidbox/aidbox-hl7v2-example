@@ -57,15 +57,14 @@ I decided to trust its intelligence:
 
 Once it finished the design, it made a comprehensive implementation plan in the ticket file containing 14 tasks. The plan allows the agent to manage the context better, and it helps to recover from interruptions easier.
 
-It worked for 2 hours, and then my session limit hit. When I logged into another account and triggered the skill again - it correctly continued the work:
-
+The pipeline can handle interruptions. After stopping it and resuming in a new session, it correctly continued the work:
 ```
-Let me read the ticket file and check the current state of work.                 ...                                                               
+Let me read the ticket file and check the current state of work.
+...                                                               
 Tasks 1-6 are completed. The next task is Task 7: ORM order grouping and ID generation. Let me read the implementation prompt and start the next sub-agent.
 ```
 
-The second account’s session limits died after Task 9. So I switched to Codex. It was more cautious, but it picked up from where Claude finished correctly:
-
+Switching to Codex works as well. This is a response from a session with Codex:
 ```
 You want the hl7v2-to-fhir-pipeline run on ticket.md. Tradeoff: rerunning from Step 1 would overwrite prior analysis and waste time, so I’ll first detect the last completed step and resume from there, then continue through implementation and review.
 
@@ -78,13 +77,13 @@ I found that Steps 1–6 are already present (Goal, Requirements, Implementation
 I’ve confirmed ORM converter code is already implemented through Task 9. Next I’m validating what’s missing for Task 10+ (tests, fixtures, docs), then I’ll add only the gaps.
 ```
 
-Codex didn’t spawn any sub-agents, but still completed the implementation correctly.
+Codex finished the implementation correctly.
 
 I checked on the ui - ORM conversion works:
 
 ![img.png](images/converter_skill_img.png)
 
-For unknown status codes it uses our existing Mapping Task feature:
+For unknown status codes it correctly reused our existing Mapping Task feature:
 
 ![img_1.png](images/converter_skill_img_1.png)
 
