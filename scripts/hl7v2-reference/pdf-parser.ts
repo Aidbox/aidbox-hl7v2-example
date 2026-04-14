@@ -246,7 +246,7 @@ export function extractDescription(sectionLines: string[]): string | null {
       if (ATTRIBUTE_TABLE_RE.test(trimmed)) break;
       if (SEGMENT_HEADING_RE.test(trimmed) && !trimmed.includes("....")) break;
       if (/^Examples?:/i.test(trimmed)) break;
-      if (/^2\.A\.[\d.]+\s+/.test(trimmed)) break;
+      if (/^2\.(?:A|9)\.[\d.]+\s+/.test(trimmed)) break;
       // Bare section number on its own line (e.g., "8.8.9.2") — stop if we already
       // have description content, otherwise skip (it's noise between Definition: and text)
       if (/^\d+[A-Z]?(?:\.\d+){2,}\s*$/.test(trimmed)) {
@@ -311,6 +311,7 @@ export function extractDescription(sectionLines: string[]): string | null {
     // After Components block, collect paragraph text that looks like a description
     if (!inComponents && descriptionParts.length === 0) {
       const looksLikeDescription = trimmed.startsWith("This field") ||
+        trimmed.startsWith("This data type") ||
         trimmed.startsWith("This is ") ||
         trimmed.startsWith("The ") ||
         trimmed.startsWith("A ") ||
@@ -699,11 +700,11 @@ export async function parsePdfAttributeTables(pdfDir: string, cmd: string[]): Pr
   return allTables;
 }
 
-// Matches datatype heading: "2.A.8 CNE – coded with no exceptions"
-const DATATYPE_HEADING_RE = /^(?:2\.A\.\d+\s+)?([A-Z][A-Z0-9]{0,4})\s*[-\u2013]\s+(.+)/;
+// Matches datatype heading: "2.A.8 CNE – coded with no exceptions" (v2.5+) or "2.9.8 CNE – ..." (v2.4)
+const DATATYPE_HEADING_RE = /^(?:2\.(?:A|9)\.\d+\s+)?([A-Z][A-Z0-9]{0,4})\s*[-\u2013]\s+(.+)/;
 
-// Matches component heading: "2.A.8.3 Name of Coding System (ID)"
-const COMPONENT_HEADING_RE = /^(?:2\.A\.[\d.]+\s+)?(.+?)\s+\(([A-Z][A-Z0-9]{0,4})\)\s*$/;
+// Matches component heading: "2.A.8.3 Name of Coding System (ID)" (v2.5+) or "2.9.8.3 ..." (v2.4)
+const COMPONENT_HEADING_RE = /^(?:2\.(?:A|9)\.[\d.]+\s+)?(.+?)\s+\(([A-Z][A-Z0-9]{0,4})\)\s*$/;
 
 // Matches HL7 Component Table title
 const COMP_TABLE_TITLE_RE = /HL7 Component Table\s*[-\u2013]\s*([A-Z][A-Z0-9]{0,4})\s*[-\u2013]/;
@@ -724,9 +725,28 @@ function parseDatatypeDescriptions(text: string): {
 
   let currentDt: string | null = null;
   let currentCompPos = 0;
+  // v2.4 splits section number and heading onto separate lines:
+  //   "2.9.3"           ← bare section number
+  //   "CE - coded element"  ← heading on next non-empty line
+  // Track pending section prefix so the next line inherits it.
+  let pendingSectionPrefix: { type: "dt"; line: number } | { type: "comp"; line: number; position: number } | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i]!.trim();
+
+    // Detect bare section-number lines (v2.4 split-line format)
+    const bareDtSection = trimmed.match(/^2\.(?:A|9)\.(\d+)\s*$/);
+    if (bareDtSection) {
+      pendingSectionPrefix = { type: "dt", line: i };
+      continue;
+    }
+    const bareCompSection = trimmed.match(/^2\.(?:A|9)\.\d+\.(\d+)\s*$/);
+    if (bareCompSection) {
+      pendingSectionPrefix = { type: "comp", line: i, position: parseInt(bareCompSection[1]!, 10) };
+      continue;
+    }
+    // Don't clear pendingSectionPrefix on blank lines — v2.4 has blanks between section number and heading
+    if (!trimmed) continue;
 
     // Check for datatype heading
     const dtMatch = trimmed.match(DATATYPE_HEADING_RE);
@@ -736,14 +756,17 @@ function parseDatatypeDescriptions(text: string): {
 
       // Skip TOC lines
       if (longName.includes("....")) continue;
-      // Must have lowercase (not all-caps abbreviation)
-      if (!/[a-z]/.test(longName)) continue;
+      // Must have lowercase — unless a section prefix is present (v2.4 uses ALL-CAPS headings like
+      // "2.9.12 CX - EXTENDED COMPOSITE ID WITH CHECK DIGIT"), or we have a pending split-line prefix
+      const hasSectionPrefix = /^2\.(?:A|9)\.\d+\s+/.test(trimmed) || pendingSectionPrefix?.type === "dt";
+      if (!hasSectionPrefix && !/[a-z]/.test(longName)) continue;
       // Must look like a datatype code (2-5 uppercase alphanumeric)
       if (!/^[A-Z][A-Z0-9]{0,4}$/.test(name)) continue;
 
       dtHeaders.push({ index: i, name, longName });
       currentDt = name;
       currentCompPos = 0;
+      pendingSectionPrefix = null;
       continue;
     }
 
@@ -753,17 +776,35 @@ function parseDatatypeDescriptions(text: string): {
       if (compMatch) {
         currentCompPos++;
         compHeaders.push({ index: i, datatype: currentDt, position: currentCompPos, deprecated: false, longName: compMatch[1]! });
+        pendingSectionPrefix = null;
+      } else if (pendingSectionPrefix?.type === "comp") {
+        // v2.4 split-line component: bare "2.9.N.M" was on a previous line, now we have
+        // the component name like "Street address (ST)" or just "Street address"
+        const compName = trimmed.replace(/\s*\([A-Z][A-Z0-9]{0,4}\)\s*$/, "");
+        const dtSuffix = trimmed.match(/\(([A-Z][A-Z0-9]{0,4})\)\s*$/);
+        currentCompPos = pendingSectionPrefix.position;
+        compHeaders.push({
+          index: i,
+          datatype: currentDt,
+          position: currentCompPos,
+          deprecated: !dtSuffix, // no datatype suffix may indicate deprecated
+          longName: compName,
+        });
+        pendingSectionPrefix = null;
       } else {
         // Deprecated/withdrawn components have headings without (DT) suffix:
         // "2.A.56.7 Degree" instead of "2.A.56.7 Degree (IS)"
         // These always have the 2.A.N.M prefix, so we can match on that.
-        const deprecatedMatch = trimmed.match(/^2\.A\.\d+\.(\d+)\s+(.+)/);
+        const deprecatedMatch = trimmed.match(/^2\.(?:A|9)\.\d+\.(\d+)\s+(.+)/);
         if (deprecatedMatch) {
           const pos = parseInt(deprecatedMatch[1]!, 10);
           currentCompPos = pos;
           compHeaders.push({ index: i, datatype: currentDt, position: currentCompPos, deprecated: true, longName: deprecatedMatch[2]!.trim() });
         }
+        pendingSectionPrefix = null;
       }
+    } else {
+      pendingSectionPrefix = null;
     }
   }
 
@@ -915,8 +956,11 @@ function parseComponentTables(text: string): Map<string, PdfComponentTableField[
 
 async function findCh02aFile(pdfDir: string): Promise<string | null> {
   const files = await readdir(pdfDir);
+  // Prefer CH02A (v2.5+), fall back to CH02 (v2.4 where datatypes are in the main chapter)
   const ch02a = files.find(f => /CH0?2A/i.test(f) && f.endsWith(".pdf"));
-  return ch02a ? join(pdfDir, ch02a) : null;
+  if (ch02a) return join(pdfDir, ch02a);
+  const ch02 = files.find(f => /^CH0?2\.pdf$/i.test(f));
+  return ch02 ? join(pdfDir, ch02) : null;
 }
 
 export async function parsePdfDatatypeDescriptions(pdfDir: string, cmd: string[]): Promise<{
