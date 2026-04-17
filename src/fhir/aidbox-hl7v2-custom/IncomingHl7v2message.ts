@@ -25,7 +25,7 @@ export interface IncomingHL7v2Message extends DomainResource {
   patient?: Reference<"Patient">;
   sendingApplication?: string;
   sendingFacility?: string;
-  status?: "received" | "processed" | "warning" | "parsing_error" | "conversion_error" | "code_mapping_error" | "sending_error";
+  status?: "received" | "processed" | "warning" | "parsing_error" | "conversion_error" | "code_mapping_error" | "sending_error" | "deferred";
   type: string;
   unmappedCodes?: UnmappedCode[];
 }

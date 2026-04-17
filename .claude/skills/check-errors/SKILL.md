@@ -28,7 +28,21 @@ Show the developer a table of errors grouped by status:
 | # | Status | Type | Sender | Error (truncated) | ID |
 ```
 
+Also query deferred messages to remind the developer:
+
+```bash
+curl -sf -u root:Vbro4upIT1 'http://localhost:8080/fhir/IncomingHL7v2Message?status=deferred&_sort=-_lastUpdated&_count=20&_elements=id,status,type,error,sendingApplication,sendingFacility,meta' | python -m json.tool
+```
+
+If there are deferred messages, add a reminder line after the error table:
+
+> **Deferred (N):** N messages are waiting on external input. Use `/check-errors deferred` to review them.
+
+Do NOT investigate deferred messages unless the developer explicitly asks. They are reminders, not action items.
+
 Then ask: **"Which error would you like me to investigate?"**
+
+If there are no active errors but deferred messages exist, say: **"No active errors. N deferred message(s) awaiting external input."** and list them briefly.
 
 Do NOT try to fix everything at once. Work iteratively — one error at a time.
 
@@ -60,6 +74,7 @@ The raw HL7v2 message is malformed.
    - What the sender needs to fix
    - There is no config/code fix — the sender must correct the message format
 5. **No code changes to suggest.** Offer to mark for retry only if the developer says the sender has fixed and will resend the same message ID.
+6. **If the sender fix requires coordination**, propose deferring: "This needs the sender to fix their message format. Want me to defer it until that's resolved?"
 
 ---
 
@@ -79,8 +94,9 @@ The message parsed fine but is missing required data or has invalid values.
    - **Best:** "Sender should populate [field]" — explain what's needed
    - **Workaround:** "Add a preprocessor to [action]" — describe the preprocessor and offer to implement it
    - **Last resort:** "Make [segment] optional in config" — warn about the tradeoff (e.g., losing Encounter link) and offer to change config
-5. **Wait for developer approval** before making any changes
-6. If approved, implement the fix:
+5. **If no clear fix exists** (e.g., requires sender coordination, client decision, or spec clarification), **propose deferring** the message: "This needs external input. Want me to defer it for now?"
+6. **Wait for developer approval** before making any changes
+7. If approved, implement the fix:
    - Config change: edit `config/hl7v2-to-fhir.json`
    - New preprocessor: edit `src/v2-to-fhir/preprocessor-registry.ts` and update config
    - Then offer to mark the message for retry
@@ -105,8 +121,9 @@ A code in the message has no FHIR mapping.
 5. **Present suggestions** to the developer with confidence level:
    - "High confidence: local code `2823-3` → LOINC `2823-3` (Potassium)"
    - "Needs review: local code `GLU` → LOINC `2345-7` (Glucose) — verify with lab"
-6. **Wait for developer approval** before resolving
-7. If approved, resolve the mapping task:
+6. **If no confident match exists** (local code is ambiguous, multiple LOINC candidates, needs domain expertise), propose deferring: "I can't confidently map this code. Want me to defer it until you consult with the lab/client?"
+7. **Wait for developer approval** before resolving
+8. If approved, resolve the mapping task:
    ```bash
    curl -sf -u root:Vbro4upIT1 -X POST 'http://localhost:8080/api/mapping/tasks/<taskId>/resolve' \
      -H 'Content-Type: application/json' \
@@ -156,6 +173,11 @@ After implementing a fix:
 
 - **Always work iteratively.** Show the summary first, then investigate one error at a time.
 - **Never auto-fix without approval.** Always present the diagnosis and suggested fix, then wait for the developer to approve.
+- **Skip `deferred` messages.** These have been investigated and are awaiting external input. Do not include them in error summaries unless the developer explicitly asks about deferred messages.
+- **Offer to defer.** When the developer decides an error needs external input (e.g., waiting on client feedback), offer to defer it:
+  ```bash
+  curl -sf -X POST 'http://localhost:3000/defer/<messageId>'
+  ```
 - **Use hl7v2-inspect.sh for field analysis.** Don't manually count pipes in HL7v2 messages.
 - **Read CLAUDE.md** for project architecture context if needed.
 - **Use the hl7v2-info skill** if you need to verify HL7v2 spec compliance for a field.

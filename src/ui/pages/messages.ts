@@ -382,6 +382,8 @@ function renderIncomingMessagesPage(
         return "bg-yellow-100 text-yellow-800";
       case "sending_error":
         return "bg-orange-100 text-orange-800";
+      case "deferred":
+        return "bg-gray-100 text-gray-600";
       default:
         return "bg-blue-100 text-blue-800";
     }
@@ -393,6 +395,7 @@ function renderIncomingMessagesPage(
       conversion_error: "Conversion Error",
       code_mapping_error: "Code Mapping Error",
       sending_error: "Sending Error",
+      deferred: "Deferred",
     };
     return labels[status] ?? status.charAt(0).toUpperCase() + status.slice(1);
   };
@@ -414,13 +417,13 @@ function renderIncomingMessagesPage(
     error: msg.error,
     bundle: msg.bundle,
     retryUrl:
-      (msg.status === "parsing_error" || msg.status === "conversion_error" || msg.status === "code_mapping_error" || msg.status === "sending_error" || msg.status === "warning") && msg.id
+      (msg.status === "parsing_error" || msg.status === "conversion_error" || msg.status === "code_mapping_error" || msg.status === "sending_error" || msg.status === "warning" || msg.status === "deferred") && msg.id
         ? `/mark-for-retry/${msg.id}`
         : undefined,
     unmappedCodes: msg.status === "code_mapping_error" ? msg.unmappedCodes : undefined,
   }));
 
-  const statuses = ["received", "processed", "warning", "parsing_error", "conversion_error", "code_mapping_error", "sending_error"];
+  const statuses = ["received", "processed", "warning", "parsing_error", "conversion_error", "code_mapping_error", "sending_error", "deferred"];
 
   const content = `
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Incoming Messages</h1>
