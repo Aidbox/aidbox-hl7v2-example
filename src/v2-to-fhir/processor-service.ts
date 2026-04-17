@@ -54,7 +54,7 @@ export async function pollReceivedMessage(): Promise<IncomingHL7v2Message | null
  * Parse failures return parsing_error status (not thrown).
  * Conversion failures flow through ConversionResult normally.
  */
-async function convertMessage(
+export async function convertMessage(
   message: IncomingHL7v2Message,
 ): Promise<ConversionResult> {
   let parsed;
@@ -65,6 +65,18 @@ async function convertMessage(
       messageUpdate: {
         status: "parsing_error",
         error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
+
+  // Validate minimal structure: parseMessage is lenient and may return
+  // an empty array or segments without MSH for malformed input.
+  const hasMSH = parsed.some((s) => s.segment === "MSH");
+  if (!hasMSH) {
+    return {
+      messageUpdate: {
+        status: "parsing_error",
+        error: "MSH segment not found — message is malformed",
       },
     };
   }
