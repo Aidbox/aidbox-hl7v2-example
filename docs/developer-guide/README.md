@@ -20,6 +20,7 @@ Each document explains how the feature works, implementation details, and where 
 
 - [BAR Generation](bar-generation.md) — FHIR → HL7v2 BAR message pipeline, segment mappings, trigger events
 - [ORU Processing](oru-processing.md) — HL7v2 ORU → FHIR conversion, status codes, error handling
+- [Error Statuses](error-statuses.md) — Message error types, resolution flows, sending auto-retry
 - [Code Mapping](code-mapping.md) — ConceptMap workflow, Task creation, LOINC resolution
 - [MLLP Server](mllp-server.md) — TCP/MLLP protocol, ACK generation, message storage
 - [HL7v2 Module](hl7v2-module.md) — Type-safe builders, datatypes, wire format

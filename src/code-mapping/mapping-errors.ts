@@ -32,7 +32,7 @@ export interface MappingError {
  * Build a ConversionResult for mapping errors.
  *
  * Creates Tasks for each unique mapping error and returns a result with
- * status "mapping_error" and the list of unmapped codes.
+ * status "code_mapping_error" and the list of unmapped codes.
  *
  * Note: Only Tasks are included in the bundle. Draft Patient/Encounter resources
  * are NOT created when a message has mapping errors - they will be created when
@@ -88,7 +88,7 @@ export function buildMappingErrorResult(
   return {
     bundle,
     messageUpdate: {
-      status: "mapping_error",
+      status: "code_mapping_error",
       unmappedCodes: unmappedCodes.length > 0 ? unmappedCodes : undefined,
     },
   };

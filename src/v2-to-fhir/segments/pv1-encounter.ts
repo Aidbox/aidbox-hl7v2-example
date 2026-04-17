@@ -757,7 +757,7 @@ export function buildEncounterFromPV1(
  *
  * Always returns an encounter. If patient class mapping fails, uses fallback class (AMB)
  * and returns the mapping error for the caller to handle according to their policy:
- * - ADT: typically blocks (returns mapping_error status)
+ * - ADT: typically blocks (returns code_mapping_error status)
  * - ORU: typically creates Task and proceeds (clinical data prioritized)
  *
  * Resolution algorithm for PV1-2 Patient Class:

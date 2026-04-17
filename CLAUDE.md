@@ -90,8 +90,10 @@ Account (pending) → Account BAR Builder → OutgoingBarMessage (pending) → S
 
 **Incoming (HL7v2 → FHIR):**
 ```
-MLLP receives → IncomingHL7v2Message (received) → Processor → FHIR resources (processed)
+MLLP receives → IncomingHL7v2Message (received) → Parse → Preprocess → Convert → Submit → (processed)
+  Errors: parsing_error | conversion_error | code_mapping_error | sending_error
 ```
+→ Error status details: `docs/developer-guide/error-statuses.md`
 
 ### Custom FHIR Resources
 
@@ -103,9 +105,13 @@ MLLP receives → IncomingHL7v2Message (received) → Processor → FHIR resourc
 **IncomingHL7v2Message** - Received HL7v2 messages
 - `message` (string) - raw HL7v2 content
 - `type` (string) - from MSH-9 (e.g., "ADT^A01", "ORU^R01")
-- `status`: `received` → `processed` | `warning` | `error` | `mapping_error`
+- `status`: `received` → `processed` | `warning` | `parsing_error` | `conversion_error` | `code_mapping_error` | `sending_error`
+  - `parsing_error` — malformed HL7v2, parse failed
+  - `conversion_error` — valid HL7v2 but missing/invalid data for FHIR conversion
+  - `code_mapping_error` — unmapped code, Task created for resolution (auto-requeued on resolve)
+  - `sending_error` — FHIR bundle submission to Aidbox failed (auto-retried 3 times)
 - `sendingApplication`, `sendingFacility` - from MSH-3, MSH-4
-- `unmappedCodes[]` - unresolved OBX codes (when `mapping_error`)
+- `unmappedCodes[]` - unresolved codes (when `code_mapping_error`)
 
 **Account extensions** (processing status):
 - `http://example.org/account-processing-status`: `pending` | `completed` | `error` | `failed`
@@ -262,6 +268,7 @@ For implementation details, see `docs/developer-guide/`:
 | HL7v2→FHIR conversion, ORU processing                                                    | `oru-processing.md` |
 | Preprocessor architecture, registry, and config                                           | `preprocessors.md` |
 | ConceptMap workflow, Task lifecycle                                                      | `code-mapping.md` |
+| Error statuses, resolution flows, sending auto-retry                                     | `error-statuses.md` |
 | MLLP protocol, ACK generation                                                            | `mllp-server.md` |
 | HL7v2 builders, field naming (`$N_fieldName`)                                            | `hl7v2-module.md` |
 | HL7 reference JSON generation (XSD+PDF → data/hl7v2-reference), used by hl7v2-info skill | `how-to/hl7v2-reference-generation.md` |

@@ -108,7 +108,7 @@ export async function convertADT_A08(
   const patientIdResult = await resolvePatientId(pid.$3_identifier ?? []);
   if ("error" in patientIdResult) {
     return {
-      messageUpdate: { status: "error", error: patientIdResult.error },
+      messageUpdate: { status: "conversion_error", error: patientIdResult.error },
     };
   }
   patient.id = patientIdResult.id;

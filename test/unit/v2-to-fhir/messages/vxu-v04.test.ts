@@ -234,12 +234,12 @@ describe("convertVXU_V04", () => {
   });
 
   describe("error conditions", () => {
-    test("missing RXA in ORDER group returns error", async () => {
+    test("missing RXA in ORDER group returns conversion_error", async () => {
       const msg = readVXUFixture("error/missing-rxa.hl7");
       const parsed = parseMessage(msg);
       const result = await convertVXU_V04(parsed, makeTestContext());
 
-      expect(result.messageUpdate.status).toBe("error");
+      expect(result.messageUpdate.status).toBe("conversion_error");
       expect(result.messageUpdate.error).toContain("RXA");
     });
   });

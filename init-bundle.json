@@ -64,8 +64,8 @@
             {
               "id": "IncomingHL7v2Message.status",
               "path": "IncomingHL7v2Message.status",
-              "short": "received | processed | error | mapping_error | warning",
-              "definition": "Processing status of the message. Values: received (awaiting processing), processed (successfully converted to FHIR), error (processing failed), mapping_error (code mapping required), warning (processed with warnings, e.g., skipped Encounter).",
+              "short": "received | processed | warning | parsing_error | conversion_error | code_mapping_error | sending_error",
+              "definition": "Processing status of the message. Values: received (awaiting processing), processed (successfully converted to FHIR), warning (processed with warnings, e.g., skipped Encounter), parsing_error (malformed HL7v2, parse failed), conversion_error (valid HL7v2 but missing/invalid data for FHIR conversion), code_mapping_error (unmapped code, Task created for resolution), sending_error (FHIR bundle submission to Aidbox failed).",
               "min": 0,
               "max": "1",
               "type": [{ "code": "string" }]

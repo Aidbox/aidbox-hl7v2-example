@@ -254,17 +254,17 @@ describe("ADT_A01 E2E Integration", () => {
       const hl7Message = await loadFixture("adt-a01/error/missing-pid.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      expect(message.status).toBe("error");
+      expect(message.status).toBe("conversion_error");
       expect(message.error).toMatch(/PID/i);
     });
   });
 
   describe("PV1 Patient Class mapping errors", () => {
-    test("sets mapping_error status when PV1-2 Patient Class is invalid", async () => {
+    test("sets code_mapping_error status when PV1-2 Patient Class is invalid", async () => {
       const hl7Message = await loadFixture("adt-a01/error/invalid-patient-class.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
       expect(message.unmappedCodes).toBeDefined();
       expect(message.unmappedCodes).toHaveLength(1);
       expect(message.unmappedCodes![0]!.localCode).toBe("99");

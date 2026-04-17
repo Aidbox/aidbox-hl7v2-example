@@ -462,7 +462,7 @@ async function processOBRGroup(
  * - PV1 required/optional determined by config.messages?.["ORU-R01"].converter.PV1.required
  * - If PV1 valid: creates/looks up Encounter with strict HL7 v2.8.2 authority validation
  * - If PV1 not required and missing/invalid: skip Encounter, set status=warning
- * - If PV1 required and missing/invalid: set status=error, no bundle submitted
+ * - If PV1 required and missing/invalid: set status=conversion_error, no bundle submitted
  * - Links DiagnosticReport and Observation to Encounter when present
  */
 export async function convertORU_R01(
@@ -488,7 +488,7 @@ export async function convertORU_R01(
 
   if ("error" in patientResult) {
     return {
-      messageUpdate: { status: "error", error: patientResult.error },
+      messageUpdate: { status: "conversion_error", error: patientResult.error },
     };
   }
 
@@ -508,7 +508,7 @@ export async function convertORU_R01(
   if (encounterResult.error) {
     return {
       messageUpdate: {
-        status: "error",
+        status: "conversion_error",
         error: encounterResult.error,
         patient: patientRef,
       },

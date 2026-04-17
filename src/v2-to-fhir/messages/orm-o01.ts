@@ -631,7 +631,7 @@ export async function convertORM_O01(
     pid = parseORMPID(parsed);
   } catch {
     return {
-      messageUpdate: { status: "error", error: "PID segment is required for ORM_O01 messages" },
+      messageUpdate: { status: "conversion_error", error: "PID segment is required for ORM_O01 messages" },
     };
   }
 
@@ -648,7 +648,7 @@ export async function convertORM_O01(
   );
   if ("error" in patientResult) {
     return {
-      messageUpdate: { status: "error", error: patientResult.error },
+      messageUpdate: { status: "conversion_error", error: patientResult.error },
     };
   }
   const { patientRef, patientEntry } = patientResult;
@@ -671,7 +671,7 @@ export async function convertORM_O01(
   if (encounterResult.error) {
     return {
       messageUpdate: {
-        status: "error",
+        status: "conversion_error",
         error: encounterResult.error,
         patient: patientRef,
       },
@@ -688,7 +688,7 @@ export async function convertORM_O01(
 
   if (orderGroups.length === 0) {
     return {
-      messageUpdate: { status: "error", error: "No ORDER groups found in ORM_O01 message" },
+      messageUpdate: { status: "conversion_error", error: "No ORDER groups found in ORM_O01 message" },
     };
   }
 
@@ -726,7 +726,7 @@ export async function convertORM_O01(
   // If no groups were processable, return error
   if (processableGroupCount === 0) {
     return {
-      messageUpdate: { status: "error", error: "No processable order groups found in ORM_O01 message" },
+      messageUpdate: { status: "conversion_error", error: "No processable order groups found in ORM_O01 message" },
     };
   }
 

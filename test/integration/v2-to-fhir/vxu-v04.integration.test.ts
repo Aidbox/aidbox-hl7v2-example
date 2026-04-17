@@ -228,11 +228,11 @@ describe("VXU_V04 E2E Integration", () => {
   });
 
   describe("error conditions", () => {
-    test("VXU with unknown ORDER OBX LOINC code results in error status", async () => {
+    test("VXU with unknown ORDER OBX LOINC code results in conversion_error status", async () => {
       const hl7Message = await loadFixture("vxu-v04/error/unknown-order-obx.hl7");
       const message = await submitAndProcessVxu(hl7Message);
 
-      expect(message.status).toBe("error");
+      expect(message.status).toBe("conversion_error");
       expect(message.error).toMatch(/99999-9|Unknown OBX/i);
     });
   });
