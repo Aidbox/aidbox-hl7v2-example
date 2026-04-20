@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel earlier in-flight runs when new commits arrive on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (unit + integration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Required by test/integration/preload.ts and docker-compose.test.yaml.
+      # NOTE: PRs from forks do NOT receive this secret and integration tests
+      # will fail there. Trigger from a branch in this repo for full CI.
+      AIDBOX_LICENSE: ${{ secrets.AIDBOX_LICENSE }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun install
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify AIDBOX_LICENSE secret is set
+        run: |
+          if [ -z "$AIDBOX_LICENSE" ]; then
+            echo "::error::AIDBOX_LICENSE secret is not set. Add it at Settings → Secrets and variables → Actions."
+            echo "If this is a PR from a fork, the secret is intentionally not passed — push to a branch in the main repo instead."
+            exit 1
+          fi
+
+      - name: Run unit tests
+        run: bun test:unit
+
+      - name: Run integration tests
+        run: bun test:integration
+
+      - name: Dump test Aidbox logs on failure
+        if: failure()
+        run: |
+          mkdir -p ci-logs
+          docker compose -f docker-compose.test.yaml logs aidbox-test > ci-logs/aidbox-test.log 2>&1 || true
+          docker compose -f docker-compose.test.yaml logs postgres-test > ci-logs/postgres-test.log 2>&1 || true
+
+      - name: Upload logs artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-logs
+          path: ci-logs/
+          if-no-files-found: ignore
