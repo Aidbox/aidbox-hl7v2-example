@@ -104,16 +104,6 @@ export async function removeTaskFromMessage(
 }
 
 /**
- * @deprecated Use removeTaskFromMessage(messageId, taskId) instead
- */
-export async function removeResolvedTaskFromMessage(
-  message: IncomingHL7v2Message,
-  taskId: string,
-): Promise<void> {
-  await removeTaskFromMessage(message.id!, taskId);
-}
-
-/**
  * Update all messages affected by a resolved task.
  * Removes the task reference from each message's unmappedCodes.
  */

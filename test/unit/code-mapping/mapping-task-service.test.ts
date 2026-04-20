@@ -204,7 +204,7 @@ describe("resolveMappingTask", () => {
   });
 });
 
-describe("removeResolvedTaskFromMessage", () => {
+describe("removeTaskFromMessage", () => {
   test("removes task entry from unmappedCodes and updates status to received when empty", async () => {
     let updatedMessage: IncomingHL7v2Message | null = null;
     const mockAidbox = {
@@ -223,11 +223,11 @@ describe("removeResolvedTaskFromMessage", () => {
     };
 
     mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { removeResolvedTaskFromMessage } =
+    const { removeTaskFromMessage } =
       await import("../../../src/code-mapping/mapping-task");
 
-    await removeResolvedTaskFromMessage(
-      sampleMessage,
+    await removeTaskFromMessage(
+      sampleMessage.id!,
       "map-hl7v2-acme-lab-acme-hosp-observation-code-loinc-acme-lab-codes-k-serum",
     );
 
@@ -282,11 +282,11 @@ describe("removeResolvedTaskFromMessage", () => {
     };
 
     mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { removeResolvedTaskFromMessage } =
+    const { removeTaskFromMessage } =
       await import("../../../src/code-mapping/mapping-task");
 
-    await removeResolvedTaskFromMessage(
-      messageWithMultipleUnmapped,
+    await removeTaskFromMessage(
+      messageWithMultipleUnmapped.id!,
       "map-hl7v2-acme-lab-acme-hosp-observation-code-loinc-acme-lab-codes-k-serum",
     );
 
@@ -307,11 +307,11 @@ describe("removeResolvedTaskFromMessage", () => {
     };
 
     mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { removeResolvedTaskFromMessage } =
+    const { removeTaskFromMessage } =
       await import("../../../src/code-mapping/mapping-task");
 
-    await removeResolvedTaskFromMessage(
-      sampleMessage,
+    await removeTaskFromMessage(
+      sampleMessage.id!,
       "map-hl7v2-acme-lab-acme-hosp-observation-code-loinc-acme-lab-codes-k-serum",
     );
 

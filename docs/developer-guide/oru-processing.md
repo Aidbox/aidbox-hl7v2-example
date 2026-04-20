@@ -85,7 +85,7 @@ convertORU_R01(parsed, lookupPatient, lookupEncounter)
     │
     └─► for each OBR group:
             ├─► processOBRGroup()
-            │       ├─► convertOBRToDiagnosticReport()
+            │       ├─► convertOBRWithMappingSupport()
             │       ├─► processObservations()
             │       │       └─► convertOBXToObservationResolving()
             │       │               ├─► resolveToLoinc()  // May throw LoincResolutionError

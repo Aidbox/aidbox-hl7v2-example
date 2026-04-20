@@ -52,8 +52,6 @@ const OBR25_STATUS_MAP: Record<string, DiagnosticReport["status"]> = {
   X: "cancelled",
 };
 
-const VALID_OBR25_STATUSES = Object.keys(OBR25_STATUS_MAP).join(", ");
-
 /**
  * Result type for OBR-25 status mapping.
  * Returns either a valid FHIR status or a mapping error.
@@ -80,25 +78,6 @@ export function mapOBRStatusToFHIRWithResult(
     };
   }
   return { status: OBR25_STATUS_MAP[status.toUpperCase()]! };
-}
-
-/**
- * Map OBR-25 Result Status to FHIR DiagnosticReport.status.
- * Throws Error if status is missing or invalid (e.g., Y, Z).
- *
- * @deprecated Use mapOBRStatusToFHIRWithResult for new code.
- * This function is kept for backward compatibility.
- */
-export function mapOBRStatusToFHIR(
-  status: string | undefined
-): DiagnosticReport["status"] {
-  if (status === undefined || !(status.toUpperCase() in OBR25_STATUS_MAP)) {
-    const statusDesc = status === undefined ? "missing" : `"${status}"`;
-    throw new Error(
-      `Invalid OBR-25 Result Status: ${statusDesc}. Must be one of: ${VALID_OBR25_STATUSES}`,
-    );
-  }
-  return OBR25_STATUS_MAP[status.toUpperCase()]!;
 }
 
 // ============================================================================
@@ -190,46 +169,6 @@ function convertServiceToCodeableConcept(
 // ============================================================================
 // Main Converter Function
 // ============================================================================
-
-/**
- * Convert OBR segment to FHIR DiagnosticReport
- *
- * Field mappings:
- * - OBR-3 (Filler Order Number) or OBR-2 (Placer Order Number) → id (deterministic)
- * - OBR-4 (Universal Service ID) → code
- * - OBR-7 (Observation Date/Time) → effectiveDateTime
- * - OBR-22 (Results Report/Status Change) → issued
- * - OBR-25 (Result Status) → status
- */
-export function convertOBRToDiagnosticReport(obr: OBR): DiagnosticReport {
-  const id = generateIdFromEI(obr.$3_fillerOrderNumber) 
-          ?? generateIdFromEI(obr.$2_placerOrderNumber);
-
-  const diagnosticReport: DiagnosticReport = {
-    resourceType: "DiagnosticReport",
-    id,
-    status: mapOBRStatusToFHIR(obr.$25_resultStatus),
-    code: convertServiceToCodeableConcept(obr.$4_service) || {
-      text: "Unknown",
-    },
-  };
-
-  // OBR-7: Observation Date/Time → effectiveDateTime
-  if (obr.$7_observationDateTime) {
-    diagnosticReport.effectiveDateTime = convertDTMToDateTime(
-      obr.$7_observationDateTime
-    );
-  }
-
-  // OBR-22: Results Report/Status Change → issued
-  if (obr.$22_resultsRptStatusChngDateTime) {
-    diagnosticReport.issued = convertDTMToInstant(
-      obr.$22_resultsRptStatusChngDateTime
-    );
-  }
-
-  return diagnosticReport;
-}
 
 /**
  * Result type for OBR conversion with mapping support.

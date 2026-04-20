@@ -1,7 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import {
   convertOBXToObservation,
-  mapOBXStatusToFHIR,
   mapOBXStatusToFHIRWithResult,
   parseReferenceRange,
   parseStructuredNumeric,
@@ -241,68 +240,6 @@ describe("convertOBXToObservation", () => {
 
       expect(result.valueQuantity).toBeUndefined();
     });
-  });
-});
-
-describe("mapOBXStatusToFHIR", () => {
-  test("maps F to final", () => {
-    expect(mapOBXStatusToFHIR("F")).toBe("final");
-  });
-
-  test("maps B to final", () => {
-    expect(mapOBXStatusToFHIR("B")).toBe("final");
-  });
-
-  test("maps V to final", () => {
-    expect(mapOBXStatusToFHIR("V")).toBe("final");
-  });
-
-  test("maps U to final", () => {
-    expect(mapOBXStatusToFHIR("U")).toBe("final");
-  });
-
-  test("maps P to preliminary", () => {
-    expect(mapOBXStatusToFHIR("P")).toBe("preliminary");
-  });
-
-  test("maps R to preliminary", () => {
-    expect(mapOBXStatusToFHIR("R")).toBe("preliminary");
-  });
-
-  test("maps S to preliminary", () => {
-    expect(mapOBXStatusToFHIR("S")).toBe("preliminary");
-  });
-
-  test("maps I to registered", () => {
-    expect(mapOBXStatusToFHIR("I")).toBe("registered");
-  });
-
-  test("maps O to registered", () => {
-    expect(mapOBXStatusToFHIR("O")).toBe("registered");
-  });
-
-  test("maps C to corrected", () => {
-    expect(mapOBXStatusToFHIR("C")).toBe("corrected");
-  });
-
-  test("maps A to amended", () => {
-    expect(mapOBXStatusToFHIR("A")).toBe("amended");
-  });
-
-  test("maps D to entered-in-error", () => {
-    expect(mapOBXStatusToFHIR("D")).toBe("entered-in-error");
-  });
-
-  test("maps W to entered-in-error", () => {
-    expect(mapOBXStatusToFHIR("W")).toBe("entered-in-error");
-  });
-
-  test("maps X to cancelled", () => {
-    expect(mapOBXStatusToFHIR("X")).toBe("cancelled");
-  });
-
-  test("throws for unrecognized status", () => {
-    expect(() => mapOBXStatusToFHIR("Z")).toThrow(Error);
   });
 });
 
@@ -600,35 +537,6 @@ describe("referenceRange (OBX-7)", () => {
     const result = convertOBXToObservation(obx, "123");
 
     expect(result.referenceRange?.[0]?.text).toBe("negative");
-  });
-});
-
-describe("mapOBXStatusToFHIR validation", () => {
-  describe("valid statuses", () => {
-    test.each(["F", "B", "V", "U", "P", "R", "S", "I", "O", "C", "A", "D", "W", "X"])(
-      "accepts valid status %s",
-      (status) => {
-        expect(() => mapOBXStatusToFHIR(status)).not.toThrow();
-      },
-    );
-
-    test("accepts lowercase status", () => {
-      expect(() => mapOBXStatusToFHIR("f")).not.toThrow();
-    });
-  });
-
-  describe("invalid statuses", () => {
-    test("throws Error for status N", () => {
-      expect(() => mapOBXStatusToFHIR("N")).toThrow(Error);
-    });
-
-    test("throws Error for lowercase n", () => {
-      expect(() => mapOBXStatusToFHIR("n")).toThrow(Error);
-    });
-
-    test("error message includes invalid status value", () => {
-      expect(() => mapOBXStatusToFHIR("N")).toThrow(/"N"/);
-    });
   });
 });
 

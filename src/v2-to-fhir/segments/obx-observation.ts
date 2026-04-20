@@ -65,7 +65,6 @@ const OBX11_STATUS_MAP: Record<string, Observation["status"]> = {
   X: "cancelled",
 };
 
-const VALID_OBX11_STATUSES = Object.keys(OBX11_STATUS_MAP).join(", ");
 
 /**
  * Result type for OBX-11 status mapping.
@@ -93,23 +92,6 @@ export function mapOBXStatusToFHIRWithResult(
     };
   }
   return { status: OBX11_STATUS_MAP[status.toUpperCase()]! };
-}
-
-/**
- * Map OBX-11 Observation Result Status to FHIR Observation.status.
- * Throws Error if status is invalid (e.g., N).
- * Note: OBX-11 is required by HL7 spec, but we handle missing values gracefully.
- *
- * @deprecated Use mapOBXStatusToFHIRWithResult for new code.
- * This function is kept for backward compatibility.
- */
-export function mapOBXStatusToFHIR(status: string): Observation["status"] {
-  if (!status || !(status.toUpperCase() in OBX11_STATUS_MAP)) {
-    throw new Error(
-      `Invalid OBX-11 Observation Result Status: "${status}". Must be one of: ${VALID_OBX11_STATUSES}`,
-    );
-  }
-  return OBX11_STATUS_MAP[status.toUpperCase()]!;
 }
 
 // ============================================================================
@@ -313,10 +295,18 @@ export function convertOBXToObservation(
 
   const code = convertCEToCodeableConcept(obx.$3_observationIdentifier) ?? { text: "Unknown" };
 
+  const statusResult = mapOBXStatusToFHIRWithResult(obx.$11_observationResultStatus);
+  if (statusResult.error) {
+    const s = obx.$11_observationResultStatus;
+    throw new Error(
+      `Invalid OBX-11 Observation Result Status: ${s === undefined || s === "" ? "missing" : `"${s}"`}`,
+    );
+  }
+
   const observation: Observation = {
     resourceType: "Observation",
     id,
-    status: mapOBXStatusToFHIR(obx.$11_observationResultStatus),
+    status: statusResult.status,
     code,
   };
 

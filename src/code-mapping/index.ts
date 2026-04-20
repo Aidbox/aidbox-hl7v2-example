@@ -31,7 +31,6 @@ export {
   composeTaskBundleEntry,
   resolveMappingTask,
   removeTaskFromMessage,
-  removeResolvedTaskFromMessage,
 } from "./mapping-task";
 
 export {

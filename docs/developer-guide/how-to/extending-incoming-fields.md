@@ -49,7 +49,7 @@ export function convertOBXToObservation(
   return {
     resourceType: "Observation",
     id,
-    status: mapOBXStatusToFHIR(obx.$11_observationResultStatus as string),
+    status: statusResult.status, // from mapOBXStatusToFHIRWithResult above
     code,
     // ... value handling ...
   };
@@ -71,7 +71,7 @@ export function convertOBXToObservation(
   const observation: Observation = {
     resourceType: "Observation",
     id,
-    status: mapOBXStatusToFHIR(obx.$11_observationResultStatus as string),
+    status: statusResult.status, // from mapOBXStatusToFHIRWithResult above
     code,
     // ... value handling ...
   };
