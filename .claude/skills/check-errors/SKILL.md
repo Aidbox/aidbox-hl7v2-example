@@ -7,17 +7,29 @@ description: Check recent HL7v2 processing errors in Aidbox, diagnose root cause
 
 Diagnose and help resolve IncomingHL7v2Message errors from the HL7v2→FHIR pipeline.
 
+## Prerequisites
+
+All Aidbox requests below follow the `aidbox-request` skill pattern. Extract the secret once at the start of the session and keep `$SECRET` in the shell:
+
+```sh
+SECRET=$(awk -F': ' '/^[[:space:]]*BOX_ROOT_CLIENT_SECRET:/ {print $2}' docker-compose.yaml)
+```
+
+If `$SECRET` is empty, stop and tell the developer: `BOX_ROOT_CLIENT_SECRET` is missing from `docker-compose.yaml`. Do not guess or hardcode a fallback.
+
+Requests to the app (`http://localhost:3000`) are separate — no auth needed.
+
 ## Step 1: Query errors from Aidbox
 
 Run this command to get a summary of recent errors:
 
 ```bash
-curl -sf -u root:Vbro4upIT1 'http://localhost:8080/fhir/IncomingHL7v2Message?status=parsing_error,conversion_error,code_mapping_error,sending_error&_sort=-_lastUpdated&_count=20&_elements=id,status,type,error,sendingApplication,sendingFacility,meta' | python -m json.tool
+curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message?status=parsing_error,conversion_error,code_mapping_error,sending_error&_sort=-_lastUpdated&_count=20&_elements=id,status,type,error,sendingApplication,sendingFacility,meta' | python -m json.tool
 ```
 
 If the user asked about a specific error or message ID, query that directly:
 ```bash
-curl -sf -u root:Vbro4upIT1 'http://localhost:8080/fhir/IncomingHL7v2Message/<ID>' | python -m json.tool
+curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message/<ID>' | python -m json.tool
 ```
 
 ## Step 2: Present a summary
@@ -31,7 +43,7 @@ Show the developer a table of errors grouped by status:
 Also query deferred messages to remind the developer:
 
 ```bash
-curl -sf -u root:Vbro4upIT1 'http://localhost:8080/fhir/IncomingHL7v2Message?status=deferred&_sort=-_lastUpdated&_count=20&_elements=id,status,type,error,sendingApplication,sendingFacility,meta' | python -m json.tool
+curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message?status=deferred&_sort=-_lastUpdated&_count=20&_elements=id,status,type,error,sendingApplication,sendingFacility,meta' | python -m json.tool
 ```
 
 If there are deferred messages, add a reminder line after the error table:
@@ -51,7 +63,7 @@ Do NOT try to fix everything at once. Work iteratively — one error at a time.
 Fetch the full message including raw HL7v2 content:
 
 ```bash
-curl -sf -u root:Vbro4upIT1 'http://localhost:8080/fhir/IncomingHL7v2Message/<ID>' | python -m json.tool
+curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message/<ID>' | python -m json.tool
 ```
 
 Then follow the diagnosis path based on error type:
@@ -114,7 +126,7 @@ A code in the message has no FHIR mapping.
    - Sending application and facility
 3. **For observation-code-loinc mappings:** Search LOINC for likely matches:
    ```bash
-   curl -sf -u root:Vbro4upIT1 'http://localhost:8080/api/terminology/loinc?q=<search term>'
+   curl -sf -u "root:$SECRET" 'http://localhost:8080/api/terminology/loinc?q=<search term>'
    ```
    Use the local code display text as the search term.
 4. **For patient-class, obr-status, obx-status mappings:** Look up valid FHIR target values from the mapping type registry (`src/code-mapping/mapping-types.ts`) and suggest the best match.
@@ -125,7 +137,7 @@ A code in the message has no FHIR mapping.
 7. **Wait for developer approval** before resolving
 8. If approved, resolve the mapping task:
    ```bash
-   curl -sf -u root:Vbro4upIT1 -X POST 'http://localhost:8080/api/mapping/tasks/<taskId>/resolve' \
+   curl -sf -u "root:$SECRET" -X POST 'http://localhost:8080/api/mapping/tasks/<taskId>/resolve' \
      -H 'Content-Type: application/json' \
      -d '{"code": "<target_code>", "display": "<target_display>"}'
    ```
@@ -139,7 +151,7 @@ The FHIR bundle was built but Aidbox rejected it.
 
 1. Check Aidbox health:
    ```bash
-   curl -sf -u root:Vbro4upIT1 'http://localhost:8080/health'
+   curl -sf -u "root:$SECRET" 'http://localhost:8080/health'
    ```
 2. Read the `error` field for the rejection reason
 3. If the message has a saved `bundle` field, inspect it for FHIR validation issues
@@ -165,7 +177,7 @@ After implementing a fix:
    ```
 3. Then re-query the message to verify the fix worked:
    ```bash
-   curl -sf -u root:Vbro4upIT1 'http://localhost:8080/fhir/IncomingHL7v2Message/<ID>?_elements=id,status,error' | python -m json.tool
+   curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message/<ID>?_elements=id,status,error' | python -m json.tool
    ```
 4. Report the result to the developer
 
