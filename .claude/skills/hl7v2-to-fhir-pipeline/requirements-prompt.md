@@ -38,7 +38,7 @@ Research workflow:
     - Must be labeled `Proposal` until confirmed.
 6. Write Open Questions that need user decision.
 
-CRITICAL: keep BOTH the spec requirements and the real message handling requirements in the document! They must be available for the future engineer who will work on the feature design.
+Keep both the spec requirements and the real-message-handling requirements in the document — both matter to whoever writes the implementation plan next.
 
 Rules for proposals:
 - Preprocessors:

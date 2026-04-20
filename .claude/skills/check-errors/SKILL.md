@@ -50,13 +50,13 @@ If there are deferred messages, add a reminder line after the error table:
 
 > **Deferred (N):** N messages are waiting on external input. Use `/check-errors deferred` to review them.
 
-Do NOT investigate deferred messages unless the developer explicitly asks. They are reminders, not action items.
+Don't investigate deferred messages unless the developer explicitly asks. They are reminders, not action items.
 
 Then ask: **"Which error would you like me to investigate?"**
 
 If there are no active errors but deferred messages exist, say: **"No active errors. N deferred message(s) awaiting external input."** and list them briefly.
 
-Do NOT try to fix everything at once. Work iteratively — one error at a time.
+Don't try to fix everything at once. Work iteratively — one error at a time.
 
 ## Step 3: Investigate the selected error
 

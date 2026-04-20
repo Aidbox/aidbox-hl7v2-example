@@ -11,6 +11,7 @@
  */
 
 import { aidboxFetch, type Bundle } from "../aidbox";
+import { createPollingService, type PollingService } from "../polling-service";
 import { generateBarMessage } from "./generator";
 import { formatMessage } from "@atomic-ehr/hl7v2/src/hl7v2/format";
 import type { Account } from "../fhir/hl7-fhir-r4-core/Account";
@@ -292,13 +293,7 @@ export async function updateAccountStatus(
   });
 }
 
-export async function processNextAccount(): Promise<boolean> {
-  const account = await pollPendingAccount() as AccountWithId | null;
-
-  if (!account) {
-    return false;
-  }
-
+export async function processAccount(account: AccountWithId): Promise<void> {
   try {
     const hl7v2 = await buildBarFromAccount(account);
     await createOutgoingBarMessage(account, hl7v2);
@@ -307,56 +302,29 @@ export async function processNextAccount(): Promise<boolean> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     await updateAccountStatus(account.id, "error", { reason: errorMessage });
   }
+}
 
+export async function processNextAccount(): Promise<boolean> {
+  const account = await pollPendingAccount() as AccountWithId | null;
+  if (!account) return false;
+  await processAccount(account);
   return true;
 }
 
 export function createAccountBarBuilderService(options: {
   pollIntervalMs?: number;
-  onError?: (error: Error) => void;
+  onError?: (error: Error, account?: Account) => void;
   onProcessed?: (account: Account) => void;
   onIdle?: () => void;
-} = {}) {
-  const pollIntervalMs = options.pollIntervalMs ?? POLL_INTERVAL_MS;
-  let running = false;
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  async function poll() {
-    if (!running) return;
-
-    try {
-      const processed = await processNextAccount();
-      if (processed) {
-        setImmediate(poll);
-      } else {
-        options.onIdle?.();
-        timeoutId = setTimeout(poll, pollIntervalMs);
-      }
-    } catch (error) {
-      options.onError?.(error as Error);
-      timeoutId = setTimeout(poll, pollIntervalMs);
-    }
-  }
-
-  return {
-    start() {
-      if (running) return;
-      running = true;
-      poll();
-    },
-
-    stop() {
-      running = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-      }
-    },
-
-    isRunning() {
-      return running;
-    },
-  };
+} = {}): PollingService {
+  return createPollingService<AccountWithId>({
+    poll: () => pollPendingAccount() as Promise<AccountWithId | null>,
+    process: processAccount,
+    pollIntervalMs: options.pollIntervalMs ?? POLL_INTERVAL_MS,
+    onError: options.onError,
+    onProcessed: options.onProcessed,
+    onIdle: options.onIdle,
+  });
 }
 
 // Main entry point when run directly

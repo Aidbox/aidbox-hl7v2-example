@@ -108,11 +108,12 @@ MLLP receives → IncomingHL7v2Message (received) → Parse → Preprocess → C
 **IncomingHL7v2Message** - Received HL7v2 messages
 - `message` (string) - raw HL7v2 content
 - `type` (string) - from MSH-9 (e.g., "ADT^A01", "ORU^R01")
-- `status`: `received` → `processed` | `warning` | `parsing_error` | `conversion_error` | `code_mapping_error` | `sending_error`
+- `status`: `received` → `processed` | `warning` | `parsing_error` | `conversion_error` | `code_mapping_error` | `sending_error` | `deferred`
   - `parsing_error` — malformed HL7v2, parse failed
   - `conversion_error` — valid HL7v2 but missing/invalid data for FHIR conversion
   - `code_mapping_error` — unmapped code, Task created for resolution (auto-requeued on resolve)
   - `sending_error` — FHIR bundle submission to Aidbox failed (auto-retried 3 times)
+  - `deferred` — manually set via `POST /defer/:id` after investigation when resolution needs external input (sender fix, client decision); eligible for retry via `POST /mark-for-retry/:id`
 - `sendingApplication`, `sendingFacility` - from MSH-3, MSH-4
 - `unmappedCodes[]` - unresolved codes (when `code_mapping_error`)
 

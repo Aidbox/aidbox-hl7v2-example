@@ -1,4 +1,5 @@
 import { aidboxFetch, type Bundle, putResource } from "../aidbox";
+import { createPollingService, type PollingService } from "../polling-service";
 
 export interface OutgoingBarMessage {
   resourceType: "OutgoingBarMessage";
@@ -49,69 +50,32 @@ export async function markAsSent(message: OutgoingBarMessage): Promise<OutgoingB
   });
 }
 
-export async function processNextMessage(): Promise<boolean> {
-  const message = await pollPendingMessage();
-
-  if (!message) {
-    return false;
-  }
-
+export async function processMessage(message: OutgoingBarMessage): Promise<void> {
   await sendAsIncomingMessage(message);
   await markAsSent(message);
+}
 
+export async function processNextMessage(): Promise<boolean> {
+  const message = await pollPendingMessage();
+  if (!message) return false;
+  await processMessage(message);
   return true;
 }
 
 export function createBarMessageSenderService(options: {
   pollIntervalMs?: number;
-  onError?: (error: Error) => void;
+  onError?: (error: Error, message?: OutgoingBarMessage) => void;
   onProcessed?: (message: OutgoingBarMessage) => void;
   onIdle?: () => void;
-} = {}) {
-  const pollIntervalMs = options.pollIntervalMs ?? POLL_INTERVAL_MS;
-  let running = false;
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  async function poll() {
-    if (!running) return;
-
-    try {
-      const processed = await processNextMessage();
-
-      if (processed) {
-        // Message was processed, try immediately for the next one
-        setImmediate(poll);
-      } else {
-        // No message found, wait for poll interval
-        options.onIdle?.();
-        timeoutId = setTimeout(poll, pollIntervalMs);
-      }
-    } catch (error) {
-      options.onError?.(error as Error);
-      // On error, wait for poll interval before retrying
-      timeoutId = setTimeout(poll, pollIntervalMs);
-    }
-  }
-
-  return {
-    start() {
-      if (running) return;
-      running = true;
-      poll();
-    },
-
-    stop() {
-      running = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-      }
-    },
-
-    isRunning() {
-      return running;
-    },
-  };
+} = {}): PollingService {
+  return createPollingService<OutgoingBarMessage>({
+    poll: pollPendingMessage,
+    process: processMessage,
+    pollIntervalMs: options.pollIntervalMs ?? POLL_INTERVAL_MS,
+    onError: options.onError,
+    onProcessed: options.onProcessed,
+    onIdle: options.onIdle,
+  });
 }
 
 // Main entry point when run directly

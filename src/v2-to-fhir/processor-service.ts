@@ -11,14 +11,12 @@ import {
   putResource,
   type Bundle as AidboxBundle,
 } from "../aidbox";
+import { createPollingService, type PollingService } from "../polling-service";
 import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import type { Bundle } from "../fhir/hl7-fhir-r4-core/Bundle";
 import { convertToFHIR, type ConversionResult } from "./converter";
 import { preprocessMessage } from "./preprocessor";
 import { hl7v2ToFhirConfig } from "./config";
-// DESIGN PROTOTYPE: 2026-02-24-profiles-support.md
-// Planned extension:
-// import { validateBundleProfiles } from "./profile-conformance";
 
 // ============================================================================
 // Constants
@@ -172,52 +170,75 @@ async function handleSendingError(
 // ============================================================================
 
 /**
- * Process next message in queue
- * Returns true if message was processed, false if queue empty
+ * Thrown by processMessage when submit fails and handleSendingError has
+ * already recorded the status. Outer handlers should treat this as
+ * "status already set — don't overwrite."
+ */
+class SendError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    this.name = "SendError";
+  }
+}
+
+/**
+ * Process a single message: convert, submit bundle, update status.
+ *
+ * Throws on any failure. Submit failures throw a `SendError` wrapping the
+ * underlying cause; handleSendingError has already recorded the status before
+ * the throw, so callers must not record a `conversion_error` over it.
+ */
+export async function processMessage(
+  message: IncomingHL7v2Message,
+): Promise<void> {
+  const { bundle, messageUpdate } = await convertMessage(message);
+
+  if (bundle) {
+    try {
+      await submitBundle(bundle);
+    } catch (sendError) {
+      await handleSendingError(message, sendError, bundle);
+      throw new SendError(sendError);
+    }
+  }
+  await applyMessageUpdate(message, messageUpdate, bundle);
+}
+
+/**
+ * Record conversion_error status for non-send errors. No-op for `SendError`
+ * (status already recorded by handleSendingError).
+ */
+async function recordProcessingError(
+  message: IncomingHL7v2Message,
+  error: unknown,
+): Promise<void> {
+  if (error instanceof SendError) return;
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  try {
+    await applyMessageUpdate(message, {
+      status: "conversion_error",
+      error: errorMessage,
+    });
+  } catch (updateError) {
+    console.error("Failed to update message status:", updateError);
+  }
+}
+
+/**
+ * Process next message in queue.
+ * Returns true if a message was attempted (success OR recorded error),
+ * false if queue empty. Re-throws non-send errors after recording.
  */
 export async function processNextMessage(): Promise<boolean> {
   const message = await pollReceivedMessage();
-
-  if (!message) {
-    return false;
-  }
+  if (!message) return false;
 
   try {
-    const { bundle, messageUpdate } = await convertMessage(message);
-
-    // DESIGN PROTOTYPE: 2026-02-24-profiles-support.md
-    // if (bundle) {
-    //   const profileResult = await validateBundleProfiles(bundle, message.type);
-    //   if (profileResult.strictFailure) {
-    //     await applyMessageUpdate(message, {
-    //       status: "conversion_error",
-    //       error: profileResult.summary,
-    //     });
-    //     return true;
-    //   }
-    //   bundle = profileResult.bundle;
-    // }
-
-    if (bundle) {
-      try {
-        await submitBundle(bundle);
-      } catch (sendError) {
-        await handleSendingError(message, sendError, bundle);
-        return true;
-      }
-    }
-    await applyMessageUpdate(message, messageUpdate, bundle);
+    await processMessage(message);
     return true;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    try {
-      await applyMessageUpdate(message, {
-        status: "conversion_error",
-        error: errorMessage,
-      });
-    } catch (updateError) {
-      console.error("Failed to update message status:", updateError);
-    }
+    if (error instanceof SendError) return true;
+    await recordProcessingError(message, error);
     throw error;
   }
 }
@@ -237,79 +258,22 @@ export function createIncomingHL7v2MessageProcessorService(
     onProcessed?: (message: IncomingHL7v2Message) => void;
     onIdle?: () => void;
   } = {},
-) {
-  const pollIntervalMs = options.pollIntervalMs ?? POLL_INTERVAL_MS;
-  let running = false;
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  async function poll() {
-    if (!running) return;
-
-    let currentMessage: IncomingHL7v2Message | null = null;
-
-    try {
-      currentMessage = await pollReceivedMessage();
-
-      if (!currentMessage) {
-        options.onIdle?.();
-        timeoutId = setTimeout(poll, pollIntervalMs);
-        return;
-      }
-
-      const { bundle, messageUpdate } = await convertMessage(currentMessage);
-      if (bundle) {
-        try {
-          await submitBundle(bundle);
-        } catch (sendError) {
-          await handleSendingError(currentMessage, sendError, bundle);
-          options.onError?.(sendError as Error, currentMessage);
-          timeoutId = setTimeout(poll, pollIntervalMs);
-          return;
-        }
-      }
-      await applyMessageUpdate(currentMessage, messageUpdate, bundle);
-
-      options.onProcessed?.(currentMessage);
-      setImmediate(poll);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      options.onError?.(error as Error, currentMessage ?? undefined);
-
-      if (currentMessage) {
-        try {
-          await applyMessageUpdate(currentMessage, {
-            status: "conversion_error",
-            error: errorMessage,
-          });
-        } catch (updateError) {
-          console.error("Failed to update message status:", updateError);
-        }
-      }
-
-      timeoutId = setTimeout(poll, pollIntervalMs);
-    }
-  }
-
-  return {
-    start() {
-      if (running) return;
-      running = true;
-      poll();
-    },
-
-    stop() {
-      running = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
+): PollingService {
+  return createPollingService<IncomingHL7v2Message>({
+    poll: pollReceivedMessage,
+    process: async (message) => {
+      try {
+        await processMessage(message);
+      } catch (error) {
+        await recordProcessingError(message, error);
+        throw error;
       }
     },
-
-    isRunning() {
-      return running;
-    },
-  };
+    pollIntervalMs: options.pollIntervalMs ?? POLL_INTERVAL_MS,
+    onError: options.onError,
+    onProcessed: options.onProcessed,
+    onIdle: options.onIdle,
+  });
 }
 
 // ============================================================================

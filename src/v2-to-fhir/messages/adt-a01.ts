@@ -23,7 +23,6 @@ import {
   fromDG1,
   fromAL1,
   fromIN1,
-  type MSH,
   type DG1,
   type IN1,
   type AL1,
@@ -55,6 +54,7 @@ import {
 import type { SenderContext } from "../../code-mapping/concept-map";
 import type { ConverterContext } from "../converter-context";
 import { createBundleEntry } from "../fhir-bundle";
+import { extractMetaTags } from "../segments/msh-parsing";
 
 // ============================================================================
 // Helper Functions
@@ -66,33 +66,6 @@ import { createBundleEntry } from "../fhir-bundle";
 function generateId(prefix: string, index: number, controlId?: string): string {
   const suffix = controlId ? `-${controlId}` : "";
   return `${prefix}-${index}${suffix}`;
-}
-
-/**
- * Extract meta tags from MSH segment
- */
-function extractMetaTags(msh: MSH): Coding[] {
-  const tags: Coding[] = [];
-
-  if (msh.$10_messageControlId) {
-    tags.push({
-      code: msh.$10_messageControlId,
-      system: "urn:aidbox:hl7v2:message-id",
-    });
-  }
-
-  if (msh.$9_messageType) {
-    const code = msh.$9_messageType.$1_code;
-    const event = msh.$9_messageType.$2_event;
-    if (code && event) {
-      tags.push({
-        code: `${code}_${event}`,
-        system: "urn:aidbox:hl7v2:message-type",
-      });
-    }
-  }
-
-  return tags;
 }
 
 

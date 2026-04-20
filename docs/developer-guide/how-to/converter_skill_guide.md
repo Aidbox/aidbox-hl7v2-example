@@ -1,5 +1,7 @@
 # Converter Pipeline Skill
 
+> **Note**: This walkthrough was recorded against the previous 8-step pipeline (requirements → explore → design → AI review → plan → implementation → review). The pipeline has since been simplified to 4 steps: ticket setup → requirements → `/plan` → `/work`. The `/plan` and `/work` skills own exploration, design discussion, planning, and per-task review. The overall experience is the same.
+
 `/hl7v2-to-fhir-pipeline` skill allows engineers to ask an AI agent to write a new converter or modify conversion behavior and mappings, while keeping the agent in a guarded workflow that ensures the implementation works for compliant and real-world HL7v2 messages.
 
 You can type in free text what you need or even drop a single thing you need to implement. 

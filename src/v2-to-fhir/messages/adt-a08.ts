@@ -12,7 +12,6 @@ import { findSegment, type ConversionResult } from "../converter";
 import {
   fromMSH,
   fromPID,
-  type MSH,
 } from "../../hl7v2/generated/fields";
 import type {
   Patient,
@@ -23,40 +22,7 @@ import type {
 import { convertPIDToPatient } from "../segments/pid-patient";
 import type { ConverterContext } from "../converter-context";
 import { createBundleEntry } from "../fhir-bundle";
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Extract meta tags from MSH segment
- */
-function extractMetaTags(msh: MSH): Coding[] {
-  const tags: Coding[] = [];
-
-  // Message Control ID
-  if (msh.$10_messageControlId) {
-    tags.push({
-      code: msh.$10_messageControlId,
-      system: "urn:aidbox:hl7v2:message-id",
-    });
-  }
-
-  // Message Type (ADT^A08 -> ADT_A08)
-  if (msh.$9_messageType) {
-    const code = msh.$9_messageType.$1_code;
-    const event = msh.$9_messageType.$2_event;
-    if (code && event) {
-      tags.push({
-        code: `${code}_${event}`,
-        system: "urn:aidbox:hl7v2:message-type",
-      });
-    }
-  }
-
-  return tags;
-}
-
+import { extractMetaTags } from "../segments/msh-parsing";
 
 // ============================================================================
 // Main Converter Function

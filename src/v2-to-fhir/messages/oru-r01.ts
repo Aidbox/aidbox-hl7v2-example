@@ -46,9 +46,6 @@ import { createBundleEntry } from "../fhir-bundle";
 import { convertOBXToObservationResolving } from "../segments/obx-observation";
 import { convertDTMToDateTime } from "../datatypes/dtm-datetime";
 
-// Re-export for backwards compatibility (OBXResolutionResult was exported from this module)
-export type { OBXResolutionResult } from "../segments/obx-observation";
-
 interface OBRGroup {
   obr: HL7v2Segment;
   observations: Array<{

@@ -1,14 +1,7 @@
 ---
-status: ai-reviewed
+status: stalled
 reviewer-iterations: 0
-prototype-files:
-  - src/v2-to-fhir/config.ts
-  - src/v2-to-fhir/converter.ts
-  - src/v2-to-fhir/processor-service.ts
-  - src/v2-to-fhir/profile-conformance/index.ts
-  - src/v2-to-fhir/profile-conformance/types.ts
-  - src/v2-to-fhir/profile-conformance/us-core.ts
-  - src/v2-to-fhir/profile-conformance/validator.ts
+note: Scaffolding files (src/v2-to-fhir/profile-conformance/, plus commented block in processor-service.ts) were deleted on 2026-04-20 after 2 months of inactivity. Restore from git history if resuming this work.
 ---
 
 # User description
