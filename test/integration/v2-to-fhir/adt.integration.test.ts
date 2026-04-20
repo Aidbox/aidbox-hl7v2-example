@@ -30,7 +30,7 @@ async function submitAndProcessAdtA08(hl7Message: string): Promise<IncomingHL7v2
 
 describe("ADT_A01 E2E Integration", () => {
   describe("happy path - basic message processing", () => {
-    test("processes base message and creates Patient and Encounter", async () => {
+    test("smoke: processes base message and creates Patient and Encounter", async () => {
       const hl7Message = await loadFixture("adt-a01/base.hl7");
       const message = await submitAndProcessAdtA01(hl7Message);
 

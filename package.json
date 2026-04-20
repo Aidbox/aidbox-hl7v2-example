@@ -21,8 +21,10 @@
     "generate-hl7v2-reference": "bun scripts/generate-hl7v2-reference.ts",
     "migrate": "bun src/migrate.ts",
     "test:all": "bun test && bun test:integration",
+    "test:local": "bun test && bun test:smoke",
     "test:unit": "bun test",
     "test:integration": "bun test --test-root ./test/integration --preload ./test/integration/preload.ts --max-concurrency=1",
+    "test:smoke": "bun test --test-root ./test/integration --preload ./test/integration/preload.ts --max-concurrency=1 --test-name-pattern \"smoke: \"",
     "reset-integration-aidbox": "bun scripts/reset-integration-aidbox.ts"
   },
   "type": "module",

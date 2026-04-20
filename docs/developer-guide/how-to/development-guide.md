@@ -19,9 +19,22 @@ bun test test/unit/bar/generator.test.ts    # Run specific file
 bun test --watch                            # Watch mode
 ```
 
+### Smoke Tests (everyday local loop)
+
+Smoke tests are a curated subset of integration tests — one happy-path per major workflow (BAR generation, ADT/ORU/ORM/VXU conversion, converter preprocessor, code mapping). They exercise real Aidbox end-to-end but finish in ~10 seconds, making them the right default for local iteration.
+
+```sh
+bun test:local        # Unit + smoke (the everyday loop)
+bun test:smoke        # Just the smoke subset
+```
+
+**Tagging convention:** a `test("...")` or `describe("...")` whose name starts with `smoke: ` is part of the smoke suite. `test:smoke` filters via `--test-name-pattern "smoke: "`. To promote a test, prepend `smoke: ` to its name; to demote, remove the prefix.
+
+Keep the smoke set small. Its value is that a green smoke run gives high confidence the critical paths work; adding too many tests dilutes this and the everyday loop slows down. Full integration (`bun test:integration`) still catches everything else — it runs in CI.
+
 ### Integration Tests
 
-Integration tests run against a real Aidbox instance and verify end-to-end workflows (HL7v2 message processing, BAR generation, code mapping).
+Integration tests run against a real Aidbox instance and verify end-to-end workflows (HL7v2 message processing, BAR generation, code mapping). Full integration is the CI suite — locally it takes minutes. For the everyday local loop, use `bun test:local` above.
 
 #### Prerequisites
 

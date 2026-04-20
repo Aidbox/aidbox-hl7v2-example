@@ -128,7 +128,7 @@ describe("Account BAR Builder Service E2E Integration", () => {
       expect(result).toBe(false);
     });
 
-    test("processes account and creates OutgoingBarMessage", async () => {
+    test("smoke: processes account and creates OutgoingBarMessage", async () => {
       await createTestPatient("patient-process");
       await createTestAccount("account-process", "patient-process");
 

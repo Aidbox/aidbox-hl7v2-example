@@ -140,7 +140,7 @@ describe("Task resolution with type detection and validation", () => {
   // cleanupTestResources() is called globally by test/integration/preload.ts beforeEach
 
   describe("LOINC task resolution", () => {
-    test("resolves LOINC task with valid code", async () => {
+    test("smoke: resolves LOINC task with valid code", async () => {
       await createTaskForType("task-loinc-valid", "observation-code-loinc");
 
       const result = await resolveTaskWithValidation("task-loinc-valid", "2823-3", "Potassium");

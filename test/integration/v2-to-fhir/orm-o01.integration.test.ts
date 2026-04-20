@@ -22,7 +22,7 @@ async function submitAndProcessOrm(hl7Message: string): Promise<IncomingHL7v2Mes
 }
 
 describe("ORM_O01 E2E Integration", () => {
-  test("happy path OBR order creates ServiceRequest, Condition, and Patient", async () => {
+  test("smoke: happy path OBR order creates ServiceRequest, Condition, and Patient", async () => {
     const hl7Message = await loadFixture("orm-o01/base-obr.hl7");
     const message = await submitAndProcessOrm(hl7Message);
 

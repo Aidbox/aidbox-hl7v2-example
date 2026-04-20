@@ -35,7 +35,7 @@ function submitOruR01(hl7Message: string): Promise<IncomingHL7v2Message> {
 
 describe("Converter Pipeline", () => {
   describe("ADT-A01", () => {
-    test("injects authority from MSH when PV1-19 has no CX.4", async () => {
+    test("smoke: injects authority from MSH when PV1-19 has no CX.4", async () => {
       const hl7Message = await loadFixture("adt-a01/base.hl7");
       const message = await submitAdtA01(hl7Message);
 

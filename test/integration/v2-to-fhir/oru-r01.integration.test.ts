@@ -39,7 +39,7 @@ async function submitAndProcessOruR01(hl7Message: string): Promise<IncomingHL7v2
 
 describe("ORU_R01 E2E Integration", () => {
   describe("happy path - basic message processing", () => {
-    test("processes base message and creates FHIR resources", async () => {
+    test("smoke: processes base message and creates FHIR resources", async () => {
       const hl7Message = await loadFixture("oru-r01/base.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 

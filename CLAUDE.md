@@ -47,9 +47,11 @@ bun run logs                      # Tail server logs
 bun run mllp                      # Start MLLP server (port 2575)
 bun scripts/load-test-data.ts     # Load 5 test patients with related resources
 bun run typecheck                 # TypeScript type checking
-bun test:all                      # Run all tests: unit + integration
-bun test:unit                     # Run unit tests only
-bun test:integration              # Run integration tests only
+bun test:local                    # Unit tests + smoke tests — the everyday local loop (~10s)
+bun test:all                      # Unit + full integration — for CI, slow locally
+bun test:unit                     # Unit tests only
+bun test:smoke                    # Smoke subset of integration tests (tests whose name starts with "smoke: ")
+bun test:integration              # Full integration suite — runs in CI, takes minutes locally
 bun reset-integration-aidbox      # Destroy and recreate test Aidbox from scratch (if test data in the db creates problems)
 bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
 bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
@@ -59,8 +61,9 @@ bun run generate-hl7v2-reference  # Generate data/hl7v2-reference/ from XSD+PDF 
 Integration tests use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
 
 **IMPORTANT — Testing rules:**
-1. **Always run `bun test:all` after any change.** Never run only `bun test:unit`. Do not skip integration tests.
-2. **Don't manually run `docker compose` for integration tests.** The test command (`bun test:integration` or `bun test:all`) automatically starts Docker containers, waits for health, and runs migrations.
+1. **Run `bun test:local` after any change.** This covers unit tests and the smoke subset of integration tests — fast enough (~10s) for tight feedback loops. CI runs the full `bun test:all`; do not also run it locally unless specifically debugging a CI-only failure.
+2. **Smoke tests are tagged by name prefix.** A test (or `describe`) whose name starts with `smoke: ` is included in `test:smoke` via `--test-name-pattern "smoke: "`. Promote a test to smoke by prepending `smoke: ` to its name; demote by removing the prefix. Keep the smoke set small and focused on one happy-path per major flow.
+3. **Don't manually run `docker compose` for integration tests.** The test commands (`test:smoke`, `test:integration`, `test:all`) automatically start Docker containers, wait for health, and run migrations.
 
 Read `docs/developer-guide/how-to/development-guide.md` for: test infrastructure details, how to run specific tests, writing new tests (conventions, integration test helpers), code generation workflows, and debugging.
 

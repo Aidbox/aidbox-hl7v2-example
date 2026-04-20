@@ -31,7 +31,7 @@ function expectSuccessStatus(message: IncomingHL7v2Message): void {
 
 describe("VXU_V04 E2E Integration", () => {
   describe("happy path", () => {
-    test("processes base VXU and creates Immunization + Patient in Aidbox", async () => {
+    test("smoke: processes base VXU and creates Immunization + Patient in Aidbox", async () => {
       const hl7Message = await loadFixture("vxu-v04/base.hl7");
       const message = await submitAndProcessVxu(hl7Message);
 
