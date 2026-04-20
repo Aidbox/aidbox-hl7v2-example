@@ -62,14 +62,9 @@ bun run dev
 - **[User Guide](docs/user-guide/README.md)** — Setup, configuration, operations, troubleshooting
 - **[Developer Guide](docs/developer-guide/README.md)** — Architecture, extending the system, implementation details
 
-# AI Agent Skills
+## AI Agent Skills
 
-Skills are authored in `.claude/skills` and mirrored into `.agents/skills` as symlinks.
-
-```sh
-# Sync claude skills to .agents/skills
-bun run sync:agents-skills
-```
+Skills are authored in `.claude/skills/` and exposed to other agents via `.agents/skills`, which is a symlink to `.claude/skills/`. New skills added under `.claude/skills/` appear automatically — no sync step needed.
 
 ## Supported Message Types
 
