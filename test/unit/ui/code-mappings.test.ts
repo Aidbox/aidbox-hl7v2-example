@@ -12,6 +12,7 @@
  * CRUD operation tests are in concept-map-service.test.ts
  */
 import { describe, test, expect, mock, afterEach } from "bun:test";
+import * as realAidbox from "../../../src/aidbox";
 import type { ConceptMap } from "../../../src/fhir/hl7-fhir-r4-core/ConceptMap";
 
 // Base mock with all required exports
@@ -34,6 +35,7 @@ class MockHttpError extends Error {
 
 function createMockAidbox(overrides: Record<string, unknown> = {}) {
   return {
+    ...realAidbox,
     aidboxFetch: mock(() => Promise.resolve({})),
     getResourceWithETag: mock(() =>
       Promise.resolve({ resource: {}, etag: '""' }),

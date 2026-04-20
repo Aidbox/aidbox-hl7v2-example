@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
+import * as realAidbox from "../../../src/aidbox";
 import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import {
@@ -178,7 +179,7 @@ describe("resolveMappingTask", () => {
       }),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { resolveMappingTask } =
       await import("../../../src/code-mapping/mapping-task");
 
@@ -221,7 +222,7 @@ describe("removeResolvedTaskFromMessage", () => {
       ),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { removeResolvedTaskFromMessage } =
       await import("../../../src/code-mapping/mapping-task");
 
@@ -280,7 +281,7 @@ describe("removeResolvedTaskFromMessage", () => {
       ),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { removeResolvedTaskFromMessage } =
       await import("../../../src/code-mapping/mapping-task");
 
@@ -305,7 +306,7 @@ describe("removeResolvedTaskFromMessage", () => {
       updateResourceWithETag: mock(() => Promise.resolve(sampleMessage)),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { removeResolvedTaskFromMessage } =
       await import("../../../src/code-mapping/mapping-task");
 

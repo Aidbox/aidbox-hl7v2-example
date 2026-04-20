@@ -1,4 +1,5 @@
 import { describe, test, expect, mock, beforeEach } from "bun:test";
+import * as realAidbox from "../../../../src/aidbox";
 import type { ORC } from "../../../../src/hl7v2/generated/fields";
 import type { SenderContext } from "../../../../src/code-mapping/concept-map";
 
@@ -20,15 +21,9 @@ const mockAidboxFetch = mock(() => {
 });
 
 mock.module("../../../../src/aidbox", () => ({
+  ...realAidbox,
   aidboxFetch: mockAidboxFetch,
   HttpError: MockHttpError,
-  PreconditionFailedError: class extends Error { status = 412; },
-  NotFoundError: class extends Error { status = 404; },
-  getResources: mock(() => Promise.resolve([])),
-  putResource: mock(() => Promise.resolve({})),
-  resourceExists: mock(() => Promise.resolve(false)),
-  getResourceWithETag: mock(() => Promise.resolve(null)),
-  updateResourceWithETag: mock(() => Promise.resolve({})),
 }));
 
 // Import after mocking
