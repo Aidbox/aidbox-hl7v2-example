@@ -1,4 +1,5 @@
 import { test, expect, describe, beforeEach, mock } from "bun:test";
+import * as realAidbox from "../../../src/aidbox";
 
 // Test fixtures
 const testOutgoingMessage = {
@@ -26,7 +27,7 @@ describe("pollPendingMessage", () => {
       Promise.resolve({ total: 0, entry: [] })
     );
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { pollPendingMessage } = await import("../../../src/bar/sender-service");
 
     const result = await pollPendingMessage();
@@ -41,7 +42,7 @@ describe("pollPendingMessage", () => {
       })
     );
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { pollPendingMessage } = await import("../../../src/bar/sender-service");
 
     const result = await pollPendingMessage();
@@ -74,7 +75,7 @@ describe("sendAsIncomingMessage", () => {
       Promise.resolve(createdMessage)
     );
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { sendAsIncomingMessage } = await import("../../../src/bar/sender-service");
 
     const result = await sendAsIncomingMessage(testOutgoingMessage);
@@ -102,7 +103,7 @@ describe("markAsSent", () => {
       Promise.resolve(updatedMessage)
     );
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { markAsSent } = await import("../../../src/bar/sender-service");
 
     const result = await markAsSent(testOutgoingMessage);
@@ -119,7 +120,7 @@ describe("processNextMessage", () => {
       putResource: mock(() => Promise.resolve({})),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { processNextMessage } = await import("../../../src/bar/sender-service");
 
     const result = await processNextMessage();
@@ -150,7 +151,7 @@ describe("processNextMessage", () => {
       ),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { processNextMessage } = await import("../../../src/bar/sender-service");
 
     const result = await processNextMessage();
@@ -167,7 +168,7 @@ describe("createBarMessageSenderService", () => {
       putResource: mock(() => Promise.resolve({})),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { createBarMessageSenderService } = await import("../../../src/bar/sender-service");
 
     const service = createBarMessageSenderService({ pollIntervalMs: 100 });
@@ -187,7 +188,7 @@ describe("createBarMessageSenderService", () => {
       putResource: mock(() => Promise.resolve({})),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { createBarMessageSenderService } = await import("../../../src/bar/sender-service");
 
     const service = createBarMessageSenderService({ pollIntervalMs: 100 });
@@ -206,7 +207,7 @@ describe("createBarMessageSenderService", () => {
       putResource: mock(() => Promise.resolve({})),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { createBarMessageSenderService } = await import("../../../src/bar/sender-service");
 
     const service = createBarMessageSenderService({
@@ -231,7 +232,7 @@ describe("createBarMessageSenderService", () => {
       putResource: mock(() => Promise.resolve({})),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { createBarMessageSenderService } = await import("../../../src/bar/sender-service");
 
     const service = createBarMessageSenderService({
@@ -273,7 +274,7 @@ describe("createBarMessageSenderService", () => {
       putResource: mock(() => Promise.resolve({})),
     };
 
-    mock.module("../../../src/aidbox", () => mockAidbox);
+    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
     const { createBarMessageSenderService } = await import("../../../src/bar/sender-service");
 
     const service = createBarMessageSenderService({
