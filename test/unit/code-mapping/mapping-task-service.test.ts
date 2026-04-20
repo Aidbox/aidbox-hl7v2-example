@@ -46,7 +46,7 @@ const sampleMessage: IncomingHL7v2Message = {
   id: "msg-001",
   type: "ORU_R01",
   message: "MSH|...",
-  status: "mapping_error",
+  status: "code_mapping_error",
   sendingApplication: "ACME_LAB",
   sendingFacility: "ACME_HOSP",
   unmappedCodes: [
@@ -241,7 +241,7 @@ describe("removeResolvedTaskFromMessage", () => {
     expect(updatedMessage!.status).toBe("received");
   });
 
-  test("keeps status as mapping_error when other unmapped codes remain", async () => {
+  test("keeps status as code_mapping_error when other unmapped codes remain", async () => {
     const messageWithMultipleUnmapped: IncomingHL7v2Message = {
       ...sampleMessage,
       unmappedCodes: [
@@ -291,7 +291,7 @@ describe("removeResolvedTaskFromMessage", () => {
 
     expect(updatedMessage!.unmappedCodes).toHaveLength(1);
     expect(updatedMessage!.unmappedCodes![0]!.localCode).toBe("NA_SERUM");
-    expect(updatedMessage!.status).toBe("mapping_error");
+    expect(updatedMessage!.status).toBe("code_mapping_error");
   });
 
   test("uses ETag for optimistic concurrency", async () => {

@@ -25,6 +25,8 @@ import { hl7v2ToFhirConfig } from "./config";
 // ============================================================================
 
 const POLL_INTERVAL_MS = 60_000; // 1 minute
+const MAX_SENDING_RETRIES = 3;
+const SENDING_ATTEMPT_PREFIX = "Sending failed (attempt ";
 
 // ============================================================================
 // Polling Functions
@@ -48,14 +50,50 @@ export async function pollReceivedMessage(): Promise<IncomingHL7v2Message | null
 /**
  * Convert HL7v2 message to FHIR Bundle with message update.
  * Parses once, preprocesses, then converts.
+ *
+ * Parse failures return parsing_error status (not thrown).
+ * Conversion failures flow through ConversionResult normally.
  */
-async function convertMessage(
+export async function convertMessage(
   message: IncomingHL7v2Message,
 ): Promise<ConversionResult> {
-  const parsed = parseMessage(message.message);
+  let parsed;
+  try {
+    parsed = parseMessage(message.message);
+  } catch (error) {
+    return {
+      messageUpdate: {
+        status: "parsing_error",
+        error: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
+
+  // Validate minimal structure: parseMessage is lenient and may return
+  // an empty array or segments without MSH for malformed input.
+  const hasMSH = parsed.some((s) => s.segment === "MSH");
+  if (!hasMSH) {
+    return {
+      messageUpdate: {
+        status: "parsing_error",
+        error: "MSH segment not found — message is malformed",
+      },
+    };
+  }
+
   const config = hl7v2ToFhirConfig();
   const preprocessed = preprocessMessage(parsed, config);
   return await convertToFHIR(preprocessed);
+}
+
+/**
+ * Parse the sending attempt count from the error field.
+ * Returns 0 if no previous attempts found.
+ */
+export function parseSendingAttempt(error: string | undefined): number {
+  if (!error?.startsWith(SENDING_ATTEMPT_PREFIX)) return 0;
+  const match = error.match(/^Sending failed \(attempt (\d+)\//);
+  return match ? parseInt(match[1]!, 10) : 0;
 }
 
 // ============================================================================
@@ -103,6 +141,32 @@ async function applyMessageUpdate(
   );
 }
 
+/**
+ * Handle sending error with auto-retry.
+ * Retries up to MAX_SENDING_RETRIES times by resetting to "received".
+ * After all retries exhausted, sets permanent "sending_error" status.
+ */
+async function handleSendingError(
+  message: IncomingHL7v2Message,
+  sendError: unknown,
+  bundle: Bundle,
+): Promise<void> {
+  const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
+  const attempt = parseSendingAttempt(message.error) + 1;
+
+  if (attempt < MAX_SENDING_RETRIES) {
+    await applyMessageUpdate(message, {
+      status: "received",
+      error: `Sending failed (attempt ${attempt}/${MAX_SENDING_RETRIES}): ${errorMessage}`,
+    });
+  } else {
+    await applyMessageUpdate(message, {
+      status: "sending_error",
+      error: `Sending failed after ${MAX_SENDING_RETRIES} attempts: ${errorMessage}`,
+    }, bundle);
+  }
+}
+
 // ============================================================================
 // Main Processing Logic
 // ============================================================================
@@ -126,7 +190,7 @@ export async function processNextMessage(): Promise<boolean> {
     //   const profileResult = await validateBundleProfiles(bundle, message.type);
     //   if (profileResult.strictFailure) {
     //     await applyMessageUpdate(message, {
-    //       status: "error",
+    //       status: "conversion_error",
     //       error: profileResult.summary,
     //     });
     //     return true;
@@ -135,7 +199,12 @@ export async function processNextMessage(): Promise<boolean> {
     // }
 
     if (bundle) {
-      await submitBundle(bundle);
+      try {
+        await submitBundle(bundle);
+      } catch (sendError) {
+        await handleSendingError(message, sendError, bundle);
+        return true;
+      }
     }
     await applyMessageUpdate(message, messageUpdate, bundle);
     return true;
@@ -143,7 +212,7 @@ export async function processNextMessage(): Promise<boolean> {
     const errorMessage = error instanceof Error ? error.message : String(error);
     try {
       await applyMessageUpdate(message, {
-        status: "error",
+        status: "conversion_error",
         error: errorMessage,
       });
     } catch (updateError) {
@@ -189,7 +258,14 @@ export function createIncomingHL7v2MessageProcessorService(
 
       const { bundle, messageUpdate } = await convertMessage(currentMessage);
       if (bundle) {
-        await submitBundle(bundle);
+        try {
+          await submitBundle(bundle);
+        } catch (sendError) {
+          await handleSendingError(currentMessage, sendError, bundle);
+          options.onError?.(sendError as Error, currentMessage);
+          timeoutId = setTimeout(poll, pollIntervalMs);
+          return;
+        }
       }
       await applyMessageUpdate(currentMessage, messageUpdate, bundle);
 
@@ -203,7 +279,7 @@ export function createIncomingHL7v2MessageProcessorService(
       if (currentMessage) {
         try {
           await applyMessageUpdate(currentMessage, {
-            status: "error",
+            status: "conversion_error",
             error: errorMessage,
           });
         } catch (updateError) {

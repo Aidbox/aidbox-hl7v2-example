@@ -3,8 +3,8 @@ import { aidboxFetch } from "./aidbox";
 export async function migrate() {
   console.log("Loading init-bundle.json...");
 
-  const bundlePath = new URL("../init-bundle.json", import.meta.url).pathname;
-  const bundle = await Bun.file(bundlePath).json();
+  const bundleUrl = new URL("../init-bundle.json", import.meta.url);
+  const bundle = await Bun.file(bundleUrl).json();
 
   console.log(`Submitting bundle with ${bundle.entry.length} entries...`);
 

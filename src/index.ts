@@ -232,6 +232,27 @@ Bun.serve({
         });
       },
     },
+    "/defer/:id": {
+      POST: async (req) => {
+        const messageId = req.params.id;
+
+        const message = await aidboxFetch<IncomingHL7v2Message>(
+          `/fhir/IncomingHL7v2Message/${messageId}`,
+        );
+
+        const updated: IncomingHL7v2Message = {
+          ...message,
+          status: "deferred",
+        };
+
+        await putResource("IncomingHL7v2Message", messageId, updated);
+
+        return new Response(null, {
+          status: 302,
+          headers: { Location: "/incoming-messages" },
+        });
+      },
+    },
   },
 });
 

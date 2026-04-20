@@ -244,14 +244,14 @@ describe("convertORM_O01", () => {
     expect(serviceRequest.status).toBe("unknown");
   });
 
-  test("missing PID rejects message with status=error", async () => {
+  test("missing PID rejects message with status=conversion_error", async () => {
     const result = await convert([
       MSH,
       segment("ORC", { 1: "NW", 2: "ORD-001", 5: "SC" }),
       segment("OBR", { 1: "1", 2: "ORD-001", 4: "12345^CBC^LN" }),
     ]);
 
-    expect(result.messageUpdate.status).toBe("error");
+    expect(result.messageUpdate.status).toBe("conversion_error");
     expect(result.messageUpdate.error).toContain("PID");
   });
 
@@ -263,7 +263,7 @@ describe("convertORM_O01", () => {
       segment("OBR", { 1: "1", 4: "12345^CBC^LN" }),
     ]);
 
-    expect(result.messageUpdate.status).toBe("error");
+    expect(result.messageUpdate.status).toBe("conversion_error");
     expect(result.messageUpdate.error).toContain("No processable order groups");
   });
 

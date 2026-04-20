@@ -374,18 +374,30 @@ function renderIncomingMessagesPage(
         return "bg-green-100 text-green-800";
       case "warning":
         return "bg-amber-100 text-amber-800";
-      case "error":
+      case "parsing_error":
         return "bg-red-100 text-red-800";
-      case "mapping_error":
+      case "conversion_error":
+        return "bg-red-100 text-red-800";
+      case "code_mapping_error":
         return "bg-yellow-100 text-yellow-800";
+      case "sending_error":
+        return "bg-orange-100 text-orange-800";
+      case "deferred":
+        return "bg-gray-100 text-gray-600";
       default:
         return "bg-blue-100 text-blue-800";
     }
   };
 
   const formatStatusLabel = (status: string) => {
-    if (status === "mapping_error") return "Mapping Error";
-    return status.charAt(0).toUpperCase() + status.slice(1);
+    const labels: Record<string, string> = {
+      parsing_error: "Parsing Error",
+      conversion_error: "Conversion Error",
+      code_mapping_error: "Code Mapping Error",
+      sending_error: "Sending Error",
+      deferred: "Deferred",
+    };
+    return labels[status] ?? status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const listItems: MessageListItem[] = messages.map((msg) => ({
@@ -405,13 +417,13 @@ function renderIncomingMessagesPage(
     error: msg.error,
     bundle: msg.bundle,
     retryUrl:
-      (msg.status === "error" || msg.status === "mapping_error" || msg.status === "warning") && msg.id
+      (msg.status === "parsing_error" || msg.status === "conversion_error" || msg.status === "code_mapping_error" || msg.status === "sending_error" || msg.status === "warning" || msg.status === "deferred") && msg.id
         ? `/mark-for-retry/${msg.id}`
         : undefined,
-    unmappedCodes: msg.status === "mapping_error" ? msg.unmappedCodes : undefined,
+    unmappedCodes: msg.status === "code_mapping_error" ? msg.unmappedCodes : undefined,
   }));
 
-  const statuses = ["received", "processed", "warning", "mapping_error", "error"];
+  const statuses = ["received", "processed", "warning", "parsing_error", "conversion_error", "code_mapping_error", "sending_error", "deferred"];
 
   const content = `
     <h1 class="text-3xl font-bold text-gray-800 mb-6">Incoming Messages</h1>

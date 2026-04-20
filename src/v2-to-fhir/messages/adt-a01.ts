@@ -258,7 +258,7 @@ export async function convertADT_A01(
   const patientIdResult = await resolvePatientId(pid.$3_identifier ?? []);
   if ("error" in patientIdResult) {
     return {
-      messageUpdate: { status: "error", error: patientIdResult.error },
+      messageUpdate: { status: "conversion_error", error: patientIdResult.error },
     };
   }
   patient.id = patientIdResult.id;
@@ -299,7 +299,7 @@ export async function convertADT_A01(
     if (pv1Required) {
       return {
         messageUpdate: {
-          status: "error",
+          status: "conversion_error",
           error: "PV1 segment is required for ADT-A01 but missing",
           patient: patientKnown ? { reference: `Patient/${patient.id}` } : undefined,
         },
@@ -319,7 +319,7 @@ export async function convertADT_A01(
       if (pv1Required) {
         return {
           messageUpdate: {
-            status: "error",
+            status: "conversion_error",
             error: pv1Result.identifierError,
             patient: patientKnown ? { reference: `Patient/${patient.id}` } : undefined,
           },

@@ -204,7 +204,7 @@ async function createMappingErrorMessage(
         id,
         type: "ORU^R01",
         message: "MSH|^~\\&|ACME_LAB|ACME_HOSP|||20250212||ORU^R01|MSG001|P|2.5",
-        status: "mapping_error",
+        status: "code_mapping_error",
         sendingApplication: "ACME_LAB",
         sendingFacility: "ACME_HOSP",
         unmappedCodes,
@@ -345,7 +345,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       expect(message.status).toBe("received");
     });
 
-    test("keeps mapping_error status when other unmappedCodes remain", async () => {
+    test("keeps code_mapping_error status when other unmappedCodes remain", async () => {
       await createPendingTask("task-msg-partial");
       await createPendingTask("task-msg-other", { localCode: "NA_SERUM" });
       await createMappingErrorMessage("msg-partial", "task-msg-partial", {
@@ -363,7 +363,7 @@ describe("Mapping Tasks Queue E2E Integration", () => {
       const message = await fetchMessage("msg-partial");
       expect(message.unmappedCodes).toHaveLength(1);
       expect(message.unmappedCodes![0]!.localCode).toBe("NA_SERUM");
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
     });
 
     test("handles no affected messages gracefully", async () => {

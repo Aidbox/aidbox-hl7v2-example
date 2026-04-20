@@ -12,10 +12,10 @@ const sender: SenderContext = {
 };
 
 describe("buildMappingErrorResult", () => {
-  test("returns mapping_error status with empty unmappedCodes for empty errors array", () => {
+  test("returns code_mapping_error status with empty unmappedCodes for empty errors array", () => {
     const result = buildMappingErrorResult(sender, []);
 
-    expect(result.messageUpdate.status).toBe("mapping_error");
+    expect(result.messageUpdate.status).toBe("code_mapping_error");
     expect(result.messageUpdate.unmappedCodes).toBeUndefined();
     expect(result.messageUpdate.patient).toBeUndefined();
     expect(result.bundle!.entry).toBeUndefined();
@@ -33,7 +33,7 @@ describe("buildMappingErrorResult", () => {
 
     const result = buildMappingErrorResult(sender, errors);
 
-    expect(result.messageUpdate.status).toBe("mapping_error");
+    expect(result.messageUpdate.status).toBe("code_mapping_error");
     expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
     expect(result.messageUpdate.unmappedCodes![0]!.localCode).toBe("K_SERUM");
     expect(result.messageUpdate.unmappedCodes![0]!.localDisplay).toBe(

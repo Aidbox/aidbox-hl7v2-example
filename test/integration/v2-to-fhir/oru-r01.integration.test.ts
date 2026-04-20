@@ -140,11 +140,11 @@ describe("ORU_R01 E2E Integration", () => {
       expect(localCoding?.code).toBe("12345");
     });
 
-    test("returns mapping_error when OBX has no LOINC code", async () => {
+    test("returns code_mapping_error when OBX has no LOINC code", async () => {
       const hl7Message = await loadFixture("oru-r01/loinc/local-only.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
       expect(message.unmappedCodes).toBeDefined();
       expect(message.unmappedCodes!.length).toBeGreaterThan(0);
       expect(message.unmappedCodes![0]!.localCode).toBe("12345");
@@ -154,7 +154,7 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/loinc/mixed.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
       // First OBX has LOINC, second doesn't
       expect(message.unmappedCodes).toHaveLength(1);
       expect(message.unmappedCodes![0]!.localCode).toBe("67890");
@@ -304,21 +304,21 @@ describe("ORU_R01 E2E Integration", () => {
   });
 
   describe("OBR-25 status mapping", () => {
-    test("returns mapping_error when OBR-25 is missing", async () => {
+    test("returns code_mapping_error when OBR-25 is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obr25.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
       expect(message.unmappedCodes).toBeDefined();
       expect(message.unmappedCodes!.length).toBeGreaterThan(0);
       expect(message.unmappedCodes![0]!.localCode).toBe("undefined");
     });
 
-    test("returns mapping_error when OBR-25 is Y and creates obr-status Task", async () => {
+    test("returns code_mapping_error when OBR-25 is Y and creates obr-status Task", async () => {
       const hl7Message = await loadFixture("oru-r01/status/obr25-invalid.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
       expect(message.unmappedCodes).toBeDefined();
       expect(message.unmappedCodes![0]!.localCode).toBe("Y");
 
@@ -337,7 +337,7 @@ describe("ORU_R01 E2E Integration", () => {
     test("reprocesses message after OBR-25 status mapping task resolution", async () => {
       const hl7Message = await loadFixture("oru-r01/status/obr25-invalid.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
 
       // Create ConceptMap with the mapping
       await createTestConceptMapForType("LAB", "HOSP", "obr-status", [
@@ -382,11 +382,11 @@ describe("ORU_R01 E2E Integration", () => {
   });
 
   describe("OBX-11 status mapping", () => {
-    test("returns mapping_error when OBX-11 is missing and creates obx-status Task", async () => {
+    test("returns code_mapping_error when OBX-11 is missing and creates obx-status Task", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obx11.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
       expect(message.unmappedCodes).toBeDefined();
       expect(message.unmappedCodes!.length).toBeGreaterThan(0);
       expect(message.unmappedCodes![0]!.localCode).toBe("undefined");
@@ -397,11 +397,11 @@ describe("ORU_R01 E2E Integration", () => {
       expect(obxStatusTask?.status).toBe("requested");
     });
 
-    test("returns mapping_error when OBX-11 is N and creates obx-status Task", async () => {
+    test("returns code_mapping_error when OBX-11 is N and creates obx-status Task", async () => {
       const hl7Message = await loadFixture("oru-r01/error/obx11-n.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
       expect(message.unmappedCodes).toBeDefined();
       expect(message.unmappedCodes![0]!.localCode).toBe("N");
 
@@ -418,7 +418,7 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/status/obx11-n-and-local-loinc.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
       expect(message.unmappedCodes!.length).toBe(2);
 
       const tasks = await getMappingTasks();
@@ -434,7 +434,7 @@ describe("ORU_R01 E2E Integration", () => {
     test("reprocesses message after OBX-11 status mapping task resolution", async () => {
       const hl7Message = await loadFixture("oru-r01/error/obx11-n.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
 
       // Create ConceptMap with the mapping
       await createTestConceptMapForType("LAB", "HOSP", "obx-status", [
@@ -468,35 +468,35 @@ describe("ORU_R01 E2E Integration", () => {
   });
 
   describe("error handling", () => {
-    test("sets error when MSH-3 (sending application) is missing", async () => {
+    test("sets conversion_error when MSH-3 (sending application) is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-msh3.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
+      expect(message.status).toBe("conversion_error");
       expect(message.error).toMatch(/MSH-3/);
     });
 
-    test("sets error when MSH-4 (sending facility) is missing", async () => {
+    test("sets conversion_error when MSH-4 (sending facility) is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-msh4.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
+      expect(message.status).toBe("conversion_error");
       expect(message.error).toMatch(/MSH-4/);
     });
 
-    test("sets error when OBR segment is missing", async () => {
+    test("sets conversion_error when OBR segment is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obr.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
+      expect(message.status).toBe("conversion_error");
       expect(message.error).toMatch(/OBR/);
     });
 
-    test("sets error when both OBR-2 and OBR-3 are missing", async () => {
+    test("sets conversion_error when both OBR-2 and OBR-3 are missing", async () => {
       const hl7Message = await loadFixture("oru-r01/error/missing-obr-ids.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
+      expect(message.status).toBe("conversion_error");
       expect(message.error).toMatch(/OBR-3|OBR-2/);
     });
 
@@ -511,29 +511,29 @@ describe("ORU_R01 E2E Integration", () => {
       expect(diagnosticReports[0]!.id).toBe("placer123");
     });
 
-    test("sets error when OBX-3 has no system (MissingLocalSystemError)", async () => {
+    test("sets conversion_error when OBX-3 has no system (MissingLocalSystemError)", async () => {
       const hl7Message = await loadFixture("oru-r01/loinc/no-system.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
+      expect(message.status).toBe("conversion_error");
       expect(message.error).toMatch(/missing.*system|BFTYPE/i);
     });
   });
 
   describe("patient handling", () => {
-    test("sets error when PID segment is missing", async () => {
+    test("sets conversion_error when PID segment is missing", async () => {
       const hl7Message = await loadFixture("oru-r01/patient/without-pid.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
+      expect(message.status).toBe("conversion_error");
       expect(message.error).toMatch(/PID/);
     });
 
-    test("sets error when both PID-2 and PID-3 are empty", async () => {
+    test("sets conversion_error when both PID-2 and PID-3 are empty", async () => {
       const hl7Message = await loadFixture("oru-r01/patient/empty-pid.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("error");
+      expect(message.status).toBe("conversion_error");
       expect(message.error).toMatch(/No identifier priority rule matched/i);
     });
 
@@ -672,11 +672,11 @@ describe("ORU_R01 E2E Integration", () => {
       expect(encounters[0]!.class?.code).toBe("IMP");
     });
 
-    test("does not create draft Encounter when mapping_error occurs", async () => {
+    test("does not create draft Encounter when code_mapping_error occurs", async () => {
       const hl7Message = await loadFixture("oru-r01/encounter/with-mapping-error.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
       // Patient reference is not set when there's a mapping error
       // (Patient/Encounter will be created on successful reprocessing)
       expect(message.patient).toBeUndefined();
@@ -785,7 +785,7 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/loinc/local-only.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
 
       const tasks = await getMappingTasks();
       expect(tasks.length).toBe(1);
@@ -804,7 +804,7 @@ describe("ORU_R01 E2E Integration", () => {
     test("reprocesses message after mapping task resolution", async () => {
       const hl7Message = await loadFixture("oru-r01/loinc/local-only.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
 
       const tasks = await getMappingTasks();
       const task = tasks[0]!;
@@ -826,7 +826,7 @@ describe("ORU_R01 E2E Integration", () => {
       const hl7Message = await loadFixture("oru-r01/status/obx11-n-and-local-loinc.hl7");
       const message = await submitAndProcessOruR01(hl7Message);
 
-      expect(message.status).toBe("mapping_error");
+      expect(message.status).toBe("code_mapping_error");
       expect(message.unmappedCodes!.length).toBe(2);
 
       // Verify we have two tasks of different types
@@ -851,11 +851,11 @@ describe("ORU_R01 E2E Integration", () => {
       // Reprocess
       await processNextMessage();
 
-      // Message should still be mapping_error because OBX status task is not resolved
+      // Message should still be code_mapping_error because OBX status task is not resolved
       const stillBlockedMessage = await aidboxFetch<IncomingHL7v2Message>(
         `/fhir/IncomingHL7v2Message/${message.id}`,
       );
-      expect(stillBlockedMessage.status).toBe("mapping_error");
+      expect(stillBlockedMessage.status).toBe("code_mapping_error");
       expect(stillBlockedMessage.unmappedCodes!.length).toBe(1);
       expect(stillBlockedMessage.unmappedCodes![0]!.localCode).toBe("N");
 
@@ -925,7 +925,7 @@ describe("patient identity system", () => {
     const hl7Message = await loadFixture("oru-r01/identity-system/no-match.hl7");
     const message = await submitAndProcessOruR01(hl7Message);
 
-    expect(message.status).toBe("error");
+    expect(message.status).toBe("conversion_error");
     expect(message.error).toMatch(/No identifier priority rule matched/i);
     expect(message.patient).toBeUndefined();
   });

@@ -82,11 +82,11 @@ describe("ORM_O01 E2E Integration", () => {
     expect(medicationRequests.some((mr) => (mr.note?.[0]?.text ?? "").length > 0)).toBe(true);
   });
 
-  test("non-standard ORC-5 triggers mapping_error status and Task creation", async () => {
+  test("non-standard ORC-5 triggers code_mapping_error status and Task creation", async () => {
     const hl7Message = await loadFixture("orm-o01/non-standard-orc5.hl7");
     const message = await submitAndProcessOrm(hl7Message);
 
-    expect(message.status).toBe("mapping_error");
+    expect(message.status).toBe("code_mapping_error");
 
     const tasks = await getMappingTasks();
     expect(tasks.length).toBe(1);
@@ -97,7 +97,7 @@ describe("ORM_O01 E2E Integration", () => {
     const hl7Message = await loadFixture("orm-o01/non-standard-orc5.hl7");
     const message = await submitAndProcessOrm(hl7Message);
 
-    expect(message.status).toBe("mapping_error");
+    expect(message.status).toBe("code_mapping_error");
 
     await createTestConceptMapForType("ORMAPP", "FACC", "orc-status", [
       {

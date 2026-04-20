@@ -92,7 +92,7 @@ export async function removeTaskFromMessage(
     ...currentMessage,
     unmappedCodes:
       updatedUnmappedCodes.length > 0 ? updatedUnmappedCodes : undefined,
-    status: updatedUnmappedCodes.length === 0 ? "received" : "mapping_error",
+    status: updatedUnmappedCodes.length === 0 ? "received" : "code_mapping_error",
   };
 
   await updateResourceWithETag(
@@ -119,7 +119,7 @@ export async function removeResolvedTaskFromMessage(
  */
 export async function updateAffectedMessages(taskId: string): Promise<void> {
   const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(
-    `/fhir/IncomingHL7v2Message?status=mapping_error&unmapped-task=Task/${taskId}`,
+    `/fhir/IncomingHL7v2Message?status=code_mapping_error&unmapped-task=Task/${taskId}`,
   );
 
   const messages = bundle.entry?.map((e) => e.resource) || [];

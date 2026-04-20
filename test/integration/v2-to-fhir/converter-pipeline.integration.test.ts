@@ -175,18 +175,18 @@ describe("Converter Pipeline", () => {
         clearConfigCache();
       });
 
-      test("returns error when PV1 is missing", async () => {
+      test("returns conversion_error when PV1 is missing", async () => {
         const hl7Message = await loadFixture("oru-r01/encounter/without-pv1.hl7");
         const message = await submitOruR01(hl7Message);
 
-        expect(message.status).toBe("error");
+        expect(message.status).toBe("conversion_error");
       });
 
-      test("returns error when PV1-19 is empty", async () => {
+      test("returns conversion_error when PV1-19 is empty", async () => {
         const hl7Message = await loadFixture("oru-r01/encounter/no-visit-number.hl7");
         const message = await submitOruR01(hl7Message);
 
-        expect(message.status).toBe("error");
+        expect(message.status).toBe("conversion_error");
       });
     });
   });

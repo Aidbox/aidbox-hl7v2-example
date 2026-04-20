@@ -280,7 +280,7 @@ export async function convertVXU_V04(
     context.patientPolicy,
   );
   if ("error" in patientResult) {
-    return { messageUpdate: { status: "error", error: patientResult.error } };
+    return { messageUpdate: { status: "conversion_error", error: patientResult.error } };
   }
   const { patientRef, patientEntry } = patientResult;
 
@@ -291,7 +291,7 @@ export async function convertVXU_V04(
   );
   if (encounterResult.error) {
     return {
-      messageUpdate: { status: "error", error: encounterResult.error, patient: patientRef },
+      messageUpdate: { status: "conversion_error", error: encounterResult.error, patient: patientRef },
     };
   }
   const { encounterRef, encounterEntry, patientClassTaskEntry } = encounterResult;
@@ -307,7 +307,7 @@ export async function convertVXU_V04(
   if ("error" in groupResult) {
     // Omit patient ref: bundle not submitted yet, Patient doesn't exist in Aidbox
     return {
-      messageUpdate: { status: "error", error: groupResult.error },
+      messageUpdate: { status: "conversion_error", error: groupResult.error },
     };
   }
 
@@ -323,7 +323,7 @@ export async function convertVXU_V04(
     if (result.error) {
       // Omit patient ref: bundle not submitted yet, Patient doesn't exist in Aidbox
       return {
-        messageUpdate: { status: "error", error: result.error },
+        messageUpdate: { status: "conversion_error", error: result.error },
       };
     }
     orderEntries.push(...result.entries);
