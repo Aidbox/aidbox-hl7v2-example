@@ -2,13 +2,13 @@
 
 ## Overview
 
-Replace the current catch-all `error` and `mapping_error` statuses with four distinct error types: `parsing_error`, `conversion_error`, `sending_error`, and `code_mapping_error`. This gives operators immediate visibility into what failed and whether/how it can be resolved. Sending errors auto-retry up to 3 times before becoming permanent.
+Replace the current catch-all `error` and `mapping_error` statuses with four distinct error types: `parsing_error`, `conversion_error`, `sending_error`, and `code_mapping_error`. Also add a `deferred` operator status for messages that have been triaged but can't be resolved yet (waiting on sender fix, business decision, etc.). This gives operators immediate visibility into what failed and whether/how it can be resolved. Sending errors auto-retry up to 3 times before becoming permanent.
 
 ## Context
 
 **Current state:** IncomingHL7v2Message has 5 statuses: `received`, `processed`, `warning`, `error`, `mapping_error`. The `error` status conflates three distinct failure modes (parse failure, conversion/validation failure, Aidbox submission failure), making triage difficult.
 
-**Target state:** 7 statuses: `received`, `processed`, `warning`, `parsing_error`, `conversion_error`, `sending_error`, `code_mapping_error`.
+**Target state:** 8 statuses: `received`, `processed`, `warning`, `parsing_error`, `conversion_error`, `sending_error`, `code_mapping_error`, `deferred`.
 
 ### Files involved
 
@@ -24,11 +24,12 @@ Replace the current catch-all `error` and `mapping_error` statuses with four dis
 | `src/v2-to-fhir/messages/orm-o01.ts` | Same |
 | `src/v2-to-fhir/messages/vxu-v04.ts` | Same |
 | `src/code-mapping/mapping-errors.ts` | Change `"mapping_error"` → `"code_mapping_error"` |
-| `src/ui/pages/messages.ts` | Update badge colors, status filter, retry eligibility |
-| `src/index.ts` | Update mark-for-retry, process-incoming-messages |
+| `src/ui/pages/messages.ts` | Update badge colors, status filter, retry eligibility, add `deferred` badge and label |
+| `src/index.ts` | Update mark-for-retry, process-incoming-messages, add `POST /defer/:id` route |
 | `src/mllp/mllp-server.ts` | No change (still creates `received`) |
 | `docs/developer-guide/error-statuses.md` | New file — detailed error type docs |
 | `CLAUDE.md` | Add error status summary |
+| `.claude/skills/check-errors/SKILL.md` | New skill — operator triage workflow for error statuses including `deferred` |
 | Tests (unit + integration) | Update all status assertions |
 
 ### Error Type Definitions
@@ -39,6 +40,7 @@ Replace the current catch-all `error` and `mapping_error` statuses with four dis
 | `conversion_error` | Step 5 (converter) | Missing required fields (PV1-19), invalid data, unsupported message type | Manual retry (user clicks Mark for Retry) | Fix at sender or adjust config (e.g., make PV1 optional), then retry |
 | `code_mapping_error` | Step 5 (converter) | Code exists but no FHIR mapping | Manual retry via Task resolution workflow | Resolve mapping Task → message auto-requeued |
 | `sending_error` | Step 6 (submitBundle) | Aidbox unreachable, FHIR validation rejected, timeout | Auto-retry up to 3 times, then permanent `sending_error` | If transient: auto-recovers. If persistent: fix Aidbox config or data, manual retry |
+| `deferred` | Manual (operator) | Operator has triaged the message but can't resolve it now (waiting on sender fix, business decision, external team) | Manual retry when unblocked | Operator clicks Mark for Retry once the blocker is resolved; until then it stays out of the active error list |
 
 ### Error Resolution Flows
 
@@ -66,6 +68,13 @@ SENDING ERROR FLOW:
   Resolution options:
     1. Fix Aidbox (if it was down) → Mark for Retry
     2. Fix FHIR validation issue → Mark for Retry
+
+DEFERRED FLOW (operator action, no auto-transitions):
+  Any error status → operator hits POST /defer/:id → status=deferred
+  Deferred messages are excluded from the default error triage list
+  but remain retry-eligible.
+  Resolution: operator clicks Mark for Retry once the blocker is
+  resolved → status=received → pipeline reruns.
 ```
 
 ### Dependencies
@@ -90,9 +99,9 @@ SENDING ERROR FLOW:
 
 Update the StructureDefinition and TypeScript type to support the new status values.
 
-- [ ] Update `init-bundle.json`: change the `IncomingHL7v2Message.status` element's `short` field to `"received | processed | warning | parsing_error | conversion_error | code_mapping_error | sending_error"`
-- [ ] Update `init-bundle.json`: update the `definition` field to describe all 7 statuses
-- [ ] Update `src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message.ts`: change the status union type to `"received" | "processed" | "warning" | "parsing_error" | "conversion_error" | "code_mapping_error" | "sending_error"`
+- [ ] Update `init-bundle.json`: change the `IncomingHL7v2Message.status` element's `short` field to `"received | processed | warning | parsing_error | conversion_error | code_mapping_error | sending_error | deferred"`
+- [ ] Update `init-bundle.json`: update the `definition` field to describe all 8 statuses
+- [ ] Update `src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message.ts`: change the status union type to `"received" | "processed" | "warning" | "parsing_error" | "conversion_error" | "code_mapping_error" | "sending_error" | "deferred"`
 - [ ] Run `bun run typecheck` — expect compilation errors in files still using `"error"` and `"mapping_error"` (this is expected and will be fixed in subsequent tasks)
 
 ### Task 2: Update converters — rename `mapping_error` to `code_mapping_error`
@@ -168,12 +177,36 @@ Document the error types, resolution flows, and pipeline architecture.
 - [ ] Update `CLAUDE.md` documentation table to add link to error-statuses.md
 - [ ] Run `bun test:all` — final validation, must pass
 
+### Task 7: Add `deferred` operator status and `/defer/:id` route
+
+Introduce an explicit "triaged, waiting on external input" bucket so operators can park messages they can't resolve immediately without them cluttering the active error list.
+
+- [ ] Update `init-bundle.json` `short` and `definition` on `IncomingHL7v2Message.status` to include `deferred`
+- [ ] Update status union type in `src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message.ts`
+- [ ] Add `POST /defer/:id` route in `src/index.ts` that sets `status: "deferred"` on the target message and redirects to `/incoming-messages` (no change to `error`/`bundle` fields — preserve context for when it's picked back up)
+- [ ] Add `deferred` badge (`bg-gray-100 text-gray-600`) and label (`"Deferred"`) in `src/ui/pages/messages.ts`
+- [ ] Include `deferred` in retry-eligibility (Mark for Retry must work on deferred messages)
+- [ ] Include `deferred` in the status filter list
+- [ ] Exclude `deferred` from default "active errors" triage queries in the `check-errors` skill; query it separately as a reminder
+- [ ] Run `bun test:all`
+
+### Task 8: Add `check-errors` skill
+
+Provide a one-command operator workflow for triaging errors against a running Aidbox.
+
+- [ ] Create `.claude/skills/check-errors/SKILL.md` with:
+  - Query command for the four error statuses (`parsing_error`, `conversion_error`, `code_mapping_error`, `sending_error`) sorted by `_lastUpdated`
+  - Separate query for `deferred` messages, surfaced as a reminder line under the main error table
+  - Per-status diagnosis guidance (what to inspect, what to fix, when to defer vs retry vs ask sender)
+  - Direct-lookup flow for a specific message ID
+- [ ] Verify skill auto-appears under `.agents/skills/check-errors/` via the existing top-level symlink (no sync step needed)
+
 ## Technical Details
 
 ### Status Union Type (after change)
 
 ```typescript
-status?: "received" | "processed" | "warning" | "parsing_error" | "conversion_error" | "code_mapping_error" | "sending_error";
+status?: "received" | "processed" | "warning" | "parsing_error" | "conversion_error" | "code_mapping_error" | "sending_error" | "deferred";
 ```
 
 ### Processor Service Error Handling (pseudocode)
@@ -256,6 +289,7 @@ const getStatusBadgeClass = (status: string | undefined) => {
     case "conversion_error": return "bg-red-100 text-red-800";
     case "code_mapping_error": return "bg-yellow-100 text-yellow-800";
     case "sending_error":    return "bg-orange-100 text-orange-800";
+    case "deferred":         return "bg-gray-100 text-gray-600";
     default:                 return "bg-blue-100 text-blue-800"; // "received"
   }
 };
@@ -291,6 +325,8 @@ const getStatusBadgeClass = (status: string | undefined) => {
    - Send a malformed HL7v2 message via MLLP → verify `parsing_error` status in UI
    - Send a valid ADT^A01 with missing PV1-19 → verify `conversion_error` status in UI
    - Send a valid message with unknown patient class → verify `code_mapping_error` status in UI
-   - Status filter dropdown shows all 7 statuses
-   - Mark for Retry works on each error type
+   - Status filter dropdown shows all 8 statuses (including `deferred`)
+   - Mark for Retry works on each error type and on `deferred`
+   - `POST /defer/:id` on any error message flips it to `deferred`; Mark for Retry from `deferred` puts it back to `received` and reprocesses
 4. Verify documentation is consistent between CLAUDE.md and docs/developer-guide/error-statuses.md
+5. Verify the `check-errors` skill works end-to-end against a running Aidbox (lists active errors + deferred reminder)
