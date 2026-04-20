@@ -1,13 +1,27 @@
 import { describe, test, expect } from "bun:test";
 import {
-  convertOBXToObservation,
+  convertOBXWithMappingSupportAsync,
   mapOBXStatusToFHIRWithResult,
   parseReferenceRange,
   parseStructuredNumeric,
 } from "../../../../src/v2-to-fhir/segments/obx-observation";
 import type { OBX } from "../../../../src/hl7v2/generated/fields";
+import type { SenderContext } from "../../../../src/code-mapping/concept-map";
 
-describe("convertOBXToObservation", () => {
+const TEST_SENDER: SenderContext = {
+  sendingApplication: "TEST_APP",
+  sendingFacility: "TEST_FAC",
+};
+
+async function convertOBX(obx: OBX, orderNumber: string) {
+  const result = await convertOBXWithMappingSupportAsync(obx, orderNumber, TEST_SENDER);
+  if (result.error) {
+    throw new Error(`Unexpected conversion error: ${JSON.stringify(result.error)}`);
+  }
+  return result.observation;
+}
+
+describe("convertOBXWithMappingSupportAsync", () => {
   const baseOBX: OBX = {
     $1_setIdObx: "1",
     $3_observationIdentifier: {
@@ -19,29 +33,29 @@ describe("convertOBXToObservation", () => {
   };
 
   describe("id generation", () => {
-    test("generates deterministic id from OBR-3 and OBX-1", () => {
+    test("generates deterministic id from OBR-3 and OBX-1", async () => {
       const obx: OBX = { ...baseOBX, $1_setIdObx: "5" };
 
-      const result = convertOBXToObservation(obx, "26H-006MP0004");
+      const result = await convertOBX(obx, "26H-006MP0004");
 
       expect(result.id).toBe("26h-006mp0004-obx-5");
     });
 
-    test("incorporates OBX-4 sub-ID when present", () => {
+    test("incorporates OBX-4 sub-ID when present", async () => {
       const obx: OBX = {
         ...baseOBX,
         $1_setIdObx: "1",
         $4_observationSubId: "a",
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.id).toBe("123-obx-1-a");
     });
   });
 
   describe("code mapping", () => {
-    test("converts OBX-3 Observation Identifier to code without normalization", () => {
+    test("converts OBX-3 Observation Identifier to code without normalization", async () => {
       const obx: OBX = {
         ...baseOBX,
         $3_observationIdentifier: {
@@ -54,7 +68,7 @@ describe("convertOBXToObservation", () => {
         },
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.code.coding).toHaveLength(2);
       expect(result.code.coding?.[0]?.code).toBe("51998");
@@ -65,7 +79,7 @@ describe("convertOBXToObservation", () => {
   });
 
   describe("value type NM (Numeric)", () => {
-    test("converts NM value to valueQuantity", () => {
+    test("converts NM value to valueQuantity", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "NM",
@@ -73,20 +87,20 @@ describe("convertOBXToObservation", () => {
         $6_unit: { $1_code: "mmol/L" },
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueQuantity?.value).toBe(4.2);
       expect(result.valueQuantity?.unit).toBe("mmol/L");
     });
 
-    test("handles NM value without units", () => {
+    test("handles NM value without units", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "NM",
         $5_observationValue: ["100"],
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueQuantity?.value).toBe(100);
       expect(result.valueQuantity?.unit).toBeUndefined();
@@ -94,52 +108,52 @@ describe("convertOBXToObservation", () => {
   });
 
   describe("value type ST/TX (String/Text)", () => {
-    test("converts ST value to valueString", () => {
+    test("converts ST value to valueString", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "ST",
         $5_observationValue: ["Detected"],
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueString).toBe("Detected");
     });
 
-    test("converts TX value to valueString", () => {
+    test("converts TX value to valueString", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "TX",
         $5_observationValue: ["This is a long text description"],
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueString).toBe("This is a long text description");
     });
 
-    test("concatenates multiple observation values", () => {
+    test("concatenates multiple observation values", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "ST",
         $5_observationValue: ["Line 1", "Line 2"],
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueString).toBe("Line 1\nLine 2");
     });
   });
 
   describe("value type CE/CWE (Coded)", () => {
-    test("converts CE value to valueCodeableConcept", () => {
+    test("converts CE value to valueCodeableConcept", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "CE",
         $5_observationValue: ["260385009^Negative^SCT"],
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueCodeableConcept?.coding?.[0]?.code).toBe("260385009");
       expect(result.valueCodeableConcept?.coding?.[0]?.display).toBe(
@@ -147,14 +161,14 @@ describe("convertOBXToObservation", () => {
       );
     });
 
-    test("converts CWE value to valueCodeableConcept", () => {
+    test("converts CWE value to valueCodeableConcept", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "CWE",
         $5_observationValue: ["POS^Positive^99LOCAL"],
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueCodeableConcept?.coding?.[0]?.code).toBe("POS");
       expect(result.valueCodeableConcept?.coding?.[0]?.display).toBe(
@@ -164,79 +178,79 @@ describe("convertOBXToObservation", () => {
   });
 
   describe("value type DT/TS (DateTime)", () => {
-    test("converts DT value to valueDateTime", () => {
+    test("converts DT value to valueDateTime", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "DT",
         $5_observationValue: ["20260105"],
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueDateTime).toBe("2026-01-05");
     });
 
-    test("converts TS value to valueDateTime", () => {
+    test("converts TS value to valueDateTime", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "TS",
         $5_observationValue: ["20260105091000"],
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueDateTime).toBe("2026-01-05T09:10:00Z");
     });
   });
 
   describe("value type TM (Time)", () => {
-    test("converts TM value to valueTime", () => {
+    test("converts TM value to valueTime", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "TM",
         $5_observationValue: ["091000"],
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueTime).toBe("09:10:00");
     });
   });
 
   describe("effectiveDateTime", () => {
-    test("converts OBX-14 Date/Time of Observation to effectiveDateTime", () => {
+    test("converts OBX-14 Date/Time of Observation to effectiveDateTime", async () => {
       const obx: OBX = {
         ...baseOBX,
         $14_observationDateTime: "20260105091000",
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.effectiveDateTime).toBe("2026-01-05T09:10:00Z");
     });
   });
 
   describe("empty value handling", () => {
-    test("omits value when OBX-5 is empty", () => {
+    test("omits value when OBX-5 is empty", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "ST",
         $5_observationValue: [],
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueString).toBeUndefined();
       expect(result.valueQuantity).toBeUndefined();
     });
 
-    test("handles missing OBX-5 gracefully", () => {
+    test("handles missing OBX-5 gracefully", async () => {
       const obx: OBX = {
         ...baseOBX,
         $2_valueType: "NM",
       };
 
-      const result = convertOBXToObservation(obx, "123");
+      const result = await convertOBX(obx, "123");
 
       expect(result.valueQuantity).toBeUndefined();
     });
@@ -375,41 +389,41 @@ describe("value type SN (Structured Numeric) in OBX", () => {
     $2_valueType: "SN",
   };
 
-  test("converts SN plain number to valueQuantity", () => {
+  test("converts SN plain number to valueQuantity", async () => {
     const obx: OBX = {
       ...baseOBX,
       $5_observationValue: ["^90"],
       $6_unit: { $1_code: "%" },
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.valueQuantity?.value).toBe(90);
     expect(result.valueQuantity?.unit).toBe("%");
   });
 
-  test("converts SN with comparator to valueQuantity with comparator", () => {
+  test("converts SN with comparator to valueQuantity with comparator", async () => {
     const obx: OBX = {
       ...baseOBX,
       $5_observationValue: [">^90"],
       $6_unit: { $1_code: "mL/min" },
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.valueQuantity?.value).toBe(90);
     expect(result.valueQuantity?.comparator).toBe(">");
     expect(result.valueQuantity?.unit).toBe("mL/min");
   });
 
-  test("converts SN range to valueRange", () => {
+  test("converts SN range to valueRange", async () => {
     const obx: OBX = {
       ...baseOBX,
       $5_observationValue: ["^10^-^20"],
       $6_unit: { $1_code: "mmol/L" },
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.valueRange?.low?.value).toBe(10);
     expect(result.valueRange?.low?.unit).toBe("mmol/L");
@@ -417,25 +431,25 @@ describe("value type SN (Structured Numeric) in OBX", () => {
     expect(result.valueRange?.high?.unit).toBe("mmol/L");
   });
 
-  test("converts SN ratio to valueRatio", () => {
+  test("converts SN ratio to valueRatio", async () => {
     const obx: OBX = {
       ...baseOBX,
       $5_observationValue: ["^1^:^128"],
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.valueRatio?.numerator?.value).toBe(1);
     expect(result.valueRatio?.denominator?.value).toBe(128);
   });
 
-  test("falls back to valueString for unparseable SN", () => {
+  test("falls back to valueString for unparseable SN", async () => {
     const obx: OBX = {
       ...baseOBX,
       $5_observationValue: ["invalid_format"],
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.valueString).toBe("invalid_format");
   });
@@ -450,58 +464,58 @@ describe("interpretation (OBX-8)", () => {
     $5_observationValue: ["100"],
   };
 
-  test("converts OBX-8 H to high interpretation", () => {
+  test("converts OBX-8 H to high interpretation", async () => {
     const obx: OBX = {
       ...baseOBX,
       $8_abnormalFlags: ["H"],
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.interpretation?.[0]?.coding?.[0]?.code).toBe("H");
     expect(result.interpretation?.[0]?.coding?.[0]?.display).toBe("High");
   });
 
-  test("converts OBX-8 L to low interpretation", () => {
+  test("converts OBX-8 L to low interpretation", async () => {
     const obx: OBX = {
       ...baseOBX,
       $8_abnormalFlags: ["L"],
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.interpretation?.[0]?.coding?.[0]?.code).toBe("L");
     expect(result.interpretation?.[0]?.coding?.[0]?.display).toBe("Low");
   });
 
-  test("converts OBX-8 A to abnormal interpretation", () => {
+  test("converts OBX-8 A to abnormal interpretation", async () => {
     const obx: OBX = {
       ...baseOBX,
       $8_abnormalFlags: ["A"],
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.interpretation?.[0]?.coding?.[0]?.code).toBe("A");
     expect(result.interpretation?.[0]?.coding?.[0]?.display).toBe("Abnormal");
   });
 
-  test("converts OBX-8 N to normal interpretation", () => {
+  test("converts OBX-8 N to normal interpretation", async () => {
     const obx: OBX = {
       ...baseOBX,
       $8_abnormalFlags: ["N"],
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.interpretation?.[0]?.coding?.[0]?.code).toBe("N");
     expect(result.interpretation?.[0]?.coding?.[0]?.display).toBe("Normal");
   });
 
-  test("handles missing OBX-8 gracefully", () => {
+  test("handles missing OBX-8 gracefully", async () => {
     const obx: OBX = { ...baseOBX };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.interpretation).toBeUndefined();
   });
@@ -516,25 +530,25 @@ describe("referenceRange (OBX-7)", () => {
     $5_observationValue: ["4.2"],
   };
 
-  test("converts OBX-7 simple range to referenceRange", () => {
+  test("converts OBX-7 simple range to referenceRange", async () => {
     const obx: OBX = {
       ...baseOBX,
       $7_referencesRange: "3.5-5.5",
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.referenceRange?.[0]?.low?.value).toBe(3.5);
     expect(result.referenceRange?.[0]?.high?.value).toBe(5.5);
   });
 
-  test("converts OBX-7 text range to referenceRange.text", () => {
+  test("converts OBX-7 text range to referenceRange.text", async () => {
     const obx: OBX = {
       ...baseOBX,
       $7_referencesRange: "negative",
     };
 
-    const result = convertOBXToObservation(obx, "123");
+    const result = await convertOBX(obx, "123");
 
     expect(result.referenceRange?.[0]?.text).toBe("negative");
   });
