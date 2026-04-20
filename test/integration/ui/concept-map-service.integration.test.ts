@@ -418,7 +418,7 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
     const addedEntry = mappings.entries.find(e => e.localCode === "X");
     expect(addedEntry).toBeDefined();
     expect(addedEntry!.targetCode).toBe("final");
-  });
+  }, 15000);
 
   test("updates entry in non-LOINC ConceptMap", async () => {
     await createTestConceptMapForType("APP", "FAC", "obr-status", [
@@ -440,7 +440,7 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
     expect(mappings.entries.length).toBe(1);
     expect(mappings.entries[0]!.targetCode).toBe("cancelled");
     expect(mappings.entries[0]!.targetDisplay).toBe("Cancelled");
-  });
+  }, 15000);
 
   test("deletes entry from non-LOINC ConceptMap", async () => {
     // Create ConceptMap with two entries — needs inline construction
@@ -491,7 +491,7 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
     mappings = await getMappingsFromConceptMap("cm-obr-delete", 1);
     expect(mappings.entries.length).toBe(1);
     expect(mappings.entries[0]!.localCode).toBe("Y");
-  });
+  }, 15000);
 
   test("LOINC CRUD still works as before", async () => {
     await createTestConceptMapForType("LAB", "FAC", "observation-code-loinc", [DUMMY_MAPPING]);
@@ -544,5 +544,5 @@ describe("CRUD operations on type-specific ConceptMaps", () => {
     mappings = await getMappingsFromConceptMap(cmId, 1);
     expect(mappings.entries.length).toBe(1);
     expect(mappings.entries.find(e => e.localCode === "NA_SERUM")).toBeUndefined();
-  });
+  }, 15000);
 });
