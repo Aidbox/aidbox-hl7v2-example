@@ -1,0 +1,14 @@
+MSH|^~\&|SCHEDAPP|FAKEHOSP|EHRAPP|FAKEHOSP|20260609081200||SIU^S12|FAKE-SIU-2004|P|2.8.2|||AL|NE
+SCH|APPT-FAKE-2004|FILLER-FAKE-2004||||Pre-op Evaluation|EL^Elective^HL70276|SURG^Surgical^HL70277|||||||||DR-FAKE-9304^Snowhollow^Percival^K^^^MD^^^^^^XX|||DR-FAKE-9304^Snowhollow^Percival^K^^^MD^^^^^^XX||||Booked
+TQ1|1|||||||20260622080000|20260622100000
+NTE|1|P|Patient NPO after midnight
+PID|1||MRN-FAKE-00004^^^FAKEHOSP^MR||Peppermint^Cornelius^W^^^^L||19680214|M||2131-1^Other Race^HL70005|305 Figment Way^^Shadybrook^TX^75001^USA^H|||||M||PATACCT-FAKE-00004
+PV1|1|O|PREOP^BAY-5^^FAKEHOSP|EL|||DR-FAKE-9304^Snowhollow^Percival^K^^^MD^^^^^^XX|||SUR||||||||||VIS-FAKE-2004
+RGS|1|A|GRP1^Pre-op Suite
+AIS|1|A|99205^Comprehensive Office Visit^CPT|20260622080000||||120|min||Booked
+AIS|2|A|71046^Chest X-ray^CPT|20260622080000||30|min|30|min||Booked
+AIL|1|A|PREOP^BAY-5^^FAKEHOSP|C^Clinic^HL70305||20260622080000|||120|min||Booked
+AIL|2|A|RAD^XRAY-2^^FAKEHOSP|DX^Diagnostic^HL70305||20260622083000|||30|min||Booked
+AIP|1|A|DR-FAKE-9304^Snowhollow^Percival^K^^^MD^^^^^^XX|D^Doctor^HL70182||20260622080000|||120|min||Booked
+AIP|2|A|NURSE-FAKE-4401^Greenfeather^Mabel^S^^^RN^^^^^^XX|N^Nurse^HL70182||20260622080000|||120|min||Booked
+NTE|1|P|Coordinate timing with radiology

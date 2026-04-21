@@ -1,0 +1,15 @@
+MSH|^~\&|SCHEDAPP|FAKECLINIC|EHRAPP|FAKECLINIC|20260401073000||SIU^S12|FAKE-SIU-2002|P|2.5|||AL|NE
+SCH|APPT-FAKE-2002|FILLER-FAKE-2002||||New Patient Consult|WALKIN^Walk-in^HL70276|NEW^New Appointment^HL70277|||||||||DR-FAKE-9102^Brambleshade^Guinevere^V^^^MD^^^^^^XX|||DR-FAKE-9102^Brambleshade^Guinevere^V^^^MD^^^^^^XX||||Booked
+TQ1|1|||||||20260410130000|20260410143000
+NTE|1|P|Interpreter required - see PID-15
+PID|1||MRN-FAKE-00002^^^FAKECLINIC^MR||Quillwhisper^Balthazar^X^^^^L||19750109|M||2028-9^Asian^HL70005|88 Nonesuch Lane^^Pleasantville^CA^94088^USA^H||^PRN^CP^^^555^0199771|||vi^Vietnamese^HL70296|M||PATACCT-FAKE-00002
+PV1|1|O|SPEC-CLINIC^ROOM-12^^FAKECLINIC|EL|||DR-FAKE-9102^Brambleshade^Guinevere^V^^^MD^^^^^^XX|||MED||||||||||VIS-FAKE-2002
+ROL|1|AD|IT^Interpreter^HL70443|INTRPT-FAKE-7001^Dustflute^Wren^P^^^^^^^^^XX
+RGS|1|A|GRP1^Specialty Consult
+AIS|1|A|99204^New Patient Office Visit^CPT|20260410130000||||60|min||Booked
+AIS|2|A|90863^Interpretation Services^CPT|20260410130000||||60|min||Booked
+AIL|1|A|SPEC-CLINIC^ROOM-12^^FAKECLINIC|C^Clinic^HL70305||20260410130000|||60|min||Booked
+AIL|2|A|SPEC-CLINIC^ROOM-12-EQUIP^^FAKECLINIC|E^Equipment^HL70305||20260410130000|||60|min||Booked
+AIP|1|A|DR-FAKE-9102^Brambleshade^Guinevere^V^^^MD^^^^^^XX|D^Doctor^HL70182||20260410130000|||60|min||Booked
+AIP|2|A|INTRPT-FAKE-7001^Dustflute^Wren^P^^^^^^^^^XX|IN^Interpreter^HL70182||20260410130000|||60|min||Booked
+NTE|1|P|Vietnamese interpreter confirmed for visit
