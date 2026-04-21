@@ -167,19 +167,24 @@ The FHIR bundle was built but Aidbox rejected it.
 ## Step 4: After fixing
 
 After implementing a fix:
-1. Offer to mark the message for retry (this is an app endpoint, NOT Aidbox):
+1. **Verify the fix locally first** with the `message-lookup` skill. Save the raw `message` field from the failing `IncomingHL7v2Message` to a temp file and run:
+   ```bash
+   bun scripts/check-message-support.ts /tmp/<id>.hl7
+   ```
+   If this still reports an error, the fix is incomplete — do not mark for retry yet. Only proceed when the verdict is `supported` or `supported with caveats`.
+2. Offer to mark the message for retry (this is an app endpoint, NOT Aidbox):
    ```bash
    curl -sf -X POST 'http://localhost:3000/mark-for-retry/<messageId>'
    ```
-2. Offer to trigger reprocessing:
+3. Offer to trigger reprocessing:
    ```bash
    curl -sf -X POST 'http://localhost:3000/process-incoming-messages'
    ```
-3. Then re-query the message to verify the fix worked:
+4. Then re-query the message to verify the fix worked end-to-end:
    ```bash
    curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message/<ID>?_elements=id,status,error' | python -m json.tool
    ```
-4. Report the result to the developer
+5. Report the result to the developer
 
 ## Important rules
 

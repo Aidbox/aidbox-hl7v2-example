@@ -9,6 +9,20 @@ Extend the HL7v2→FHIR conversion module per the user's request. You are the or
 
 If the request isn't about a new message converter, a new field mapping, or adapting existing conversion to new messages — return an error.
 
+## Step 0 — Is it already supported?
+
+Before creating a ticket, if the user supplies one or more example messages, run each through `message-lookup`:
+
+```sh
+bun scripts/check-message-support.ts <example-file>
+```
+
+- All examples report `supported — message converts cleanly` → tell the user "this is already supported" and stop. Do not open a ticket.
+- All examples report `NOT supported — no converter registered` → proceed to Step 1; this is a new-converter case.
+- Examples report `routed but data fails conversion` or `supported with caveats` → the converter exists but has gaps. Ask the user whether they want to extend the existing converter (this pipeline) or fix a specific error (`check-errors`).
+
+If the user supplies no example messages, skip Step 0.
+
 ## Rules
 
 - You are the only thing that talks to the user. Sub-agents and `/plan`/`/work` delegates do not.

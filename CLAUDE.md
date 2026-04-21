@@ -1,27 +1,21 @@
----
-description: Aidbox HL7 Integration Project
-globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: true
----
-
 # Your Role
 
 Act as a critical, analytical partner. Before implementing ANY user suggestion:
 - evaluate assumptions and tradeoffs
-- state if you see weaknesses even for "reasonable" requests
-- proceed only after this review (can be 1-2 sentences for simple cases)
+- flag weaknesses even for "reasonable" requests
+- state tradeoffs before implementing (1-2 sentences is fine for simple cases)
 
-Keep in mind that user might be an idiot and suggests things without thinking about them, so critically review ALL user suggestions, requests and thoughts.
-State tradeoffs before implementing, even if the suggestion seems reasonable. Be direct but constructive.
-If the change has clear downsides and the user still wants it, they must say: "I request you to do it this way".
+Assume the user may not have deep HL7v2, FHIR, or Health IT experience. Suggestions that sound reasonable in plain software terms can be spec-wrong, clinically incorrect, or carry interoperability risk that isn't visible at the code level. Examples: fabricating identifiers that must be preserved for patient safety, discarding fields that the IG requires, relaxing a validator to silence an error that actually indicates bad sender data. Push back when the domain says no, even if the engineering says yes — and explain *why* in HL7/FHIR terms, not just "the spec says so."
+
+If a proposed change has clear downsides and the user still wants it, they must say: "I request you to do it this way".
 
 ## File Purpose
 
-The role of this file is to describe common mistakes and confusion points that agents might encounter as they work in this project. If you ever encounter something in the project that surprises you, please alert the developer working with you and indicate that this is the case in the AgentMD file to help prevent future agents from having the same issue.
+This file is the project memory — checked into the repo, shared across agents and sessions. It captures cross-cutting rules and the gotchas that catch agents out. When you learn something that should persist (gotcha, rule, pattern), add it here. If you hit something surprising that isn't covered here, tell the developer and add it.
 
-## Project Memory
+Do NOT use the auto-memory file (MEMORY.md) for this project.
 
-Do NOT use the auto memory file (MEMORY.md) for this project. CLAUDE.md is the project memory — it is checked into the repo and shared across all agents and sessions. When you learn something that should persist (gotchas, rules, patterns), add it here, not to MEMORY.md.
+Architecture, workflows, routes, and directory structure are **not** kept here — they go stale. Look them up live in the code or in `docs/developer-guide/`.
 
 # Aidbox HL7 Integration
 
@@ -36,7 +30,8 @@ bun run dev                       # Start web server (logs to logs/server.log)
 ```
 
 - **Web UI**: http://localhost:3000
-- **Aidbox Console**: http://localhost:8080 (root / Vbro4upIT1)
+- **Aidbox Console**: http://localhost:8080 — login as `admin` with `BOX_ADMIN_PASSWORD` from `docker-compose.yaml`.
+- **Aidbox API auth**: use the `aidbox-request` skill. Never hardcode the client secret in code or docs.
 
 ## Development Scripts
 
@@ -55,277 +50,91 @@ bun test:integration              # Full integration suite — runs in CI, takes
 bun reset-integration-aidbox      # Destroy and recreate test Aidbox from scratch (if test data in the db creates problems)
 bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
 bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
-bun run generate-hl7v2-reference  # Generate data/hl7v2-reference/ from XSD+PDF (see docs)
+bun run generate-hl7v2-reference  # Generate data/hl7v2-reference/ from XSD+PDF
 ```
 
 Integration tests use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
 
-**IMPORTANT — Testing rules:**
-1. **Run `bun test:local` after any change.** This covers unit tests and the smoke subset of integration tests — fast enough (~10s) for tight feedback loops. CI runs the full `bun test:all`; do not also run it locally unless specifically debugging a CI-only failure.
-2. **Smoke tests are tagged by name prefix.** A test (or `describe`) whose name starts with `smoke: ` is included in `test:smoke` via `--test-name-pattern "smoke: "`. Promote a test to smoke by prepending `smoke: ` to its name; demote by removing the prefix. Keep the smoke set small and focused on one happy-path per major flow.
-3. **Don't manually run `docker compose` for integration tests.** The test commands (`test:smoke`, `test:integration`, `test:all`) automatically start Docker containers, wait for health, and run migrations.
+**Testing rules:**
+1. **Run `bun test:local` after any change.** Unit tests + the smoke subset of integration tests (~10s). CI runs the full `bun test:all`; don't also run it locally unless debugging a CI-only failure.
+2. **Smoke tests are tagged by name prefix.** A test (or `describe`) whose name starts with `smoke: ` is included in `test:smoke` via `--test-name-pattern "smoke: "`. Promote by prepending the prefix; demote by removing it. Keep the smoke set small and focused on one happy-path per major flow.
+3. **Don't manually run `docker compose` for integration tests.** The test commands auto-start containers, wait for health, and run migrations.
 
-Read `docs/developer-guide/how-to/development-guide.md` for: test infrastructure details, how to run specific tests, writing new tests (conventions, integration test helpers), code generation workflows, and debugging.
+Read `docs/developer-guide/how-to/development-guide.md` for test infrastructure, writing new tests, codegen, and debugging.
 
-## Architecture Overview
+## IncomingHL7v2Message statuses
 
-**Pull-based polling pattern**: Services poll Aidbox for work rather than push notifications. Benefits: resilience (restart without losing work), simplicity (no webhooks/queues), observability (queue visible as FHIR resources).
+Referenced constantly when diagnosing errors. Full details: `docs/developer-guide/error-statuses.md`.
 
-### Components
+- `received` — unprocessed
+- `processed` — converted + submitted to Aidbox successfully
+- `warning` — converted + submitted, but with a non-fatal gap (e.g., PV1 missing → no Encounter)
+- `parsing_error` — malformed HL7v2, parse failed; sender must fix
+- `conversion_error` — parsed OK but missing/invalid data for FHIR conversion
+- `code_mapping_error` — unmapped code, Task created; auto-requeued on resolution
+- `sending_error` — FHIR bundle submission to Aidbox failed; auto-retried 3 times
+- `deferred` — manually set via `POST /defer/:id` when resolution needs external input; eligible for retry via `POST /mark-for-retry/:id`
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| Web UI | `src/index.ts`, `src/ui/` | Server-rendered pages, manual triggers |
-| Aidbox Client | `src/aidbox.ts` | `aidboxFetch`, `getResources`, `putResource` |
-| Account BAR Builder | `src/bar/account-builder-service.ts` | Polls pending Accounts → generates BAR messages |
-| BAR Sender | `src/bar/sender-service.ts` | Polls pending OutgoingBarMessage → delivers |
-| MLLP Server | `src/mllp/` | TCP server receiving HL7v2 messages (port 2575) |
-| V2-to-FHIR Processor | `src/v2-to-fhir/processor-service.ts` | Polls received messages → converts to FHIR |
-| ORM Converter | `src/v2-to-fhir/messages/orm-o01.ts` | Converts `ORM^O01` to ServiceRequest/MedicationRequest + related resources |
-| Code Mapping | `src/code-mapping/` | LOINC resolution, ConceptMap per sender |
+## US Core demographic extension runtime note
 
-### Data Flow
-
-**Outgoing (FHIR → HL7v2):**
-```
-Account (pending) → Account BAR Builder → OutgoingBarMessage (pending) → Sender → sent
-```
-
-**Incoming (HL7v2 → FHIR):**
-```
-MLLP receives → IncomingHL7v2Message (received) → Parse → Preprocess → Convert → Submit → (processed)
-  Errors: parsing_error | conversion_error | code_mapping_error | sending_error
-```
-→ Error status details: `docs/developer-guide/error-statuses.md`
-
-### Custom FHIR Resources
-
-**OutgoingBarMessage** - Queued BAR messages
-- `patient`, `account` (References) - required
-- `status`: `pending` → `sent`
-- `hl7v2` (string) - the message content
-
-**IncomingHL7v2Message** - Received HL7v2 messages
-- `message` (string) - raw HL7v2 content
-- `type` (string) - from MSH-9 (e.g., "ADT^A01", "ORU^R01")
-- `status`: `received` → `processed` | `warning` | `parsing_error` | `conversion_error` | `code_mapping_error` | `sending_error` | `deferred`
-  - `parsing_error` — malformed HL7v2, parse failed
-  - `conversion_error` — valid HL7v2 but missing/invalid data for FHIR conversion
-  - `code_mapping_error` — unmapped code, Task created for resolution (auto-requeued on resolve)
-  - `sending_error` — FHIR bundle submission to Aidbox failed (auto-retried 3 times)
-  - `deferred` — manually set via `POST /defer/:id` after investigation when resolution needs external input (sender fix, client decision); eligible for retry via `POST /mark-for-retry/:id`
-- `sendingApplication`, `sendingFacility` - from MSH-3, MSH-4
-- `unmappedCodes[]` - unresolved codes (when `code_mapping_error`)
-
-**Account extensions** (processing status):
-- `http://example.org/account-processing-status`: `pending` | `completed` | `error` | `failed`
-- `http://example.org/account-processing-retry-count`: number (max 3 retries)
-- `http://example.org/account-diagnosis`: complex extension with `condition` sub-extension (valueReference → Condition)
-- `http://example.org/account-procedure`: complex extension with `procedure` sub-extension (valueReference → Procedure)
-
-## Workflows
-
-### BAR Generation (FHIR → HL7v2)
-
-Account BAR Builder polls pending Accounts and:
-1. Fetches related resources: Patient (from subject), Coverage[] (from account.coverage), Encounter (by patient query), Condition[] (from account-diagnosis extensions), Procedure[] (from account-procedure extensions)
-2. Calls `generateBarMessage()` in `src/bar/generator.ts` (pure function)
-3. Creates OutgoingBarMessage, updates Account processing status
-
-**Trigger events**: P01 (add account), P05 (update), P06 (end account).
-
-→ Details: `docs/developer-guide/bar-generation.md`
-
-### ORU Processing (HL7v2 → FHIR)
-
-V2-to-FHIR Processor polls received IncomingHL7v2Message and:
-1. Parses message, runs config-driven preprocessor (e.g., fix PV1-19 authority from MSH)
-2. For each OBX-3, resolves to LOINC (checks inline codes first, then sender's ConceptMap; on failure → `mapping_error`, creates Task)
-3. Creates FHIR resources: DiagnosticReport (from OBR), Observation (from OBX), Specimen (from SPM)
-4. If Patient/Encounter not found → creates drafts (`active=false`, `status=unknown`)
-
-→ Details: `docs/developer-guide/oru-processing.md`
-→ Preprocessor details: `docs/developer-guide/preprocessors.md`
-
-### ORM Processing (HL7v2 → FHIR)
-
-V2-to-FHIR Processor handles `ORM^O01` messages by:
-1. Parsing PID (required), PV1 (optional), and IN1 (optional)
-2. Grouping orders by ORC boundaries, then branching by ORDER_CHOICE:
-   - OBR-based orders -> ServiceRequest
-   - RXO-based orders -> MedicationRequest
-3. Mapping ORC status with three tiers: standard ORC-5 map -> sender ConceptMap (`orc-status`) -> ORC-1 fallback
-4. Creating related Condition (DG1), Observation (OBX), and Coverage (IN1) resources
-5. Treating class-only PV1 (missing PV1-19 visit number) as absent for ORM to avoid false warnings
-
-### VXU Processing (HL7v2 → FHIR)
-
-V2-to-FHIR Processor handles `VXU^V04` (Unsolicited Vaccination Record Update) messages by:
-1. Parsing PID (required), PV1 (optional, config-driven — same as ORU)
-2. Extracting PERSON_OBSERVATION OBX (before first ORC/RXA) → standalone Observations
-3. Grouping ORDER segments: optional ORC + RXA + optional RXR + optional OBX
-4. Converting each ORDER group → FHIR Immunization:
-   - RXA → core fields (vaccineCode, status, occurrenceDateTime, doseQuantity, lotNumber)
-   - RXR → route/site
-   - ORC → identifiers (FILL/PLAC), ordering provider, recorded date
-   - ORDER OBX → CDC IIS IG fields (programEligibility, fundingSource, education[], protocolApplied, note)
-   - RXA-9 NIP001 → primarySource/reportOrigin (CDC IIS IG)
-5. Creating Practitioner (RXA-10, function=AP) and PractitionerRole (ORC-12, function=OP)
-6. ORC is optional — real-world senders frequently omit it. Fallback ID uses natural key (patient+vaccine+date).
-
-**Key design decisions:** Unknown LOINC codes in ORDER-level OBX produce a hard error (not a generic Observation fallback). See ADR: `docs/developer-guide/adr/001-unknown-order-obx-hard-error.md`.
-
-→ Details: `src/v2-to-fhir/messages/vxu-v04.ts`, `src/v2-to-fhir/cdc-iis-ig.ts`
-
-**US Core demographic extension runtime note:** If `profileConformance.implementationGuides` enables US Core (`hl7.fhir.us.core`), PID-10/PID-22 mapping adds `us-core-race` / `us-core-ethnicity` on Patient. Aidbox must have US Core package loaded and CodeSystem `urn:oid:2.16.840.1.113883.6.238` available (seeded in `init-bundle.json`) or Patient writes can fail with terminology-binding errors.
-
-### Code Mapping (Multiple Types)
-
-When HL7v2 codes can't be mapped to valid FHIR values:
-1. Message gets `status=mapping_error`, code stored in `unmappedCodes[]`
-2. Task created (deterministic ID from sender + code + mapping type)
-3. User resolves via `/mapping/tasks` or `/mapping/table`
-4. On resolution: Task completed, message requeued for processing
-
-Mapping types are defined in `src/code-mapping/mapping-types.ts`.
-
-**ConceptMap per sender per type**: Same local code from different senders can map to different values.
-→ Details: `docs/developer-guide/code-mapping.md`
-
-## Routes
-
-**UI Pages:**
-| Route | Purpose |
-|-------|---------|
-| `/accounts` | List accounts with processing status filter |
-| `/outgoing-messages` | Outgoing BAR messages |
-| `/incoming-messages` | Incoming HL7v2 messages |
-| `/mapping/tasks` | Pending code mapping tasks |
-| `/mapping/table` | ConceptMap entries |
-| `/mllp-client` | MLLP test client |
-
-**Actions (POST, trigger manually or via polling services):**
-| Route | Purpose |
-|-------|---------|
-| `/build-bar` | Generate BAR from pending accounts |
-| `/send-messages` | Send pending outgoing messages |
-| `/process-incoming-messages` | Process received HL7v2 → FHIR |
-| `/reprocess-errors` | Retry failed accounts (max 3) |
-
-**API:**
-| Route | Purpose |
-|-------|---------|
-| `GET /api/terminology/loinc?q=` | Search LOINC codes |
-| `POST /api/mapping/tasks/:id/resolve` | Resolve task with LOINC |
-| `POST /api/concept-maps/:id/entries` | Add/update ConceptMap entry |
-
-## Project Structure
-
-```
-src/
-├── index.ts              # HTTP server and routes
-├── aidbox.ts             # Aidbox FHIR client
-├── migrate.ts            # Database migrations (loads init-bundle.json)
-├── api/                  # API handlers (HTTP request/response handling)
-│   ├── concept-map-entries.ts  # ConceptMap entry CRUD endpoints
-│   ├── mapping-tasks.ts        # Mapping task endpoints
-│   └── task-resolution.ts      # Task resolution business logic
-├── fhir/                 # FHIR R4 types (generated)
-├── hl7v2/                # HL7v2 types, builders, formatters (generated)
-│   ├── generated/        # types.ts, fields.ts, messages.ts, tables.ts
-│   └── wrappers/         # Fixes for gaps in @atomic-ehr/hl7v2 (e.g., segment parsing, message structure, etc.)
-├── bar/                  # FHIR → HL7v2 BAR generation
-│   ├── generator.ts      # generateBarMessage() - pure transformation
-│   ├── account-builder-service.ts  # Polling service
-│   └── sender-service.ts # Delivery service
-├── v2-to-fhir/           # HL7v2 → FHIR conversion
-│   ├── converter.ts      # Message type routing
-│   ├── processor-service.ts  # Polling service
-│   ├── config.ts         # Config loader for config/hl7v2-to-fhir.json
-│   ├── preprocessor.ts   # Config-driven preprocessing before conversion
-│   ├── id-generation.ts  # Encounter ID from PV1-19 (HL7 v2.8.2 CX rules)
-│   ├── cdc-iis-ig.ts     # CDC IIS IG helpers: ORDER OBX → Immunization fields, NIP001 source
-│   ├── messages/         # ADT_A01, ADT_A08, ORU_R01, ORM_O01, VXU_V04 converters
-│   └── segments/         # PID, OBX, RXA→Immunization, etc. converters
-├── code-mapping/         # Code mapping for multiple field types
-│   ├── mapping-types.ts  # Mapping type registry (CRITICAL: add new types here)
-│   ├── mapping-errors.ts # MappingError types and builders
-│   ├── concept-map/      # ConceptMap CRUD and observation code resolution
-│   └── mapping-task-service.ts  # Task creation/resolution
-├── mllp/                 # MLLP TCP server
-└── ui/                   # Server-rendered HTML pages
-scripts/
-├── hl7v2-reference/      # HL7v2 reference data generator (XSD + PDF → JSON)
-└── generate-hl7v2-reference.ts
-data/
-└── hl7v2-reference/v2.5/ # Generated reference JSON (fields, segments, datatypes, messages, tables)
-```
+If `profileConformance.implementationGuides` enables US Core (`hl7.fhir.us.core`), PID-10/PID-22 mapping adds `us-core-race` / `us-core-ethnicity` on Patient. Aidbox must have the US Core package loaded and CodeSystem `urn:oid:2.16.840.1.113883.6.238` available (seeded in `init-bundle.json`), or Patient writes fail with terminology-binding errors.
 
 ## Documentation
 
-For implementation details, see `docs/developer-guide/`:
+For anything beyond this file, read `docs/developer-guide/`:
 
 | When you need                                                                            | Read |
 |------------------------------------------------------------------------------------------|------|
-| System diagrams, polling pattern details                                                 | `architecture.md` |
+| System diagrams, polling pattern, component overview                                     | `architecture.md` |
 | FHIR→HL7v2 field mappings, segment builders                                              | `bar-generation.md` |
 | HL7v2→FHIR conversion, ORU processing                                                    | `oru-processing.md` |
-| Preprocessor architecture, registry, and config                                           | `preprocessors.md` |
+| Preprocessor architecture, registry, and config                                          | `preprocessors.md` |
 | ConceptMap workflow, Task lifecycle                                                      | `code-mapping.md` |
 | Error statuses, resolution flows, sending auto-retry                                     | `error-statuses.md` |
 | MLLP protocol, ACK generation                                                            | `mllp-server.md` |
 | HL7v2 builders, field naming (`$N_fieldName`)                                            | `hl7v2-module.md` |
-| HL7 reference JSON generation (XSD+PDF → data/hl7v2-reference), used by hl7v2-info skill | `how-to/hl7v2-reference-generation.md` |
+| HL7 reference JSON generation (XSD+PDF → data/hl7v2-reference)                           | `how-to/hl7v2-reference-generation.md` |
 | Testing, integration infra, codegen/debug workflows                                      | `how-to/development-guide.md` |
 | VXU ORDER OBX hard error decision                                                        | `adr/001-unknown-order-obx-hard-error.md` |
-| Coding standards                                                                         | `.claude/code-style.md` |
-
-## Bun Guidelines
-
-Use Bun instead of Node.js:
-
-| Instead of | Use                                       |
-|------------|-------------------------------------------|
-| `node`/`ts-node`, `npm`/`yarn`/`pnpm` | `bun`, `bun install`, `bun run`           |
-| `jest`/`vitest` | `bun test:all`                            |
-| `dotenv` | Not needed (Bun loads .env automatically) |
-| `express` | `Bun.serve()`                             |
-| `better-sqlite3` / `pg` / `ioredis` | `bun:sqlite` / `Bun.sql` / `Bun.redis`    |
-| `ws` | Built-in `WebSocket`                      |
-| `node:fs readFile/writeFile` | `Bun.file`                                |
 
 ## Code Style
 
-IMPORTANT: Always read `.claude/code-style.md` before writing or modifying code.
+IMPORTANT: Read `.claude/code-style.md` before writing or modifying code.
 
-## HL7v2 Spec Compliance Rule
+## Bun, not Node
 
-Before proposing, implementing, designing or reviewing ANY change that touches HL7v2 message handling — including segment optionality, field semantics, message structure, or processing rules — you MUST look up the relevant message/segment/field via the `hl7v2-info` skill first.
+This project uses Bun. Use `bun`/`bun install`/`bun run` instead of `node`/`npm`/`yarn`/`pnpm`. Unit tests use `bun test` (not jest/vitest). Bun auto-loads `.env` (no `dotenv`). HTTP: `Bun.serve()`. File I/O: `Bun.file`.
 
-Do NOT rely on assumptions, existing code patterns, or memory of the spec. The code may intentionally deviate from the spec, but you must know what the spec says before proposing or implementing changes.
+## Before Touching HL7v2
 
-**Never read `data/hl7v2-reference/` JSON files directly** — not via `cat`, `python`, `Read`, `Grep`, or any other tool. Always use the `hl7v2-info` skill (`bun scripts/hl7v2-ref-lookup.ts`), which parses and formats the data correctly. This rule applies to all agents, including sub-agents spawned for review or exploration.
+Three mandatory lookups before proposing, implementing, designing, or reviewing any HL7v2-related change. Do not rely on assumptions, existing code patterns, or memory of the spec — the code may intentionally deviate, but you must know what the spec says first.
 
-**Spec completeness rule:** You must handle ALL components/fields defined in the spec — not just those present in current sample data or example messages. Never skip a field or component solely because the example senders don't populate it.
+### 1. Check the HL7v2 spec (`hl7v2-info` skill)
 
-## V2-to-FHIR IG Mapping Compliance Rule
+For segment optionality, field semantics, message structure, datatype components, or processing rules — look them up via `hl7v2-info` first.
 
-Before designing, implementing, or reviewing ANY HL7v2→FHIR conversion, you MUST consult the V2-to-FHIR IG mapping CSVs in `docs/v2-to-fhir-spec/mappings/`. These are the authoritative mapping references for this project:
+**Never read `data/hl7v2-reference/` JSON files directly** — no `cat`, `python`, `Read`, `Grep`, or any other tool. Always go through the `hl7v2-info` skill (`bun scripts/hl7v2-ref-lookup.ts`), which parses and formats the data correctly. Applies to all agents, including sub-agents spawned for review or exploration.
 
-- **Message mappings**: `mappings/messages/` — which FHIR resources each message type produces
-- **Segment mappings**: `mappings/segments/` — field-level mappings
-- **Vocabulary mappings**: `mappings/codesystems/` — code translations between HL7v2 and FHIR systems
+**Spec completeness rule:** Handle ALL components/fields defined in the spec — not just those present in current sample data or example messages. Never skip a field solely because example senders don't populate it.
 
-### HL7v2 Message Inspection
+### 2. Check the V2-to-FHIR IG mappings
 
-Hl7v2 message analysis requires exact pipe counting — easy to miscount for an AI agent.
-Always use the `hl7v2-info` skill or `scripts/hl7v2-inspect.sh` script to verify field positions:
+For any HL7v2→FHIR conversion, consult the IG mapping CSVs in `docs/v2-to-fhir-spec/mappings/`:
+
+- **Message mappings** (`mappings/messages/`) — which FHIR resources each message type produces
+- **Segment mappings** (`mappings/segments/`) — field-level mappings
+- **Vocabulary mappings** (`mappings/codesystems/`) — code translations between HL7v2 and FHIR systems
+
+### 3. Never count pipe positions by hand
+
+Use `scripts/hl7v2-inspect.sh` (or the `hl7v2-info` skill) to verify field positions — eyeballing fails silently for an AI agent.
+
 ```sh
-scripts/hl7v2-inspect.sh <file>                # Structure overview (no PHI)
+scripts/hl7v2-inspect.sh <file>                 # Structure overview (no PHI)
 scripts/hl7v2-inspect.sh <file> --values        # Show field values (may contain PHI!)
 scripts/hl7v2-inspect.sh <file> --segment RXA   # Filter to segment type
 scripts/hl7v2-inspect.sh <file> --field RXA.6   # Specific field with components
 scripts/hl7v2-inspect.sh <file> --verify RXA.20 # Verify field position by pipe count
 ```
-Handles RTF wrappers, multi-message files, and repeating fields. Use `--verify` to catch pipe count errors in fixtures.
-Reference: working fixture `test/fixtures/hl7v2/oru-r01/encounter/with-visit.hl7` has correct PV1-19.
+
+Handles RTF wrappers, multi-message files, and repeating fields. Use `--verify` to catch pipe count errors in fixtures. Reference fixture with correct PV1-19: `test/fixtures/hl7v2/oru-r01/encounter/with-visit.hl7`.
