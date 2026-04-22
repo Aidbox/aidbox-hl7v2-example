@@ -394,7 +394,7 @@ describe("renderMappingTasksPage", () => {
     );
 
     // Check page title
-    expect(html).toContain("Mapping Tasks");
+    expect(html).toContain("Unmapped Codes");
 
     // Check status filter tabs
     expect(html).toContain("Pending");

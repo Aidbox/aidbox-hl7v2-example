@@ -180,7 +180,7 @@ export function renderMappingTasksPage(
   const pendingCount = navData.pendingMappingTasksCount;
 
   const content = `
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Mapping Tasks</h1>
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Unmapped Codes</h1>
 
     ${
       errorMessage
@@ -228,7 +228,7 @@ export function renderMappingTasksPage(
     </div>`;
 
   return renderLayout(
-    "Mapping Tasks",
+    "Unmapped Codes",
     renderNav("mapping-tasks", navData),
     content,
   );

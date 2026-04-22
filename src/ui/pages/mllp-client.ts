@@ -199,7 +199,7 @@ function renderMLLPClientPage(
 
   const content = `
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-bold text-gray-800">MLLP Test Client</h1>
+      <h1 class="text-3xl font-bold text-gray-800">Simulate Sender</h1>
       <div class="text-sm text-gray-500">
         Send HL7v2 messages via MLLP protocol
       </div>
@@ -395,7 +395,7 @@ function renderMLLPClientPage(
     </script>`;
 
   return renderLayout(
-    "MLLP Test Client",
+    "Simulate Sender",
     renderNav("mllp-client", navData),
     content,
   );

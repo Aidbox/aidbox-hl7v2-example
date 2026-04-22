@@ -426,7 +426,7 @@ function renderIncomingMessagesPage(
   const statuses = ["received", "processed", "warning", "parsing_error", "conversion_error", "code_mapping_error", "sending_error", "deferred"];
 
   const content = `
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Incoming Messages</h1>
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Inbound Messages</h1>
 
     <div class="mb-4 flex gap-2 items-center justify-between">
       <div class="flex gap-2">
@@ -463,7 +463,7 @@ function renderIncomingMessagesPage(
     <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
 
   return renderLayout(
-    "Incoming Messages",
+    "Inbound Messages",
     renderNav("incoming", navData),
     content,
   );

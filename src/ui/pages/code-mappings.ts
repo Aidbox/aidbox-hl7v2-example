@@ -145,7 +145,7 @@ export function renderCodeMappingsPage(
     : "";
 
   const content = `
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Code Mappings</h1>
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Terminology Map</h1>
 
     ${
       errorMessage
@@ -253,7 +253,7 @@ export function renderCodeMappingsPage(
   `;
 
   return renderLayout(
-    "Code Mappings",
+    "Terminology Map",
     renderNav("code-mappings", navData),
     content,
   );

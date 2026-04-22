@@ -62,6 +62,26 @@ Integration tests use a separate test Aidbox on port 8888 via `docker-compose.te
 
 Read `docs/developer-guide/how-to/development-guide.md` for test infrastructure, writing new tests, codegen, and debugging.
 
+## In-process polling workers
+
+`bun run dev` boots three polling services inside the web server (`src/workers.ts`): inbound HL7v2 processor, Account BAR builder, BAR message sender. Messages flow through the pipeline without manual "Process All" / "Build BAR" / "Send Pending" clicks.
+
+Env flags:
+- `DISABLE_POLLING=1` — do not start any workers (useful for tests or when running the standalone `bun src/v2-to-fhir/processor-service.ts` scripts).
+- `POLL_INTERVAL_MS` — override poll interval. Default 5000ms (demo-friendly). The standalone scripts still use their own 60000ms default.
+
+The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) are unchanged and still work — they share the same factories.
+
+## In-process polling workers
+
+`bun run dev` boots three polling services inside the web server (`src/workers.ts`): inbound HL7v2 processor, Account BAR builder, BAR message sender. Messages flow through the pipeline without manual "Process All" / "Build BAR" / "Send Pending" clicks.
+
+Env flags:
+- `DISABLE_POLLING=1` — do not start any workers (useful for tests or when running the standalone `bun src/v2-to-fhir/processor-service.ts` scripts).
+- `POLL_INTERVAL_MS` — override poll interval. Default 5000ms (demo-friendly). The standalone scripts still use their own 60000ms default.
+
+The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) are unchanged and still work — they share the same factories.
+
 ## IncomingHL7v2Message statuses
 
 Referenced constantly when diagnosing errors. Full details: `docs/developer-guide/error-statuses.md`.

@@ -27,6 +27,11 @@ import { handleMLLPClientPage, sendMLLPTest } from "./ui/pages/mllp-client";
 import { handleTaskResolution } from "./api/mapping-tasks";
 import { searchLoincCodes, validateLoincCode } from "./code-mapping/terminology-api";
 import { processNextMessage as processNextV2ToFhirMessage } from "./v2-to-fhir/processor-service";
+import {
+  startAllPollingServices,
+  isPollingDisabled,
+  type WorkersHandle,
+} from "./workers";
 
 // ============================================================================
 // Server
@@ -87,6 +92,30 @@ Bun.serve({
       } catch (error) {
         console.error("LOINC validation error:", error);
         return Response.json({ error: "Validation failed" }, { status: 500 });
+      }
+    },
+
+    // =========================================================================
+    // Health
+    // =========================================================================
+    "/api/health": async () => {
+      const start = performance.now();
+      try {
+        await aidboxFetch("/fhir/metadata", {
+          signal: AbortSignal.timeout(1500),
+        });
+        return Response.json({
+          ok: true,
+          aidbox: "up",
+          ms: Math.round(performance.now() - start),
+        });
+      } catch (error) {
+        return Response.json({
+          ok: false,
+          aidbox: "down",
+          ms: Math.round(performance.now() - start),
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     },
 
@@ -257,3 +286,31 @@ Bun.serve({
 });
 
 console.log("Server running at http://localhost:3000");
+
+// `bun --hot` re-executes this module on every save. Without this, each reload
+// starts a new set of polling services without stopping the previous set,
+// leaking poll loops. Cache the handle on globalThis so reloads can stop the
+// prior instance before starting a new one.
+const globalState = globalThis as typeof globalThis & {
+  __workers?: WorkersHandle | null;
+};
+
+globalState.__workers?.stop();
+
+if (isPollingDisabled()) {
+  globalState.__workers = null;
+  console.log("[workers] skipped (DISABLE_POLLING=1)");
+} else {
+  globalState.__workers = startAllPollingServices();
+}
+
+function shutdown(signal: string): void {
+  console.log(`\n[server] received ${signal}, shutting down...`);
+  globalState.__workers?.stop();
+  process.exit(0);
+}
+
+process.removeAllListeners("SIGINT");
+process.removeAllListeners("SIGTERM");
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));

@@ -23,40 +23,74 @@ export interface NavData {
   pendingMappingTasksCount: number;
 }
 
+interface NavTabDef {
+  id: NavTab;
+  href: string;
+  label: string;
+  badge?: number;
+}
+
+function getEnvLabel(): string {
+  return process.env.ENV || "dev";
+}
+
+function renderTab(tab: NavTabDef, active: NavTab): string {
+  const isActive = active === tab.id;
+  const classes = isActive
+    ? "border-blue-500 text-blue-600 font-semibold"
+    : "border-transparent text-gray-600 hover:text-gray-800";
+  const badge =
+    tab.badge && tab.badge > 0
+      ? `<span class="px-1.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">${tab.badge}</span>`
+      : "";
+  return `<a href="${tab.href}" class="py-4 px-3 border-b-2 flex items-center gap-2 ${classes}">${tab.label}${badge}</a>`;
+}
+
 export function renderNav(active: NavTab, navData: NavData): string {
-  const tabs: Array<{
-    id: NavTab;
-    href: string;
-    label: string;
-    badge?: number;
-  }> = [
-    { id: "accounts", href: "/accounts", label: "Accounts" },
-    { id: "outgoing", href: "/outgoing-messages", label: "Outgoing Messages" },
-    { id: "incoming", href: "/incoming-messages", label: "Incoming Messages" },
+  // Order by demo flow: inbound pipeline first (messages arrive → simulator →
+  // remediation), then outbound (accounts → BAR messages), then reference.
+  // The "data direction" story lives in the dashboard pipeline diagram, not
+  // here — nav is just navigation.
+  const tabs: NavTabDef[] = [
+    { id: "incoming", href: "/incoming-messages", label: "Inbound Messages" },
+    { id: "mllp-client", href: "/mllp-client", label: "Simulate Sender" },
     {
       id: "mapping-tasks",
       href: "/mapping/tasks",
-      label: "Mapping Tasks",
+      label: "Unmapped Codes",
       badge: navData.pendingMappingTasksCount,
     },
-    { id: "code-mappings", href: "/mapping/table", label: "Code Mappings" },
-    { id: "mllp-client", href: "/mllp-client", label: "MLLP Test Client" },
+    { id: "accounts", href: "/accounts", label: "Accounts" },
+    { id: "outgoing", href: "/outgoing-messages", label: "Outgoing Messages" },
+    { id: "code-mappings", href: "/mapping/table", label: "Terminology Map" },
   ];
+
+  const tabsHtml = tabs.map((tab) => renderTab(tab, active)).join("");
+
+  const env = getEnvLabel();
+  const envClass =
+    env === "prod" || env === "production"
+      ? "bg-red-100 text-red-700"
+      : env === "staging" || env === "test"
+        ? "bg-amber-100 text-amber-700"
+        : "bg-gray-100 text-gray-600";
+
+  const statusCluster = `
+    <div class="flex items-center gap-3 text-xs">
+      <span class="px-2 py-0.5 rounded font-medium uppercase tracking-wide ${envClass}">${env}</span>
+      <span class="flex items-center gap-1.5 text-gray-500" title="Aidbox status (checking...)" data-health-tooltip>
+        <span class="inline-block w-2 h-2 rounded-full bg-gray-300" data-health-dot></span>
+        <span data-health-label>Aidbox</span>
+      </span>
+    </div>`;
 
   return `
   <nav class="bg-white shadow mb-6">
-    <div class="container mx-auto px-4">
-      <div class="flex space-x-4">
-        ${tabs
-          .map(
-            (tab) => `
-        <a href="${tab.href}" class="py-4 px-2 border-b-2 flex items-center gap-2 ${active === tab.id ? "border-blue-500 text-blue-600 font-semibold" : "border-transparent text-gray-600 hover:text-gray-800"}">
-          ${tab.label}
-          ${tab.badge && tab.badge > 0 ? `<span class="px-1.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">${tab.badge}</span>` : ""}
-        </a>`,
-          )
-          .join("")}
+    <div class="container mx-auto px-4 flex items-center">
+      <div class="flex items-center flex-1 min-w-0 overflow-x-auto">
+        ${tabsHtml}
       </div>
+      ${statusCluster}
     </div>
   </nav>`;
 }
@@ -154,6 +188,37 @@ export function renderLayout(
     ${content}
   </div>
   <script>
+    // Aidbox health dot — polls /api/health every 10s.
+    (function() {
+      const dot = document.querySelector('[data-health-dot]');
+      const label = document.querySelector('[data-health-label]');
+      const tooltip = document.querySelector('[data-health-tooltip]');
+      if (!dot) return;
+
+      async function check() {
+        try {
+          const res = await fetch('/api/health', { cache: 'no-store' });
+          const data = await res.json();
+          if (data.ok) {
+            dot.className = 'inline-block w-2 h-2 rounded-full bg-green-500';
+            if (label) label.textContent = 'Aidbox';
+            if (tooltip) tooltip.setAttribute('title', 'Aidbox up (' + data.ms + 'ms)');
+          } else {
+            dot.className = 'inline-block w-2 h-2 rounded-full bg-red-500';
+            if (label) label.textContent = 'Aidbox down';
+            if (tooltip) tooltip.setAttribute('title', 'Aidbox down: ' + (data.error || 'unreachable'));
+          }
+        } catch (err) {
+          dot.className = 'inline-block w-2 h-2 rounded-full bg-red-500';
+          if (label) label.textContent = 'Health check failed';
+          if (tooltip) tooltip.setAttribute('title', 'Health check failed: ' + err.message);
+        }
+      }
+
+      check();
+      setInterval(check, 10_000);
+    })();
+
     function mergeHl7Tooltips(root) {
       const scope = root || document;
       const fieldWrappers = scope.querySelectorAll('.hl7-message-container .hl7-field-wrap[data-tooltip]');
