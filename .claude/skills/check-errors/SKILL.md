@@ -1,200 +1,115 @@
 ---
 name: check-errors
-description: Check recent HL7v2 processing errors in Aidbox, diagnose root causes, and suggest fixes. Use when asked to check errors, diagnose failures, or troubleshoot message processing.
+description: Check recent HL7v2 processing errors in Aidbox, diagnose root causes, suggest fixes. Use when asked to check errors, diagnose failures, or troubleshoot message processing.
 ---
 
 # Check HL7v2 Processing Errors
 
-Diagnose and help resolve IncomingHL7v2Message errors from the HL7v2→FHIR pipeline.
+Diagnose and help resolve `IncomingHL7v2Message` errors from the HL7v2→FHIR pipeline. Work iteratively — summary first, one error at a time, never auto-fix without approval.
 
-## Prerequisites
-
-All Aidbox requests below follow the `aidbox-request` skill pattern. Extract the secret once at the start of the session and keep `$SECRET` in the shell:
+## Step 1: Summary
 
 ```sh
-SECRET=$(awk -F': ' '/^[[:space:]]*BOX_ROOT_CLIENT_SECRET:/ {print $2}' docker-compose.yaml)
+scripts/errors/list-errors.sh
 ```
 
-If `$SECRET` is empty, stop and tell the developer: `BOX_ROOT_CLIENT_SECRET` is missing from `docker-compose.yaml`. Do not guess or hardcode a fallback.
+Emits a markdown table of active errors plus a deferred-count reminder. If output is `No active errors. No deferred messages.`, stop — say so and exit.
 
-Requests to the app (`http://localhost:3000`) are separate — no auth needed.
+If the user asked specifically about deferred messages, use `scripts/errors/list-errors.sh --deferred`.
 
-## Step 1: Query errors from Aidbox
+Ask: **"Which error would you like me to investigate?"** Skip `deferred` rows unless the user explicitly asks.
 
-Run this command to get a summary of recent errors:
+## Step 2: Inspect one
 
-```bash
-curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message?status=parsing_error,conversion_error,code_mapping_error,sending_error&_sort=-_lastUpdated&_count=20&_elements=id,status,type,error,sendingApplication,sendingFacility,meta' | python -m json.tool
+```sh
+scripts/errors/inspect-error.sh <id>
 ```
 
-If the user asked about a specific error or message ID, query that directly:
-```bash
-curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message/<ID>' | python -m json.tool
-```
+Emits: status, type, sender, full error, unmapped codes (if present), raw HL7v2 saved to `/tmp/hl7v2-<id>.hl7`, and an `hl7v2-inspect` overview for `parsing_error`/`conversion_error`. **You do not need to curl the resource yourself.**
 
-## Step 2: Present a summary
+Pick the playbook below by the `Status` line from Step 2.
 
-Show the developer a table of errors grouped by status:
+## Step 3: Diagnose by status
 
-```
-| # | Status | Type | Sender | Error (truncated) | ID |
-```
+### `parsing_error` — sender sent malformed HL7v2
 
-Also query deferred messages to remind the developer:
+1. From the inspect overview, identify what's wrong: missing MSH, invalid encoding chars (MSH-1/2), truncated segments, wrong line endings, embedded binary.
+2. **No code/config fix.** Sender must correct the message format.
+3. Offer to defer if it needs sender coordination: `POST http://localhost:3000/defer/<id>`.
+4. Only mark for retry if the sender has already fixed and will resend with the same ID.
 
-```bash
-curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message?status=deferred&_sort=-_lastUpdated&_count=20&_elements=id,status,type,error,sendingApplication,sendingFacility,meta' | python -m json.tool
-```
+### `conversion_error` — parsed OK, missing/invalid data for FHIR
 
-If there are deferred messages, add a reminder line after the error table:
+1. Read the error field. Common cases:
+   - **PV1-19 missing/empty:** check if PID-18 (account number) can be a fallback
+   - **PV1 required but absent:** check config for this message type
+   - **PV1-19 authority conflict:** check CX.4/9/10 values
+   - **PID missing:** sender issue
+   - **Unsupported message type:** check MSH-9
+2. Suggest fixes in this order:
+   - Best: sender populates the missing field — explain what's needed
+   - Workaround: add a preprocessor in `src/v2-to-fhir/preprocessor-registry.ts` + `config/hl7v2-to-fhir.json`
+   - Last resort: relax config (make a segment optional) — warn about the tradeoff
+3. If no clear fix (needs sender coordination, client decision, spec clarification) → offer to defer.
+4. **Wait for approval before implementing.** Then verify with `bun scripts/check-message-support.ts /tmp/hl7v2-<id>.hl7` before retrying.
 
-> **Deferred (N):** N messages are waiting on external input. Use `/check-errors deferred` to review them.
+### `code_mapping_error` — local code has no FHIR mapping
 
-Don't investigate deferred messages unless the developer explicitly asks. They are reminders, not action items.
+Inspect output lists each unmapped code with `mappingType`.
 
-Then ask: **"Which error would you like me to investigate?"**
-
-If there are no active errors but deferred messages exist, say: **"No active errors. N deferred message(s) awaiting external input."** and list them briefly.
-
-Don't try to fix everything at once. Work iteratively — one error at a time.
-
-## Step 3: Investigate the selected error
-
-Fetch the full message including raw HL7v2 content:
-
-```bash
-curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message/<ID>' | python -m json.tool
-```
-
-Then follow the diagnosis path based on error type:
-
----
-
-### For `parsing_error`
-
-The raw HL7v2 message is malformed.
-
-1. Read the `message` field from the resource
-2. Save it to a temp file and inspect with `scripts/hl7v2-inspect.sh`
-3. Identify the exact problem:
-   - Missing MSH segment
-   - Invalid encoding characters (MSH-1, MSH-2)
-   - Truncated message (incomplete segments)
-   - Encoding issues (wrong line endings, embedded binary)
-4. **Tell the developer:**
-   - What exactly is wrong with the message
-   - What the sender needs to fix
-   - There is no config/code fix — the sender must correct the message format
-5. **No code changes to suggest.** Offer to mark for retry only if the developer says the sender has fixed and will resend the same message ID.
-6. **If the sender fix requires coordination**, propose deferring: "This needs the sender to fix their message format. Want me to defer it until that's resolved?"
-
----
-
-### For `conversion_error`
-
-The message parsed fine but is missing required data or has invalid values.
-
-1. Read the `error` field to identify the failing check
-2. Save the raw message to a temp file and inspect with `scripts/hl7v2-inspect.sh --values`
-3. Identify what's missing or invalid — common cases:
-   - **PV1-19 missing/empty**: Check if PID-18 has an account number that could serve as fallback
-   - **PV1 segment required but absent**: Check config for this message type
-   - **PV1-19 authority conflict**: Check CX.4/9/10 values
-   - **PID segment missing**: Fundamental sender issue
-   - **Unsupported message type**: Check MSH-9
-4. **Suggest fixes ranked by preference:**
-   - **Best:** "Sender should populate [field]" — explain what's needed
-   - **Workaround:** "Add a preprocessor to [action]" — describe the preprocessor and offer to implement it
-   - **Last resort:** "Make [segment] optional in config" — warn about the tradeoff (e.g., losing Encounter link) and offer to change config
-5. **If no clear fix exists** (e.g., requires sender coordination, client decision, or spec clarification), **propose deferring** the message: "This needs external input. Want me to defer it for now?"
-6. **Wait for developer approval** before making any changes
-7. If approved, implement the fix:
-   - Config change: edit `config/hl7v2-to-fhir.json`
-   - New preprocessor: edit `src/v2-to-fhir/preprocessor-registry.ts` and update config
-   - Then offer to mark the message for retry
-
----
-
-### For `code_mapping_error`
-
-A code in the message has no FHIR mapping.
-
-1. Read the `unmappedCodes` array from the message
-2. For each unmapped code, show:
-   - Local code and system
-   - Mapping type (observation-code-loinc, patient-class, obr-status, obx-status, etc.)
-   - Sending application and facility
-3. **For observation-code-loinc mappings:** Search LOINC for likely matches:
-   ```bash
-   curl -sf -u "root:$SECRET" 'http://localhost:8080/api/terminology/loinc?q=<search term>'
+1. For `observation-code-loinc`, search LOINC by display text:
+   ```sh
+   SECRET=$(awk -F': ' '/^[[:space:]]*BOX_ROOT_CLIENT_SECRET:/ {print $2}' docker-compose.yaml)
+   curl -sf -u "root:$SECRET" 'http://localhost:8080/api/terminology/loinc?q=<term>'
    ```
-   Use the local code display text as the search term.
-4. **For patient-class, obr-status, obx-status mappings:** Look up valid FHIR target values from the mapping type registry (`src/code-mapping/mapping-types.ts`) and suggest the best match.
-5. **Present suggestions** to the developer with confidence level:
-   - "High confidence: local code `2823-3` → LOINC `2823-3` (Potassium)"
-   - "Needs review: local code `GLU` → LOINC `2345-7` (Glucose) — verify with lab"
-6. **If no confident match exists** (local code is ambiguous, multiple LOINC candidates, needs domain expertise), propose deferring: "I can't confidently map this code. Want me to defer it until you consult with the lab/client?"
-7. **Wait for developer approval** before resolving
-8. If approved, resolve the mapping task:
-   ```bash
-   curl -sf -u "root:$SECRET" -X POST 'http://localhost:8080/api/mapping/tasks/<taskId>/resolve' \
+2. For `patient-class`, `obr-status`, `obx-status`, etc.: look up valid target values in `src/code-mapping/mapping-types.ts`.
+3. Present suggestions with confidence: "High: `2823-3` → LOINC `2823-3` (Potassium)" vs "Needs review: `GLU` → `2345-7` (Glucose) — verify with lab".
+4. If ambiguous / needs domain expertise → offer to defer.
+5. After approval, resolve via the app API:
+   ```sh
+   curl -sf -X POST 'http://localhost:3000/api/mapping/tasks/<taskId>/resolve' \
      -H 'Content-Type: application/json' \
-     -d '{"code": "<target_code>", "display": "<target_display>"}'
+     -d '{"code":"<target>","display":"<target display>"}'
    ```
-   The message will be automatically requeued for reprocessing.
+   Message is auto-requeued.
 
----
+### `sending_error` — Aidbox rejected the FHIR bundle
 
-### For `sending_error`
+1. Check health: `curl -sf http://localhost:8080/health`
+2. Read the error for rejection reason. If a `bundle` field is saved on the resource, inspect it for FHIR validation issues.
+3. Common causes:
+   - Aidbox was down → check now, offer retry
+   - 422 validation → identify the failing resource + field, suggest fix (missing required, invalid code, terminology binding)
+   - Timeout → usually transient, offer retry
+4. If a structural fix is needed (init-bundle.json StructureDefinition, missing CodeSystem) — suggest it and wait for approval.
 
-The FHIR bundle was built but Aidbox rejected it.
+## Step 4: After a fix
 
-1. Check Aidbox health:
-   ```bash
-   curl -sf -u "root:$SECRET" 'http://localhost:8080/health'
+1. Verify locally:
+   ```sh
+   bun scripts/check-message-support.ts /tmp/hl7v2-<id>.hl7
    ```
-2. Read the `error` field for the rejection reason
-3. If the message has a saved `bundle` field, inspect it for FHIR validation issues
-4. **Common causes and fixes:**
-   - **Aidbox was down:** Check if it's healthy now → offer to mark for retry
-   - **FHIR validation error (422):** Read the error details, identify which resource failed validation, suggest a fix (missing required field, invalid code, terminology binding failure)
-   - **Timeout:** Likely transient → offer to mark for retry
-5. **If structural fix needed:** Identify what needs to change (init-bundle.json StructureDefinition, missing CodeSystem, etc.) and suggest the fix
-6. **Wait for developer approval** before making changes
-
----
-
-## Step 4: After fixing
-
-After implementing a fix:
-1. **Verify the fix locally first** with the `message-lookup` skill. Save the raw `message` field from the failing `IncomingHL7v2Message` to a temp file and run:
-   ```bash
-   bun scripts/check-message-support.ts /tmp/<id>.hl7
+   Only proceed when verdict is `supported` or `supported with caveats`.
+2. Mark for retry (app endpoint, not Aidbox):
+   ```sh
+   curl -sf -X POST 'http://localhost:3000/mark-for-retry/<id>'
    ```
-   If this still reports an error, the fix is incomplete — do not mark for retry yet. Only proceed when the verdict is `supported` or `supported with caveats`.
-2. Offer to mark the message for retry (this is an app endpoint, NOT Aidbox):
-   ```bash
-   curl -sf -X POST 'http://localhost:3000/mark-for-retry/<messageId>'
-   ```
-3. Offer to trigger reprocessing:
-   ```bash
+3. Trigger reprocessing:
+   ```sh
    curl -sf -X POST 'http://localhost:3000/process-incoming-messages'
    ```
-4. Then re-query the message to verify the fix worked end-to-end:
-   ```bash
-   curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message/<ID>?_elements=id,status,error' | python -m json.tool
+4. Re-check status:
+   ```sh
+   SECRET=$(awk -F': ' '/^[[:space:]]*BOX_ROOT_CLIENT_SECRET:/ {print $2}' docker-compose.yaml)
+   curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message/<id>?_elements=id,status,error' | jq
    ```
-5. Report the result to the developer
+5. Report result.
 
-## Important rules
+## Rules
 
-- **Always work iteratively.** Show the summary first, then investigate one error at a time.
-- **Never auto-fix without approval.** Always present the diagnosis and suggested fix, then wait for the developer to approve.
-- **Skip `deferred` messages.** These have been investigated and are awaiting external input. Do not include them in error summaries unless the developer explicitly asks about deferred messages.
-- **Offer to defer.** When the developer decides an error needs external input (e.g., waiting on client feedback), offer to defer it:
-  ```bash
-  curl -sf -X POST 'http://localhost:3000/defer/<messageId>'
-  ```
-- **Use hl7v2-inspect.sh for field analysis.** Don't manually count pipes in HL7v2 messages.
-- **Read CLAUDE.md** for project architecture context if needed.
-- **Use the hl7v2-info skill** if you need to verify HL7v2 spec compliance for a field.
+- Summary first, then one error at a time.
+- Never auto-fix without approval.
+- Skip `deferred` unless the user asks about them.
+- To defer: `curl -sf -X POST 'http://localhost:3000/defer/<id>'`.
+- Don't hand-count pipes — the inspect script already ran `hl7v2-inspect.sh`. For deeper field lookup use `scripts/hl7v2-inspect.sh --field SEG.N`.
+- Use the `hl7v2-info` skill to verify HL7v2 spec compliance when needed.

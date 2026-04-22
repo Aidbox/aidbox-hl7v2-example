@@ -1,6 +1,6 @@
 ---
 name: fhir-info
-description: Look up FHIR resource/datatype/backbone fields, types, cardinality, reference targets, and coded value enums. Use this skill for writing HL7v2↔FHIR converters, mapping FHIR fields, checking field cardinality/optionality, verifying FHIR compliance, or answering questions about FHIR R4 types (including custom resources like IncomingHL7v2Message and OutgoingBarMessage).
+description: Look up FHIR R4 resource/datatype fields, types, cardinality, reference targets, and coded enums (including custom resources like IncomingHL7v2Message, OutgoingBarMessage). Use when writing converters or verifying FHIR compliance.
 ---
 
 # FHIR Reference Lookup

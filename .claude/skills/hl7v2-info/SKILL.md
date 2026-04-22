@@ -1,6 +1,6 @@
 ---
 name: hl7v2-info
-description: Look up segment fields, datatypes, components, tables, and message structures. Use this skill for writing HL7v2↔FHIR converters, mapping HL7v2 fields, checking field positions/optionality, verifying HL7v2 compliance, or answering questions about HL7v2.
+description: Look up HL7v2 segment fields, datatypes, components, tables, and message structures. Use when writing converters, checking field positions/optionality, or verifying HL7v2 spec compliance.
 ---
 
 # HL7v2 Reference Lookup

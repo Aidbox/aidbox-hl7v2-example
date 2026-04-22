@@ -1,6 +1,6 @@
 ---
 name: message-lookup
-description: Check whether an HL7v2 message is already supported by this project's pipeline. Runs parse → preprocess → convert and prints a brief verdict. Use before building a new converter, when triaging "is this message supported?" questions, or when verifying that a conversion_error/parsing_error fix actually works.
+description: Check whether an HL7v2 message is already supported by this pipeline (parse → preprocess → convert, prints verdict). Use before building a new converter, triaging "is this supported?", or verifying a parsing/conversion_error fix.
 ---
 
 # Message Lookup
