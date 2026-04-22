@@ -1,7 +1,0 @@
-MSH|^~\&|TELEHEALTH|FAKEGROUP|EHRAPP|FAKEGROUP|20260502094500||SIU^S12|FAKE-SIU-2003|P|2.5|||AL|NE
-SCH|APPT-FAKE-2003|FILLER-FAKE-2003||||Telehealth Check-in|ROUTINE^Routine^HL70276|TELE^Telehealth Visit^HL70277|||||||||DR-FAKE-9203^Thistlecrane^Octavia^N^^^MD^^^^^^XX|||DR-FAKE-9203^Thistlecrane^Octavia^N^^^MD^^^^^^XX||||Booked
-TQ1|1|||||||20260515150000|20260515152000
-PID|1||MRN-FAKE-00003^^^FAKEGROUP^MR||Glimmerdell^Constance^E^^^^L||19910530|F||2054-5^Black or African American^HL70005|9142 Nowhere Blvd^^Silverton^OR^97381^USA^H||^PRN^CP^^^555^0100555|||W||PATACCT-FAKE-00003
-RGS|1|A|GRP1^Virtual Visit
-AIS|1|A|99441^Telephone Evaluation^CPT|20260515150000||||20|min||Booked
-AIP|1|A|DR-FAKE-9203^Thistlecrane^Octavia^N^^^MD^^^^^^XX|D^Doctor^HL70182||20260515150000|||20|min||Booked
