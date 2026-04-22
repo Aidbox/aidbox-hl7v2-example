@@ -41,17 +41,15 @@ describe("convertORU_R01 - config-driven PV1 policy", () => {
     const result = await convertORU_R01(parsed, makeTestContext());
 
     expect(result.messageUpdate.status).toBe("processed");
-    expect(result.bundle).toBeDefined();
+    expect(result.entries).toBeDefined();
 
-    const encounterEntry = result.bundle!.entry?.find(
-      (e) => e.resource?.resourceType === "Encounter",
-    );
-    expect(encounterEntry).toBeDefined();
-
-    const encounter = encounterEntry!.resource as Encounter;
-    expect(encounter.id).toBe("urn-oid-1-2-3-v12345");
-    expect(encounter.identifier?.[0]?.type?.coding?.[0]?.code).toBe("VN");
-    expect(encounter.identifier?.[0]?.value).toBe("V12345");
+    const encounter = result.entries!.find(
+      (r) => r.resourceType === "Encounter",
+    ) as Encounter | undefined;
+    expect(encounter).toBeDefined();
+    expect(encounter!.id).toBe("urn-oid-1-2-3-v12345");
+    expect(encounter!.identifier?.[0]?.type?.coding?.[0]?.code).toBe("VN");
+    expect(encounter!.identifier?.[0]?.value).toBe("V12345");
   });
 
   test("ORU without PV1 (config: required=false) creates clinical data, no Encounter", async () => {
@@ -60,18 +58,18 @@ describe("convertORU_R01 - config-driven PV1 policy", () => {
 
     // No warning for missing PV1 when not required (PV1 absence is normal for ORU)
     expect(result.messageUpdate.status).toBe("processed");
-    expect(result.bundle).toBeDefined();
+    expect(result.entries).toBeDefined();
 
-    const encounterEntry = result.bundle!.entry?.find(
-      (e) => e.resource?.resourceType === "Encounter",
+    const encounter = result.entries!.find(
+      (r) => r.resourceType === "Encounter",
     );
-    expect(encounterEntry).toBeUndefined();
+    expect(encounter).toBeUndefined();
 
     // Clinical data (DiagnosticReport, Observation) should still be created
-    const reportEntry = result.bundle!.entry?.find(
-      (e) => e.resource?.resourceType === "DiagnosticReport",
+    const report = result.entries!.find(
+      (r) => r.resourceType === "DiagnosticReport",
     );
-    expect(reportEntry).toBeDefined();
+    expect(report).toBeDefined();
   });
 
   test("ORU with invalid PV1-19 authority (config: required=false) sets warning, preserves clinical data", async () => {
@@ -81,42 +79,42 @@ describe("convertORU_R01 - config-driven PV1 policy", () => {
     expect(result.messageUpdate.status).toBe("warning");
     expect(result.messageUpdate.error).toBeDefined();
     expect(result.messageUpdate.error).toContain("CX.4");
-    expect(result.bundle).toBeDefined();
+    expect(result.entries).toBeDefined();
 
     // No Encounter created
-    const encounterEntry = result.bundle!.entry?.find(
-      (e) => e.resource?.resourceType === "Encounter",
+    const encounter = result.entries!.find(
+      (r) => r.resourceType === "Encounter",
     );
-    expect(encounterEntry).toBeUndefined();
+    expect(encounter).toBeUndefined();
 
     // DiagnosticReport and Observations still created
-    const reportEntry = result.bundle!.entry?.find(
-      (e) => e.resource?.resourceType === "DiagnosticReport",
+    const report = result.entries!.find(
+      (r) => r.resourceType === "DiagnosticReport",
     );
-    expect(reportEntry).toBeDefined();
+    expect(report).toBeDefined();
 
-    const obsEntries = result.bundle!.entry?.filter(
-      (e) => e.resource?.resourceType === "Observation",
+    const observations = result.entries!.filter(
+      (r) => r.resourceType === "Observation",
     );
-    expect(obsEntries?.length).toBeGreaterThan(0);
+    expect(observations.length).toBeGreaterThan(0);
   });
 
   test("clinical data preserved when Encounter skipped due to warning", async () => {
     const parsed = parseMessage(oruWithInvalidAuthority);
     const result = await convertORU_R01(parsed, makeTestContext());
 
-    expect(result.bundle).toBeDefined();
+    expect(result.entries).toBeDefined();
 
     // Patient draft should still be created
-    const patientEntry = result.bundle!.entry?.find(
-      (e) => e.resource?.resourceType === "Patient",
+    const patient = result.entries!.find(
+      (r) => r.resourceType === "Patient",
     );
-    expect(patientEntry).toBeDefined();
+    expect(patient).toBeDefined();
 
     // DiagnosticReport should not reference an Encounter
-    const report = result.bundle!.entry?.find(
-      (e) => e.resource?.resourceType === "DiagnosticReport",
-    )?.resource as any;
+    const report = result.entries!.find(
+      (r) => r.resourceType === "DiagnosticReport",
+    ) as any;
     expect(report?.encounter).toBeUndefined();
   });
 });

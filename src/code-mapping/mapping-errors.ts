@@ -5,14 +5,13 @@
  * (LOINC, address type, patient class, OBR/OBX status, etc.)
  */
 
-import type { Bundle, BundleEntry } from "../fhir/hl7-fhir-r4-core";
+import type { Task } from "../fhir/hl7-fhir-r4-core";
 import type { UnmappedCode } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import type { ConversionResult } from "../v2-to-fhir/converter";
 import type { MappingTypeName } from "./mapping-types";
 import type { SenderContext } from "./concept-map";
 import {
   composeMappingTask,
-  composeTaskBundleEntry,
   generateMappingTaskId,
 } from "./mapping-task";
 import { generateConceptMapId } from "./concept-map";
@@ -34,7 +33,7 @@ export interface MappingError {
  * Creates Tasks for each unique mapping error and returns a result with
  * status "code_mapping_error" and the list of unmapped codes.
  *
- * Note: Only Tasks are included in the bundle. Draft Patient/Encounter resources
+ * Note: Only Tasks are included in the entries. Draft Patient/Encounter resources
  * are NOT created when a message has mapping errors - they will be created when
  * the message is successfully reprocessed after all mappings are resolved.
  *
@@ -46,7 +45,7 @@ export function buildMappingErrorResult(
   mappingErrors: MappingError[],
 ): ConversionResult {
   const seenTaskIds = new Set<string>();
-  const entries: BundleEntry[] = [];
+  const entries: Task[] = [];
   const unmappedCodes: UnmappedCode[] = [];
 
   for (const error of mappingErrors) {
@@ -68,8 +67,7 @@ export function buildMappingErrorResult(
     if (seenTaskIds.has(taskId)) continue;
     seenTaskIds.add(taskId);
 
-    const task = composeMappingTask(senderContext, error);
-    entries.push(composeTaskBundleEntry(task));
+    entries.push(composeMappingTask(senderContext, error));
 
     unmappedCodes.push({
       localCode: error.localCode,
@@ -79,14 +77,8 @@ export function buildMappingErrorResult(
     });
   }
 
-  const bundle: Bundle = {
-    resourceType: "Bundle",
-    type: "transaction",
-    entry: entries.length > 0 ? entries : undefined,
-  };
-
   return {
-    bundle,
+    entries: entries.length > 0 ? entries : undefined,
     messageUpdate: {
       status: "code_mapping_error",
       unmappedCodes: unmappedCodes.length > 0 ? unmappedCodes : undefined,

@@ -28,8 +28,6 @@ import {
   type AL1,
 } from "../../hl7v2/generated/fields";
 import type {
-  Bundle,
-  BundleEntry,
   Patient,
   Encounter,
   RelatedPerson,
@@ -39,6 +37,7 @@ import type {
   Coding,
   Meta,
 } from "../../fhir/hl7-fhir-r4-core";
+import type { DomainResource } from "../../fhir/hl7-fhir-r4-core/DomainResource";
 import { convertPIDToPatient } from "../segments/pid-patient";
 import { convertPV1WithMappingSupport } from "../segments/pv1-encounter";
 import { convertNK1ToRelatedPerson } from "../segments/nk1-relatedperson";
@@ -53,7 +52,6 @@ import {
 } from "../../code-mapping/mapping-errors";
 import type { SenderContext } from "../../code-mapping/concept-map";
 import type { ConverterContext } from "../converter-context";
-import { createBundleEntry } from "../fhir-bundle";
 import { extractMetaTags } from "../segments/msh-parsing";
 
 // ============================================================================
@@ -411,48 +409,16 @@ export async function convertADT_A01(
   }
 
   // =========================================================================
-  // Build Transaction Bundle
+  // Collect Entries
   // =========================================================================
 
-  const entries: BundleEntry[] = [];
-
-  // Add Patient (always first)
-  entries.push(createBundleEntry(patient));
-
-  // Add Encounter
-  if (encounter) {
-    entries.push(createBundleEntry(encounter));
-  }
-
-  // Add RelatedPersons
-  for (const rp of relatedPersons) {
-    entries.push(createBundleEntry(rp));
-  }
-
-  // Add Conditions
-  for (const cond of conditions) {
-    entries.push(createBundleEntry(cond));
-  }
-
-  // Add Allergies
-  for (const allergy of allergies) {
-    entries.push(createBundleEntry(allergy));
-  }
-
-  // Add Coverages
-  for (const coverage of coverages) {
-    entries.push(createBundleEntry(coverage));
-  }
-
-  const bundle: Bundle = {
-    resourceType: "Bundle",
-    type: "transaction",
-    entry: entries,
-  };
+  const entries: DomainResource[] = [patient];
+  if (encounter) entries.push(encounter);
+  entries.push(...relatedPersons, ...conditions, ...allergies, ...coverages);
 
   if (encounterWarning) {
     return {
-      bundle,
+      entries,
       messageUpdate: {
         status: "warning",
         error: encounterWarning,
@@ -462,7 +428,7 @@ export async function convertADT_A01(
   }
 
   return {
-    bundle,
+    entries,
     messageUpdate: {
       status: "processed",
       patient: patient.id ? { reference: `Patient/${patient.id}` } : undefined,

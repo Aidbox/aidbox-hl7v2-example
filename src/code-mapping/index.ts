@@ -28,7 +28,6 @@ export {
 export {
   generateMappingTaskId,
   composeMappingTask,
-  composeTaskBundleEntry,
   resolveMappingTask,
   removeTaskFromMessage,
 } from "./mapping-task";

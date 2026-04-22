@@ -19,8 +19,10 @@ import type {
   CodeableConcept,
   Quantity,
   Reference,
+  Practitioner,
+  PractitionerRole,
 } from "../../fhir/hl7-fhir-r4-core";
-import type { BundleEntry } from "../../fhir/hl7-fhir-r4-core";
+import type { DomainResource } from "../../fhir/hl7-fhir-r4-core/DomainResource";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { convertCWEToCodeableConcept } from "../datatypes/cwe-codeableconcept";
 import { convertEIToTypedIdentifier } from "../datatypes/ei-coding";
@@ -28,11 +30,10 @@ import { convertDTMToDateTime, convertDTMToDate } from "../datatypes/dtm-datetim
 import { normalizeSystem } from "../code-mapping/coding-systems";
 import { convertXCNToPractitioner, buildPractitionerIdFromXCN } from "../datatypes/xcn-practitioner";
 import { convertXCNToPractitionerRole } from "../datatypes/xcn-practitioner-role";
-import { createBundleEntry } from "../fhir-bundle";
 
 export interface RXAConversionResult {
   immunization: Immunization;
-  performerEntries: BundleEntry[];
+  performerResources: DomainResource[];
 }
 
 /**
@@ -135,7 +136,7 @@ const PERFORMER_FUNCTION_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0443
  */
 function createAdministeringPerformer(
   xcn: XCN,
-): { performer: ImmunizationPerformer; practitionerEntry: BundleEntry } | undefined {
+): { performer: ImmunizationPerformer; practitioner: Practitioner } | undefined {
   const practitioner = convertXCNToPractitioner(xcn);
   if (!practitioner) {
     return undefined;
@@ -155,7 +156,7 @@ function createAdministeringPerformer(
       },
       actor: { reference: `Practitioner/${practitionerId}` },
     },
-    practitionerEntry: createBundleEntry(practitioner),
+    practitioner,
   };
 }
 
@@ -165,7 +166,7 @@ function createAdministeringPerformer(
  */
 function createOrderingPerformer(
   xcn: XCN,
-): { performer: ImmunizationPerformer; practitionerRoleEntry: BundleEntry } | undefined {
+): { performer: ImmunizationPerformer; practitionerRole: PractitionerRole } | undefined {
   const practitionerRole = convertXCNToPractitionerRole(xcn);
   if (!practitionerRole) {
     return undefined;
@@ -185,7 +186,7 @@ function createOrderingPerformer(
       },
       actor: { reference: `PractitionerRole/role-${roleId}` },
     },
-    practitionerRoleEntry: createBundleEntry(practitionerRole),
+    practitionerRole,
   };
 }
 
@@ -307,12 +308,12 @@ export function convertRXAToImmunization(
     }
   }
 
-  const { performers, performerEntries } = buildPerformers(rxa, orc);
+  const { performers, performerResources } = buildPerformers(rxa, orc);
   if (performers.length > 0) {
     immunization.performer = performers;
   }
 
-  return { immunization, performerEntries };
+  return { immunization, performerResources };
 }
 
 /**
@@ -322,15 +323,15 @@ export function convertRXAToImmunization(
 function buildPerformers(
   rxa: RXA,
   orc: ORC | undefined,
-): { performers: ImmunizationPerformer[]; performerEntries: BundleEntry[] } {
+): { performers: ImmunizationPerformer[]; performerResources: DomainResource[] } {
   const performers: ImmunizationPerformer[] = [];
-  const performerEntries: BundleEntry[] = [];
+  const performerResources: DomainResource[] = [];
 
   if (rxa.$10_administeringProvider?.length) {
     const adminResult = createAdministeringPerformer(rxa.$10_administeringProvider[0]!);
     if (adminResult) {
       performers.push(adminResult.performer);
-      performerEntries.push(adminResult.practitionerEntry);
+      performerResources.push(adminResult.practitioner);
     }
   }
 
@@ -338,9 +339,9 @@ function buildPerformers(
     const orderResult = createOrderingPerformer(orc.$12_orderingProvider[0]!);
     if (orderResult) {
       performers.push(orderResult.performer);
-      performerEntries.push(orderResult.practitionerRoleEntry);
+      performerResources.push(orderResult.practitionerRole);
     }
   }
 
-  return { performers, performerEntries };
+  return { performers, performerResources };
 }

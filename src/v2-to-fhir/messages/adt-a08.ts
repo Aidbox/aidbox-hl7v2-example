@@ -15,13 +15,11 @@ import {
 } from "../../hl7v2/generated/fields";
 import type {
   Patient,
-  Bundle,
   Coding,
   Meta,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertPIDToPatient } from "../segments/pid-patient";
 import type { ConverterContext } from "../converter-context";
-import { createBundleEntry } from "../fhir-bundle";
 import { extractMetaTags } from "../segments/msh-parsing";
 
 // ============================================================================
@@ -97,22 +95,8 @@ export async function convertADT_A08(
     }
   }
 
-  // =========================================================================
-  // Create Bundle Entry
-  // =========================================================================
-  const entry = createBundleEntry(patient);
-
-  // =========================================================================
-  // Create Bundle
-  // =========================================================================
-  const bundle: Bundle = {
-    resourceType: "Bundle",
-    type: "transaction",
-    entry: [entry],
-  };
-
   return {
-    bundle,
+    entries: [patient],
     messageUpdate: {
       status: "processed",
       patient: { reference: `Patient/${patient.id}` },

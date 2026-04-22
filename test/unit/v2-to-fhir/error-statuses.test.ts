@@ -66,7 +66,7 @@ describe("parsing_error", () => {
     const result = await convertMessage(makeMessage(""));
     expect(result.messageUpdate.status).toBe("parsing_error");
     expect(result.messageUpdate.error).toContain("MSH");
-    expect(result.bundle).toBeUndefined();
+    expect(result.entries).toBeUndefined();
   });
 
   test("garbage string returns parsing_error", async () => {
@@ -149,8 +149,8 @@ describe("code_mapping_error", () => {
     expect(result.messageUpdate.status).toBe("code_mapping_error");
     expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
     expect(result.messageUpdate.unmappedCodes![0]!.localCode).toBe("XY");
-    expect(result.bundle?.entry).toHaveLength(1);
-    expect(result.bundle!.entry![0]!.resource?.resourceType).toBe("Task");
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries![0]!.resourceType).toBe("Task");
   });
 
   test("multiple unmapped codes produce multiple Tasks", () => {
@@ -172,7 +172,7 @@ describe("code_mapping_error", () => {
 
     expect(result.messageUpdate.status).toBe("code_mapping_error");
     expect(result.messageUpdate.unmappedCodes).toHaveLength(2);
-    expect(result.bundle?.entry).toHaveLength(2);
+    expect(result.entries).toHaveLength(2);
   });
 });
 

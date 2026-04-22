@@ -18,7 +18,8 @@ export interface UnmappedCode {
 export interface IncomingHL7v2Message extends DomainResource {
   resourceType: "IncomingHL7v2Message";
 
-  bundle?: string;
+  batchTag?: string;
+  entries?: DomainResource[];
   date?: string;
   error?: string;
   message: string;

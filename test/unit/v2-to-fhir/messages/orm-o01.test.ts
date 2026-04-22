@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { parseMessage } from "@atomic-ehr/hl7v2";
 import type {
-  Bundle,
   Condition,
   Encounter,
   MedicationRequest,
@@ -9,6 +8,7 @@ import type {
   ServiceRequest,
   Coverage,
 } from "../../../../src/fhir/hl7-fhir-r4-core";
+import type { DomainResource } from "../../../../src/fhir/hl7-fhir-r4-core/DomainResource";
 import { clearConfigCache } from "../../../../src/v2-to-fhir/config";
 import { convertORM_O01 } from "../../../../src/v2-to-fhir/messages/orm-o01";
 import { makeTestContext } from "../helpers";
@@ -41,14 +41,11 @@ async function convert(lines: string[]) {
   return await convertORM_O01(parsed, makeTestContext());
 }
 
-function getResources<T extends { resourceType: string }>(bundle: Bundle | undefined, resourceType: string): T[] {
-  if (!bundle?.entry) {
-    return [];
-  }
-
-  return bundle.entry
-    .map((entry) => entry.resource)
-    .filter((resource) => resource?.resourceType === resourceType) as T[];
+function getResources<T extends { resourceType: string }>(
+  entries: DomainResource[] | undefined,
+  resourceType: string,
+): T[] {
+  return (entries ?? []).filter((resource) => resource.resourceType === resourceType) as T[];
 }
 
 afterEach(() => {
@@ -65,7 +62,7 @@ describe("convertORM_O01", () => {
     ]);
 
     expect(result.messageUpdate.status).toBe("processed");
-    const serviceRequests = getResources<ServiceRequest>(result.bundle, "ServiceRequest");
+    const serviceRequests = getResources<ServiceRequest>(result.entries, "ServiceRequest");
 
     expect(serviceRequests).toHaveLength(1);
     expect(serviceRequests[0]!.intent).toBe("order");
@@ -82,7 +79,7 @@ describe("convertORM_O01", () => {
     ]);
 
     expect(result.messageUpdate.status).toBe("processed");
-    const medicationRequests = getResources<MedicationRequest>(result.bundle, "MedicationRequest");
+    const medicationRequests = getResources<MedicationRequest>(result.entries, "MedicationRequest");
 
     expect(medicationRequests).toHaveLength(1);
     expect(medicationRequests[0]!.intent).toBe("original-order");
@@ -99,7 +96,7 @@ describe("convertORM_O01", () => {
       segment("OBR", { 1: "2", 2: "ORD-002", 4: "22222^BMP^LN" }),
     ]);
 
-    const serviceRequests = getResources<ServiceRequest>(result.bundle, "ServiceRequest");
+    const serviceRequests = getResources<ServiceRequest>(result.entries, "ServiceRequest");
     expect(serviceRequests).toHaveLength(2);
     expect(new Set(serviceRequests.map((sr) => sr.id)).size).toBe(2);
   });
@@ -114,7 +111,7 @@ describe("convertORM_O01", () => {
       segment("RXO", { 1: "RX002^Ibuprofen^NDC" }),
     ]);
 
-    const medicationRequests = getResources<MedicationRequest>(result.bundle, "MedicationRequest");
+    const medicationRequests = getResources<MedicationRequest>(result.entries, "MedicationRequest");
     expect(medicationRequests).toHaveLength(2);
   });
 
@@ -127,8 +124,8 @@ describe("convertORM_O01", () => {
       segment("DG1", { 1: "1", 3: "E11.9^Type 2 diabetes mellitus^I10" }),
     ]);
 
-    const serviceRequest = getResources<ServiceRequest>(result.bundle, "ServiceRequest")[0]!;
-    const conditions = getResources<Condition>(result.bundle, "Condition");
+    const serviceRequest = getResources<ServiceRequest>(result.entries, "ServiceRequest")[0]!;
+    const conditions = getResources<Condition>(result.entries, "Condition");
 
     expect(conditions).toHaveLength(1);
     expect(serviceRequest.reasonReference).toHaveLength(1);
@@ -144,7 +141,7 @@ describe("convertORM_O01", () => {
       segment("NTE", { 1: "1", 3: "Clinical note" }),
     ]);
 
-    const serviceRequest = getResources<ServiceRequest>(result.bundle, "ServiceRequest")[0]!;
+    const serviceRequest = getResources<ServiceRequest>(result.entries, "ServiceRequest")[0]!;
     expect(serviceRequest.note).toHaveLength(1);
     expect(serviceRequest.note?.[0]?.text).toContain("Clinical note");
   });
@@ -158,8 +155,8 @@ describe("convertORM_O01", () => {
       segment("OBX", { 1: "1", 2: "ST", 3: "Q001^Question^99LOCAL", 5: "YES", 11: "F" }),
     ]);
 
-    const serviceRequest = getResources<ServiceRequest>(result.bundle, "ServiceRequest")[0]!;
-    const observations = getResources<Observation>(result.bundle, "Observation");
+    const serviceRequest = getResources<ServiceRequest>(result.entries, "ServiceRequest")[0]!;
+    const observations = getResources<Observation>(result.entries, "Observation");
 
     expect(observations).toHaveLength(1);
     expect(serviceRequest.supportingInfo).toHaveLength(1);
@@ -175,7 +172,7 @@ describe("convertORM_O01", () => {
       segment("OBR", { 1: "1", 2: "ORD-001", 4: "12345^CBC^LN" }),
     ]);
 
-    const coverages = getResources<Coverage>(result.bundle, "Coverage");
+    const coverages = getResources<Coverage>(result.entries, "Coverage");
     expect(coverages.length).toBeGreaterThan(0);
   });
 
@@ -189,7 +186,7 @@ describe("convertORM_O01", () => {
     ]);
 
     expect(result.messageUpdate.status).toBe("processed");
-    const observation = getResources<Observation>(result.bundle, "Observation")[0]!;
+    const observation = getResources<Observation>(result.entries, "Observation")[0]!;
 
     expect(observation.code.coding?.[0]?.code).toBe("LOCAL-OBS");
     expect(observation.code.coding?.[0]?.system).toBe("99LOCAL");
@@ -204,7 +201,7 @@ describe("convertORM_O01", () => {
       segment("OBX", { 1: "1", 2: "ST", 3: "Q001^Question^99LOCAL", 5: "YES" }),
     ]);
 
-    const observation = getResources<Observation>(result.bundle, "Observation")[0]!;
+    const observation = getResources<Observation>(result.entries, "Observation")[0]!;
     expect(observation.status).toBe("registered");
   });
 
@@ -216,7 +213,7 @@ describe("convertORM_O01", () => {
       segment("OBR", { 1: "1", 2: "ORD-001", 4: "12345^CBC^LN" }),
     ]);
 
-    const serviceRequest = getResources<ServiceRequest>(result.bundle, "ServiceRequest")[0]!;
+    const serviceRequest = getResources<ServiceRequest>(result.entries, "ServiceRequest")[0]!;
     expect(serviceRequest.status).toBe("active");
   });
 
@@ -228,7 +225,7 @@ describe("convertORM_O01", () => {
       segment("OBR", { 1: "1", 2: "ORD-001", 4: "12345^CBC^LN" }),
     ]);
 
-    const serviceRequest = getResources<ServiceRequest>(result.bundle, "ServiceRequest")[0]!;
+    const serviceRequest = getResources<ServiceRequest>(result.entries, "ServiceRequest")[0]!;
     expect(serviceRequest.status).toBe("active");
   });
 
@@ -240,7 +237,7 @@ describe("convertORM_O01", () => {
       segment("OBR", { 1: "1", 2: "ORD-001", 4: "12345^CBC^LN" }),
     ]);
 
-    const serviceRequest = getResources<ServiceRequest>(result.bundle, "ServiceRequest")[0]!;
+    const serviceRequest = getResources<ServiceRequest>(result.entries, "ServiceRequest")[0]!;
     expect(serviceRequest.status).toBe("unknown");
   });
 
@@ -276,7 +273,7 @@ describe("convertORM_O01", () => {
     ]);
 
     expect(result.messageUpdate.status).toBe("processed");
-    const encounters = getResources<Encounter>(result.bundle, "Encounter");
+    const encounters = getResources<Encounter>(result.entries, "Encounter");
     expect(encounters).toHaveLength(0);
   });
 
@@ -290,7 +287,7 @@ describe("convertORM_O01", () => {
     ]);
 
     expect(result.messageUpdate.status).toBe("processed");
-    const encounters = getResources<Encounter>(result.bundle, "Encounter");
+    const encounters = getResources<Encounter>(result.entries, "Encounter");
     expect(encounters).toHaveLength(0);
   });
 
@@ -304,7 +301,7 @@ describe("convertORM_O01", () => {
     ]);
 
     expect(result.messageUpdate.status).toBe("processed");
-    const encounters = getResources<Encounter>(result.bundle, "Encounter");
+    const encounters = getResources<Encounter>(result.entries, "Encounter");
     expect(encounters).toHaveLength(1);
   });
 
@@ -318,7 +315,7 @@ describe("convertORM_O01", () => {
     ]);
 
     expect(result.messageUpdate.status).toBe("processed");
-    const encounters = getResources<Encounter>(result.bundle, "Encounter");
+    const encounters = getResources<Encounter>(result.entries, "Encounter");
     expect(encounters).toHaveLength(0);
   });
 
@@ -330,7 +327,7 @@ describe("convertORM_O01", () => {
       segment("OBR", { 1: "1", 2: "ORD-ABC-001", 4: "12345^CBC^LN" }),
     ]);
 
-    const serviceRequest = getResources<ServiceRequest>(result.bundle, "ServiceRequest")[0]!;
+    const serviceRequest = getResources<ServiceRequest>(result.entries, "ServiceRequest")[0]!;
     expect(serviceRequest.id).toBe("ord-abc-001");
   });
 
@@ -343,7 +340,7 @@ describe("convertORM_O01", () => {
       segment("DG1", { 1: "1", 3: "E11.9^Type 2 diabetes mellitus^I10" }),
     ]);
 
-    const condition = getResources<Condition>(result.bundle, "Condition")[0]!;
+    const condition = getResources<Condition>(result.entries, "Condition")[0]!;
     expect(condition.id).toBe("ord-001-dg1-1");
   });
 
@@ -356,7 +353,7 @@ describe("convertORM_O01", () => {
       segment("OBX", { 1: "1", 2: "ST", 3: "Q001^Question^99LOCAL", 5: "YES", 11: "F" }),
     ]);
 
-    const observation = getResources<Observation>(result.bundle, "Observation")[0]!;
+    const observation = getResources<Observation>(result.entries, "Observation")[0]!;
     expect(observation.id).toBe("ord-001-obx-1");
   });
 
@@ -368,7 +365,7 @@ describe("convertORM_O01", () => {
       segment("OBR", { 1: "1", 2: "ORD-001", 4: "12345^CBC^LN", 11: "G" }),
     ]);
 
-    const serviceRequest = getResources<ServiceRequest>(result.bundle, "ServiceRequest")[0]!;
+    const serviceRequest = getResources<ServiceRequest>(result.entries, "ServiceRequest")[0]!;
     expect(serviceRequest.intent).toBe("reflex-order");
   });
 
@@ -380,7 +377,7 @@ describe("convertORM_O01", () => {
       segment("OBR", { 1: "1", 2: "ORD-001", 4: "12345^CBC^LN" }),
     ]);
 
-    const serviceRequest = getResources<ServiceRequest>(result.bundle, "ServiceRequest")[0]!;
+    const serviceRequest = getResources<ServiceRequest>(result.entries, "ServiceRequest")[0]!;
     expect(serviceRequest.requester?.display).toContain("Primary");
   });
 
@@ -392,7 +389,7 @@ describe("convertORM_O01", () => {
       segment("OBR", { 1: "1", 2: "ORD-001", 4: "12345^CBC^LN", 16: "5678^Fallback^Provider" }),
     ]);
 
-    const serviceRequest = getResources<ServiceRequest>(result.bundle, "ServiceRequest")[0]!;
+    const serviceRequest = getResources<ServiceRequest>(result.entries, "ServiceRequest")[0]!;
     expect(serviceRequest.requester?.display).toContain("Fallback");
   });
 
@@ -406,8 +403,8 @@ describe("convertORM_O01", () => {
       segment("RXO", { 1: "RX001^Amoxicillin^NDC" }),
     ]);
 
-    expect(getResources<ServiceRequest>(result.bundle, "ServiceRequest")).toHaveLength(1);
-    expect(getResources<MedicationRequest>(result.bundle, "MedicationRequest")).toHaveLength(1);
+    expect(getResources<ServiceRequest>(result.entries, "ServiceRequest")).toHaveLength(1);
+    expect(getResources<MedicationRequest>(result.entries, "MedicationRequest")).toHaveLength(1);
   });
 
   test("NTE in RXO order maps to MedicationRequest.note", async () => {
@@ -419,7 +416,7 @@ describe("convertORM_O01", () => {
       segment("NTE", { 1: "1", 3: "Pharmacy note" }),
     ]);
 
-    const medicationRequest = getResources<MedicationRequest>(result.bundle, "MedicationRequest")[0]!;
+    const medicationRequest = getResources<MedicationRequest>(result.entries, "MedicationRequest")[0]!;
     expect(medicationRequest.note).toHaveLength(1);
     expect(medicationRequest.note?.[0]?.text).toContain("Pharmacy note");
   });
@@ -433,7 +430,7 @@ describe("convertORM_O01", () => {
       segment("DG1", { 1: "1", 3: "J20.9^Acute bronchitis^I10" }),
     ]);
 
-    const medicationRequest = getResources<MedicationRequest>(result.bundle, "MedicationRequest")[0]!;
+    const medicationRequest = getResources<MedicationRequest>(result.entries, "MedicationRequest")[0]!;
     expect(medicationRequest.reasonReference).toHaveLength(1);
     expect(medicationRequest.reasonReference?.[0]?.reference).toBe("Condition/rx-001-dg1-1");
   });
@@ -447,7 +444,7 @@ describe("convertORM_O01", () => {
       segment("OBX", { 1: "1", 2: "ST", 3: "Q001^Question^99LOCAL", 5: "YES", 11: "F" }),
     ]);
 
-    const medicationRequest = getResources<MedicationRequest>(result.bundle, "MedicationRequest")[0]!;
+    const medicationRequest = getResources<MedicationRequest>(result.entries, "MedicationRequest")[0]!;
     expect(medicationRequest.supportingInformation).toHaveLength(1);
     expect(String(medicationRequest.supportingInformation?.[0]?.reference)).toBe("Observation/rx-001-obx-1");
   });

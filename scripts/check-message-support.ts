@@ -102,18 +102,18 @@ if (jsonMode) {
 
 const status = result.messageUpdate.status ?? "(no status)";
 const error = result.messageUpdate.error;
-const bundle = result.bundle;
+const entries = result.entries;
 
 console.log(`Message:    ${msgType} (v${version})`);
 console.log(`Sender:     ${sendingApp} / ${sendingFac}`);
 console.log(`Routing:    OK`);
 console.log(`Status:     ${status}`);
 
-if (bundle?.entry?.length) {
+if (entries?.length) {
   const byType = new Map<string, string[]>();
-  for (const entry of bundle.entry) {
-    const rt = entry.resource?.resourceType ?? "?";
-    const id = entry.resource?.id ?? "?";
+  for (const resource of entries) {
+    const rt = resource.resourceType ?? "?";
+    const id = (resource as { id?: string }).id ?? "?";
     if (!byType.has(rt)) byType.set(rt, []);
     byType.get(rt)!.push(id);
   }

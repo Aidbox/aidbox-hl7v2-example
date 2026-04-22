@@ -6,7 +6,6 @@
  */
 
 import type { Task, TaskInput } from "../../fhir/hl7-fhir-r4-core/Task";
-import type { BundleEntry } from "../../fhir/hl7-fhir-r4-core/Bundle";
 import { MAPPING_TYPES, sourceLabel, targetLabel, type MappingTypeConfig } from "../mapping-types";
 import type { MappingError } from "../mapping-errors";
 import { generateConceptMapId, type SenderContext } from "../concept-map";
@@ -112,16 +111,3 @@ export function composeMappingTask(
   };
 }
 
-/**
- * Compose a bundle entry for a Task.
- * Uses PUT for upsert - creates new or resets existing (even if completed) to requested.
- */
-export function composeTaskBundleEntry(task: Task): BundleEntry {
-  return {
-    resource: task,
-    request: {
-      method: "PUT",
-      url: `Task/${task.id}`,
-    },
-  };
-}

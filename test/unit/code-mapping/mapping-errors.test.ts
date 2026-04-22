@@ -18,7 +18,7 @@ describe("buildMappingErrorResult", () => {
     expect(result.messageUpdate.status).toBe("code_mapping_error");
     expect(result.messageUpdate.unmappedCodes).toBeUndefined();
     expect(result.messageUpdate.patient).toBeUndefined();
-    expect(result.bundle!.entry).toBeUndefined();
+    expect(result.entries).toBeUndefined();
   });
 
   test("creates Task for LOINC mapping error", () => {
@@ -47,8 +47,8 @@ describe("buildMappingErrorResult", () => {
     ).toMatch(/^Task\/map-hl7v2-acme-lab-acme-hosp-observation-code-loinc-/);
 
     // Check that Task is created with correct type
-    expect(result.bundle!.entry).toHaveLength(1);
-    const task = result.bundle!.entry![0]!.resource as Task;
+    expect(result.entries).toHaveLength(1);
+    const task = result.entries![0]! as Task;
     expect(task.resourceType).toBe("Task");
     expect(task.status).toBe("requested");
     expect(task.code?.coding?.[0]?.code).toBe("observation-code-loinc");
@@ -71,7 +71,7 @@ describe("buildMappingErrorResult", () => {
       result.messageUpdate.unmappedCodes![0]!.mappingTask.reference,
     ).toMatch(/^Task\/map-hl7v2-acme-lab-acme-hosp-obr-status-/);
 
-    const task = result.bundle!.entry![0]!.resource as Task;
+    const task = result.entries![0]! as Task;
     expect(task.code?.coding?.[0]?.code).toBe("obr-status");
   });
 
@@ -91,7 +91,7 @@ describe("buildMappingErrorResult", () => {
       result.messageUpdate.unmappedCodes![0]!.mappingTask.reference,
     ).toMatch(/^Task\/map-hl7v2-acme-lab-acme-hosp-obx-status-/);
 
-    const task = result.bundle!.entry![0]!.resource as Task;
+    const task = result.entries![0]! as Task;
     expect(task.code?.coding?.[0]?.code).toBe("obx-status");
   });
 
@@ -111,7 +111,7 @@ describe("buildMappingErrorResult", () => {
       result.messageUpdate.unmappedCodes![0]!.mappingTask.reference,
     ).toMatch(/^Task\/map-hl7v2-acme-lab-acme-hosp-patient-class-/);
 
-    const task = result.bundle!.entry![0]!.resource as Task;
+    const task = result.entries![0]! as Task;
     expect(task.code?.coding?.[0]?.code).toBe("patient-class");
   });
 
@@ -140,10 +140,10 @@ describe("buildMappingErrorResult", () => {
     const result = buildMappingErrorResult(sender, errors);
 
     expect(result.messageUpdate.unmappedCodes).toHaveLength(3);
-    expect(result.bundle!.entry).toHaveLength(3);
+    expect(result.entries).toHaveLength(3);
 
-    const taskCodes = result.bundle!.entry!.map(
-      (e) => (e.resource as Task).code?.coding?.[0]?.code,
+    const taskCodes = result.entries!.map(
+      (r) => (r as Task).code?.coding?.[0]?.code,
     );
     expect(taskCodes).toContain("observation-code-loinc");
     expect(taskCodes).toContain("obr-status");
@@ -170,7 +170,7 @@ describe("buildMappingErrorResult", () => {
 
     // Should have only 1 Task since both errors have same code/system/type
     expect(result.messageUpdate.unmappedCodes).toHaveLength(1);
-    expect(result.bundle!.entry).toHaveLength(1);
+    expect(result.entries).toHaveLength(1);
   });
 
   test("creates separate Tasks for same code but different mapping types", () => {
@@ -193,10 +193,10 @@ describe("buildMappingErrorResult", () => {
 
     // Should have 2 Tasks since mapping types are different
     expect(result.messageUpdate.unmappedCodes).toHaveLength(2);
-    expect(result.bundle!.entry).toHaveLength(2);
+    expect(result.entries).toHaveLength(2);
 
-    const taskCodes = result.bundle!.entry!.map(
-      (e) => (e.resource as Task).code?.coding?.[0]?.code,
+    const taskCodes = result.entries!.map(
+      (r) => (r as Task).code?.coding?.[0]?.code,
     );
     expect(taskCodes).toContain("obr-status");
     expect(taskCodes).toContain("obx-status");
@@ -238,36 +238,4 @@ describe("buildMappingErrorResult", () => {
     );
   });
 
-  test("creates transaction bundle", () => {
-    const errors: MappingError[] = [
-      {
-        localCode: "K_SERUM",
-        localDisplay: "Potassium",
-        localSystem: "ACME-LAB",
-        mappingType: "observation-code-loinc",
-      },
-    ];
-
-    const result = buildMappingErrorResult(sender, errors);
-
-    expect(result.bundle!.resourceType).toBe("Bundle");
-    expect(result.bundle!.type).toBe("transaction");
-  });
-
-  test("Task bundle entry uses PUT method", () => {
-    const errors: MappingError[] = [
-      {
-        localCode: "K_SERUM",
-        localDisplay: "Potassium",
-        localSystem: "ACME-LAB",
-        mappingType: "observation-code-loinc",
-      },
-    ];
-
-    const result = buildMappingErrorResult(sender, errors);
-
-    const taskEntry = result.bundle!.entry![0]!;
-    expect(taskEntry.request?.method).toBe("PUT");
-    expect(taskEntry.request?.url).toMatch(/^Task\//);
-  });
 });

@@ -11,13 +11,13 @@ import type {
   EncounterParticipant,
   EncounterLocation,
   EncounterHospitalization,
-  BundleEntry,
   Coding,
   CodeableConcept,
   Identifier,
   Meta,
   Reference,
   Extension,
+  Task,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertCXToIdentifier } from "../datatypes/cx-identifier";
 import { buildEncounterIdentifier } from "../identity-system/encounter-id";
@@ -32,7 +32,7 @@ import {
   translateCode,
   type SenderContext,
 } from "../../code-mapping/concept-map";
-import { composeMappingTask, composeTaskBundleEntry } from "../../code-mapping/mapping-task";
+import { composeMappingTask } from "../../code-mapping/mapping-task";
 import type { Hl7v2ToFhirConfig } from "../config";
 import type { EncounterLookupFn } from "../aidbox-lookups";
 import { sanitizeForId } from "../identity-system/utils";
@@ -820,8 +820,8 @@ export function extractPatientClass(pv1: PV1): string {
 
 export interface EncounterHandlingResult {
   encounterRef: Reference<"Encounter"> | null;
-  encounterEntry: BundleEntry | null;
-  patientClassTaskEntry?: BundleEntry;
+  encounter: Encounter | null;
+  patientClassTask?: Task;
   warning?: string;
   error?: string;
 }
@@ -832,23 +832,6 @@ export function parsePV1(message: HL7v2Message): PV1 | undefined {
     return undefined;
   }
   return fromPV1(pv1Segment);
-}
-
-/**
- * Create a conditional bundle entry for draft Encounter creation.
- * Uses POST with If-None-Exist to prevent race conditions when multiple
- * messages for the same non-existent encounter arrive simultaneously.
- */
-function createConditionalEncounterEntry(encounter: Encounter): BundleEntry {
-  const encounterId = encounter.id;
-  return {
-    resource: encounter,
-    request: {
-      method: "POST",
-      url: "Encounter",
-      ifNoneExist: `_id=${encounterId}`,
-    },
-  };
 }
 
 /**
@@ -865,10 +848,6 @@ function createConditionalEncounterEntry(encounter: Encounter): BundleEntry {
  * Patient class mapping errors:
  * - Do NOT block the message (clinical data is prioritized)
  * - Create Task for tracking, use fallback class (AMB)
- *
- * Race condition handling: Uses POST with If-None-Exist to ensure only one
- * draft encounter is created even if multiple messages for the same
- * non-existent encounter arrive simultaneously.
  */
 export async function handleEncounter(
   pv1: PV1 | undefined,
@@ -885,20 +864,20 @@ export async function handleEncounter(
     if (pv1Required) {
       return {
         encounterRef: null,
-        encounterEntry: null,
+        encounter: null,
         error: `PV1 segment is required for ${messageTypeKey} but missing`,
       };
     }
-    return { encounterRef: null, encounterEntry: null };
+    return { encounterRef: null, encounter: null };
   }
 
   const result = await convertPV1WithMappingSupport(pv1, senderContext);
 
   if (result.identifierError) {
     if (pv1Required) {
-      return { encounterRef: null, encounterEntry: null, error: result.identifierError };
+      return { encounterRef: null, encounter: null, error: result.identifierError };
     }
-    return { encounterRef: null, encounterEntry: null, warning: result.identifierError };
+    return { encounterRef: null, encounter: null, warning: result.identifierError };
   }
 
   const encounter = result.encounter;
@@ -907,20 +886,16 @@ export async function handleEncounter(
 
   const existingEncounter = await lookupEncounter(encounterId);
   if (existingEncounter) {
-    return { encounterRef, encounterEntry: null };
+    return { encounterRef, encounter: null };
   }
 
   encounter.status = "unknown";
   encounter.subject = patientRef;
   encounter.meta = { ...encounter.meta, ...baseMeta };
 
-  const encounterEntry = createConditionalEncounterEntry(encounter);
+  const patientClassTask = result.mappingError
+    ? composeMappingTask(senderContext, result.mappingError)
+    : undefined;
 
-  let patientClassTaskEntry: BundleEntry | undefined;
-  if (result.mappingError) {
-    const task = composeMappingTask(senderContext, result.mappingError);
-    patientClassTaskEntry = composeTaskBundleEntry(task);
-  }
-
-  return { encounterRef, encounterEntry, patientClassTaskEntry };
+  return { encounterRef, encounter, patientClassTask };
 }

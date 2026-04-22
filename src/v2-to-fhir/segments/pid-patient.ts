@@ -14,7 +14,6 @@ import type {
   CodeableConcept,
   Coding,
   Extension,
-  BundleEntry,
   Meta,
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
@@ -568,7 +567,7 @@ export default convertPIDToPatient;
 // ============================================================================
 
 export type PatientHandlingResult =
-  | { patientRef: Reference<"Patient">; patientEntry: BundleEntry | null }
+  | { patientRef: Reference<"Patient">; patient: Patient | null }
   | { error: string };
 
 /**
@@ -593,23 +592,6 @@ export function createDraftPatient(
 }
 
 /**
- * Create a conditional bundle entry for draft Patient creation.
- * Uses POST with If-None-Exist to prevent race conditions when multiple
- * messages for the same non-existent patient arrive simultaneously.
- */
-export function createConditionalPatientEntry(patient: Patient): BundleEntry {
-  const patientId = patient.id;
-  return {
-    resource: patient,
-    request: {
-      method: "POST",
-      url: "Patient",
-      ifNoneExist: `_id=${patientId}`,
-    },
-  };
-}
-
-/**
  * Handle patient lookup and draft creation.
  *
  * ADT owns the Patient resource (creates/updates). ORU/VXU only look up
@@ -618,10 +600,6 @@ export function createConditionalPatientEntry(patient: Patient): BundleEntry {
  * - Resolves patient ID via priority-list rules (identitySystem.patient.rules)
  * - Looks up existing patient (does NOT update — ADT is source of truth)
  * - Creates draft patient with active=false if not found
- *
- * Race condition handling: Uses POST with If-None-Exist to ensure only one
- * draft patient is created even if multiple messages for the same
- * non-existent patient arrive simultaneously.
  */
 export async function handlePatient(
   pid: PID,
@@ -641,11 +619,10 @@ export async function handlePatient(
   const existingPatient = await lookupPatient(patientId);
 
   if (existingPatient) {
-    return { patientRef, patientEntry: null };
+    return { patientRef, patient: null };
   }
 
-  const draftPatient = createDraftPatient(pid, patientId, baseMeta, policy);
-  const patientEntry = createConditionalPatientEntry(draftPatient);
+  const patient = createDraftPatient(pid, patientId, baseMeta, policy);
 
-  return { patientRef, patientEntry };
+  return { patientRef, patient };
 }

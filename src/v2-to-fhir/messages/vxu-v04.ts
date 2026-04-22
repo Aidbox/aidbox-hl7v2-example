@@ -30,11 +30,11 @@ import {
 } from "../../hl7v2/generated/fields";
 import { fromOBX, groupVXUOrders, extractPersonObservations } from "../../hl7v2/wrappers";
 import type { VXUOrderGroup } from "../../hl7v2/wrappers";
-import type { Bundle, BundleEntry, Immunization, Meta, Reference } from "../../fhir/hl7-fhir-r4-core";
+import type { Meta, Reference } from "../../fhir/hl7-fhir-r4-core";
+import type { DomainResource } from "../../fhir/hl7-fhir-r4-core/DomainResource";
 import { convertRXAToImmunization } from "../segments/rxa-immunization";
 import type { ConverterContext } from "../converter-context";
 import { applyOrderOBXFields, interpretRXA9Source } from "../cdc-iis-ig";
-import { createBundleEntry } from "../fhir-bundle";
 import { sanitizeForId } from "../identity-system/utils";
 import { parseMSH, addSenderTagToMeta } from "../segments/msh-parsing";
 import { handlePatient, extractSenderTag } from "../segments/pid-patient";
@@ -115,7 +115,7 @@ function parsePIDSegment(message: HL7v2Message): PID {
 }
 
 interface ProcessOrderGroupResult {
-  entries: BundleEntry[];
+  entries: DomainResource[];
   error?: string;
 }
 
@@ -154,7 +154,7 @@ function processOrderGroup(
     return { entries: [], error: rxaResult.error };
   }
 
-  const { immunization, performerEntries } = rxaResult;
+  const { immunization, performerResources } = rxaResult;
 
   // Apply CDC IIS ORDER OBX fields
   const obxSegments = group.observations.map((obs) => obs.obx);
@@ -181,16 +181,13 @@ function processOrderGroup(
   // Add meta tags
   immunization.meta = { ...immunization.meta, ...baseMeta };
 
-  const entries: BundleEntry[] = [
-    createBundleEntry(immunization),
-    ...performerEntries,
-  ];
+  const entries: DomainResource[] = [immunization, ...performerResources];
 
   return { entries };
 }
 
 interface PersonObservationResult {
-  entries: BundleEntry[];
+  entries: DomainResource[];
   mappingErrors: MappingError[];
 }
 
@@ -217,7 +214,7 @@ async function processPersonObservations(
     return { entries: [], mappingErrors: [] };
   }
 
-  const entries: BundleEntry[] = [];
+  const entries: DomainResource[] = [];
   const mappingErrors: MappingError[] = [];
   const orderNumber = `${messageControlId}-person-obs`;
 
@@ -233,7 +230,7 @@ async function processPersonObservations(
     const observation = result.observation;
     observation.subject = patientRef;
     observation.meta = { ...observation.meta, ...baseMeta };
-    entries.push(createBundleEntry(observation));
+    entries.push(observation);
   }
 
   return { entries, mappingErrors };
@@ -282,7 +279,7 @@ export async function convertVXU_V04(
   if ("error" in patientResult) {
     return { messageUpdate: { status: "conversion_error", error: patientResult.error } };
   }
-  const { patientRef, patientEntry } = patientResult;
+  const { patientRef, patient } = patientResult;
 
   // 3. Parse PV1 (optional) → encounter handling
   const pv1 = parsePV1(parsed);
@@ -294,7 +291,7 @@ export async function convertVXU_V04(
       messageUpdate: { status: "conversion_error", error: encounterResult.error, patient: patientRef },
     };
   }
-  const { encounterRef, encounterEntry, patientClassTaskEntry } = encounterResult;
+  const { encounterRef, encounter, patientClassTask } = encounterResult;
 
   // 4. Extract PERSON_OBSERVATION OBX → standalone Observations
   const personObsResult = await processPersonObservations(
@@ -315,7 +312,7 @@ export async function convertVXU_V04(
   const patientId = (patientRef.reference ?? "").replace("Patient/", "");
 
   // 6. Process each ORDER group
-  const orderEntries: BundleEntry[] = [];
+  const orderEntries: DomainResource[] = [];
   for (const group of groupResult.groups) {
     const result = processOrderGroup(
       group, mshNamespace, patientId, patientRef, encounterRef, baseMeta,
@@ -329,41 +326,29 @@ export async function convertVXU_V04(
     orderEntries.push(...result.entries);
   }
 
-  // Check for mapping errors before building bundle
+  // Check for mapping errors before collecting entries
   if (allMappingErrors.length > 0) {
     return buildMappingErrorResult(senderContext, allMappingErrors);
   }
 
-  // 7. Build transaction bundle
-  const entries: BundleEntry[] = [];
-  if (patientEntry) {
-    entries.push(patientEntry);
-  }
-  if (encounterEntry) {
-    entries.push(encounterEntry);
-  }
+  // 7. Collect entries
+  const entries: DomainResource[] = [];
+  if (patient) entries.push(patient);
+  if (encounter) entries.push(encounter);
   entries.push(...personObsResult.entries);
   entries.push(...orderEntries);
-  if (patientClassTaskEntry) {
-    entries.push(patientClassTaskEntry);
-  }
-
-  const bundle: Bundle = {
-    resourceType: "Bundle",
-    type: "transaction",
-    entry: entries,
-  };
+  if (patientClassTask) entries.push(patientClassTask);
 
   // 8. Return ConversionResult
   if (encounterResult.warning) {
     return {
-      bundle,
+      entries,
       messageUpdate: { status: "warning", error: encounterResult.warning, patient: patientRef },
     };
   }
 
   return {
-    bundle,
+    entries,
     messageUpdate: { status: "processed", patient: patientRef },
   };
 }

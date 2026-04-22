@@ -7,7 +7,7 @@
 
 import type { HL7v2Message, HL7v2Segment } from "../hl7v2/generated/types";
 import { fromMSH } from "../hl7v2/generated/fields";
-import type { Bundle } from "../fhir/hl7-fhir-r4-core";
+import type { DomainResource } from "../fhir/hl7-fhir-r4-core/DomainResource";
 import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { convertADT_A01 } from "./messages/adt-a01";
 import { convertADT_A08 } from "./messages/adt-a08";
@@ -22,7 +22,7 @@ import { createConverterContext } from "./converter-context";
 
 export interface ConversionResult {
   /** Absent when conversion fails (e.g., required PV1 invalid). */
-  bundle?: Bundle;
+  entries?: DomainResource[];
   messageUpdate: Partial<IncomingHL7v2Message>;
 }
 

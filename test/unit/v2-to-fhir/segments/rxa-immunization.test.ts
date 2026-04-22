@@ -663,7 +663,7 @@ describe("convertRXAToImmunization", () => {
     test("RXA-10 creates Practitioner + performer with function=AP", () => {
       const rxa = makeBaseRXA({ $10_administeringProvider: [administeringXCN] });
 
-      const { immunization, performerEntries } = expectImmunization(
+      const { immunization, performerResources } = expectImmunization(
         convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
       );
 
@@ -677,14 +677,13 @@ describe("convertRXAToImmunization", () => {
       expect(apPerformer?.function?.coding?.[0]?.display).toBe("Administering Provider");
       expect(apPerformer?.actor.reference).toMatch(/^Practitioner\//);
 
-      // Practitioner bundle entry created
-      const practitionerEntry = performerEntries.find(
-        (e) => (e.resource as any)?.resourceType === "Practitioner",
-      );
-      expect(practitionerEntry).toBeDefined();
-      expect((practitionerEntry!.resource as any).name?.[0]?.family).toBe("SMITH");
-      expect((practitionerEntry!.resource as any).id).toBe("npi-1234567890");
-      expect(practitionerEntry!.request?.method).toBe("PUT");
+      // Practitioner resource created
+      const practitioner = performerResources.find(
+        (r) => r.resourceType === "Practitioner",
+      ) as any;
+      expect(practitioner).toBeDefined();
+      expect(practitioner.name?.[0]?.family).toBe("SMITH");
+      expect(practitioner.id).toBe("npi-1234567890");
     });
 
     test("ORC-12 creates PractitionerRole + performer with function=OP", () => {
@@ -694,7 +693,7 @@ describe("convertRXAToImmunization", () => {
         $12_orderingProvider: [orderingXCN],
       };
 
-      const { immunization, performerEntries } = expectImmunization(
+      const { immunization, performerResources } = expectImmunization(
         convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
       );
 
@@ -708,13 +707,12 @@ describe("convertRXAToImmunization", () => {
       expect(opPerformer?.function?.coding?.[0]?.display).toBe("Ordering Provider");
       expect(opPerformer?.actor.reference).toMatch(/^PractitionerRole\//);
 
-      // PractitionerRole bundle entry created
-      const roleEntry = performerEntries.find(
-        (e) => (e.resource as any)?.resourceType === "PractitionerRole",
-      );
-      expect(roleEntry).toBeDefined();
-      expect((roleEntry!.resource as any).id).toBe("role-npi-9876543210");
-      expect(roleEntry!.request?.method).toBe("PUT");
+      // PractitionerRole resource created
+      const role = performerResources.find(
+        (r) => r.resourceType === "PractitionerRole",
+      ) as any;
+      expect(role).toBeDefined();
+      expect(role.id).toBe("role-npi-9876543210");
     });
 
     test("both RXA-10 and ORC-12 create two performers and two bundle entries", () => {
@@ -724,14 +722,14 @@ describe("convertRXAToImmunization", () => {
         $12_orderingProvider: [orderingXCN],
       };
 
-      const { immunization, performerEntries } = expectImmunization(
+      const { immunization, performerResources } = expectImmunization(
         convertRXAToImmunization(rxa, undefined, orc, "test-id", patientReference),
       );
 
       expect(immunization.performer).toHaveLength(2);
       expect(immunization.performer?.[0]?.function?.coding?.[0]?.code).toBe("AP");
       expect(immunization.performer?.[1]?.function?.coding?.[0]?.code).toBe("OP");
-      expect(performerEntries).toHaveLength(2);
+      expect(performerResources).toHaveLength(2);
     });
 
     test("function coding includes system URI for both AP and OP", () => {
@@ -755,12 +753,12 @@ describe("convertRXAToImmunization", () => {
     test("no administering performer when RXA-10 is empty", () => {
       const rxa = makeBaseRXA({ $10_administeringProvider: undefined });
 
-      const { immunization, performerEntries } = expectImmunization(
+      const { immunization, performerResources } = expectImmunization(
         convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
       );
 
       expect(immunization.performer).toBeUndefined();
-      expect(performerEntries).toHaveLength(0);
+      expect(performerResources).toHaveLength(0);
     });
 
     test("no ordering performer when ORC is absent", () => {
@@ -780,12 +778,12 @@ describe("convertRXAToImmunization", () => {
       const emptyXCN = {};
       const rxa = makeBaseRXA({ $10_administeringProvider: [emptyXCN as any] });
 
-      const { immunization, performerEntries } = expectImmunization(
+      const { immunization, performerResources } = expectImmunization(
         convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
       );
 
       expect(immunization.performer).toBeUndefined();
-      expect(performerEntries).toHaveLength(0);
+      expect(performerResources).toHaveLength(0);
     });
 
     test("Practitioner ID is deterministic from XCN.9 system + XCN.1 value", () => {
@@ -798,8 +796,8 @@ describe("convertRXAToImmunization", () => {
         convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
       );
 
-      const id1 = (result1.performerEntries[0]!.resource as any).id;
-      const id2 = (result2.performerEntries[0]!.resource as any).id;
+      const id1 = (result1.performerResources[0]! as any).id;
+      const id2 = (result2.performerResources[0]! as any).id;
       expect(id1).toBe(id2);
       expect(id1).toBe("npi-1234567890");
     });

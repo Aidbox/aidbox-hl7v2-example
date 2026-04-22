@@ -250,7 +250,7 @@ Bun.serve({
           ...message,
           status: "received",
           error: undefined,
-          bundle: undefined,
+          entries: undefined,
         };
 
         await putResource("IncomingHL7v2Message", messageId, updated);
@@ -258,6 +258,49 @@ Bun.serve({
         return new Response(null, {
           status: 302,
           headers: { Location: "/incoming-messages" },
+        });
+      },
+    },
+    "/mark-batch-for-retry/:batchTag": {
+      POST: async (req) => {
+        const batchTag = decodeURIComponent(req.params.batchTag);
+        const erroredStatuses = [
+          "parsing_error",
+          "conversion_error",
+          "code_mapping_error",
+          "sending_error",
+        ].join(",");
+
+        let requeued = 0;
+        // Page until empty: each requeue flips status=received, removing the
+        // message from this query, so looping drains the errored set.
+        while (true) {
+          const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(
+            `/fhir/IncomingHL7v2Message?batch-tag=${encodeURIComponent(batchTag)}&status=${erroredStatuses}&_count=100`,
+          );
+          const batch = bundle.entry?.map((e) => e.resource) ?? [];
+          if (batch.length === 0) break;
+
+          for (const msg of batch) {
+            if (!msg.id) continue;
+            const updated: IncomingHL7v2Message = {
+              ...msg,
+              status: "received",
+              error: undefined,
+              entries: undefined,
+            };
+            await putResource("IncomingHL7v2Message", msg.id, updated);
+            requeued++;
+          }
+        }
+
+        console.log(`[batch retry] requeued ${requeued} message(s) in batch ${batchTag}`);
+
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: `/incoming-messages?batch=${encodeURIComponent(batchTag)}`,
+          },
         });
       },
     },

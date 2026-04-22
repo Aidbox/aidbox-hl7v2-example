@@ -41,6 +41,7 @@ bun run stop                      # Stop the server
 bun run logs                      # Tail server logs
 bun run mllp                      # Start MLLP server (port 2575)
 bun scripts/load-test-data.ts     # Load 5 test patients with related resources
+bun scripts/import-batch.ts <zip|dir> [--tag <name>]  # Bulk-import HL7v2 messages under a batchTag
 bun run typecheck                 # TypeScript type checking
 bun test:local                    # Unit tests + smoke tests — the everyday local loop (~10s)
 bun test:all                      # Unit + full integration — for CI, slow locally
@@ -114,6 +115,7 @@ For anything beyond this file, read `docs/developer-guide/`:
 | MLLP protocol, ACK generation                                                            | `mllp-server.md` |
 | HL7v2 builders, field naming (`$N_fieldName`)                                            | `hl7v2-module.md` |
 | HL7 reference JSON generation (XSD+PDF → data/hl7v2-reference)                           | `how-to/hl7v2-reference-generation.md` |
+| Batch-importing HL7v2 zips and triaging errors                                           | `how-to/batch-import.md` |
 | Testing, integration infra, codegen/debug workflows                                      | `how-to/development-guide.md` |
 | VXU ORDER OBX hard error decision                                                        | `adr/001-unknown-order-obx-hard-error.md` |
 

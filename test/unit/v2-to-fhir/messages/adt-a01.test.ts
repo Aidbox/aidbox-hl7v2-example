@@ -42,17 +42,15 @@ describe("convertADT_A01 - config-driven PV1 policy", () => {
     const result = await convertADT_A01(parsed, makeTestContext());
 
     expect(result.messageUpdate.status).toBe("processed");
-    expect(result.bundle).toBeDefined();
+    expect(result.entries).toBeDefined();
 
-    const encounterEntry = result.bundle!.entry?.find(
-      (e) => e.resource?.resourceType === "Encounter",
-    );
-    expect(encounterEntry).toBeDefined();
-
-    const encounter = encounterEntry!.resource as Encounter;
-    expect(encounter.id).toBe("urn-oid-1-2-3-v12345");
-    expect(encounter.identifier?.[0]?.type?.coding?.[0]?.code).toBe("VN");
-    expect(encounter.identifier?.[0]?.value).toBe("V12345");
+    const encounter = result.entries!.find(
+      (r) => r.resourceType === "Encounter",
+    ) as Encounter | undefined;
+    expect(encounter).toBeDefined();
+    expect(encounter!.id).toBe("urn-oid-1-2-3-v12345");
+    expect(encounter!.identifier?.[0]?.type?.coding?.[0]?.code).toBe("VN");
+    expect(encounter!.identifier?.[0]?.value).toBe("V12345");
   });
 
   describe("PV1 required=false", () => {
@@ -64,12 +62,12 @@ describe("convertADT_A01 - config-driven PV1 policy", () => {
 
       expect(result.messageUpdate.status).toBe("warning");
       expect(result.messageUpdate.error).toContain("PV1");
-      expect(result.bundle).toBeDefined();
+      expect(result.entries).toBeDefined();
 
-      const encounterEntry = result.bundle!.entry?.find(
-        (e) => e.resource?.resourceType === "Encounter",
+      const encounter = result.entries!.find(
+        (r) => r.resourceType === "Encounter",
       );
-      expect(encounterEntry).toBeUndefined();
+      expect(encounter).toBeUndefined();
     });
 
     test("ADT with invalid PV1-19 authority returns warning, skips Encounter", async () => {
@@ -78,12 +76,12 @@ describe("convertADT_A01 - config-driven PV1 policy", () => {
 
       expect(result.messageUpdate.status).toBe("warning");
       expect(result.messageUpdate.error).toContain("authority");
-      expect(result.bundle).toBeDefined();
+      expect(result.entries).toBeDefined();
 
-      const encounterEntry = result.bundle!.entry?.find(
-        (e) => e.resource?.resourceType === "Encounter",
+      const encounter = result.entries!.find(
+        (r) => r.resourceType === "Encounter",
       );
-      expect(encounterEntry).toBeUndefined();
+      expect(encounter).toBeUndefined();
     });
   });
 });

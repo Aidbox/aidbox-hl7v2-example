@@ -4,7 +4,6 @@ import type { Task } from "../../../src/fhir/hl7-fhir-r4-core/Task";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import {
   composeMappingTask,
-  composeTaskBundleEntry,
   taskDisplay,
 } from "../../../src/code-mapping/mapping-task";
 import type { SenderContext } from "../../../src/code-mapping/concept-map";
@@ -481,19 +480,3 @@ describe("composeMappingTask", () => {
   });
 });
 
-describe("createTaskBundleEntry", () => {
-  test("creates PUT bundle entry for task", () => {
-    const task: Task = {
-      resourceType: "Task",
-      id: "test-task-123",
-      status: "requested",
-      intent: "order",
-    };
-
-    const entry = composeTaskBundleEntry(task);
-
-    expect(entry.resource).toBe(task);
-    expect(entry.request?.method).toBe("PUT");
-    expect(entry.request?.url).toBe("Task/test-task-123");
-  });
-});

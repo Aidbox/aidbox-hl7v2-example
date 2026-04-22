@@ -21,8 +21,6 @@ import { fromRXO } from "../../hl7v2/generated/fields";
 import { sanitizeForId } from "../identity-system/utils";
 import { findSegment, findAllSegments, type ConversionResult } from "../converter";
 import type {
-  Bundle,
-  BundleEntry,
   ServiceRequest,
   MedicationRequest,
   Condition,
@@ -32,6 +30,7 @@ import type {
   Meta,
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
+import type { DomainResource } from "../../fhir/hl7-fhir-r4-core/DomainResource";
 import type { SenderContext } from "../../code-mapping/concept-map";
 import type { ConverterContext } from "../converter-context";
 import type { MappingError } from "../../code-mapping/mapping-errors";
@@ -46,7 +45,6 @@ import { convertDG1ToCondition } from "../segments/dg1-condition";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
 import { convertOBXWithMappingSupportAsync } from "../segments/obx-observation";
 import { convertIN1ToCoverage, generateCoverageId, hasValidPayorInfo } from "../segments/in1-coverage";
-import { createBundleEntry } from "../fhir-bundle";
 
 // ============================================================================
 // Order Grouping Types
@@ -262,9 +260,9 @@ function processIN1Segments(
   patientId: string | undefined,
   patientRef: Reference<"Patient">,
   baseMeta: Meta,
-): BundleEntry[] {
+): Coverage[] {
   const in1Segments = findAllSegments(message, "IN1");
-  const entries: BundleEntry[] = [];
+  const coverages: Coverage[] = [];
 
   for (const segment of in1Segments) {
     const in1 = fromIN1(segment);
@@ -275,10 +273,10 @@ function processIN1Segments(
     coverage.beneficiary = patientRef as Coverage["beneficiary"];
     coverage.id = generateCoverageId(in1, patientId);
     coverage.meta = { ...coverage.meta, ...baseMeta };
-    entries.push(createBundleEntry(coverage));
+    coverages.push(coverage);
   }
 
-  return entries;
+  return coverages;
 }
 
 // ============================================================================
@@ -291,9 +289,8 @@ function processDG1Segments(
   patientRef: Reference<"Patient">,
   encounterRef: Reference<"Encounter"> | null,
   baseMeta: Meta,
-): { conditions: Condition[]; entries: BundleEntry[] } {
+): Condition[] {
   const conditions: Condition[] = [];
-  const entries: BundleEntry[] = [];
 
   for (let i = 0; i < dg1Segments.length; i++) {
     const dg1 = fromDG1(dg1Segments[i]!);
@@ -309,10 +306,9 @@ function processDG1Segments(
     condition.meta = { ...condition.meta, ...baseMeta };
 
     conditions.push(condition);
-    entries.push(createBundleEntry(condition));
   }
 
-  return { conditions, entries };
+  return conditions;
 }
 
 // ============================================================================
@@ -392,7 +388,7 @@ async function processORMObservations(
 // ============================================================================
 
 interface ProcessOrderGroupResult {
-  entries: BundleEntry[];
+  entries: DomainResource[];
   mappingErrors: MappingError[];
 }
 
@@ -404,7 +400,7 @@ async function processOBROrderGroup(
   patientId: string | undefined,
   encounterRef: Reference<"Encounter"> | null,
 ): Promise<ProcessOrderGroupResult> {
-  const entries: BundleEntry[] = [];
+  const entries: DomainResource[] = [];
   const mappingErrors: MappingError[] = [];
 
   const orc = fromORC(group.orc);
@@ -439,10 +435,10 @@ async function processOBROrderGroup(
   serviceRequest.meta = { ...serviceRequest.meta, ...baseMeta };
 
   // Process DG1 -> Conditions
-  const { conditions, entries: conditionEntries } = processDG1Segments(
+  const conditions = processDG1Segments(
     group.dg1s, orderNumber, patientRef, encounterRef, baseMeta,
   );
-  entries.push(...conditionEntries);
+  entries.push(...conditions);
 
   // Link Conditions to ServiceRequest.reasonReference
   if (conditions.length > 0) {
@@ -482,11 +478,9 @@ async function processOBROrderGroup(
     return { entries: [], mappingErrors };
   }
 
-  // Add ServiceRequest entry first, then observations
-  entries.unshift(createBundleEntry(serviceRequest));
-  for (const obs of observations) {
-    entries.push(createBundleEntry(obs));
-  }
+  // Add ServiceRequest first, then observations
+  entries.unshift(serviceRequest);
+  entries.push(...observations);
 
   return { entries, mappingErrors: [] };
 }
@@ -502,7 +496,7 @@ async function processRXOOrderGroup(
   patientRef: Reference<"Patient">,
   encounterRef: Reference<"Encounter"> | null,
 ): Promise<ProcessOrderGroupResult> {
-  const entries: BundleEntry[] = [];
+  const entries: DomainResource[] = [];
   const mappingErrors: MappingError[] = [];
 
   const orc = fromORC(group.orc);
@@ -536,10 +530,10 @@ async function processRXOOrderGroup(
   medicationRequest.meta = { ...medicationRequest.meta, ...baseMeta };
 
   // Process DG1 -> Conditions, linked via MedicationRequest.reasonReference
-  const { conditions, entries: conditionEntries } = processDG1Segments(
+  const conditions = processDG1Segments(
     group.dg1s, orderNumber, patientRef, encounterRef, baseMeta,
   );
-  entries.push(...conditionEntries);
+  entries.push(...conditions);
 
   if (conditions.length > 0) {
     medicationRequest.reasonReference = conditions.map(
@@ -578,11 +572,9 @@ async function processRXOOrderGroup(
     return { entries: [], mappingErrors };
   }
 
-  // Add MedicationRequest entry first, then observations
-  entries.unshift(createBundleEntry(medicationRequest));
-  for (const obs of observations) {
-    entries.push(createBundleEntry(obs));
-  }
+  // Add MedicationRequest first, then observations
+  entries.unshift(medicationRequest);
+  entries.push(...observations);
 
   return { entries, mappingErrors: [] };
 }
@@ -651,7 +643,7 @@ export async function convertORM_O01(
       messageUpdate: { status: "conversion_error", error: patientResult.error },
     };
   }
-  const { patientRef, patientEntry } = patientResult;
+  const { patientRef, patient } = patientResult;
   const patientId = patientRef.reference?.replace("Patient/", "");
 
   // Parse PV1 (optional for ORM) -- treat empty PV1 as absent
@@ -678,10 +670,10 @@ export async function convertORM_O01(
     };
   }
 
-  const { encounterRef, encounterEntry, patientClassTaskEntry } = encounterResult;
+  const { encounterRef, encounter, patientClassTask } = encounterResult;
 
   // Process IN1 -> Coverage[]
-  const coverageEntries = processIN1Segments(parsed, patientId, patientRef, baseMeta);
+  const coverages = processIN1Segments(parsed, patientId, patientRef, baseMeta);
 
   // Group ORDER segments
   const orderGroups = groupORMOrders(parsed);
@@ -693,7 +685,7 @@ export async function convertORM_O01(
   }
 
   // Process each ORDER group
-  const allEntries: BundleEntry[] = [];
+  const allEntries: DomainResource[] = [];
   const allMappingErrors: MappingError[] = [];
   let processableGroupCount = 0;
 
@@ -730,33 +722,18 @@ export async function convertORM_O01(
     };
   }
 
-  // Build transaction bundle
-  const entries: BundleEntry[] = [];
+  // Collect entries
+  const entries: DomainResource[] = [];
 
-  if (patientEntry) {
-    entries.push(patientEntry);
-  }
-
-  if (encounterEntry) {
-    entries.push(encounterEntry);
-  }
-
-  entries.push(...coverageEntries);
+  if (patient) entries.push(patient);
+  if (encounter) entries.push(encounter);
+  entries.push(...coverages);
   entries.push(...allEntries);
-
-  if (patientClassTaskEntry) {
-    entries.push(patientClassTaskEntry);
-  }
-
-  const bundle: Bundle = {
-    resourceType: "Bundle",
-    type: "transaction",
-    entry: entries,
-  };
+  if (patientClassTask) entries.push(patientClassTask);
 
   if (encounterResult.warning) {
     return {
-      bundle,
+      entries,
       messageUpdate: {
         status: "warning",
         error: encounterResult.warning,
@@ -766,7 +743,7 @@ export async function convertORM_O01(
   }
 
   return {
-    bundle,
+    entries,
     messageUpdate: {
       status: "processed",
       patient: patientRef,

@@ -14,6 +14,7 @@ import {
 import { createPollingService, type PollingService } from "../polling-service";
 import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import type { Bundle } from "../fhir/hl7-fhir-r4-core/Bundle";
+import type { DomainResource } from "../fhir/hl7-fhir-r4-core/DomainResource";
 import { convertToFHIR, type ConversionResult } from "./converter";
 import { preprocessMessage } from "./preprocessor";
 import { hl7v2ToFhirConfig } from "./config";
@@ -46,7 +47,7 @@ export async function pollReceivedMessage(): Promise<IncomingHL7v2Message | null
 // ============================================================================
 
 /**
- * Convert HL7v2 message to FHIR Bundle with message update.
+ * Convert HL7v2 message to FHIR resources with message update.
  * Parses once, preprocesses, then converts.
  *
  * Parse failures return parsing_error status (not thrown).
@@ -99,13 +100,52 @@ export function parseSendingAttempt(error: string | undefined): number {
 // ============================================================================
 
 /**
+ * Wrap bare resources in a transaction Bundle.
+ *
+ * Each resource produces two entries:
+ *   1. Conditional POST (`ifNoneExist=_id=ID`) — create if missing, no-op if exists.
+ *      Race-safe against concurrent messages targeting the same resource.
+ *   2. PATCH Type/ID with the resource body — merges fields onto the existing
+ *      resource (JSON Merge Patch semantics). Fields not present in this
+ *      message's resource are preserved from prior writes.
+ */
+function buildTransactionBundle(entries: DomainResource[]): Bundle {
+  const bundleEntries = entries.flatMap((resource) => {
+    const id = (resource as { id?: string }).id;
+    const type = resource.resourceType;
+    return [
+      {
+        resource,
+        request: {
+          method: "POST" as const,
+          url: type,
+          ifNoneExist: `_id=${id}`,
+        },
+      },
+      {
+        resource,
+        request: {
+          method: "PATCH" as const,
+          url: `${type}/${id}`,
+        },
+      },
+    ];
+  });
+  return {
+    resourceType: "Bundle",
+    type: "transaction",
+    entry: bundleEntries,
+  };
+}
+
+/**
  * Submit FHIR transaction bundle to Aidbox
  * Throws error if submission fails
  */
-async function submitBundle(bundle: Bundle): Promise<void> {
+async function submitEntries(entries: DomainResource[]): Promise<void> {
   await aidboxFetch("/fhir", {
     method: "POST",
-    body: JSON.stringify(bundle),
+    body: JSON.stringify(buildTransactionBundle(entries)),
   });
 }
 
@@ -120,12 +160,12 @@ async function submitBundle(bundle: Bundle): Promise<void> {
 async function applyMessageUpdate(
   message: IncomingHL7v2Message,
   update: Partial<IncomingHL7v2Message>,
-  bundle?: Bundle,
+  entries?: DomainResource[],
 ): Promise<void> {
   const updated: IncomingHL7v2Message = {
     ...message,
     ...update,
-    bundle: bundle ? JSON.stringify(bundle, null, 2) : undefined,
+    entries,
   };
 
   if (update.status === "processed") {
@@ -147,7 +187,7 @@ async function applyMessageUpdate(
 async function handleSendingError(
   message: IncomingHL7v2Message,
   sendError: unknown,
-  bundle: Bundle,
+  entries: DomainResource[],
 ): Promise<void> {
   const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
   const attempt = parseSendingAttempt(message.error) + 1;
@@ -161,7 +201,7 @@ async function handleSendingError(
     await applyMessageUpdate(message, {
       status: "sending_error",
       error: `Sending failed after ${MAX_SENDING_RETRIES} attempts: ${errorMessage}`,
-    }, bundle);
+    }, entries);
   }
 }
 
@@ -191,17 +231,17 @@ class SendError extends Error {
 export async function processMessage(
   message: IncomingHL7v2Message,
 ): Promise<void> {
-  const { bundle, messageUpdate } = await convertMessage(message);
+  const { entries, messageUpdate } = await convertMessage(message);
 
-  if (bundle) {
+  if (entries && entries.length > 0) {
     try {
-      await submitBundle(bundle);
+      await submitEntries(entries);
     } catch (sendError) {
-      await handleSendingError(message, sendError, bundle);
+      await handleSendingError(message, sendError, entries);
       throw new SendError(sendError);
     }
   }
-  await applyMessageUpdate(message, messageUpdate, bundle);
+  await applyMessageUpdate(message, messageUpdate, entries);
 }
 
 /**

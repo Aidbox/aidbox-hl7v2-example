@@ -78,11 +78,11 @@
               "type": [{ "code": "string" }]
             },
             {
-              "id": "IncomingHL7v2Message.bundle",
-              "path": "IncomingHL7v2Message.bundle",
+              "id": "IncomingHL7v2Message.entries",
+              "path": "IncomingHL7v2Message.entries",
               "min": 0,
-              "max": "1",
-              "type": [{ "code": "string" }]
+              "max": "*",
+              "type": [{ "code": "Resource" }]
             },
             {
               "id": "IncomingHL7v2Message.sendingApplication",
@@ -94,6 +94,15 @@
             {
               "id": "IncomingHL7v2Message.sendingFacility",
               "path": "IncomingHL7v2Message.sendingFacility",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
+              "id": "IncomingHL7v2Message.batchTag",
+              "path": "IncomingHL7v2Message.batchTag",
+              "short": "Optional tag grouping messages imported together",
+              "definition": "Identifier for a batch import (e.g., archive name + timestamp set by scripts/import-batch.ts). Used to filter /incoming-messages and bulk-retry messages from the same import run.",
               "min": 0,
               "max": "1",
               "type": [{ "code": "string" }]
@@ -497,6 +506,24 @@
         "base": ["IncomingHL7v2Message"],
         "type": "string",
         "expression": "IncomingHL7v2Message.type"
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/IncomingHL7v2Message-batch-tag"
+      },
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "IncomingHL7v2Message-batch-tag",
+        "url": "http://example.org/SearchParameter/IncomingHL7v2Message-batch-tag",
+        "name": "batch-tag",
+        "status": "active",
+        "description": "Search IncomingHL7v2Message by batchTag",
+        "code": "batch-tag",
+        "base": ["IncomingHL7v2Message"],
+        "type": "string",
+        "expression": "IncomingHL7v2Message.batchTag"
       }
     },
     {

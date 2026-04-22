@@ -22,14 +22,13 @@ import {
 } from "../../hl7v2/generated/fields";
 import { fromOBX } from "../../hl7v2/wrappers";
 import type {
-  Bundle,
-  BundleEntry,
   DiagnosticReport,
   Observation,
   Specimen,
   Meta,
   Reference,
 } from "../../fhir/hl7-fhir-r4-core";
+import type { DomainResource } from "../../fhir/hl7-fhir-r4-core/DomainResource";
 import { convertNTEsToAnnotation } from "../segments/nte-annotation";
 import {
   buildMappingErrorResult,
@@ -42,7 +41,6 @@ import type { ConverterContext } from "../converter-context";
 import { parseMSH, addSenderTagToMeta } from "../segments/msh-parsing";
 import { handlePatient, extractSenderTag } from "../segments/pid-patient";
 import { parsePV1, handleEncounter } from "../segments/pv1-encounter";
-import { createBundleEntry } from "../fhir-bundle";
 import { convertOBXToObservationResolving } from "../segments/obx-observation";
 import { convertDTMToDateTime } from "../datatypes/dtm-datetime";
 
@@ -366,20 +364,8 @@ function linkEncounterToResources(
   }
 }
 
-function buildBundleEntries(
-  diagnosticReport: DiagnosticReport,
-  observations: Observation[],
-  specimens: Specimen[],
-): BundleEntry[] {
-  return [
-    createBundleEntry(diagnosticReport),
-    ...observations.map((obs) => createBundleEntry(obs)),
-    ...specimens.map((spec) => createBundleEntry(spec)),
-  ];
-}
-
 interface ProcessOBRGroupResult {
-  entries: BundleEntry[];
+  entries: DomainResource[];
   mappingErrors: MappingError[];
 }
 
@@ -431,7 +417,7 @@ async function processOBRGroup(
   linkPatientToResources(patientRef, diagnosticReport, observations, specimens);
   linkEncounterToResources(encounterRef, diagnosticReport, observations);
 
-  const entries = buildBundleEntries(diagnosticReport, observations, specimens);
+  const entries: DomainResource[] = [diagnosticReport, ...observations, ...specimens];
   return { entries, mappingErrors };
 }
 
@@ -489,7 +475,7 @@ export async function convertORU_R01(
     };
   }
 
-  const { patientRef, patientEntry } = patientResult;
+  const { patientRef, patient } = patientResult;
 
   const pv1 = parsePV1(parsed);
   const encounterResult = await handleEncounter(
@@ -512,11 +498,11 @@ export async function convertORU_R01(
     };
   }
 
-  const { encounterRef, encounterEntry, patientClassTaskEntry } = encounterResult;
+  const { encounterRef, encounter, patientClassTask } = encounterResult;
 
   const obrGroups = groupSegmentsByOBR(parsed);
 
-  const entries: BundleEntry[] = [];
+  const entries: DomainResource[] = [];
   const allMappingErrors: MappingError[] = [];
 
   for (const group of obrGroups) {
@@ -535,27 +521,21 @@ export async function convertORU_R01(
     return buildMappingErrorResult(senderContext, allMappingErrors);
   }
 
-  if (patientEntry) {
-    entries.unshift(patientEntry);
+  if (patient) {
+    entries.unshift(patient);
   }
 
-  if (encounterEntry) {
-    entries.unshift(encounterEntry);
+  if (encounter) {
+    entries.unshift(encounter);
   }
 
-  if (patientClassTaskEntry) {
-    entries.push(patientClassTaskEntry);
+  if (patientClassTask) {
+    entries.push(patientClassTask);
   }
-
-  const bundle: Bundle = {
-    resourceType: "Bundle",
-    type: "transaction",
-    entry: entries,
-  };
 
   if (encounterResult.warning) {
     return {
-      bundle,
+      entries,
       messageUpdate: {
         status: "warning",
         error: encounterResult.warning,
@@ -565,7 +545,7 @@ export async function convertORU_R01(
   }
 
   return {
-    bundle,
+    entries,
     messageUpdate: {
       status: "processed",
       patient: patientRef,

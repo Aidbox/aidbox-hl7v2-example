@@ -26,14 +26,12 @@ function readVXUFixture(name: string): string {
   return readFileSync(resolve("test/fixtures/hl7v2/vxu-v04", name), "utf-8");
 }
 
-type BundleLike = {
-  bundle?: { entry?: Array<{ resource?: { resourceType?: string } }> };
+type EntriesLike = {
+  entries?: Array<{ resourceType?: string }>;
 };
 
-function findResources<T>(result: BundleLike, type: string): T[] {
-  return (result.bundle?.entry ?? [])
-    .filter((e) => e.resource?.resourceType === type)
-    .map((e) => e.resource as T);
+function findResources<T>(result: EntriesLike, type: string): T[] {
+  return (result.entries ?? []).filter((r) => r.resourceType === type) as T[];
 }
 
 const TODO = () => { /* placeholder */ };
@@ -47,7 +45,7 @@ describe("convertVXU_V04", () => {
 
       // "warning" because PV1|1|R has no PV1-19 visit number → identifier warning
       expect(result.messageUpdate.status).toBe("warning");
-      expect(result.bundle).toBeDefined();
+      expect(result.entries).toBeDefined();
 
       const immunizations = findResources<Immunization>(result, "Immunization");
       expect(immunizations).toHaveLength(1);
