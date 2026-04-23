@@ -5,69 +5,114 @@ description: Build a new HL7v2→FHIR message converter or extend an existing on
 
 # HL7v2 → FHIR Converter Pipeline
 
-Extend the HL7v2→FHIR conversion module per the user's request. You are the orchestrator; sub-agents and the `/plan` and `/work` skills do the heavy lifting.
+Build or extend an HL7v2→FHIR converter. Four phases: **Setup → Requirements → Plan → Execute**.
 
-If the request isn't about a new message converter, a new field mapping, or adapting existing conversion to new messages — return an error.
+**One invocation = one phase.** Detect which phase is next from ticket state, run it, commit, stop. Do NOT re-invoke this skill — the user does that.
 
-## Step 0 — Is it already supported?
+If the request is not about a converter (new message, new field mapping, extending conversion), stop and say so.
 
-Before creating a ticket, if the user supplies one or more example messages, run each through `message-lookup`:
+---
+
+## Step A — Detect which phase to run
+
+The arg from the user names a message type or ticket slug (e.g. `ADT_A03`, `adt-a03-discharge`).
+
+**A.1 — Find or choose the ticket folder.**
+
+Search for an existing folder:
 
 ```sh
-bun scripts/check-message-support.ts <example-file>
+ls ai/tickets/converter-skill-tickets/ 2>/dev/null | grep -i <keyword>
 ```
 
-- All examples report `supported — message converts cleanly` → tell the user "this is already supported" and stop. Do not open a ticket.
-- All examples report `NOT supported — no converter registered` → proceed to Step 1; this is a new-converter case.
-- Examples report `routed but data fails conversion` or `supported with caveats` → the converter exists but has gaps. Ask the user whether they want to extend the existing converter (this pipeline) or fix a specific error (`check-errors`).
+`<keyword>` = a lowercase fragment of the arg (e.g. `a03` for `ADT_A03`).
 
-If the user supplies no example messages, skip Step 0.
+- Match found → `TICKET_DIR=ai/tickets/converter-skill-tickets/<match>`. Go to A.2.
+- No match → this is new work. `SLUG` = kebab-case descriptive name (e.g. `adt-a03-discharge`). `TICKET_DIR=ai/tickets/converter-skill-tickets/<SLUG>`. Run **Phase 1**.
 
-## Rules
+**A.2 — Inspect ticket.md to pick the phase.**
 
-- You are the only thing that talks to the user. Sub-agents and `/plan`/`/work` delegates do not.
-- If a sub-agent needs user input, resume it with the user's answer — don't re-prompt the sub-agent from scratch.
-- Between steps, commit the ticket changes and move on. Don't summarize sub-agent output unless the user asks.
-- **Never use user-provided example messages unchanged.** De-identify them (change names, dates, numeric IDs) before writing them into fixtures, docs, or the ticket.
+```sh
+grep -c "^# Requirements" $TICKET_DIR/ticket.md
+grep -c "^# Implementation Plan" $TICKET_DIR/ticket.md
+grep -c "^- \[ \]" $TICKET_DIR/ticket.md
+```
 
-## Pipeline
+| `# Requirements` | `# Implementation Plan` | Unchecked `- [ ]` | Run |
+|---|---|---|---|
+| 0 | 0 | — | Phase 2 |
+| ≥1 | 0 | — | Phase 3 |
+| ≥1 | ≥1 | ≥1 | Phase 4 |
+| ≥1 | ≥1 | 0 | Ask user what they want next. Stop. |
 
-### Step 1 — Ticket setup
+---
 
-- Create `ai/tickets/converter-skill-tickets/<ticket-name>/` (unless the user pointed to an existing folder).
-- Create `ticket.md` with a `# Goal` section describing the request.
-- Create an `examples/` subdirectory. Ask the user to put real example messages there. If they say they have none, spawn a sub-agent with this prompt to generate them:
+## Rules (apply to every phase)
 
-    ```
-    Generate 5 example <message-type> messages in ai/tickets/converter-skill-tickets/<ticket-name>/examples/:
-    - 3 conforming to HL7v2 2.5
-    - 2 conforming to HL7v2 2.8.2
-    Use the hl7v2-info skill. Each example in its own file.
-    ```
+- You talk to the user. Sub-agents, `/plan`, `/work` run silently — their output returns to you.
+- Commit after each phase (ticket edits + new files).
+- **De-identify example messages before saving them.** Change names, dates, and numeric IDs in any user-supplied message before writing it to `examples/` or a fixture. Never paste raw PHI.
 
-- Record the `examples/` path in the ticket. Commit.
+---
 
-### Step 2 — Requirements
+## Phase 1 — Setup (new ticket)
 
-Spawn a sub-agent with the prompt in `requirements-prompt.md`. It writes a `# Requirements` section into `ticket.md`. Commit.
+1. Create the ticket folder: `mkdir -p $TICKET_DIR/examples`.
+2. If the user supplied example messages, first pre-flight them:
+   ```sh
+   bun scripts/check-message-support.ts <file>
+   ```
+   If **all** report `supported — message converts cleanly`, delete the folder you just made and stop — no ticket needed. Tell the user it already works.
+3. Write `$TICKET_DIR/ticket.md` with a `# Goal` section (2-4 sentences: what + why).
+4. Populate `$TICKET_DIR/examples/`:
+   - User supplied messages → de-identify, one message per file.
+   - User has no examples → spawn an agent:
+     ```
+     Agent({
+       description: "Generate HL7v2 examples",
+       subagent_type: "general-purpose",
+       prompt: "Generate 5 example <message-type> messages in $TICKET_DIR/examples/. 3 conforming to HL7v2 2.5, 2 conforming to HL7v2 2.8.2. Use the hl7v2-info skill. One message per file."
+     })
+     ```
+5. Commit (`git add $TICKET_DIR && git commit`).
+6. Tell the user: "Ticket created at `$TICKET_DIR`. Invoke the skill again to run Phase 2 (requirements)." Stop.
 
-### Step 3 — Plan
+---
 
-Call `/plan`. Point it at `ticket.md`. It explores the codebase, discusses the approach with the user, and appends `# Implementation Plan` to the ticket — leaving `# Requirements` intact. Commit.
+## Phase 2 — Requirements
 
-### Step 4 — Execute
+Spawn the requirements agent. The prompt lives at `.claude/skills/hl7v2-to-fhir-pipeline/requirements-prompt.md` — read it, substitute `<the-ticket-name>` with the ticket slug, pass as prompt:
 
-Call `/work`. It executes the plan one task at a time, with an independent review after each task.
+```
+Agent({
+  description: "Write requirements for <slug>",
+  subagent_type: "general-purpose",
+  prompt: <contents of requirements-prompt.md with slug substituted>
+})
+```
 
-When `/work` reports the final task complete and the user approves, the pipeline is done. Tell the user they can test the functionality in the UI.
+When the agent returns, commit the ticket changes. Tell the user: "Requirements added to `$TICKET_DIR/ticket.md`. Invoke the skill again to run Phase 3 (plan)." Stop.
 
-## Resumption
+---
 
-If the user points to an existing ticket folder, detect current state and jump in:
+## Phase 3 — Plan
 
-| State of `ticket.md` | Resume at |
-|---|---|
-| No `# Requirements` | Step 2 |
-| Has `# Requirements`, no `# Implementation Plan` | Step 3 |
-| Has `# Implementation Plan` with unchecked tasks | Step 4 |
-| All tasks checked | Ask the user what they want next |
+Invoke `/plan` via the Skill tool:
+
+```
+Skill({ skill: "plan", args: "$TICKET_DIR/ticket.md" })
+```
+
+`/plan` talks with the user and appends `# Implementation Plan` to `ticket.md`. When it returns, commit. Tell the user: "Plan ready. Invoke the skill again to run Phase 4 (execute)." Stop.
+
+---
+
+## Phase 4 — Execute
+
+Invoke `/work`:
+
+```
+Skill({ skill: "work", args: "$TICKET_DIR/ticket.md" })
+```
+
+`/work` runs tasks one at a time with review between each. When all tasks are checked off and the user has approved, tell them: "Converter ready. Test via the UI at http://localhost:3000." Stop.

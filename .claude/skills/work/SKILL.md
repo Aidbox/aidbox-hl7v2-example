@@ -17,16 +17,22 @@ Execute a plan file at `ai/tickets/YYYY-MM-DD-*.md` produced by `/plan`. The fil
 
 If the task is the last one and the user approves, move the plan file to `ai/tickets/completed/`.
 
-## Review agent prompt
+## Review agent spawn
+
+Use the **Agent tool** (not the Skill tool — this is a sub-agent running `ai-review`, not you invoking it yourself). Substitute `[N]` and `[plan-file-path]`:
 
 ```
-Use skill ai-review to review implementation of Task [N] from [plan-file-path]. Think hard. The changes are uncommitted. Return your review output; do not change any files.
+Agent({
+  description: "Review Task [N]",
+  subagent_type: "general-purpose",
+  prompt: "Use skill ai-review to review implementation of Task [N] from [plan-file-path]. Think hard. The changes are uncommitted. Return your review output; do not change any files."
+})
 ```
 
-Replace `[N]` and `[plan-file-path]`. If the user specified codex for reviews, spawn it with:
+If the user specified codex for reviews, instead run via the **Bash tool**:
 
-```
-codex exec --model gpt-5.3-codex --sandbox workspace-write --full-auto <prompt>
+```sh
+codex exec --model gpt-5.3-codex --sandbox workspace-write --full-auto "<prompt>"
 ```
 
 ## Rules

@@ -98,10 +98,6 @@ Referenced constantly when diagnosing errors. Full details: `docs/developer-guid
 - `sending_error` — FHIR bundle submission to Aidbox failed; auto-retried 3 times
 - `deferred` — manually set via `POST /defer/:id` when resolution needs external input; eligible for retry via `POST /mark-for-retry/:id`
 
-## Known Sender Issues & Preprocessors
-
-**swap-in1-date-fields** — Handles reversed IN1-12/IN1-13 (Plan Effective Date / Plan Expiration Date). Some senders send start >= end; preprocessor swaps them only when detected. Logs warning. Applied to ADT-A01 and ADT-A08. Masks sender error — escalate if persistent.
-
 ## US Core demographic extension runtime note
 
 If `profileConformance.implementationGuides` enables US Core (`hl7.fhir.us.core`), PID-10/PID-22 mapping adds `us-core-race` / `us-core-ethnicity` on Patient. Aidbox must have the US Core package loaded and CodeSystem `urn:oid:2.16.840.1.113883.6.238` available (seeded in `init-bundle.json`), or Patient writes fail with terminology-binding errors.

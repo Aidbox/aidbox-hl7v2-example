@@ -16,7 +16,14 @@ If the ticket already has upstream sections (e.g. `# Requirements` from a prior 
 ## Process
 
 1. If the request is ambiguous, ask only the questions that genuinely block exploration. Many questions are better deferred to step 3.
-2. Explore the codebase — spawn an Explore agent for unfamiliar areas. Read `CLAUDE.md`, find related patterns, understand constraints.
+2. Explore the codebase. Read `CLAUDE.md` directly. For unfamiliar areas, spawn an Explore agent via the **Agent tool**:
+    ```
+    Agent({
+      description: "Explore <area>",
+      subagent_type: "Explore",
+      prompt: "Find <what you need>. Focus: <files or patterns>. Report under 200 words."
+    })
+    ```
 3. Present findings and propose the implementation shape. Confirm with the user before writing tasks.
 4. Write the plan using the structure below.
 

@@ -25,7 +25,8 @@
     "test:unit": "bun test",
     "test:integration": "bun test --test-root ./test/integration --preload ./test/integration/preload.ts --max-concurrency=1",
     "test:smoke": "bun test --test-root ./test/integration --preload ./test/integration/preload.ts --max-concurrency=1 --test-name-pattern \"smoke: \"",
-    "reset-integration-aidbox": "bun scripts/reset-integration-aidbox.ts"
+    "reset-integration-aidbox": "bun scripts/reset-integration-aidbox.ts",
+    "truncate-aidbox": "bun scripts/truncate-aidbox.ts"
   },
   "type": "module",
   "dependencies": {

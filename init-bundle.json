@@ -475,6 +475,88 @@
     {
       "request": {
         "method": "PUT",
+        "url": "StructureDefinition/coverage-period-as-sent-start"
+      },
+      "resource": {
+        "resourceType": "StructureDefinition",
+        "id": "coverage-period-as-sent-start",
+        "url": "http://example.org/coverage-period-as-sent-start",
+        "name": "CoveragePeriodAsSentStart",
+        "title": "Coverage Period As-Sent Start",
+        "status": "active",
+        "kind": "complex-type",
+        "abstract": false,
+        "context": [{ "type": "element", "expression": "Period" }],
+        "type": "Extension",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+        "derivation": "constraint",
+        "differential": {
+          "element": [
+            {
+              "id": "Extension",
+              "path": "Extension",
+              "short": "Original as-sent Coverage.period.start before autoswap",
+              "definition": "Set when the IN1 Coverage converter detected reversed IN1-12/IN1-13 dates and autoswapped them to satisfy FHIR invariant per-1. Records the start value as originally received from the sender."
+            },
+            {
+              "id": "Extension.url",
+              "path": "Extension.url",
+              "fixedUri": "http://example.org/coverage-period-as-sent-start"
+            },
+            {
+              "id": "Extension.value[x]",
+              "path": "Extension.value[x]",
+              "min": 1,
+              "type": [{ "code": "date" }]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "StructureDefinition/coverage-period-as-sent-end"
+      },
+      "resource": {
+        "resourceType": "StructureDefinition",
+        "id": "coverage-period-as-sent-end",
+        "url": "http://example.org/coverage-period-as-sent-end",
+        "name": "CoveragePeriodAsSentEnd",
+        "title": "Coverage Period As-Sent End",
+        "status": "active",
+        "kind": "complex-type",
+        "abstract": false,
+        "context": [{ "type": "element", "expression": "Period" }],
+        "type": "Extension",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+        "derivation": "constraint",
+        "differential": {
+          "element": [
+            {
+              "id": "Extension",
+              "path": "Extension",
+              "short": "Original as-sent Coverage.period.end before autoswap",
+              "definition": "Set when the IN1 Coverage converter detected reversed IN1-12/IN1-13 dates and autoswapped them to satisfy FHIR invariant per-1. Records the end value as originally received from the sender."
+            },
+            {
+              "id": "Extension.url",
+              "path": "Extension.url",
+              "fixedUri": "http://example.org/coverage-period-as-sent-end"
+            },
+            {
+              "id": "Extension.value[x]",
+              "path": "Extension.value[x]",
+              "min": 1,
+              "type": [{ "code": "date" }]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
         "url": "SearchParameter/IncomingHL7v2Message-status"
       },
       "resource": {
