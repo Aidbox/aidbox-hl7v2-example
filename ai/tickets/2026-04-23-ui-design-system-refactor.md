@@ -35,10 +35,10 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 
 ## Task 2: Design system stylesheet + icon sprite
 
-- [ ] Create `src/ui/design-system.ts` exporting `DESIGN_SYSTEM_CSS` (string) with warm-paper CSS variables on `:root` and component classes (`.app`, `.sidebar`, `.nav-item`, `.page`, `.h1`, `.h2`, `.sub`, `.eyebrow`, `.card`, `.card-head`, `.card-pad`, `.btn`, `.btn-primary`, `.btn-ghost`, `.chip` + tone modifiers, `.dot` + tone modifiers, `.inp`, `.mono`, `.muted`, `.clean-scroll`, `.spinner`) — copied verbatim from `ai/tickets/ui-refactoring/hl7v2-v2/project/HL7v2 Design.html:10-144`
-- [ ] Create `src/ui/icons.ts` exporting `ICON_SPRITE_SVG` (string) with the full `<svg><defs>` block (ids `i-home, i-inbox, i-send, i-alert, i-map, i-users, i-out, i-search, i-settings, i-chev-down, i-chev-right, i-plus, i-check, i-x, i-filter, i-clock, i-arrow-right, i-play, i-sparkle`) and a `renderIcon(name, extraClass?)` helper returning `<svg class="i ..."><use href="#i-{name}"/></svg>`
-- [ ] Unit test `test/unit/ui/design-system.test.ts`: CSS string contains the variable **names** `--paper`, `--accent`, and the `.card` class selector (assert on identifiers, not hex values — colors are stable but values drift); `renderIcon('home')` returns expected SVG markup
-- [ ] Run validation — must pass
+- [x] Create `src/ui/design-system.ts` exporting `DESIGN_SYSTEM_CSS` (string) with warm-paper CSS variables on `:root` and component classes (`.app`, `.sidebar`, `.nav-item`, `.page`, `.h1`, `.h2`, `.sub`, `.eyebrow`, `.card`, `.card-head`, `.card-pad`, `.btn`, `.btn-primary`, `.btn-ghost`, `.chip` + tone modifiers, `.dot` + tone modifiers, `.inp`, `.mono`, `.muted`, `.clean-scroll`, `.spinner`) — copied verbatim from `ai/tickets/ui-refactoring/hl7v2-v2/project/HL7v2 Design.html:10-144` (prototype-only `#root` and `.variant-bar` rules dropped — they were the React-anchor and design-switcher affordances, not part of the app)
+- [x] Create `src/ui/icons.ts` exporting `ICON_SPRITE_SVG` (string) with the full `<svg><defs>` block (ids `i-home, i-inbox, i-send, i-alert, i-map, i-users, i-out, i-search, i-settings, i-chev-down, i-chev-right, i-plus, i-check, i-x, i-filter, i-clock, i-arrow-right, i-play, i-sparkle`) and a `renderIcon(name, extraClass?)` helper returning `<svg class="i ..."><use href="#i-{name}"/></svg>`
+- [x] Unit test `test/unit/ui/design-system.test.ts`: CSS string contains the variable **names** `--paper`, `--accent`, and the `.card` class selector (assert on identifiers, not hex values — colors are stable but values drift); `renderIcon('home')` returns expected SVG markup
+- [x] Run validation — must pass
 - [ ] Stop for user review before next task
 
 ## Task 3a: App shell scaffold + route renames + migrate Accounts
