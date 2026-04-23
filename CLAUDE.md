@@ -49,6 +49,8 @@ bun test:unit                     # Unit tests only
 bun test:smoke                    # Smoke subset of integration tests (tests whose name starts with "smoke: ")
 bun test:integration              # Full integration suite — runs in CI, takes minutes locally
 bun reset-integration-aidbox      # Destroy and recreate test Aidbox from scratch (if test data in the db creates problems)
+bun run truncate-aidbox           # Delete all project-created data from dev Aidbox (demo reset; preserves terminology/profiles)
+                                  # To skip confirmation: echo "yes" | bun scripts/truncate-aidbox.ts
 bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
 bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
 bun run generate-hl7v2-reference  # Generate data/hl7v2-reference/ from XSD+PDF
