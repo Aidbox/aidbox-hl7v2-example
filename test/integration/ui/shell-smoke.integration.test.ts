@@ -7,13 +7,12 @@
  */
 import { describe, test, expect } from "bun:test";
 import { handleAccountsPage } from "../../../src/ui/pages/accounts";
-import {
-  handleIncomingMessagesPage,
-  handleOutgoingMessagesPage,
-} from "../../../src/ui/pages/messages";
-import { handleMappingTasksPage } from "../../../src/ui/pages/mapping-tasks";
-import { handleCodeMappingsPage } from "../../../src/ui/pages/code-mappings";
+import { handleOutgoingMessagesPage } from "../../../src/ui/pages/messages";
+import { handleUnmappedCodesPage } from "../../../src/ui/pages/unmapped";
+import { handleTerminologyPage } from "../../../src/ui/pages/terminology";
 import { handleSimulateSenderPage } from "../../../src/ui/pages/simulate-sender";
+import { handleInboundMessagesPage } from "../../../src/ui/pages/inbound";
+import { handleDashboardPage } from "../../../src/ui/pages/dashboard";
 
 interface Route {
   path: string;
@@ -23,10 +22,13 @@ interface Route {
 
 const ROUTES: Route[] = [
   {
-    // TODO(task-6): swap to handleDashboardPage once `/` moves off Accounts.
     path: "/",
-    label: "Dashboard (currently Accounts)",
-    call: () => handleAccountsPage(new Request("http://localhost:3000/")),
+    label: "Dashboard",
+    call: () =>
+      handleDashboardPage(new Request("http://localhost:3000/"), {
+        workersHandle: null,
+        demoEnabled: true,
+      }),
   },
   {
     path: "/accounts",
@@ -43,7 +45,9 @@ const ROUTES: Route[] = [
     path: "/incoming-messages",
     label: "Inbound Messages",
     call: () =>
-      handleIncomingMessagesPage(new Request("http://localhost:3000/incoming-messages")),
+      handleInboundMessagesPage(
+        new Request("http://localhost:3000/incoming-messages"),
+      ),
   },
   {
     path: "/simulate-sender",
@@ -54,12 +58,12 @@ const ROUTES: Route[] = [
     path: "/unmapped-codes",
     label: "Unmapped Codes",
     call: () =>
-      handleMappingTasksPage(new Request("http://localhost:3000/unmapped-codes")),
+      handleUnmappedCodesPage(new Request("http://localhost:3000/unmapped-codes")),
   },
   {
     path: "/terminology",
     label: "Terminology Map",
-    call: () => handleCodeMappingsPage(new Request("http://localhost:3000/terminology")),
+    call: () => handleTerminologyPage(new Request("http://localhost:3000/terminology")),
   },
 ];
 

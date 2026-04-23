@@ -19,7 +19,7 @@ import { escapeHtml } from "../../utils/html";
 // ============================================================================
 // Restored from `main` branch's MLLP test client so the samples keep their
 // clinical detail and realistic sender identities; grouped by message type
-// for a more usable <select> with <optgroup>. Exported so Task 6's scripted
+// for a more usable <select> with <optgroup>. Exported so Task 7's scripted
 // demo can reuse the same samples via stable ids without re-hardcoding them.
 
 export interface MessageSample {
@@ -42,7 +42,7 @@ interface TemplateContext {
   vnSuffix: string;
 }
 
-function buildTemplateContext(): TemplateContext {
+export function buildTemplateContext(): TemplateContext {
   const now = new Date()
     .toISOString()
     .replace(/[-:T]/g, "")
@@ -53,7 +53,7 @@ function buildTemplateContext(): TemplateContext {
   return { now, nowDate, msgId, vnSuffix };
 }
 
-// Template builders. Keyed by stable sample id — Task 6's scripted demo
+// Template builders. Keyed by stable sample id — Task 7's scripted demo
 // imports this map and looks up by id. Keeping the id strings short and
 // meaningful so code-search for "adt-a01-full" finds both the scheduler
 // and the producer.

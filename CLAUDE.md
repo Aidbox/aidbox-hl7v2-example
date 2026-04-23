@@ -72,6 +72,7 @@ Read `docs/developer-guide/how-to/development-guide.md` for test infrastructure,
 Env flags:
 - `DISABLE_POLLING=1` — do not start any workers (useful for tests or when running the standalone `bun src/v2-to-fhir/processor-service.ts` scripts).
 - `POLL_INTERVAL_MS` — override poll interval. Default 5000ms (demo-friendly). The standalone scripts still use their own 60000ms default.
+- `DEMO_MODE` — default-on. Controls the Dashboard's "Run demo now" endpoint (`POST /demo/run-scenario`). Unset, empty, or any non-`"off"` value enables it; only `DEMO_MODE=off` disables (returns 403).
 
 The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) are unchanged and still work — they share the same factories.
 
@@ -82,6 +83,7 @@ The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) ar
 Env flags:
 - `DISABLE_POLLING=1` — do not start any workers (useful for tests or when running the standalone `bun src/v2-to-fhir/processor-service.ts` scripts).
 - `POLL_INTERVAL_MS` — override poll interval. Default 5000ms (demo-friendly). The standalone scripts still use their own 60000ms default.
+- `DEMO_MODE` — default-on. Controls the Dashboard's "Run demo now" endpoint (`POST /demo/run-scenario`). Unset, empty, or any non-`"off"` value enables it; only `DEMO_MODE=off` disables (returns 403).
 
 The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) are unchanged and still work — they share the same factories.
 

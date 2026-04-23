@@ -1,5 +1,8 @@
 # Plan: Demo-Ready UI (Tier 1)
 
+> **Status: tasks 3–7 superseded by [`2026-04-23-ui-design-system-refactor.md`](./2026-04-23-ui-design-system-refactor.md)** (completed 2026-04-23).
+> Tasks 1 and 2 shipped as planned; tasks 3–7 were folded into the warm-paper redesign and are no longer actionable here. See the superseding plan for the final implementation.
+
 ## Overview
 
 Transform the admin-grade UI into a customer-demo-ready UI without a rewrite. Biggest unlock: auto-start the three polling services inside the web server so the pipeline is genuinely live on screen. Everything else (dashboard, nav regrouping, severity-graded status colors, auto-refresh, demo scenario button) builds on that foundation.

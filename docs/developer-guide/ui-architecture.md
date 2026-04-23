@@ -223,13 +223,13 @@ src/ui/
 ├── icons.ts              # ICON_SPRITE_SVG, ICON_NAMES, renderIcon
 ├── legacy-assets.ts      # CSS + scripts inherited from the Tailwind layout
 ├── shared.ts             # htmlResponse, redirectResponse, getNavData, NavData
-├── shared-layout.ts      # highlightHL7WithDataTooltip only (historical name; renamed to hl7-display.ts in Task 12)
+├── hl7-display.ts        # highlightHL7WithDataTooltip (renamed from shared-layout.ts in Task 13)
 ├── static.ts             # /static/* route
 ├── pagination.ts         # shared pagination helpers
 └── pages/                # one file per route
 ```
 
-When you add a new module under `src/ui/`, keep its responsibility tight. A page module should export one handler per route it owns plus a small set of test-only exports (see the existing `mapping-tasks.ts` pattern). Shared helpers go in `shared.ts`; shared styling in `design-system.ts`.
+When you add a new module under `src/ui/`, keep its responsibility tight. A page module should export one handler per route it owns plus a small set of test-only exports (see `terminology.ts` or `inbound.ts` for the warm-paper pattern). Shared helpers go in `shared.ts`; shared styling in `design-system.ts`.
 
 ## Common gotchas
 

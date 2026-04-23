@@ -211,6 +211,27 @@ export function renderShell(opts: ShellOptions): string {
   </div>
   ${ICON_SPRITE_SVG}
   <script>
+    // Helper used by the Inbound list's hx-trigger filter. Defined in
+    // the shell (not the page) so htmx can reference it without
+    // worrying about Alpine init order. Kept as a plain function
+    // call — htmx's filter tokenizer can't handle optional chaining
+    // or nested CSS attribute-selector brackets; see the comment in
+    // renderListPartial for the full footgun list.
+    window.__hasSelectedDetail = function() {
+      var d = document.getElementById('detail');
+      return !!(d && d.getAttribute('data-selected'));
+    };
+    // Used by the Inbound list's hx-vals to thread current URL
+    // params (type, status, batch, selected) into each auto-refresh
+    // poll. htmx's hx-vals 'js:' eval can't handle property access
+    // like Object.fromEntries without tripping its tokenizer; route
+    // through a plain function call.
+    window.__getListParams = function() {
+      var p = new URLSearchParams(window.location.search);
+      var out = {};
+      p.forEach(function(v, k) { out[k] = v; });
+      return out;
+    };
     ${HEALTH_CHECK_SCRIPT}
     ${HL7_TOOLTIP_SCRIPT}
     ${LOINC_AUTOCOMPLETE_SCRIPT}

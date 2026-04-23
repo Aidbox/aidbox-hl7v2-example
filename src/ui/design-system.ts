@@ -147,6 +147,18 @@ export const TAILWIND_CSS = `
     .dot.warn { background: var(--warn); }
     .dot.err { background: var(--err); }
     .dot.accent { background: var(--accent); }
+    /* Expanding-halo pulse shared between: (a) the ticker header dot to
+       signal the auto-refresh tick, (b) the active demo stepper circle
+       to signal which step is currently firing. Color hard-coded to
+       accent RGB — color-mix in box-shadow isn't reliable across every
+       evergreen browser. Keep the duration aligned with the ticker
+       refresh cadence (2s) so the two animations read as one rhythm. */
+    .pulse-accent { animation: pulse-accent 1.4s ease-out infinite; }
+    @keyframes pulse-accent {
+      0%   { box-shadow: 0 0 0 0 rgba(198, 83, 42, 0.45); }
+      100% { box-shadow: 0 0 0 7px rgba(198, 83, 42, 0); }
+    }
+    .dot.pulse { animation: pulse-accent 1.4s ease-out infinite; }
 
     .inp { padding: 9px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.1s; width: 100%; box-sizing: border-box; min-width: 0; }
     .inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

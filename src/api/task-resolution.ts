@@ -161,12 +161,15 @@ export async function resolveTaskWithMapping(
  * This is the main entry point for task resolution. It:
  * 1. Resolves the task with the provided code
  * 2. Updates all affected messages to remove the task reference
+ * 3. Returns the number of messages that were re-queued so the UI can
+ *    surface the effect to the user (e.g. "3 messages queued for replay").
  */
 export async function resolveTaskAndUpdateMessages(
   taskId: string,
   resolvedCode: string,
   resolvedDisplay: string,
-): Promise<void> {
+): Promise<{ replayedCount: number }> {
   await resolveTaskWithMapping(taskId, resolvedCode, resolvedDisplay);
-  await updateAffectedMessages(taskId);
+  const replayedCount = await updateAffectedMessages(taskId);
+  return { replayedCount };
 }

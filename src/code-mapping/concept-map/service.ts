@@ -39,7 +39,7 @@ export interface SenderContext {
 }
 
 // ============================================================================
-// Types for CRUD operations (moved from ui/pages/code-mappings.ts)
+// Types for CRUD operations
 // ============================================================================
 
 /**
@@ -292,7 +292,7 @@ export function addMappingToConceptMap(
 
 
 // ============================================================================
-// Helper functions for CRUD operations (moved from ui/pages/code-mappings.ts)
+// Helper functions for CRUD operations
 // ============================================================================
 
 /**
@@ -384,7 +384,7 @@ export function buildCompletedTask(
 }
 
 // ============================================================================
-// CRUD operations (moved from ui/pages/code-mappings.ts)
+// CRUD operations
 // ============================================================================
 
 /**
@@ -597,6 +597,7 @@ export async function updateConceptMapEntry(
   localSystem: string,
   newTargetCode: string,
   newTargetDisplay: string,
+  newLocalDisplay?: string,
 ): Promise<{ success: boolean; error?: string }> {
   const { resource: conceptMap, etag } = await getResourceWithETag<ConceptMap>(
     "ConceptMap",
@@ -634,6 +635,12 @@ export async function updateConceptMapEntry(
   const currentTargetSystem = foundGroup.target || conceptMap.targetUri;
   const targetSystemChanged = currentTargetSystem !== newTargetSystem;
 
+  // If the caller passed newLocalDisplay (even an empty string), use that;
+  // otherwise preserve the existing element.display so omitting the param
+  // is a no-op for this field.
+  const resolvedLocalDisplay =
+    newLocalDisplay !== undefined ? newLocalDisplay : foundElement.display;
+
   if (targetSystemChanged) {
     // Remove from current group
     foundGroup.element = foundGroup.element.filter(
@@ -659,7 +666,7 @@ export async function updateConceptMapEntry(
     newGroup.element = newGroup.element || [];
     newGroup.element.push({
       code: localCode,
-      ...(foundElement.display && { display: foundElement.display }),
+      ...(resolvedLocalDisplay && { display: resolvedLocalDisplay }),
       target: [
         {
           code: newTargetCode,
@@ -679,7 +686,15 @@ export async function updateConceptMapEntry(
       }
     }
   } else {
-    // Same target system - update in place
+    // Same target system - update in place. Preserve the element shape but
+    // overwrite `display` (if caller provided one) and the single target.
+    if (newLocalDisplay !== undefined) {
+      if (newLocalDisplay) {
+        foundElement.display = newLocalDisplay;
+      } else {
+        delete foundElement.display;
+      }
+    }
     foundElement.target = [
       {
         code: newTargetCode,

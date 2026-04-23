@@ -13,11 +13,33 @@ import { handleAccountsPage, createAccount } from "./ui/pages/accounts";
 import {
   handleOutgoingMessagesPage,
   createOutgoingMessage,
-  handleIncomingMessagesPage,
 } from "./ui/pages/messages";
-import { handleMappingTasksPage } from "./ui/pages/mapping-tasks";
-import { handleCodeMappingsPage } from "./ui/pages/code-mappings";
-import { highlightHL7WithDataTooltip } from "./ui/shared-layout";
+import {
+  handleInboundMessagesPage,
+  handleInboundListPartial,
+  handleInboundTypeChipsPartial,
+} from "./ui/pages/inbound";
+import {
+  handleInboundDetailPartial,
+  handleInboundDetailTabPartial,
+  handleMarkForRetry,
+} from "./ui/pages/inbound-detail";
+import {
+  handleUnmappedCodesPage,
+  handleUnmappedQueuePartial,
+  handleUnmappedEditorPartial,
+  handleLoincTypeaheadPartial,
+} from "./ui/pages/unmapped";
+import {
+  handleTerminologyPage,
+  handleTerminologyTablePartial,
+  handleTerminologyFhirFacet,
+  handleTerminologySenderFacet,
+  handleTerminologyDetailPartial,
+  handleTerminologyModalPartial,
+  handleTerminologyLoincTypeahead,
+} from "./ui/pages/terminology";
+import { highlightHL7WithDataTooltip } from "./ui/hl7-display";
 import {
   handleAddEntry,
   handleUpdateEntry,
@@ -28,8 +50,15 @@ import {
   handleSimulateSenderSend,
   handleSimulateSenderStatus,
 } from "./ui/pages/simulate-sender";
+import {
+  handleDashboardPage,
+  handleDashboardStats,
+  handleDashboardTicker,
+} from "./ui/pages/dashboard";
+import { handleRunDemoScenario, isDemoEnabled } from "./api/demo-scenario";
 import { handleTaskResolution } from "./api/mapping-tasks";
 import { searchLoincCodes, validateLoincCode } from "./code-mapping/terminology-api";
+import { suggestCodes } from "./api/terminology-suggest";
 import { processNextMessage as processNextV2ToFhirMessage } from "./v2-to-fhir/processor-service";
 import {
   startAllPollingServices,
@@ -37,6 +66,26 @@ import {
   type WorkersHandle,
 } from "./workers";
 import { handleStaticAsset } from "./ui/static";
+
+// ============================================================================
+// Workers — started before Bun.serve so request handlers can close over the
+// shared workers handle. `bun --hot` re-executes the module on every save;
+// caching the handle on globalThis so reloads can stop the prior instance
+// before starting a new one (otherwise poll loops leak).
+// ============================================================================
+
+const globalState = globalThis as typeof globalThis & {
+  __workers?: WorkersHandle | null;
+};
+
+globalState.__workers?.stop();
+
+if (isPollingDisabled()) {
+  globalState.__workers = null;
+  console.log("[workers] skipped (DISABLE_POLLING=1)");
+} else {
+  globalState.__workers = startAllPollingServices();
+}
 
 // ============================================================================
 // Server
@@ -48,7 +97,11 @@ Bun.serve({
     // =========================================================================
     // UI Routes - HTTP methods are explicit
     // =========================================================================
-    "/": handleAccountsPage,
+    "/": (req) =>
+      handleDashboardPage(req, {
+        workersHandle: globalState.__workers,
+        demoEnabled: isDemoEnabled(),
+      }),
     "/accounts": {
       GET: handleAccountsPage,
       POST: createAccount,
@@ -57,9 +110,34 @@ Bun.serve({
       GET: handleOutgoingMessagesPage,
       POST: createOutgoingMessage,
     },
-    "/incoming-messages": handleIncomingMessagesPage,
-    "/unmapped-codes": handleMappingTasksPage,
-    "/terminology": handleCodeMappingsPage,
+    "/incoming-messages": handleInboundMessagesPage,
+    "/incoming-messages/partials/list": { GET: handleInboundListPartial },
+    "/incoming-messages/partials/type-chips": {
+      GET: handleInboundTypeChipsPartial,
+    },
+    "/incoming-messages/:id/partials/detail": {
+      GET: handleInboundDetailPartial,
+    },
+    "/incoming-messages/:id/partials/detail/:tab": {
+      GET: handleInboundDetailTabPartial,
+    },
+    "/unmapped-codes": { GET: handleUnmappedCodesPage },
+    "/unmapped-codes/partials/queue": { GET: handleUnmappedQueuePartial },
+    "/unmapped-codes/partials/loinc-suggest": {
+      GET: handleLoincTypeaheadPartial,
+    },
+    "/unmapped-codes/:code/partials/editor": { GET: handleUnmappedEditorPartial },
+    "/terminology": { GET: handleTerminologyPage },
+    "/terminology/partials/table": { GET: handleTerminologyTablePartial },
+    "/terminology/partials/facets/fhir": { GET: handleTerminologyFhirFacet },
+    "/terminology/partials/facets/sender": { GET: handleTerminologySenderFacet },
+    "/terminology/partials/detail/:conceptMapId/:code": {
+      GET: handleTerminologyDetailPartial,
+    },
+    "/terminology/partials/modal": { GET: handleTerminologyModalPartial },
+    "/terminology/partials/loinc-suggest": {
+      GET: handleTerminologyLoincTypeahead,
+    },
     "/simulate-sender": {
       GET: handleSimulateSenderPage,
     },
@@ -68,6 +146,16 @@ Bun.serve({
     },
     "/simulate-sender/status": {
       GET: handleSimulateSenderStatus,
+    },
+    "/dashboard/partials/stats": {
+      GET: (req) =>
+        handleDashboardStats(req, { workersHandle: globalState.__workers }),
+    },
+    "/dashboard/partials/ticker": {
+      GET: handleDashboardTicker,
+    },
+    "/demo/run-scenario": {
+      POST: handleRunDemoScenario,
     },
 
     // =========================================================================
@@ -107,6 +195,19 @@ Bun.serve({
       } catch (error) {
         console.error("LOINC validation error:", error);
         return Response.json({ error: "Validation failed" }, { status: 500 });
+      }
+    },
+    "/api/terminology/suggest": async (req) => {
+      const url = new URL(req.url);
+      const display = url.searchParams.get("display") ?? "";
+      const field = url.searchParams.get("field") ?? undefined;
+      if (!display.trim()) return Response.json({ results: [] });
+      try {
+        const results = await suggestCodes(display, field);
+        return Response.json({ results });
+      } catch (error) {
+        console.error("Terminology suggest error:", error);
+        return Response.json({ error: "Suggest failed" }, { status: 500 });
       }
     },
 
@@ -254,27 +355,7 @@ Bun.serve({
       },
     },
     "/mark-for-retry/:id": {
-      POST: async (req) => {
-        const messageId = req.params.id;
-
-        const message = await aidboxFetch<IncomingHL7v2Message>(
-          `/fhir/IncomingHL7v2Message/${messageId}`,
-        );
-
-        const updated: IncomingHL7v2Message = {
-          ...message,
-          status: "received",
-          error: undefined,
-          entries: undefined,
-        };
-
-        await putResource("IncomingHL7v2Message", messageId, updated);
-
-        return new Response(null, {
-          status: 302,
-          headers: { Location: "/incoming-messages" },
-        });
-      },
+      POST: handleMarkForRetry,
     },
     "/mark-batch-for-retry/:batchTag": {
       POST: async (req) => {
@@ -344,23 +425,6 @@ Bun.serve({
 });
 
 console.log("Server running at http://localhost:3000");
-
-// `bun --hot` re-executes this module on every save. Without this, each reload
-// starts a new set of polling services without stopping the previous set,
-// leaking poll loops. Cache the handle on globalThis so reloads can stop the
-// prior instance before starting a new one.
-const globalState = globalThis as typeof globalThis & {
-  __workers?: WorkersHandle | null;
-};
-
-globalState.__workers?.stop();
-
-if (isPollingDisabled()) {
-  globalState.__workers = null;
-  console.log("[workers] skipped (DISABLE_POLLING=1)");
-} else {
-  globalState.__workers = startAllPollingServices();
-}
 
 function shutdown(signal: string): void {
   console.log(`\n[server] received ${signal}, shutting down...`);

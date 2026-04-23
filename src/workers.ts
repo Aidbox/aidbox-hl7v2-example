@@ -48,6 +48,39 @@ export interface StartWorkersOptions {
 
 const DEFAULT_DEMO_POLL_INTERVAL_MS = 5_000;
 
+export type WorkerStatus = "up" | "down" | "disabled";
+
+export interface WorkerHealth {
+  oruProcessor: WorkerStatus;
+  barBuilder: WorkerStatus;
+  barSender: WorkerStatus;
+}
+
+/**
+ * Snapshot per-service running state for the Dashboard. When polling is
+ * disabled (handle = null) or the handle is absent, returns all
+ * "disabled" rather than throwing — the dashboard must render even on
+ * a dev box that booted with DISABLE_POLLING=1.
+ */
+export function getWorkerHealth(
+  handle: WorkersHandle | null | undefined,
+): WorkerHealth {
+  if (!handle) {
+    return {
+      oruProcessor: "disabled",
+      barBuilder: "disabled",
+      barSender: "disabled",
+    };
+  }
+  const status = (s: PollingService): WorkerStatus =>
+    s.isRunning() ? "up" : "down";
+  return {
+    oruProcessor: status(handle.services.inboundProcessor),
+    barBuilder: status(handle.services.accountBuilder),
+    barSender: status(handle.services.barSender),
+  };
+}
+
 export function resolvePollIntervalMs(
   explicit: number | undefined,
   env: NodeJS.ProcessEnv = process.env,

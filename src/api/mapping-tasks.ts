@@ -10,11 +10,51 @@ import { validateResolvedCode } from "../code-mapping/validation";
 import { resolveTaskAndUpdateMessages } from "./task-resolution";
 
 /**
+ * Build a redirect URL back to /unmapped-codes preserving the caller's
+ * selection (so the editor stays populated on validation failure) and
+ * attaching an error query param. On success we drop ?code=&sender=
+ * because the resolved row is gone from the queue.
+ *
+ * `savedCode` + `replayedCount` power the post-save success banner so
+ * the user can see "Mapped K_SERUM — 6 messages queued for replay."
+ */
+function buildRedirect(
+  error: string | undefined,
+  localCode: string | undefined,
+  localSender: string | undefined,
+  savedCode?: string,
+  replayedCount?: number,
+): Response {
+  if (!error) {
+    const params = new URLSearchParams();
+    if (savedCode) params.set("saved", savedCode);
+    if (typeof replayedCount === "number") {
+      params.set("replayed", String(replayedCount));
+    }
+    const qs = params.toString();
+    return new Response(null, {
+      status: 302,
+      headers: { Location: qs ? `/unmapped-codes?${qs}` : "/unmapped-codes" },
+    });
+  }
+  const params = new URLSearchParams();
+  if (localCode) params.set("code", localCode);
+  if (localSender) params.set("sender", localSender);
+  params.set("error", error);
+  return new Response(null, {
+    status: 302,
+    headers: { Location: `/unmapped-codes?${params.toString()}` },
+  });
+}
+
+/**
  * Handle task resolution POST request.
  *
  * Expects form data with:
  * - resolvedCode: The resolved target code
  * - resolvedDisplay: Display text for the resolved code
+ * - Optional: localCode, localSender — used to redirect back to the right
+ *   editor view on validation failure.
  *
  * @param req - Request with params.id containing the task ID
  */
@@ -30,14 +70,11 @@ export async function handleTaskResolution(
   const formData = await req.formData();
   const resolvedCode = formData.get("resolvedCode")?.toString();
   const resolvedDisplay = formData.get("resolvedDisplay")?.toString() || "";
+  const localCode = formData.get("localCode")?.toString() || undefined;
+  const localSender = formData.get("localSender")?.toString() || undefined;
 
   if (!resolvedCode) {
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/unmapped-codes?error=${encodeURIComponent("Resolved code is required")}`,
-      },
-    });
+    return buildRedirect("Pick a LOINC code from the suggestions or type one in the search box.", localCode, localSender);
   }
 
   try {
@@ -48,42 +85,44 @@ export async function handleTaskResolution(
 
     const mappingType = task.code?.coding?.[0]?.code;
     if (!mappingType || !isMappingTypeName(mappingType)) {
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: `/unmapped-codes?error=${encodeURIComponent("Task has invalid mapping type - cannot determine target system")}`,
-        },
-      });
+      return buildRedirect(
+        "Task has invalid mapping type — cannot determine target system",
+        localCode,
+        localSender,
+      );
     }
 
     // Validate the resolved code against the target value set
     const validationResult = validateResolvedCode(mappingType, resolvedCode);
 
     if (!validationResult.valid) {
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: `/unmapped-codes?error=${encodeURIComponent(validationResult.error || "Invalid code")}`,
-        },
-      });
+      return buildRedirect(
+        `"${resolvedCode}" is not a valid ${mappingType} code — ${validationResult.error || "pick one from the suggestions below"}.`,
+        localCode,
+        localSender,
+      );
     }
 
-    // Resolve the task and update affected messages
-    await resolveTaskAndUpdateMessages(taskId, resolvedCode, resolvedDisplay);
+    // Resolve the task + auto-replay affected messages. Pass the count
+    // back in the redirect so the /unmapped-codes landing can surface
+    // "Mapped X — N messages queued for replay" banner.
+    const { replayedCount } = await resolveTaskAndUpdateMessages(
+      taskId,
+      resolvedCode,
+      resolvedDisplay,
+    );
 
-    return new Response(null, {
-      status: 302,
-      headers: { Location: "/unmapped-codes" },
-    });
+    return buildRedirect(
+      undefined,
+      undefined,
+      undefined,
+      resolvedCode,
+      replayedCount,
+    );
   } catch (error) {
     console.error("Task resolution error:", error);
     const message =
       error instanceof Error ? error.message : "Resolution failed";
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/unmapped-codes?error=${encodeURIComponent(message)}`,
-      },
-    });
+    return buildRedirect(message, localCode, localSender);
   }
 }
