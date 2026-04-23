@@ -130,6 +130,8 @@ IMPORTANT: Read `.claude/code-style.md` before writing or modifying code.
 
 UI conventions: see `docs/developer-guide/ui-architecture.md`.
 
+Tailwind v4 gotcha: Tailwind utilities are emitted inside cascade layers, while `DESIGN_SYSTEM_CSS` is plain unlayered CSS. Broad unlayered resets override utilities even when the utility selector looks more specific; e.g. `a { color: inherit; }` breaks legacy anchor tabs using `text-white` / `text-gray-*`. Scope resets to unclassed elements (`a:not([class])`) or put them in Tailwind's base layer.
+
 ## Bun, not Node
 
 This project uses Bun. Use `bun`/`bun install`/`bun run` instead of `node`/`npm`/`yarn`/`pnpm`. Unit tests use `bun test` (not jest/vitest). Bun auto-loads `.env` (no `dotenv`). HTTP: `Bun.serve()`. File I/O: `Bun.file`.

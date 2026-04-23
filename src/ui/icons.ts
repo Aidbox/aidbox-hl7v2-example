@@ -2,6 +2,12 @@
 // `ai/tickets/ui-refactoring/hl7v2-v2/project/HL7v2 Design.html` (lines 149–171).
 // The shell renders ICON_SPRITE_SVG once per page; individual icons reference
 // symbols by id via <use href="#i-{name}"/>.
+//
+// Icon sizing is now expressed as Tailwind utilities rather than the deleted
+// `.i` / `.i-sm` class pair. The defaults match the legacy CSS: 16px square
+// (`w-4 h-4`) with stroke-inheriting SVG attrs. The `sm` modifier drops to
+// 13px via `w-[13px] h-[13px]` (3.25 isn't a Tailwind spacing stop so the
+// arbitrary value keeps the wireframe size exact).
 
 export const ICON_NAMES = [
   "home",
@@ -28,10 +34,16 @@ export const ICON_NAMES = [
 export type IconName = (typeof ICON_NAMES)[number];
 
 // The only modifier used today; widen this union when a new vocabulary lands.
-export type IconClassModifier = "i-sm";
+export type IconClassModifier = "sm";
+
+// Shared utility stacks. Kept as constants so the test and renderer never
+// drift in their expectation of what class an icon actually carries.
+const ICON_BASE_CLASSES =
+  "w-4 h-4 shrink-0 stroke-current fill-none [stroke-width:1.6] [stroke-linecap:round] [stroke-linejoin:round]";
+const ICON_SM_OVERRIDE_CLASSES = "w-[13px] h-[13px]";
 
 export const ICON_SPRITE_SVG = `
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<svg width="0" height="0" class="absolute" aria-hidden="true">
   <defs>
     <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></symbol>
     <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7M3 12l3-8h12l3 8M3 12h5l2 3h4l2-3h5"/></symbol>
@@ -58,7 +70,10 @@ export const ICON_SPRITE_SVG = `
 // Icons are decorative — they get `aria-hidden="true"` so screen readers
 // ignore them. When the icon is the only semantic content of a control (e.g.
 // an icon-only button), the *parent* must supply `aria-label`.
-export function renderIcon(name: IconName, extraClass?: IconClassModifier): string {
-  const classAttr = extraClass ? `i ${extraClass}` : "i";
+export function renderIcon(name: IconName, size?: IconClassModifier): string {
+  const classAttr =
+    size === "sm"
+      ? `${ICON_BASE_CLASSES} ${ICON_SM_OVERRIDE_CLASSES}`
+      : ICON_BASE_CLASSES;
   return `<svg class="${classAttr}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 }

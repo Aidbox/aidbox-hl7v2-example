@@ -44,9 +44,9 @@ export async function handleSendersPage(req: Request): Promise<Response> {
 function renderHero(): string {
   return `
     <div>
-      <div class="eyebrow">Workspace</div>
-      <h1 class="h1" style="margin-top:4px;">Senders</h1>
-      <p class="sub">Every HL7v2 source that has pushed a message.</p>
+      <div class="text-[11px] tracking-[0.1em] uppercase text-ink-3 font-medium">Workspace</div>
+      <h1 class="h1 mt-1">Senders</h1>
+      <p class="mt-1.5 text-[13.5px] text-ink-2">Every HL7v2 source that has pushed a message.</p>
     </div>
   `;
 }

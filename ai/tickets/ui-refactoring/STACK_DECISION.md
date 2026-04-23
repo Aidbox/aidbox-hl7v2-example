@@ -90,11 +90,15 @@ None of these are on the roadmap today.
 
 Tasks 2–5 shipped `src/ui/design-system.ts` + inline `style="..."` attributes for new pages while Tailwind stayed CDN-loaded globally for legacy pages (Accounts, Outgoing Messages). This was the "not recommended" option from the original open follow-up — we forked the CSS system without re-justifying the flip in writing.
 
-Reconciliation is tracked as **Task 6** in `ai/tickets/2026-04-23-ui-design-system-refactor.md`, landing between Simulate Sender (Task 5, done) and Dashboard (Task 7). Shape:
+Reconciliation was delivered as **Task 6** in `ai/tickets/2026-04-23-ui-design-system-refactor.md`, landing between Simulate Sender (Task 5, done) and Dashboard (Task 7). Shape, as shipped:
 
-- Keep the original recommendation: Tailwind + warm-paper CSS vars as theme colors. No build step added — Play CDN accepts inline `tailwind.config` and `<style type="text/tailwindcss">` blocks.
-- Compound components (`.card`, `.btn`, `.chip`, `.nav-item`, `.inp`, `.dot`, `.spinner`) move to `@layer components`. Utility-ish classes (`.muted`, `.mono`, `.sub`, `.eyebrow`, `.count`) delete in favor of Tailwind utilities.
-- Inline `style="..."` attrs migrate to utility stacks; Alpine `:style` ternaries become `:class` ternaries where the branch resolves to a single token.
-- Rationale + tradeoffs captured in the upcoming ADR `docs/developer-guide/adr/002-tailwind-reconciliation.md` (created by Task 6).
+- Tailwind + warm-paper CSS vars as theme colors, no build step.
+- Compound components (`.card`, `.btn`, `.chip`, `.nav-item`, `.inp`, `.dot`, `.spinner`, `.h1`, `.h2`, `.clean-scroll`) live in `@layer components`.
+- Utility-ish classes (`.muted`, `.mono`, `.sub`, `.eyebrow`, `.count`, `.i`, `.i-sm`) deleted; every callsite uses Tailwind utilities.
+- Inline `style="..."` attrs migrated to utility stacks; Alpine `:style` ternaries converted to `:class` ternaries where each branch resolves to a single token.
 
-Scope pre-audit: 51 inline styles in `simulate-sender.ts`, 7 in `shell.ts`, 1 in `icons.ts`. The three other new pages (Inbound-messages half of `messages.ts`, `mapping-tasks.ts`, `code-mappings.ts`) are already class-only and need spot-checks only. Doing the migration now — before Dashboard / Inbound detail / Unmapped / Terminology are built — prevents the inline-style surface from multiplying by ~5×.
+**Scope-expansion note** (not foreseen when this section was first written): mid-Task-6, the user asked to swap the remote `cdn.tailwindcss.com` for a locally-vendored Tailwind matching the htmx/alpine pattern. `cdn.tailwindcss.com` only serves v3; the user chose to migrate to Tailwind **v4.2.4** via `@tailwindcss/browser` rather than vendor v3 as-is. v4 drops JS `tailwind.config = {...}` in favor of CSS-native `@theme` / `@source inline(...)` directives, so the configuration plumbing was re-done under the new API. Palette values remain declared once in `:root` inside `DESIGN_SYSTEM_CSS`; the v4 `@theme` block is a mapping, not a duplicate, with a unit test enforcing 1:1 parity.
+
+**Final rationale + tradeoffs captured in the ADR**: [`docs/developer-guide/adr/002-tailwind-reconciliation.md`](../../docs/developer-guide/adr/002-tailwind-reconciliation.md).
+
+Scope pre-audit (historical): 51 inline styles in `simulate-sender.ts`, 7 in `shell.ts`, 1 in `icons.ts`. The three other new pages (Inbound-messages half of `messages.ts`, `mapping-tasks.ts`, `code-mappings.ts`) were already class-only and needed spot-checks only. Doing the migration now — before Dashboard / Inbound detail / Unmapped / Terminology are built — prevented the inline-style surface from multiplying by ~5×.

@@ -300,9 +300,9 @@ function renderSimulateBody(): string {
   return `
   <div x-data="simulateEditor(${groupsJson}, '${defaultId}')" x-init="refreshFromTemplate()">
     ${renderHero()}
-    <div style="display:grid; grid-template-columns: minmax(0, 1fr) 360px; gap:22px; align-items:start;">
+    <div class="grid grid-cols-[minmax(0,1fr)_360px] gap-[22px] items-start">
       ${renderEditorCard()}
-      <div style="display:flex; flex-direction:column; gap:16px;">
+      <div class="flex flex-col gap-4">
         ${renderTweaksCard()}
         ${renderSendCard()}
       </div>
@@ -315,31 +315,30 @@ function renderSimulateBody(): string {
 function renderHero(): string {
   return `
   <div>
-    <div class="eyebrow">Compose &amp; send · MLLP</div>
-    <h1 class="h1" style="margin-top:6px;">Simulate Sender</h1>
-    <div class="sub" style="margin-bottom:22px;">Pick a message type, tweak the text, fire it at the listener. Pairs with Inbound to show the whole loop.</div>
+    <div class="text-[11px] tracking-[0.1em] uppercase text-ink-3 font-medium">Compose &amp; send · MLLP</div>
+    <h1 class="h1 mt-1.5">Simulate Sender</h1>
+    <div class="mt-1.5 mb-[22px] text-[13.5px] text-ink-2">Pick a message type, tweak the text, fire it at the listener. Pairs with Inbound to show the whole loop.</div>
   </div>
   `;
 }
 
 function renderEditorCard(): string {
   return `
-  <div class="card" style="display:flex; flex-direction:column; overflow:hidden;">
-    <div style="display:flex; align-items:center; gap:10px; padding:12px 18px; border-bottom:1px solid var(--line); background:var(--paper-2);">
-      <span class="mono" style="font-size:11.5px; color:var(--ink-2); font-weight:500;">message.hl7</span>
-      <span class="chip" style="font-size:10.5px;">HL7v2 · 2.5.1</span>
-      <span class="chip" style="font-size:10.5px;" x-text="segmentCount + ' segments'"></span>
+  <div class="card flex flex-col overflow-hidden">
+    <div class="flex items-center gap-2.5 py-3 px-[18px] border-b border-line bg-paper-2">
+      <span class="font-mono text-[11.5px] text-ink-2 font-medium">message.hl7</span>
+      <span class="chip text-[10.5px]">HL7v2 · 2.5.1</span>
+      <span class="chip text-[10.5px]" x-text="segmentCount + ' segments'"></span>
     </div>
     <textarea
-      class="mono clean-scroll"
+      class="font-mono clean-scroll px-[22px] py-5 text-[13px] leading-[1.7] border-none outline-none bg-surface text-ink min-h-[360px] resize-y w-full"
       x-ref="editor"
       x-model="raw"
       spellcheck="false"
-      style="padding:20px 22px; font-size:13px; line-height:1.7; border:none; outline:none; background:var(--surface); color:var(--ink); min-height:360px; resize:vertical; width:100%;"
     ></textarea>
-    <div style="display:flex; align-items:center; gap:14px; padding:10px 18px; border-top:1px solid var(--line); background:var(--paper-2); font-size:11.5px; color:var(--ink-3); font-family:var(--mono);">
+    <div class="flex items-center gap-3.5 py-2.5 px-[18px] border-t border-line bg-paper-2 text-[11.5px] text-ink-3 font-mono">
       <span>pipe-delimited · CR or LF endings ok</span>
-      <span style="margin-left:auto;"><span x-text="raw.length"></span> chars · <span x-text="segmentCount"></span> segments</span>
+      <span class="ml-auto"><span x-text="raw.length"></span> chars · <span x-text="segmentCount"></span> segments</span>
     </div>
   </div>
   `;
@@ -364,17 +363,17 @@ function renderTweaksCard(): string {
 
   return `
   <div class="card card-pad">
-    <div class="eyebrow" style="margin-bottom:12px;">Sample message</div>
+    <div class="text-[11px] tracking-[0.1em] uppercase text-ink-3 font-medium mb-3">Sample message</div>
     <div>
-      <label style="font-size:11px; color:var(--ink-3); letter-spacing:0.04em; text-transform:uppercase;">Message type</label>
-      <select class="inp mono" x-model="sampleId" @change="refreshFromTemplate()" style="margin-top:4px;">
+      <label class="text-[11px] text-ink-3 tracking-[0.04em] uppercase">Message type</label>
+      <select class="inp font-mono mt-1" x-model="sampleId" @change="refreshFromTemplate()">
         ${optgroups}
       </select>
       <div
-        style="margin-top:18px; font-size:12px; line-height:1.45;"
-        :style="{ color: selected.tone === 'warn' ? 'var(--warn)' : 'var(--ink-3)' }"
+        class="mt-[18px] text-xs leading-[1.45]"
+        :class="selected.tone === 'warn' ? 'text-warn' : 'text-ink-3'"
       >
-        <span x-show="selected.tone === 'warn'" style="margin-right:5px; font-weight:600;">⚠</span>
+        <span x-show="selected.tone === 'warn'" class="mr-[5px] font-semibold">⚠</span>
         <span x-text="selected.desc"></span>
       </div>
     </div>
@@ -387,32 +386,32 @@ function renderSendCard(): string {
   <div class="card card-pad">
     <template x-if="state === 'idle'">
       <div>
-        <button @click="send()" class="btn btn-primary" style="width:100%; justify-content:center; padding:10px 12px;">Send</button>
-        <div style="margin-top:10px; font-size:11.5px; color:var(--ink-3); text-align:center;">
-          then jump to <a href="/incoming-messages" style="color:var(--accent-ink); text-decoration:none; border-bottom:1px solid var(--accent);">Inbound</a> to see it land
+        <button @click="send()" class="btn btn-primary w-full justify-center py-2.5 px-3">Send</button>
+        <div class="mt-2.5 text-[11.5px] text-ink-3 text-center">
+          then jump to <a href="/incoming-messages" class="text-accent-ink no-underline border-b border-accent">Inbound</a> to see it land
         </div>
       </div>
     </template>
 
     <template x-if="state === 'sending'">
       <div>
-        <button disabled class="btn btn-primary" style="width:100%; justify-content:center; padding:10px 12px; opacity:0.9; gap:10px; cursor:default;">
+        <button disabled class="btn btn-primary w-full justify-center py-2.5 px-3 opacity-90 gap-2.5 cursor-default">
           <span class="spinner"></span> Sending…
         </button>
-        <div style="margin-top:14px; display:flex; flex-direction:column; gap:6px;">
+        <div class="mt-3.5 flex flex-col gap-1.5">
           <template x-for="step in sendSteps" :key="step.label">
-            <div style="display:flex; align-items:center; gap:10px; font-size:12px;" :style="{ color: step.done ? 'var(--ink-2)' : 'var(--ink-3)' }">
+            <div class="flex items-center gap-2.5 text-xs" :class="step.done ? 'text-ink-2' : 'text-ink-3'">
               <template x-if="step.done">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M20 6 9 17l-5-5"/></svg>
               </template>
               <template x-if="!step.done">
-                <span class="spinner" style="width:10px; height:10px; border-width:1.5px; color:var(--ink-3); flex-shrink:0;"></span>
+                <span class="spinner w-2.5 h-2.5 text-ink-3 shrink-0 border-[1.5px]"></span>
               </template>
               <span x-text="step.label"></span>
             </div>
           </template>
         </div>
-        <div style="margin-top:12px; text-align:center; font-size:10.5px; color:var(--ink-3); font-family:var(--mono);">
+        <div class="mt-3 text-center text-[10.5px] text-ink-3 font-mono">
           <span x-text="(elapsedMs / 1000).toFixed(1)"></span>s · MLLP
         </div>
       </div>
@@ -420,52 +419,52 @@ function renderSendCard(): string {
 
     <template x-if="state === 'sent'">
       <div>
-        <div style="padding:12px 14px; border-radius:7px; display:flex; align-items:center; gap:10px; margin-bottom:12px;" :style="{ background: messageStatus ? 'var(--ok-soft)' : 'var(--paper-2)' }">
+        <div class="py-3 px-3.5 rounded-[7px] flex items-center gap-2.5 mb-3" :class="messageStatus ? 'bg-ok-soft' : 'bg-paper-2'">
           <template x-if="messageStatus">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10" opacity="0.3"/><path d="M20 6 9 17l-5-5"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="12" cy="12" r="10" opacity="0.3"/><path d="M20 6 9 17l-5-5"/></svg>
           </template>
           <template x-if="!messageStatus">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10" opacity="0.3"/><path d="M12 8v4l3 2"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="12" cy="12" r="10" opacity="0.3"/><path d="M12 8v4l3 2"/></svg>
           </template>
-          <div style="flex:1; min-width:0;">
-            <div style="font-size:13px; font-weight:500;" :style="{ color: messageStatus ? 'var(--ok)' : 'var(--ink)' }" x-text="messageStatus ? 'Sent · accepted' : 'Sent · processor catching up'"></div>
-            <div class="mono" style="font-size:11px; color:var(--ink-2); margin-top:1px;" x-text="ackSummary"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[13px] font-medium" :class="messageStatus ? 'text-ok' : 'text-ink'" x-text="messageStatus ? 'Sent · accepted' : 'Sent · processor catching up'"></div>
+            <div class="font-mono text-[11px] text-ink-2 mt-px" x-text="ackSummary"></div>
           </div>
         </div>
-        <button @click="send()" class="btn btn-primary" style="width:100%; justify-content:center; padding:10px 12px;">Send</button>
-        <div style="margin-top:10px; font-size:11.5px; color:var(--ink-3); text-align:center;">
-          or jump to <a href="/incoming-messages" style="color:var(--accent-ink); text-decoration:none; border-bottom:1px solid var(--accent);">Inbound</a> to see it land
+        <button @click="send()" class="btn btn-primary w-full justify-center py-2.5 px-3">Send</button>
+        <div class="mt-2.5 text-[11.5px] text-ink-3 text-center">
+          or jump to <a href="/incoming-messages" class="text-accent-ink no-underline border-b border-accent">Inbound</a> to see it land
         </div>
       </div>
     </template>
 
     <template x-if="state === 'held'">
       <div>
-        <div style="padding:12px 14px; background:var(--warn-soft); border-radius:7px; display:flex; align-items:flex-start; gap:10px; margin-bottom:12px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10" opacity="0.3"/><path d="M12 8v5M12 16h.01"/></svg>
-          <div style="flex:1; min-width:0;">
-            <div style="font-size:13px; font-weight:500; color:var(--warn);">Held for mapping</div>
-            <div class="mono" style="font-size:11px; color:var(--ink-2); margin-top:1px;" x-text="ackSummary"></div>
-            <div style="font-size:11.5px; color:var(--ink-2); margin-top:6px; line-height:1.5;">Message parked in triage queue. Map the code to release it — or replay automatically once mapped.</div>
+        <div class="py-3 px-3.5 bg-warn-soft rounded-[7px] flex items-start gap-2.5 mb-3">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-px"><circle cx="12" cy="12" r="10" opacity="0.3"/><path d="M12 8v5M12 16h.01"/></svg>
+          <div class="flex-1 min-w-0">
+            <div class="text-[13px] font-medium text-warn">Held for mapping</div>
+            <div class="font-mono text-[11px] text-ink-2 mt-px" x-text="ackSummary"></div>
+            <div class="text-[11.5px] text-ink-2 mt-1.5 leading-normal">Message parked in triage queue. Map the code to release it — or replay automatically once mapped.</div>
           </div>
         </div>
-        <button @click="send()" class="btn btn-primary" style="width:100%; justify-content:center; padding:10px 12px;">Send</button>
-        <div style="margin-top:10px; font-size:11.5px; color:var(--ink-3); text-align:center;">
-          see it in <a href="/unmapped-codes" style="color:var(--accent-ink); text-decoration:none; border-bottom:1px solid var(--accent);">Unmapped codes</a>
+        <button @click="send()" class="btn btn-primary w-full justify-center py-2.5 px-3">Send</button>
+        <div class="mt-2.5 text-[11.5px] text-ink-3 text-center">
+          see it in <a href="/unmapped-codes" class="text-accent-ink no-underline border-b border-accent">Unmapped codes</a>
         </div>
       </div>
     </template>
 
     <template x-if="state === 'error'">
       <div>
-        <div style="padding:12px 14px; background:var(--err-soft); border-radius:7px; display:flex; align-items:flex-start; gap:10px; margin-bottom:12px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--err)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10" opacity="0.3"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
-          <div style="flex:1; min-width:0;">
-            <div style="font-size:13px; font-weight:500; color:var(--err);">Send failed</div>
-            <div class="mono" style="font-size:11px; color:var(--ink-2); margin-top:1px; white-space:pre-wrap;" x-text="errorMessage"></div>
+        <div class="py-3 px-3.5 bg-err-soft rounded-[7px] flex items-start gap-2.5 mb-3">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--err)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-px"><circle cx="12" cy="12" r="10" opacity="0.3"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+          <div class="flex-1 min-w-0">
+            <div class="text-[13px] font-medium text-err">Send failed</div>
+            <div class="font-mono text-[11px] text-ink-2 mt-px whitespace-pre-wrap" x-text="errorMessage"></div>
           </div>
         </div>
-        <button @click="send()" class="btn btn-primary" style="width:100%; justify-content:center; padding:10px 12px;">Send</button>
+        <button @click="send()" class="btn btn-primary w-full justify-center py-2.5 px-3">Send</button>
       </div>
     </template>
   </div>

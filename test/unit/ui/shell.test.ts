@@ -47,25 +47,42 @@ describe("renderShell", () => {
     expect(html).toContain(">Outbound<");
   });
 
-  test("shows inbound total count without a hot class", () => {
+  test("shows inbound total count without the hot-tone utility", () => {
+    // Count badges carry `data-count` (stable selector for the test) and a
+    // utility stack whose hot/cold tone is the only signal consumers care
+    // about. Asserting on `text-accent` presence is the contract.
     const html = renderShell({ active: "dashboard", title: "D", content: "", navData });
-    expect(html).toMatch(/href="\/incoming-messages"[^<]*[^>]*>.*?<span class="count">42<\/span>/s);
+    expect(html).toMatch(
+      /href="\/incoming-messages"[^<]*[^>]*>[\s\S]*?<span data-count[^>]*class="[^"]*text-ink-3[^"]*"[^>]*>42<\/span>/,
+    );
+    expect(html).not.toMatch(/data-count[^>]*text-accent[^>]*>42</);
   });
 
-  test("applies hot modifier on unmapped count when non-zero", () => {
+  test("count badges carry ml-auto — layout-critical utility must not regress", () => {
+    // Without `ml-auto` the count badge collapses next to the icon+label
+    // instead of aligning to the right edge of the nav-item. Guard it.
     const html = renderShell({ active: "dashboard", title: "D", content: "", navData });
-    expect(html).toContain('<span class="count hot">3</span>');
+    expect(html).toMatch(/<span data-count[^>]*class="[^"]*\bml-auto\b[^"]*"/);
   });
 
-  test("omits hot modifier on unmapped when count is zero", () => {
+  test("applies hot tone on unmapped count when non-zero", () => {
+    const html = renderShell({ active: "dashboard", title: "D", content: "", navData });
+    expect(html).toMatch(
+      /<span data-count data-hot[^>]*class="[^"]*text-accent[^"]*"[^>]*>3<\/span>/,
+    );
+  });
+
+  test("omits hot tone on unmapped when count is zero", () => {
     const html = renderShell({
       active: "dashboard",
       title: "D",
       content: "",
       navData: { pendingMappingTasksCount: 0, incomingTotal: 0 },
     });
-    expect(html).toContain('<span class="count">0</span>');
-    expect(html).not.toContain('<span class="count hot">');
+    expect(html).toMatch(
+      /<span data-count[^>]*class="[^"]*text-ink-3[^"]*"[^>]*>0<\/span>/,
+    );
+    expect(html).not.toContain("data-hot");
   });
 
   test("embeds the page title", () => {
@@ -88,15 +105,19 @@ describe("renderShell", () => {
     expect(html).toContain('<p id="unique-body-marker">hi</p>');
   });
 
-  test("loads vendored htmx and alpine from the static route", () => {
+  test("loads vendored htmx, alpine, and tailwind (v4 browser) from the static route", () => {
     const html = renderShell({ active: "dashboard", title: "D", content: "", navData });
     expect(html).toContain('src="/static/vendor/htmx-2.0.10.min.js"');
     expect(html).toContain('src="/static/vendor/alpine-3.15.11.min.js"');
+    expect(html).toContain('src="/static/vendor/tailwindcss-browser-4.2.4.min.js"');
   });
 
-  test("keeps Tailwind CDN so legacy-body pages still render", () => {
+  test("does not reference any external CDN (offline-capable)", () => {
     const html = renderShell({ active: "dashboard", title: "D", content: "", navData });
-    expect(html).toContain("cdn.tailwindcss.com");
+    // Google Fonts is still remote by design (see Task 1 non-goal); only
+    // script tags are vetted here.
+    expect(html).not.toMatch(/<script[^>]*src="https?:\/\/cdn\./);
+    expect(html).not.toContain("cdn.tailwindcss.com");
   });
 
   test("embeds the icon sprite at the end of the body", () => {

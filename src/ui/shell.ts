@@ -13,7 +13,7 @@
  * cross-page search lands, it belongs in the sidebar, not a duplicated topbar.
  */
 
-import { DESIGN_SYSTEM_CSS } from "./design-system";
+import { DESIGN_SYSTEM_CSS, TAILWIND_CSS } from "./design-system";
 import { ICON_SPRITE_SVG, renderIcon, type IconName } from "./icons";
 import type { NavData } from "./shared";
 import {
@@ -96,17 +96,28 @@ function buildNavGroups(navData: NavData): NavGroup[] {
 
 function renderNavLink(link: NavLink, active: NavKey): string {
   const activeClass = link.key === active ? " active" : "";
+  // Count-badge styling (was .nav-item .count / .nav-item .count.hot) is now
+  // expressed as utilities so the compound-component vocabulary stays lean.
+  // Tailwind utilities land in a later cascade tier than `@layer components`,
+  // so they win against the component-layer `.nav-item` rules without a
+  // specificity fight — no `!important` or `font-normal` neutralizers needed.
+  // Cold badge intentionally says nothing about weight; hot badge actively
+  // sets `font-medium`. The `ml-auto` is load-bearing: it pushes the count
+  // to the row's right edge inside `.nav-item`'s flex container.
+  const countTone = link.hot ? "text-accent font-medium" : "text-ink-3";
   const count =
     link.count !== undefined
-      ? `<span class="count${link.hot ? " hot" : ""}">${link.count}</span>`
+      ? `<span data-count${link.hot ? " data-hot" : ""} class="ml-auto text-[11px] font-mono ${countTone}">${link.count}</span>`
       : "";
   return `<a class="nav-item${activeClass}" href="${link.href}">${renderIcon(link.icon)}<span>${link.label}</span>${count}</a>`;
 }
 
 function renderNavGroup(group: NavGroup, active: NavKey, isFirst: boolean): string {
-  const labelStyle = isFirst ? ' style="padding-top:0"' : "";
+  // First group sits snug against the brand block — no top padding. Later
+  // groups keep .nav-label's default `padding: 14px 10px 6px`.
+  const firstClass = isFirst ? " pt-0" : "";
   const links = group.links.map((link) => renderNavLink(link, active)).join("");
-  return `<div class="nav-label"${labelStyle}>${group.label}</div>${links}`;
+  return `<div class="nav-label${firstClass}">${group.label}</div>${links}`;
 }
 
 interface EnvInfo {
@@ -137,15 +148,15 @@ function renderEnvPill(): string {
   const envLabel = escapeHtml(env.label);
   return `
   <div class="env">
-    <div style="display:flex; flex-direction:column; min-width:0; gap:6px; width:100%;">
-      <div style="display:flex; align-items:center; gap:8px;">
+    <div class="flex flex-col min-w-0 gap-1.5 w-full">
+      <div class="flex items-center gap-2">
         <span class="dot ${env.tone}"></span>
-        <span style="color:var(--ink); font-size:12.5px; font-weight:500; text-transform:uppercase; letter-spacing:0.05em;">${envLabel}</span>
+        <span class="text-ink text-[12.5px] font-medium uppercase tracking-[0.05em]">${envLabel}</span>
       </div>
-      <span class="mono muted" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">mllp://${host}:${port}</span>
-      <div style="display:flex; align-items:center; gap:6px; border-top:1px solid var(--line); padding-top:6px;" title="Aidbox status (checking...)" data-health-tooltip>
+      <span class="font-mono text-ink-3 text-[11px] overflow-hidden text-ellipsis whitespace-nowrap">mllp://${host}:${port}</span>
+      <div class="flex items-center gap-1.5 border-t border-line pt-1.5" title="Aidbox status (checking...)" data-health-tooltip>
         <span data-health-dot></span>
-        <span class="muted" style="font-size:11.5px;" data-health-label>Aidbox</span>
+        <span class="text-ink-3 text-[11.5px]" data-health-label>Aidbox</span>
       </div>
     </div>
   </div>`;
@@ -184,7 +195,8 @@ export function renderShell(opts: ShellOptions): string {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="${googleFonts}" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/static/vendor/tailwindcss-browser-4.2.4.min.js"></script>
+  <style type="text/tailwindcss">${TAILWIND_CSS}</style>
   <script src="/static/vendor/htmx-2.0.10.min.js" defer></script>
   <script src="/static/vendor/alpine-3.15.11.min.js" defer></script>
   <style>${DESIGN_SYSTEM_CSS}</style>
