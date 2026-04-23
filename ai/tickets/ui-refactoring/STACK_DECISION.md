@@ -84,4 +84,17 @@ None of these are on the roadmap today.
 ## Open follow-ups (not part of this decision)
 
 - `ai/tickets/2026-04-22-demo-ready-ui-tier1.md` predates the visual design. Tasks 1 & 2 are done; tasks 3–7 need re-scoping against `DESIGN_OVERVIEW.md` (e.g. the blue/purple SVG pipeline diagram in old task 3 is not what the design landed on — the design uses a demo-conductor card + stats strip + live ticker in the warm-paper palette). Draft a replacement plan via `/plan` when ready to start implementation.
-- Decide the CSS story: keep Tailwind utilities and encode the palette as CSS variables + a Tailwind theme extension (recommended), or drop Tailwind for the new pages entirely (not recommended — forks the CSS system).
+- ~~Decide the CSS story: keep Tailwind utilities and encode the palette as CSS variables + a Tailwind theme extension (recommended), or drop Tailwind for the new pages entirely (not recommended — forks the CSS system).~~ **Resolved 2026-04-23** — see "Reconciliation" section below.
+
+## Reconciliation 2026-04-23
+
+Tasks 2–5 shipped `src/ui/design-system.ts` + inline `style="..."` attributes for new pages while Tailwind stayed CDN-loaded globally for legacy pages (Accounts, Outgoing Messages). This was the "not recommended" option from the original open follow-up — we forked the CSS system without re-justifying the flip in writing.
+
+Reconciliation is tracked as **Task 6** in `ai/tickets/2026-04-23-ui-design-system-refactor.md`, landing between Simulate Sender (Task 5, done) and Dashboard (Task 7). Shape:
+
+- Keep the original recommendation: Tailwind + warm-paper CSS vars as theme colors. No build step added — Play CDN accepts inline `tailwind.config` and `<style type="text/tailwindcss">` blocks.
+- Compound components (`.card`, `.btn`, `.chip`, `.nav-item`, `.inp`, `.dot`, `.spinner`) move to `@layer components`. Utility-ish classes (`.muted`, `.mono`, `.sub`, `.eyebrow`, `.count`) delete in favor of Tailwind utilities.
+- Inline `style="..."` attrs migrate to utility stacks; Alpine `:style` ternaries become `:class` ternaries where the branch resolves to a single token.
+- Rationale + tradeoffs captured in the upcoming ADR `docs/developer-guide/adr/002-tailwind-reconciliation.md` (created by Task 6).
+
+Scope pre-audit: 51 inline styles in `simulate-sender.ts`, 7 in `shell.ts`, 1 in `icons.ts`. The three other new pages (Inbound-messages half of `messages.ts`, `mapping-tasks.ts`, `code-mappings.ts`) are already class-only and need spot-checks only. Doing the migration now — before Dashboard / Inbound detail / Unmapped / Terminology are built — prevents the inline-style surface from multiplying by ~5×.

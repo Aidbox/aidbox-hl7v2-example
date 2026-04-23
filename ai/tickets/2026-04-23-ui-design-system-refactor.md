@@ -57,7 +57,7 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 
 ## Task 3b: Migrate remaining page bodies into the shell
 
-- [x] Migrate every remaining page handler (`messages.ts` both halves, `mapping-tasks.ts`, `code-mappings.ts`, `mllp-client.ts`) to call `renderShell`. Bodies unchanged (Tier-2 bodies will be rebuilt in Tasks 5–11). Use `renderLegacyBody` for Outgoing Messages; the others will get new warm-paper bodies soon so they can go directly in the main column.
+- [x] Migrate every remaining page handler (`messages.ts` both halves, `mapping-tasks.ts`, `code-mappings.ts`, `mllp-client.ts`) to call `renderShell`. Bodies unchanged (Tier-2 bodies will be rebuilt in Tasks 5, 7–12). Use `renderLegacyBody` for Outgoing Messages; the others will get new warm-paper bodies soon so they can go directly in the main column.
 - [x] Update the remaining UI unit tests that assert nav markup (`test/unit/ui/*`) *(no additional updates needed — the existing `code-mappings.test.ts`, `mapping-tasks-ui.test.ts`, `mapping-tasks-pagination.test.ts` assertions all pass against the new shell because they check body-level markup like hrefs and CSS classes that are unchanged; the nav-markup NavData-shape updates already landed in Task 3a)*
 - [x] Add a smoke-tagged integration test `smoke: every shell page returns 200` that GETs `/`, `/accounts`, `/outgoing-messages`, `/incoming-messages`, `/simulate-sender`, `/unmapped-codes`, `/terminology` and asserts 200 + presence of the `.sidebar` marker in the body *(added at `test/integration/ui/shell-smoke.integration.test.ts`; invokes handlers directly rather than starting an HTTP server so it slots cleanly into the existing integration-test machinery)*
 - [x] Run validation — must pass; manually confirm every page renders with the new sidebar *(live smoke via `bun --hot` dev server: all 7 URLs → 200 with `class="sidebar"`; legacy-body wrapping matches plan — Accounts + Outgoing wrapped, the 4 others unwrapped)*
@@ -90,15 +90,73 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 - [x] Update `storeMessage()` in `src/mllp/mllp-server.ts` to extract MSH-10 from the incoming HL7v2 and set `messageControlId` on the resource
 - [x] Run migration / Aidbox reload so the new SearchParameter is registered; unit-test the listener writes a `messageControlId`; integration test: POST a message via MLLP, then `GET /fhir/IncomingHL7v2Message?message-control-id={MSH-10}` returns exactly one entry *(`bun src/migrate.ts` re-submitted the bundle successfully; confirmed via curl that the SearchParameter is live. Unit tests: `test/unit/mllp/store-message.test.ts` (3 cases). Integration: `test/integration/mllp/message-control-id.integration.test.ts` (2 cases). Integration blocked from local run by missing AIDBOX_LICENSE — smoke manually verified via `curl 'http://localhost:8080/fhir/IncomingHL7v2Message?message-control-id=...'` returning exactly the sent row.)*
 - [x] Create `src/ui/pages/simulate-sender.ts` with `handleSimulateSenderPage` — composer layout per `DESIGN_OVERVIEW.md § Simulate Sender`, **plain textarea** (no overlay-pre highlighting in v1)
-- [x] Lift `MESSAGE_TYPES` array (ORU^R01, ORU^R01-unknown, ADT^A01, ADT^A08, VXU^V04, ORM^O01, BAR^P01) from `ai/tickets/ui-refactoring/hl7v2-v2/project/design/page-simulate.jsx:8-56` verbatim into the new page module; export it so Task 6 can import the templates for the scripted demo *(verbatim; also exported `SENDERS` and `MessageType` for downstream reuse)*
+- [x] Lift `MESSAGE_TYPES` array (ORU^R01, ORU^R01-unknown, ADT^A01, ADT^A08, VXU^V04, ORM^O01, BAR^P01) from `ai/tickets/ui-refactoring/hl7v2-v2/project/design/page-simulate.jsx:8-56` verbatim into the new page module; export it so Task 7 (Dashboard scripted demo) can import the templates *(verbatim; also exported `SENDERS` and `MessageType` for downstream reuse)*
 - [x] Alpine: editor component (`x-data` with `raw`, `typeId`, `sender`, computed `parsed`), SendCard state machine (`idle → sending → sent | held`) with elapsed tick. **No compose-time "contains unmapped code" chip** — the post-send status poll is the authoritative source (the design prototype's regex-on-body only worked for demo templates and would silently lie on real-world pasted bodies). *(added a 5th state `error` since the plan's outcome type includes it)*
-- [x] **Export `sendMLLPMessage` from `src/ui/pages/mllp-client.ts`** (currently a private `function`) so the new handler can reuse it without duplication. (Or: move `sendMLLPMessage` into `src/mllp/client.ts` as part of this task if it's about to outlive `mllp-client.ts` — see Task 12 cleanup.) *(moved to `src/mllp/client.ts` — the "or" option; the legacy copy in `mllp-client.ts` stays live until Task 12 deletes the file. `rewriteMessageControlId` also lives there.)*
+- [x] **Export `sendMLLPMessage` from `src/ui/pages/mllp-client.ts`** (currently a private `function`) so the new handler can reuse it without duplication. (Or: move `sendMLLPMessage` into `src/mllp/client.ts` as part of this task if it's about to outlive `mllp-client.ts` — see Task 13 cleanup.) *(moved to `src/mllp/client.ts` — the "or" option; the legacy copy in `mllp-client.ts` stays live until Task 13 deletes the file. `rewriteMessageControlId` also lives there.)*
 - [x] Replace the handler wired to `/simulate-sender` with `handleSimulateSenderPage`; register `POST /simulate-sender/send` that: rewrites MSH-10, sends via `sendMLLPMessage`, polls `IncomingHL7v2Message?message-control-id=...` every 500ms up to 3s, returns JSON `{status, ack, messageControlId, messageStatus?}`.
 - [x] Unit tests: `rewriteMessageControlId`, happy-path, held, error, poll-timeout, duplicate-send, `handleSimulateSenderSend` request validation *(7 + 10 tests across two files = 17; all pass)*
 - [x] Run validation — must pass; manual smoke: send ORU-unknown twice, see two separate rows in Inbound each with a distinct MSH-10; second send shows "Held for mapping" independently of the first *(typecheck clean, 1720 unit tests pass. Live smoke: first send returned `held` with `code_mapping_error`; second returned `sent` via optimistic 3s-timeout fallback. MLLP listener log confirms both MSH-10s captured. Aidbox search by `?message-control-id=` returns exact row with status. **Note: the MLLP listener runs as a separate `bun run mllp` process; had to restart it to pick up the new `storeMessage` — documented as a test-env gotcha, no code change needed.** MCP screenshot of `/simulate-sender` captured in review — matches design.)*
 - [ ] Stop for user review before next task
 
-## Task 6: Dashboard page + scripted demo runner
+## Task 6: Tailwind reconciliation — migrate new pages from inline styles to Tailwind utilities
+
+**Why this lands here, not at the end:** `STACK_DECISION.md` (locked 2026-04-23) recommended keeping Tailwind and extending its theme with the warm-paper CSS variables; explicitly flagged the alternative — "drop Tailwind for the new pages entirely" — as **"not recommended — forks the CSS system."** Tasks 2–5 did the not-recommended thing anyway (shipped `design-system.ts` + inline `style="..."` attrs while Tailwind stayed loaded globally for legacy pages). Doing the reconciliation now — before Dashboard / Inbound detail / Unmapped / Terminology are authored — means every remaining task writes Tailwind-idiomatic markup from day one. Deferring to Task 13 (cleanup) would multiply the inline-style surface by ~5×.
+
+Scope audit (pre-task):
+- `src/ui/pages/simulate-sender.ts` — 51 inline `style="..."`, 4 `:style` bindings
+- `src/ui/shell.ts` — 7 inline styles
+- `src/ui/icons.ts` — 1 inline style + `.i` / `.i-sm` classes
+- `src/ui/pages/messages.ts` (Inbound half), `mapping-tasks.ts`, `code-mappings.ts` — 0 inline styles (already class-only per audit; spot-check only)
+
+### Tailwind reconciliation decisions (locked)
+
+- **Tailwind v3 via Play CDN** (already loaded from `src/ui/shell.ts`). No build step added. Preserves the "no build step" principle from `STACK_DECISION.md`.
+- **CSS variables on `:root` stay the single source of truth.** Tailwind `theme.extend.colors` references them via `var(--paper)` etc. One place to change a palette value; Tailwind is the *consumer* of tokens, not the owner.
+- **Compound components live in `@layer components`** via `<style type="text/tailwindcss">` inside the shell: `.card`, `.btn`, `.chip`, `.dot`, `.inp`, `.nav-item`, `.spinner`, `.h1`, `.h2`, `.clean-scroll`. These have hover/focus/pseudo-elements and are idiomatic Tailwind components — not 10-utility stacks.
+- **Utility-ish classes are deleted** from `design-system.ts`: `.muted`, `.mono`, `.sub`, `.eyebrow`, `.count`, `.i`, `.i-sm`. Replace with Tailwind utilities (`text-ink-3`, `font-mono`, `text-sm`, `w-4 h-4`, etc.).
+- **Alpine `:style` → `:class` conversion.** Ternaries whose branches resolve to a single color token become `:class="condition ? 'text-warn' : 'text-ink-3'"`. Computed-value bindings keep `:style="{ ... }"` in **object** form only (the string form replaces the static `style` attr — documented footgun in `ui-architecture.md`).
+- **Stub `tailwind.config.js` at repo root** for IDE autocomplete only (Tailwind IntelliSense reads it at edit time; Play CDN ignores it at runtime). Mirrors the inline shell config. Document this dual-source gotcha.
+- **Accounts + Outgoing Messages untouched.** They already use vanilla Tailwind; the new theme is additive, not breaking.
+- **htmx fragments auto-work.** Play CDN scans the DOM on mutation; utilities inside htmx-swapped partials compile automatically — no special handling needed.
+
+## Task 6a: Tailwind theme + `@layer components` setup
+
+- [ ] **Theme + component layer**: in `src/ui/shell.ts`, before the existing `<script src="https://cdn.tailwindcss.com">`, add an inline `tailwind.config = { theme: { extend: { colors: {...}, fontFamily: {...}, screens: { wide: '1600px' } } } }` — colors reference CSS vars (`paper: 'var(--paper)'`, etc.) for all 17 warm-paper tokens + 3 font families
+- [ ] Add `<style type="text/tailwindcss">@layer components { ... }</style>` block after the Tailwind config script; move compound-component rules out of `DESIGN_SYSTEM_CSS` into it (`.card` family, `.btn` family, `.chip` family, `.dot` family, `.inp` + `select.inp`, `.nav-item` + `::before`, `.spinner` + `@keyframes spin`, `.clean-scroll`, `.h1`, `.h2`)
+- [ ] Shrink `src/ui/design-system.ts` to `:root` vars + `body` base + anything non-Tailwind-expressible. Expected shrink from ~130 lines to ~30.
+- [ ] Create stub `tailwind.config.js` at repo root mirroring the inline shell config (content-agnostic — Play CDN doesn't use it). Add a comment: "IDE autocomplete only — runtime config is inline in `src/ui/shell.ts`."
+- [ ] **Update `test/unit/ui/design-system.test.ts`**: shrink to assert `:root` vars still declared + a minimal component-class set (the ones that stay in `DESIGN_SYSTEM_CSS`)
+- [ ] Run validation: `bun run typecheck`, `bun test:local` — must pass
+- [ ] Stop for user review before next task
+
+## Task 6b: Migrate page files to Tailwind utilities
+
+- [ ] **Migrate `src/ui/pages/simulate-sender.ts`**: 51 inline `style=""` → Tailwind utility stacks (tackle the top-5 repeated patterns first per audit, then spot-fix remainder). 4 `:style` bindings → `:class` where single-token; keep object-form `:style` where truly computed. Drop any `.muted` / `.mono` / `.sub` / `.eyebrow` / `.count` usages in favor of utilities.
+- [ ] **Migrate `src/ui/shell.ts`**: 7 inline styles → utilities. Env pill, nav layout, sidebar brand block.
+- [ ] **Migrate `src/ui/icons.ts`**: `renderIcon` default class changes from `i` to `w-4 h-4`; modifier `i-sm` → `w-3 h-3`. Update affected callers (grep `renderIcon(`).
+- [ ] **Spot-check** `src/ui/pages/messages.ts` (Inbound half), `mapping-tasks.ts`, `code-mappings.ts`. Audit says they're class-only already; replace any residual utility-ish class usages (`.muted` / `.mono` / `.sub` / `.eyebrow` / `.count`) with Tailwind utilities.
+- [ ] Update icon tests for the new default class
+- [ ] Run validation: `bun run typecheck`, `bun test:local` — must pass
+- [ ] Stop for user review before next task
+
+## Task 6c: Docs + ADR
+
+- [ ] **Docs — `docs/developer-guide/ui-architecture.md`**: rewrite "Design-system classes" section with Tailwind theme tokens, `@layer components` vocabulary, when to use utility vs component class, Alpine `:class` vs `:style` guidance. Keep the existing `:style` footgun note.
+- [ ] **Docs — `docs/developer-guide/ui-design-tokens.md`**: replace class-vocabulary listing with a Tailwind-theme mapping table (`--paper` → `bg-paper`, `--ink-2` → `text-ink-2`, etc.).
+- [ ] **Docs — new ADR `docs/developer-guide/adr/002-tailwind-reconciliation.md`** (~60 lines, matching the format of `001-unknown-order-obx-hard-error.md`): Context (what we did, why it diverged from `STACK_DECISION.md`), Decision (Play CDN + inline config + `@layer components`), Consequences (no build step, palette single-source, component class vocabulary shrinks), Supersedes (the "CSS story" open follow-up in `STACK_DECISION.md`).
+- [ ] **Docs — `ai/tickets/ui-refactoring/STACK_DECISION.md`**: append `## Reconciliation 2026-04-23` section pointing at the new ADR. Leave original decision text intact for history. Mark the "CSS story" open follow-up as resolved.
+- [ ] Run validation: `bun run typecheck`, `bun test:local` — must pass
+- [ ] Stop for user review before next task
+
+## Task 6d: Verification
+
+- [ ] **Grep-audit**: `rg 'style="' src/ui/ | grep -v '\\${'` — remaining matches must all be dynamic template-string interpolations, not static inline styles
+- [ ] **Grep-audit**: `rg '\\bclass="[^"]*\\b(muted|eyebrow|sub|mono|count)\\b' src/ui/` — should return empty
+- [ ] **Visual verification (acceptance gate)**: via Chrome DevTools MCP, screenshot `/`, `/incoming-messages`, `/simulate-sender` (all states: idle, sending × 2 substates, sent × 2 substates, held, error), `/unmapped-codes`, `/terminology`, `/accounts`, `/outgoing-messages`. Pixel-compare against `ai/tickets/ui-refactoring/hl7v2-v2/project/HL7v2 Design.html` and the pre-migration screenshots. Accounts + Outgoing must look identical to before (they use vanilla Tailwind, untouched).
+- [ ] Run validation: `bun run typecheck`, `bun test:local` — must pass
+- [ ] Stop for user review before next task
+
+## Task 7: Dashboard page + scripted demo runner
 
 - [ ] Create `src/api/demo-scenario.ts` exporting `runDemoScenario()` that fires four MLLP messages (ADT^A01, ORU^R01 known, VXU^V04, ORU^R01 unknown) with 2s spacing, fire-and-forget (`.catch(console.error)`); import the templates from `src/ui/pages/simulate-sender.ts`'s exported `MESSAGE_TYPES` (shipped in Task 5)
 - [ ] Register routes in `src/index.ts`: `POST /demo/run-scenario` (guarded by `DEMO_MODE !== "off"`, returns 202), `GET /dashboard/partials/stats`, `GET /dashboard/partials/ticker?limit=15`. **`DEMO_MODE` semantics**: default-on; endpoint is enabled when the env var is unset, empty, or any non-`"off"` string; only `DEMO_MODE=off` disables. Document alongside `DISABLE_POLLING` / `POLL_INTERVAL_MS` in `CLAUDE.md`'s env-flags section.
@@ -114,7 +172,7 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 - [ ] Run validation — must pass; manual smoke: click "Run demo now", confirm 4 rows appear in the ticker within ~10s
 - [ ] Stop for user review before next task
 
-## Task 7: Inbound Messages — list pane + type chips
+## Task 8: Inbound Messages — list pane + type chips
 
 - [ ] Create `src/ui/pages/inbound.ts` with `handleInboundMessagesPage` — hero, type-chip row, two-pane layout (list card + empty-state detail card); supports `?type=&status=&batch=&selected=` URL params; when `selected` is set, pre-render detail pane server-side into `#detail`
 - [ ] Register routes: `GET /incoming-messages/partials/list?type=&status=&batch=&selected=`, `GET /incoming-messages/partials/type-chips`
@@ -125,7 +183,7 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 - [ ] Run validation — must pass
 - [ ] Stop for user review before next task
 
-## Task 8: Inbound Messages — detail pane + 4 tabs (with Aidbox history)
+## Task 9: Inbound Messages — detail pane + 4 tabs (with Aidbox history)
 
 - [ ] **OPEN: runtime-verify** Aidbox `_history` is enabled AND versioning is not disabled on the `IncomingHL7v2Message` attribute definition. Run `curl -u root:$SECRET "http://localhost:8080/fhir/IncomingHL7v2Message/{any-id}/_history?_count=5"` and confirm response is a `Bundle` with `entry[]` each carrying `meta.versionId` and distinct `meta.lastUpdated`. If only one version comes back for a known-multi-update message, check Aidbox's `Attribute` definition for the resource and ensure `versioning` is not `disabled-on-resource`.
 - [ ] Register `GET /incoming-messages/:id/partials/detail` (shell + default `structured` tab) and `GET /incoming-messages/:id/partials/detail/:tab` (tab-specific fragment)
@@ -142,7 +200,7 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 - [ ] Run validation — must pass; manual smoke walks all 4 tabs on a real message
 - [ ] Stop for user review before next task
 
-## Task 9: Unmapped Codes rebuild + substring suggestion scoring
+## Task 10: Unmapped Codes rebuild + substring suggestion scoring
 
 - [ ] Create `src/api/terminology-suggest.ts` exporting `suggestCodes(display, field)`: wraps existing `searchLoincCodes()` from `src/code-mapping/terminology-api.ts`. **Substring-only scoring for v1** — no Jaro-Winkler: exact-substring match in display → 100; case-insensitive token hit → 70; otherwise 40. Return top 3 `{code, display, score, system}`. If match quality proves weak in practice, a JW / fuzzy pass is a follow-up.
 - [ ] Register `GET /api/terminology/suggest?display=&field=` route
@@ -158,11 +216,11 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 - [ ] Run validation — must pass
 - [ ] Stop for user review before next task
 
-## Task 10: Terminology Map — table + filter popovers + detail
+## Task 11: Terminology Map — table + filter popovers + detail
 
 - [ ] Create `src/ui/pages/terminology.ts` with `handleTerminologyPage` — KPI strip + two-pane (table + detail); supports `?q=&fhir=&sender=` URL params (multi-valued `fhir` and `sender`)
 - [ ] Replace the handler wired to `/terminology` with `handleTerminologyPage`; register partials: `GET /terminology/partials/table?q=&fhir=&sender=` (server-filtered rows), `GET /terminology/partials/facets/fhir`, `GET /terminology/partials/facets/sender`, `GET /terminology/partials/detail/:conceptMapId/:code`
-- [ ] **URL-encoding discipline** (same as Task 9): every `hx-get`/`hx-post`/link interpolating `:code` must `encodeURIComponent(localCode)` and server handlers must `decodeURIComponent(req.params.code)`. Add a unit test for `/terminology/partials/detail/:conceptMapId/:code` with a `^`-containing localCode.
+- [ ] **URL-encoding discipline** (same as Task 10): every `hx-get`/`hx-post`/link interpolating `:code` must `encodeURIComponent(localCode)` and server handlers must `decodeURIComponent(req.params.code)`. Add a unit test for `/terminology/partials/detail/:conceptMapId/:code` with a `^`-containing localCode.
 - [ ] Facet partials: in-memory scan of all ConceptMap entries (reuse existing `listConceptMaps` + group), return `{name, count}[]` rendered as searchable multi-select list; Alpine popover (`x-on:click.outside`, `x-on:keyup.escape`) wraps them
 - [ ] Detail partial: FHIR target (split typography), local/std mapping, source panel, minimal lineage (**creation time from the current resource's `meta.createdAt`**, NOT `_history?_count=1` which would return the most recent version). Footer actions: **Edit** and **Delete** (no Deprecate).
 - [ ] **No deprecated-state rendering.** No strikethrough. All rows are treated as active.
@@ -172,7 +230,7 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 - [ ] Run validation — must pass
 - [ ] Stop for user review before next task
 
-## Task 11: Terminology Map — Add/Edit modal + Delete
+## Task 12: Terminology Map — Add/Edit modal + Delete
 
 - [ ] Register `GET /terminology/partials/modal?mode=add` and `GET /terminology/partials/modal?mode=edit&conceptMapId=&code=` — returns modal body HTML (FHIR target select add-only, local system + code two-column, local display, search-to-map input with icon); edit mode locks target field
 - [ ] Alpine wiring: backdrop + ESC + ✕ close; **submit disabled until all required fields filled**: in `add` mode — `fhirTarget`, `localSystem`, `localCode`, `targetCode`; in `edit` mode — `localCode` + `targetCode` (target is locked). `localDisplay` is optional.
@@ -183,7 +241,7 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 - [ ] Run validation — must pass; manual smoke: Add a mapping via the modal, confirm it appears in the table and is retrievable via `GET /fhir/ConceptMap`; Delete a mapping, confirm the row disappears
 - [ ] Stop for user review before next task
 
-## Task 12: Cleanup
+## Task 13: Cleanup
 
 - [ ] Delete dead code: old `renderIncomingMessagesPage` body in `src/ui/pages/messages.ts` (keep Outgoing), legacy HTML rendering in `src/ui/pages/mapping-tasks.ts` and `src/ui/pages/code-mappings.ts`, page-render functions in `src/ui/pages/mllp-client.ts`. If `sendMLLPMessage` is still in `mllp-client.ts` at this point, **move it to `src/mllp/client.ts`** and delete `mllp-client.ts` entirely (keep `sendMLLPTest` if any test still uses it; otherwise delete it too).
 - [ ] Rename `src/ui/shared-layout.ts` → `src/ui/hl7-display.ts` (only `highlightHL7WithDataTooltip` remains after Task 3c; the old filename is now misleading). Update the two importers (`src/index.ts`, `src/ui/pages/messages.ts`). Add a unit test at the new location: input with `title="..."` → output with `data-tooltip="..."`, HL7 segment markup preserved.
