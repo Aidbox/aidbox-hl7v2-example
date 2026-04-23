@@ -1,7 +1,9 @@
 /**
  * MLLP Client UI Module
  *
- * Displays the MLLP Test Client page.
+ * @deprecated Superseded by `src/ui/pages/simulate-sender.ts` (Task 5) and
+ * `src/mllp/client.ts` for the transport. This file is orphaned — no route
+ * or caller uses it. Deleted in Task 12 along with the old page body.
  */
 
 import * as net from "node:net";

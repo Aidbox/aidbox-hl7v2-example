@@ -23,7 +23,10 @@ import {
   handleUpdateEntry,
   handleDeleteEntry,
 } from "./api/concept-map-entries";
-import { handleMLLPClientPage, sendMLLPTest } from "./ui/pages/mllp-client";
+import {
+  handleSimulateSenderPage,
+  handleSimulateSenderSend,
+} from "./ui/pages/simulate-sender";
 import { handleTaskResolution } from "./api/mapping-tasks";
 import { searchLoincCodes, validateLoincCode } from "./code-mapping/terminology-api";
 import { processNextMessage as processNextV2ToFhirMessage } from "./v2-to-fhir/processor-service";
@@ -57,8 +60,10 @@ Bun.serve({
     "/unmapped-codes": handleMappingTasksPage,
     "/terminology": handleCodeMappingsPage,
     "/simulate-sender": {
-      GET: handleMLLPClientPage,
-      POST: sendMLLPTest,
+      GET: handleSimulateSenderPage,
+    },
+    "/simulate-sender/send": {
+      POST: handleSimulateSenderSend,
     },
 
     // =========================================================================

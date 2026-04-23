@@ -13,7 +13,7 @@ import {
 } from "../../../src/ui/pages/messages";
 import { handleMappingTasksPage } from "../../../src/ui/pages/mapping-tasks";
 import { handleCodeMappingsPage } from "../../../src/ui/pages/code-mappings";
-import { handleMLLPClientPage } from "../../../src/ui/pages/mllp-client";
+import { handleSimulateSenderPage } from "../../../src/ui/pages/simulate-sender";
 
 interface Route {
   path: string;
@@ -48,7 +48,7 @@ const ROUTES: Route[] = [
   {
     path: "/simulate-sender",
     label: "Simulate Sender",
-    call: () => handleMLLPClientPage(),
+    call: () => handleSimulateSenderPage(),
   },
   {
     path: "/unmapped-codes",

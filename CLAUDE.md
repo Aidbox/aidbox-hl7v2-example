@@ -39,7 +39,7 @@ bun run dev                       # Start web server (logs to logs/server.log)
 bun run dev                       # Start server with hot reload
 bun run stop                      # Stop the server
 bun run logs                      # Tail server logs
-bun run mllp                      # Start MLLP server (port 2575)
+bun run mllp                      # Start MLLP server (port 2575). Separate process from `bun run dev`; no hot-reload. Restart it after changes to src/mllp/mllp-server.ts.
 bun scripts/load-test-data.ts     # Load 5 test patients with related resources
 bun scripts/import-batch.ts <zip|dir> [--tag <name>]  # Bulk-import HL7v2 messages under a batchTag
 bun run typecheck                 # TypeScript type checking
