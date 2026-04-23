@@ -42,7 +42,8 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 - [ ] Sidebar groups: **Workspace** (Dashboard `/`, Inbound Messages `/incoming-messages`, Simulate Sender `/simulate-sender`), **Terminology** (Unmapped Codes `/unmapped-codes`, Terminology Map `/terminology`), **Outbound** (Accounts `/accounts`, Outgoing Messages `/outgoing-messages`); active-state styling + count badges on Inbound (total) and Unmapped (`hot` accent when non-zero)
 - [ ] Extend `getNavData()` in `src/ui/shared.ts`: add `incomingTotal` (FHIR `IncomingHL7v2Message?_count=0`) alongside existing `pendingTaskCount`
 - [ ] Env pill at sidebar footer from `ENV` env var (green `dev`, amber `staging|test`, red `prod`) and mono line with `MLLP_HOST:MLLP_PORT` (defaults `localhost:2575`)
-- [ ] Migrate every existing page handler in `src/ui/pages/*.ts` (accounts, messages for both halves, mapping-tasks, code-mappings, mllp-client) to call `renderShell` instead of `renderLayout`; keep `renderLayout` exported as a thin deprecated wrapper for one release so nothing breaks mid-migration
+- [ ] Migrate every existing page handler in `src/ui/pages/*.ts` (accounts, messages for both halves, mapping-tasks, code-mappings, mllp-client) to call `renderShell` instead of `renderLayout`; delete `renderLayout` and the legacy top-nav helpers from `src/ui/shared-layout.ts` in the same commit (no gradual migration — project isn't in production)
+- [ ] Rename routes in `src/index.ts` to their final names, pointing at the existing handlers (bodies rebuilt in Tasks 5, 9, 10): `/mllp-client` → `/simulate-sender`, `/mapping/tasks` → `/unmapped-codes`, `/mapping/table` → `/terminology`
 - [ ] Update any UI unit test that asserts nav markup (`test/unit/ui/*`) for the new sidebar structure
 - [ ] Run validation — must pass; manually confirm every existing page renders with the new sidebar and old body intact
 - [ ] Stop for user review before next task
@@ -57,26 +58,25 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 - [ ] Run validation — must pass (typecheck is the only mechanical check for docs; no broken imports)
 - [ ] Stop for user review before next task
 
-## Task 5: Dashboard page + scripted demo runner
+## Task 5: Simulate Sender page
 
-- [ ] Create `src/api/demo-scenario.ts` exporting `runDemoScenario()` that fires four MLLP messages (ADT^A01, ORU^R01 known, VXU^V04, ORU^R01 unknown) with 2s spacing, fire-and-forget (`.catch(console.error)`); sample payloads lifted from `src/ui/pages/mllp-client.ts:130-175`
+- [ ] Create `src/ui/pages/simulate-sender.ts` with `handleSimulateSenderPage` — composer layout per `DESIGN_OVERVIEW.md § Simulate Sender`
+- [ ] Lift `MESSAGE_TYPES` array (ORU^R01, ORU^R01-unknown, ADT^A01, ADT^A08, VXU^V04, ORM^O01, BAR^P01) from `ai/tickets/ui-refactoring/hl7v2-v2/project/design/page-simulate.jsx:8-56` verbatim into the new page module; export it so Task 6 can import the templates for the scripted demo
+- [ ] Alpine: editor component (`x-data` with `raw`, `typeId`, `sender`, computed `parsed`/`hasUnknown`), overlay `<pre>` + transparent textarea (accent segment names, warn highlight on unmapped tokens), SendCard state machine (`idle → sending → sent | held`) with elapsed tick
+- [ ] Replace the handler wired to `/simulate-sender` (renamed in Task 3) with `handleSimulateSenderPage`; register `POST /simulate-sender/send` reusing `sendMLLPMessage()` from `src/ui/pages/mllp-client.ts` and returning JSON `{status: "sent"|"held", ack: string, messageId: string}` (ACK `AA` → sent, `AE` → held)
+- [ ] Unit tests: happy-path send, held-for-mapping send (unknown code in body), MLLP-unreachable error path
+- [ ] Run validation — must pass; manual smoke in browser (pick ORU unknown template, send, see "Held for mapping" banner)
+- [ ] Stop for user review before next task
+
+## Task 6: Dashboard page + scripted demo runner
+
+- [ ] Create `src/api/demo-scenario.ts` exporting `runDemoScenario()` that fires four MLLP messages (ADT^A01, ORU^R01 known, VXU^V04, ORU^R01 unknown) with 2s spacing, fire-and-forget (`.catch(console.error)`); import the templates from `src/ui/pages/simulate-sender.ts`'s exported `MESSAGE_TYPES` (shipped in Task 5)
 - [ ] Register routes in `src/index.ts`: `POST /demo/run-scenario` (guarded by `DEMO_MODE !== "off"`, returns 202), `GET /dashboard/partials/stats`, `GET /dashboard/partials/ticker?limit=15`
 - [ ] Create `src/ui/pages/dashboard.ts` with `handleDashboardPage`: hero + demo-conductor card + stats strip + live ticker per `DESIGN_OVERVIEW.md § Dashboard`; htmx `hx-trigger="every 10s"` on stats, `every 5s` on ticker; Alpine `x-data` for ticker-pause toggle
 - [ ] Stats partial computes: received-today, need-mapping (`status=code_mapping_error`), errors (multi-status OR), avg-latency (from `meta.lastUpdated - date` over last 100 processed messages in-memory), worker health (new `getWorkerHealth()` in `src/workers.ts` exposing the current handle's running state)
 - [ ] Move `GET /` in `src/index.ts` from `handleAccountsPage` to `handleDashboardPage`; `/accounts` stays reachable
 - [ ] Unit tests for `demo-scenario.ts` (fires 4 sends in order) and both partials (happy path + empty state)
 - [ ] Run validation — must pass; manual smoke: click "Run demo now", confirm 4 rows appear in the ticker within ~10s
-- [ ] Stop for user review before next task
-
-## Task 6: Simulate Sender page
-
-- [ ] Create `src/ui/pages/simulate-sender.ts` with `handleSimulateSenderPage` — composer layout per `DESIGN_OVERVIEW.md § Simulate Sender`
-- [ ] Lift `MESSAGE_TYPES` array (ORU^R01, ORU^R01-unknown, ADT^A01, ADT^A08, VXU^V04, ORM^O01, BAR^P01) from `ai/tickets/ui-refactoring/hl7v2-v2/project/design/page-simulate.jsx:8-56` verbatim into the new page module
-- [ ] Alpine: editor component (`x-data` with `raw`, `typeId`, `sender`, computed `parsed`/`hasUnknown`), overlay `<pre>` + transparent textarea (accent segment names, warn highlight on unmapped tokens), SendCard state machine (`idle → sending → sent | held`) with elapsed tick
-- [ ] Register `GET /simulate-sender` and `POST /simulate-sender/send` in `src/index.ts`; POST handler reuses `sendMLLPMessage()` from `src/ui/pages/mllp-client.ts` and returns JSON `{status: "sent"|"held", ack: string, messageId: string}`; ACK `AA` → sent, `AE` → held
-- [ ] Add 302 redirect `/mllp-client` → `/simulate-sender`
-- [ ] Unit tests: happy-path send, held-for-mapping send (unknown code in body), MLLP-unreachable error path
-- [ ] Run validation — must pass; manual smoke in browser (pick ORU unknown template, send, see "Held for mapping" banner)
 - [ ] Stop for user review before next task
 
 ## Task 7: Inbound Messages — list pane + type chips
@@ -106,10 +106,9 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 - [ ] Create `src/api/terminology-suggest.ts` exporting `suggestCodes(display, field)`: wraps existing `searchLoincCodes()` from `src/code-mapping/terminology-api.ts`; scores each result (exact-substring in display → 100; Jaro-Winkler similarity → 40–95; short-display bonus); returns top 3 `{code, display, score, system}`
 - [ ] Register `GET /api/terminology/suggest?display=&field=` route
 - [ ] Create `src/ui/pages/unmapped.ts` with `handleUnmappedCodesPage` — queue + editor split per `DESIGN_OVERVIEW.md § Unmapped Codes`; supports `?code=&sender=` pre-selection (matches the "Map code" link from Inbound)
-- [ ] Register `GET /unmapped-codes/partials/queue` and `GET /unmapped-codes/:code/partials/editor?sender=`; editor partial calls `suggestCodes()` for the pre-selected code's display
+- [ ] Replace the handler wired to `/unmapped-codes` (renamed in Task 3) with `handleUnmappedCodesPage`; register `GET /unmapped-codes/partials/queue` and `GET /unmapped-codes/:code/partials/editor?sender=`; editor partial calls `suggestCodes()` for the pre-selected code's display
 - [ ] Queue partial: aggregates open `Task?status=requested` (existing query), regroups by `localCode + sender + field`, counts messages via `Task.input`; returns queue list HTML
 - [ ] Wire actions: Save → existing `POST /api/mapping/tasks/:id/resolve`; Skip → new `POST /unmapped-codes/:code/skip?sender=` that wraps `POST /defer/:id` per matching task; "Skip all" and "Suggest with AI" buttons rendered `disabled` with "coming soon" chip (explicit v1 non-goals)
-- [ ] Add 302 redirect `/mapping/tasks` → `/unmapped-codes`
 - [ ] Unit tests: scoring helper (known-high + known-low cases), queue partial (groups correctly), editor partial (pre-selection loads suggestions)
 - [ ] Run validation — must pass
 - [ ] Stop for user review before next task
@@ -117,12 +116,11 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 ## Task 10: Terminology Map — table + filter popovers + detail
 
 - [ ] Create `src/ui/pages/terminology.ts` with `handleTerminologyPage` — KPI strip + two-pane (table + detail); supports `?q=&fhir=&sender=` URL params (multi-valued `fhir` and `sender`)
-- [ ] Register partials: `GET /terminology/partials/table?q=&fhir=&sender=` (server-filtered rows), `GET /terminology/partials/facets/fhir`, `GET /terminology/partials/facets/sender`, `GET /terminology/partials/detail/:conceptMapId/:code`
+- [ ] Replace the handler wired to `/terminology` (renamed in Task 3) with `handleTerminologyPage`; register partials: `GET /terminology/partials/table?q=&fhir=&sender=` (server-filtered rows), `GET /terminology/partials/facets/fhir`, `GET /terminology/partials/facets/sender`, `GET /terminology/partials/detail/:conceptMapId/:code`
 - [ ] Facet partials: in-memory scan of all ConceptMap entries (reuse existing `listConceptMaps` + group), return `{name, count}[]` rendered as searchable multi-select list; Alpine popover (`x-on:click.outside`, `x-on:keyup.escape`) wraps them
 - [ ] Detail partial: FHIR target (split typography), local/std mapping, source panel, minimal lineage (creation time from `ConceptMap/_history?_count=1` lazy), Deprecate/Edit footer
 - [ ] KPI strip values: total mappings (sum across all maps), coverage % (processed / processed + code_mapping_error over last 30d), messages/window (`_count=0` for 30d), needs-review (literal `0` for v1 until deprecation-tracking ticket lands)
 - [ ] **OPEN:** usage count per entry (design shows `usage:4820`) — not tracked today. Render `—` for v1 with a note in `docs/developer-guide/ui-design-tokens.md`; separate ticket for denormalized counters
-- [ ] Add 302 redirect `/mapping/table` → `/terminology`
 - [ ] Unit tests for the 4 new partials; integration test hitting facet counts against the test Aidbox
 - [ ] Run validation — must pass
 - [ ] Stop for user review before next task
@@ -140,8 +138,7 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 ## Task 12: Cleanup
 
 - [ ] Delete dead code: old `renderIncomingMessagesPage` body in `src/ui/pages/messages.ts` (keep Outgoing), legacy HTML rendering in `src/ui/pages/mapping-tasks.ts` and `src/ui/pages/code-mappings.ts`, page-render functions in `src/ui/pages/mllp-client.ts` (keep `sendMLLPMessage` + `sendMLLPTest` primitives)
-- [ ] Remove `renderLayout` + top-nav helpers from `src/ui/shared-layout.ts` once all callers are on `renderShell`; keep `highlightHL7WithDataTooltip` and the LOINC autocomplete IIFE (still used)
-- [ ] Sanity-check: every sidebar link returns 200; every redirected old URL (`/mllp-client`, `/mapping/tasks`, `/mapping/table`) 302s correctly
+- [ ] Sanity-check: every sidebar link returns 200 (old URLs `/mllp-client`, `/mapping/tasks`, `/mapping/table` were renamed in Task 3, not redirected — no 302s to verify)
 - [ ] Close `ai/tickets/2026-04-22-demo-ready-ui-tier1.md`: mark tasks 3–7 as "superseded by `2026-04-23-ui-design-system-refactor.md`", leave tasks 1–2 as-is (already done)
 - [ ] End-to-end manual demo walkthrough: `/` Dashboard → Run demo → ticker shows 4 → click warn row → Inbound detail walks Structured/Raw/FHIR/ACK tabs → Map code → Unmapped pre-selected → accept top suggestion → message reprocesses → Terminology Map shows the new entry → sidebar links all still work including Accounts/Outgoing
 - [ ] Final `bun test:all`
