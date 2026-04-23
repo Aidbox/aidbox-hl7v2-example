@@ -280,7 +280,7 @@ describe("renderCodeMappingsPage", () => {
     mock.module("../../../src/aidbox", () => createMockAidbox());
     const { renderCodeMappingsPage } = await import("../../../src/ui/pages/code-mappings");
 
-    const navData = { pendingMappingTasksCount: 0 };
+    const navData = { pendingMappingTasksCount: 0, incomingTotal: 0 };
     const html = renderCodeMappingsPage(
       navData,
       [],
@@ -303,7 +303,7 @@ describe("renderCodeMappingsPage", () => {
     mock.module("../../../src/aidbox", () => createMockAidbox());
     const { renderCodeMappingsPage } = await import("../../../src/ui/pages/code-mappings");
 
-    const navData = { pendingMappingTasksCount: 0 };
+    const navData = { pendingMappingTasksCount: 0, incomingTotal: 0 };
     const html = renderCodeMappingsPage(
       navData,
       [],
@@ -318,14 +318,14 @@ describe("renderCodeMappingsPage", () => {
     );
 
     // The active filter should have the blue background class
-    expect(html).toMatch(/href="\/mapping\/table\?type=observation-code-loinc"[^>]*class="[^"]*bg-blue-600[^"]*"/);
+    expect(html).toMatch(/href="\/terminology\?type=observation-code-loinc"[^>]*class="[^"]*bg-blue-600[^"]*"/);
   });
 
   test("includes mapping type badge in sender dropdown", async () => {
     mock.module("../../../src/aidbox", () => createMockAidbox());
     const { renderCodeMappingsPage } = await import("../../../src/ui/pages/code-mappings");
 
-    const navData = { pendingMappingTasksCount: 0 };
+    const navData = { pendingMappingTasksCount: 0, incomingTotal: 0 };
     const conceptMaps = [
       { id: "cm-1", displayName: "ACME_LAB|ACME_HOSP", mappingType: "observation-code-loinc" as const, targetSystem: "http://loinc.org" },
       { id: "cm-2", displayName: "OTHER_LAB|OTHER_HOSP", mappingType: "obr-status" as const, targetSystem: "http://hl7.org/fhir/diagnostic-report-status" },

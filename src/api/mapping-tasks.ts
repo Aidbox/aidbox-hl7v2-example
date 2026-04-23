@@ -35,7 +35,7 @@ export async function handleTaskResolution(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/tasks?error=${encodeURIComponent("Resolved code is required")}`,
+        Location: `/unmapped-codes?error=${encodeURIComponent("Resolved code is required")}`,
       },
     });
   }
@@ -51,7 +51,7 @@ export async function handleTaskResolution(
       return new Response(null, {
         status: 302,
         headers: {
-          Location: `/mapping/tasks?error=${encodeURIComponent("Task has invalid mapping type - cannot determine target system")}`,
+          Location: `/unmapped-codes?error=${encodeURIComponent("Task has invalid mapping type - cannot determine target system")}`,
         },
       });
     }
@@ -63,7 +63,7 @@ export async function handleTaskResolution(
       return new Response(null, {
         status: 302,
         headers: {
-          Location: `/mapping/tasks?error=${encodeURIComponent(validationResult.error || "Invalid code")}`,
+          Location: `/unmapped-codes?error=${encodeURIComponent(validationResult.error || "Invalid code")}`,
         },
       });
     }
@@ -73,7 +73,7 @@ export async function handleTaskResolution(
 
     return new Response(null, {
       status: 302,
-      headers: { Location: "/mapping/tasks" },
+      headers: { Location: "/unmapped-codes" },
     });
   } catch (error) {
     console.error("Task resolution error:", error);
@@ -82,7 +82,7 @@ export async function handleTaskResolution(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/tasks?error=${encodeURIComponent(message)}`,
+        Location: `/unmapped-codes?error=${encodeURIComponent(message)}`,
       },
     });
   }

@@ -121,7 +121,7 @@ function buildFilterUrl(typeFilter: MappingTypeFilter, conceptMapId?: string | n
     params.set("conceptMapId", conceptMapId);
   }
   const paramStr = params.toString();
-  return `/mapping/table${paramStr ? `?${paramStr}` : ""}`;
+  return `/terminology${paramStr ? `?${paramStr}` : ""}`;
 }
 
 /**
@@ -141,7 +141,7 @@ export function renderCodeMappingsPage(
   selectedMappingType: MappingTypeName | null,
 ): string {
   const searchUrlBase = selectedConceptMapId
-    ? `/mapping/table?conceptMapId=${selectedConceptMapId}${typeFilter !== "all" ? `&type=${typeFilter}` : ""}`
+    ? `/terminology?conceptMapId=${selectedConceptMapId}${typeFilter !== "all" ? `&type=${typeFilter}` : ""}`
     : "";
 
   const content = `
@@ -235,7 +235,7 @@ export function renderCodeMappingsPage(
         <p class="text-sm text-gray-500">Total: ${pagination.total} mappings</p>
         ${renderPaginationControls({
           pagination,
-          baseUrl: "/mapping/table",
+          baseUrl: "/terminology",
           filterParams: { conceptMapId: selectedConceptMapId, search, ...(typeFilter !== "all" ? { type: typeFilter } : {}) },
         })}
       </div>

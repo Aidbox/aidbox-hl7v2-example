@@ -75,9 +75,9 @@ Lab results (ORU^R01 messages) contain codes that identify each test. Many labs 
 
 When the system encounters a code it doesn't recognize:
 1. The message gets status `mapping_error` on [Incoming Messages Page](/incoming-messages)
-2. A mapping task is created for each unmapped code on [Mapping Tasks Page](/mapping/tasks)
+2. A mapping task is created for each unmapped code on [Mapping Tasks Page](/unmapped-codes)
 3. You resolve the task by selecting the corresponding LOINC code
-4. The mapping is saved to a [ConceptMap](concepts.md#conceptmap) (visible on [Code Mappings Page](/mapping/table))
+4. The mapping is saved to a [ConceptMap](concepts.md#conceptmap) (visible on [Code Mappings Page](/terminology))
 5. The message returns to `received` status and can be processed
 
 ## Outbound Flow: Generating BAR Messages
@@ -158,7 +158,7 @@ When BAR generation fails:
 
 ### Code Mapping
 
-Messages with unmapped codes get status `mapping_error` on [Incoming Messages Page](/incoming-messages). They won't process until you resolve all unmapped codes on [Mapping Tasks Page](/mapping/tasks).
+Messages with unmapped codes get status `mapping_error` on [Incoming Messages Page](/incoming-messages). They won't process until you resolve all unmapped codes on [Mapping Tasks Page](/unmapped-codes).
 
 ## Web UI Pages
 
@@ -169,6 +169,6 @@ The web UI provides visibility into all queues and operations:
 | **Invoices**          | [/invoices](/invoices)                   | Create invoices, trigger BAR generation, monitor processing status |
 | **Outgoing Messages** | [/outgoing-messages](/outgoing-messages) | View generated BAR messages, trigger transmission                  |
 | **Incoming Messages** | [/incoming-messages](/incoming-messages) | Monitor received messages, trigger processing, retry failures      |
-| **Mapping Tasks**     | [/mapping/tasks](/mapping/tasks)         | Resolve unmapped lab codes to LOINC                                |
-| **Code Mappings**     | [/mapping/table](/mapping/table)         | View and manage all code mappings by sender                        |
-| **MLLP Test Client**  | [/mllp-client](/mllp-client)             | Send test HL7v2 messages for debugging                             |
+| **Mapping Tasks**     | [/unmapped-codes](/unmapped-codes)         | Resolve unmapped lab codes to LOINC                                |
+| **Code Mappings**     | [/terminology](/terminology)         | View and manage all code mappings by sender                        |
+| **MLLP Test Client**  | [/simulate-sender](/simulate-sender)             | Send test HL7v2 messages for debugging                             |

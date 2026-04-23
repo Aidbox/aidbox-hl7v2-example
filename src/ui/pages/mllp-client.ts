@@ -242,7 +242,7 @@ function renderMLLPClientPage(
 
     <div class="grid grid-cols-3 gap-6">
       <div class="col-span-2">
-        <form method="POST" action="/mllp-client" class="bg-white rounded-lg shadow p-6 space-y-4">
+        <form method="POST" action="/simulate-sender" class="bg-white rounded-lg shadow p-6 space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">MLLP Server Host</label>

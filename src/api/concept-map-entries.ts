@@ -20,7 +20,7 @@ import {
  * - Parses form data: localCode, localDisplay, localSystem, targetCode, targetDisplay
  * - Validates required fields
  * - Delegates to addConceptMapEntry service function
- * - Returns redirect to /mapping/table with conceptMapId
+ * - Returns redirect to /terminology with conceptMapId
  */
 export async function handleAddEntry(
   req: Request & { params: { id: string } },
@@ -38,7 +38,7 @@ export async function handleAddEntry(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local code, local system, and target code are required")}`,
+        Location: `/terminology?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local code, local system, and target code are required")}`,
       },
     });
   }
@@ -57,7 +57,7 @@ export async function handleAddEntry(
       return new Response(null, {
         status: 302,
         headers: {
-          Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent(result.error || "Failed to add mapping")}`,
+          Location: `/terminology?conceptMapId=${conceptMapId}&error=${encodeURIComponent(result.error || "Failed to add mapping")}`,
         },
       });
     }
@@ -65,7 +65,7 @@ export async function handleAddEntry(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}`,
+        Location: `/terminology?conceptMapId=${conceptMapId}`,
       },
     });
   } catch (error) {
@@ -75,7 +75,7 @@ export async function handleAddEntry(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent(message)}`,
+        Location: `/terminology?conceptMapId=${conceptMapId}&error=${encodeURIComponent(message)}`,
       },
     });
   }
@@ -88,7 +88,7 @@ export async function handleAddEntry(
  * - Parses form data: localSystem, targetCode, targetDisplay
  * - URL param :code is the localCode to update
  * - Delegates to updateConceptMapEntry service function
- * - Returns redirect to /mapping/table with conceptMapId
+ * - Returns redirect to /terminology with conceptMapId
  */
 export async function handleUpdateEntry(
   req: Request & { params: { id: string; code: string } },
@@ -105,7 +105,7 @@ export async function handleUpdateEntry(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local system and target code are required")}`,
+        Location: `/terminology?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local system and target code are required")}`,
       },
     });
   }
@@ -123,7 +123,7 @@ export async function handleUpdateEntry(
       return new Response(null, {
         status: 302,
         headers: {
-          Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent(result.error || "Failed to update mapping")}`,
+          Location: `/terminology?conceptMapId=${conceptMapId}&error=${encodeURIComponent(result.error || "Failed to update mapping")}`,
         },
       });
     }
@@ -131,7 +131,7 @@ export async function handleUpdateEntry(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}`,
+        Location: `/terminology?conceptMapId=${conceptMapId}`,
       },
     });
   } catch (error) {
@@ -141,7 +141,7 @@ export async function handleUpdateEntry(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent(message)}`,
+        Location: `/terminology?conceptMapId=${conceptMapId}&error=${encodeURIComponent(message)}`,
       },
     });
   }
@@ -154,7 +154,7 @@ export async function handleUpdateEntry(
  * - Parses form data: localSystem
  * - URL param :code is the localCode to delete
  * - Delegates to deleteConceptMapEntry service function
- * - Returns redirect to /mapping/table with conceptMapId
+ * - Returns redirect to /terminology with conceptMapId
  */
 export async function handleDeleteEntry(
   req: Request & { params: { id: string; code: string } },
@@ -169,7 +169,7 @@ export async function handleDeleteEntry(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local system is required")}`,
+        Location: `/terminology?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local system is required")}`,
       },
     });
   }
@@ -180,7 +180,7 @@ export async function handleDeleteEntry(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}`,
+        Location: `/terminology?conceptMapId=${conceptMapId}`,
       },
     });
   } catch (error) {
@@ -190,7 +190,7 @@ export async function handleDeleteEntry(
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent(message)}`,
+        Location: `/terminology?conceptMapId=${conceptMapId}&error=${encodeURIComponent(message)}`,
       },
     });
   }

@@ -161,7 +161,7 @@ function buildFilterUrl(status: "requested" | "completed", typeFilter: MappingTy
   if (typeFilter !== "all") {
     params.set("type", typeFilter);
   }
-  return `/mapping/tasks?${params.toString()}`;
+  return `/unmapped-codes?${params.toString()}`;
 }
 
 /**
@@ -222,7 +222,7 @@ export function renderMappingTasksPage(
       <p class="text-sm text-gray-500">Total: ${pagination.total} tasks</p>
       ${renderPaginationControls({
         pagination,
-        baseUrl: "/mapping/tasks",
+        baseUrl: "/unmapped-codes",
         filterParams: { status: statusFilter, ...(typeFilter !== "all" ? { type: typeFilter } : {}) },
       })}
     </div>`;

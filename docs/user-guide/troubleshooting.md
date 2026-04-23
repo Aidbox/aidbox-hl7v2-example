@@ -11,7 +11,7 @@ For background on message types, statuses, and terminology, see [Concepts](conce
 | `received` | Message received, awaiting processing | Will be processed automatically |
 | `processed` | Successfully converted to FHIR | No action needed |
 | `error` | Processing failed | Check `error` field, fix issue, use "Mark for Retry" |
-| `mapping_error` | OBX codes need LOINC mapping | Resolve via `/mapping/tasks` |
+| `mapping_error` | OBX codes need LOINC mapping | Resolve via `/unmapped-codes` |
 
 ### OutgoingBarMessage Status
 
@@ -103,7 +103,7 @@ docker compose logs aidbox
 
 **Resolution:**
 
-1. Go to http://localhost:3000/mapping/tasks
+1. Go to http://localhost:3000/unmapped-codes
 2. Review each unmapped code
 3. Search for the matching LOINC code
 4. Click "Resolve" to save the mapping

@@ -121,7 +121,7 @@ OBX|1|NM|WBC^White Blood Cell Count^LN||7.5|10*9/L|4.5-11.0|N|||F|||||MICROSCOPY
 # Start the server
 bun run dev
 
-# Go to http://localhost:3000/mllp-client
+# Go to http://localhost:3000/simulate-sender
 # Paste the ORU message above and send it
 # Go to Incoming Messages → click Process
 ```

@@ -54,9 +54,9 @@ Bun.serve({
       POST: createOutgoingMessage,
     },
     "/incoming-messages": handleIncomingMessagesPage,
-    "/mapping/tasks": handleMappingTasksPage,
-    "/mapping/table": handleCodeMappingsPage,
-    "/mllp-client": {
+    "/unmapped-codes": handleMappingTasksPage,
+    "/terminology": handleCodeMappingsPage,
+    "/simulate-sender": {
       GET: handleMLLPClientPage,
       POST: sendMLLPTest,
     },

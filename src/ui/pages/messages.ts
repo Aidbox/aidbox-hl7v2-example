@@ -236,7 +236,7 @@ function renderMessageList(items: MessageListItem[]): string {
                         ${code.localDisplay ? `<span class="text-gray-600">(${escapeHtml(code.localDisplay)})</span>` : ""}
                         ${code.localSystem ? `<span class="text-gray-400">- ${escapeHtml(code.localSystem)}</span>` : ""}
                       </span>
-                      <a href="/mapping/tasks" class="text-blue-600 hover:text-blue-800 text-xs">View Tasks →</a>
+                      <a href="/unmapped-codes" class="text-blue-600 hover:text-blue-800 text-xs">View Tasks →</a>
                     </li>
                   `,
                     )

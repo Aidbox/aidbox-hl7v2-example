@@ -124,6 +124,7 @@ function createCompletedLoincTask(): Task {
 
 const mockNavData: NavData = {
   pendingMappingTasksCount: 10,
+  incomingTotal: 0,
 };
 
 const mockPagination: PaginationData = {
@@ -432,8 +433,8 @@ describe("renderMappingTasksPage", () => {
     );
 
     // Status tabs should preserve type filter
-    expect(html).toContain('href="/mapping/tasks?status=requested&type=obr-status"');
-    expect(html).toContain('href="/mapping/tasks?status=completed&type=obr-status"');
+    expect(html).toContain('href="/unmapped-codes?status=requested&type=obr-status"');
+    expect(html).toContain('href="/unmapped-codes?status=completed&type=obr-status"');
   });
 
   test("omits type parameter in URLs when filter is 'all'", () => {
@@ -448,7 +449,7 @@ describe("renderMappingTasksPage", () => {
 
     // Should not have type=all in URLs
     expect(html).not.toContain("type=all");
-    expect(html).toContain('href="/mapping/tasks?status=requested"');
+    expect(html).toContain('href="/unmapped-codes?status=requested"');
   });
 
   test("renders error message when provided", () => {
