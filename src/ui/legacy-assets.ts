@@ -1,9 +1,9 @@
 // Styles and scripts carried from the original Tailwind-based layout.
-// Both `renderLayout` (legacy) and `renderShell` (new) embed these so page
-// bodies that still rely on HL7 highlighting, LOINC autocomplete, or the
-// Aidbox health dot continue to work during the refactor. Once every page
-// body is rebuilt against the warm-paper design, the pieces tied to
-// Tailwind markup (tooltip CSS, LOINC dropdown CSS) can retire.
+// `renderShell` embeds these so page bodies that still rely on HL7
+// highlighting, LOINC autocomplete, or the Aidbox health dot continue to
+// work during the refactor. Once every page body is rebuilt against the
+// warm-paper design, the pieces tied to Tailwind markup (tooltip CSS,
+// LOINC dropdown CSS) can retire.
 
 import { getHighlightStyles } from "@atomic-ehr/hl7v2/src/hl7v2/highlight";
 

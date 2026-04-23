@@ -65,9 +65,9 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 
 ## Task 3c: Delete legacy layout
 
-- [ ] Delete `renderLayout`, `renderNav`, `renderTab`, `NavTab` type, and related helpers from `src/ui/shared-layout.ts`. Keep `highlightHL7WithDataTooltip` and the health-check IIFE (moved into the shell head in 3a).
-- [ ] Remove any remaining imports of the deleted helpers
-- [ ] Run validation — must pass (typecheck catches any missed imports)
+- [x] Delete `renderLayout`, `renderNav`, `renderTab`, `NavTab` type, and related helpers from `src/ui/shared-layout.ts`. Keep `highlightHL7WithDataTooltip` and the health-check IIFE (moved into the shell head in 3a). *(The health-check IIFE and LEGACY_STYLES already live in `src/ui/legacy-assets.ts` since Task 3a — only `highlightHL7WithDataTooltip` remains in `shared-layout.ts`. File shrank from ~130 lines to 16.)*
+- [x] Remove any remaining imports of the deleted helpers *(grep confirms no callers of `renderLayout`/`renderNav`/`renderTab`/`NavTab` left after the prior tasks; two `highlightHL7WithDataTooltip` imports stay, from `src/index.ts` and `src/ui/pages/messages.ts`)*
+- [x] Run validation — must pass (typecheck catches any missed imports) *(typecheck clean; 1700 unit tests pass; live smoke: all 7 sidebar URLs → 200)*
 - [ ] Stop for user review before next task
 
 ## Task 4: UI architecture docs + Chrome DevTools MCP
@@ -190,6 +190,7 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 ## Task 12: Cleanup
 
 - [ ] Delete dead code: old `renderIncomingMessagesPage` body in `src/ui/pages/messages.ts` (keep Outgoing), legacy HTML rendering in `src/ui/pages/mapping-tasks.ts` and `src/ui/pages/code-mappings.ts`, page-render functions in `src/ui/pages/mllp-client.ts`. If `sendMLLPMessage` is still in `mllp-client.ts` at this point, **move it to `src/mllp/client.ts`** and delete `mllp-client.ts` entirely (keep `sendMLLPTest` if any test still uses it; otherwise delete it too).
+- [ ] Rename `src/ui/shared-layout.ts` → `src/ui/hl7-display.ts` (only `highlightHL7WithDataTooltip` remains after Task 3c; the old filename is now misleading). Update the two importers (`src/index.ts`, `src/ui/pages/messages.ts`). Add a unit test at the new location: input with `title="..."` → output with `data-tooltip="..."`, HL7 segment markup preserved.
 - [ ] Re-run the `rg` grep-audit from Task 3a to confirm no stale references remain to `/mllp-client`, `/mapping/tasks`, `/mapping/table`, `renderLayout`, or `renderNav`
 - [ ] Close `ai/tickets/2026-04-22-demo-ready-ui-tier1.md`: mark tasks 3–7 as "superseded by `2026-04-23-ui-design-system-refactor.md`", leave tasks 1–2 as-is (already done)
 - [ ] End-to-end manual demo walkthrough: `/` Dashboard → Run demo → ticker shows 4 → click warn row → Inbound detail walks Structured/Raw/FHIR/Timeline tabs → Map code → Unmapped pre-selected → accept top suggestion → message reprocesses → Terminology Map shows the new entry → sidebar links all still work including Accounts/Outgoing (framed in gray card)
