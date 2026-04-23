@@ -8,8 +8,8 @@ import type { Task } from "../../fhir/hl7-fhir-r4-core/Task";
 import { aidboxFetch, type Bundle } from "../../aidbox";
 import { escapeHtml } from "../../utils/html";
 import { parsePageParam, createPagination, PAGE_SIZE, renderPaginationControls, type PaginationData } from "../pagination";
-import { renderNav, renderLayout, type NavData } from "../shared-layout";
-import { htmlResponse, getNavData } from "../shared";
+import { renderShell } from "../shell";
+import { htmlResponse, getNavData, type NavData } from "../shared";
 import { MAPPING_TYPES, type MappingTypeName, isMappingTypeName, sourceLabel, targetLabel } from "../../code-mapping/mapping-types";
 import { getValidValuesWithDisplay } from "../../code-mapping/mapping-type-options";
 import { getMappingTypeShortLabel } from "../mapping-type-ui";
@@ -227,11 +227,12 @@ export function renderMappingTasksPage(
       })}
     </div>`;
 
-  return renderLayout(
-    "Unmapped Codes",
-    renderNav("mapping-tasks", navData),
+  return renderShell({
+    active: "unmapped",
+    title: "Unmapped Codes",
     content,
-  );
+    navData,
+  });
 }
 
 /**

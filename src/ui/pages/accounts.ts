@@ -9,9 +9,8 @@ import type { Condition } from "../../fhir/hl7-fhir-r4-core/Condition";
 import type { Procedure } from "../../fhir/hl7-fhir-r4-core/Procedure";
 import { aidboxFetch, getResources, type Bundle } from "../../aidbox";
 import { parsePageParam, createPagination, PAGE_SIZE, renderPaginationControls, type PaginationData } from "../pagination";
-import type { NavData } from "../shared-layout";
 import { renderShell, renderLegacyBody } from "../shell";
-import { htmlResponse, redirectResponse, getNavData } from "../shared";
+import { htmlResponse, redirectResponse, getNavData, type NavData } from "../shared";
 
 // ============================================================================
 // Types (internal)

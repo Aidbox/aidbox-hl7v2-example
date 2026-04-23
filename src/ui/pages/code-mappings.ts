@@ -31,8 +31,8 @@ import {
   renderPaginationControls,
   type PaginationData,
 } from "../pagination";
-import { renderNav, renderLayout, type NavData } from "../shared-layout";
-import { htmlResponse, getNavData } from "../shared";
+import { renderShell } from "../shell";
+import { htmlResponse, getNavData, type NavData } from "../shared";
 
 // ============================================================================
 // Helper Functions (exported for testing)
@@ -252,11 +252,12 @@ export function renderCodeMappingsPage(
     }
   `;
 
-  return renderLayout(
-    "Terminology Map",
-    renderNav("code-mappings", navData),
+  return renderShell({
+    active: "terminology",
+    title: "Terminology Map",
     content,
-  );
+    navData,
+  });
 }
 
 /**

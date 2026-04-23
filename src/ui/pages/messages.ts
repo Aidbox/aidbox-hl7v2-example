@@ -13,8 +13,8 @@ import type {
 import type { Patient } from "../../fhir/hl7-fhir-r4-core/Patient";
 import { aidboxFetch, getResources, type Bundle } from "../../aidbox";
 import { escapeHtml } from "../../utils/html";
-import { renderNav, renderLayout, type NavData } from "../shared-layout";
-import { htmlResponse, redirectResponse, getNavData } from "../shared";
+import { renderShell, renderLegacyBody } from "../shell";
+import { htmlResponse, redirectResponse, getNavData, type NavData } from "../shared";
 import { PAGE_SIZE } from "../pagination";
 
 // ============================================================================
@@ -382,11 +382,12 @@ function renderOutgoingMessagesPage(
     </ul>
     <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
 
-  return renderLayout(
-    "Outgoing Messages",
-    renderNav("outgoing", navData),
-    content,
-  );
+  return renderShell({
+    active: "outgoing",
+    title: "Outgoing Messages",
+    content: renderLegacyBody(content),
+    navData,
+  });
 }
 
 const INCOMING_STATUSES = [
@@ -660,9 +661,10 @@ function renderIncomingMessagesPage(
     </ul>
     <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
 
-  return renderLayout(
-    "Inbound Messages",
-    renderNav("incoming", navData),
+  return renderShell({
+    active: "inbound",
+    title: "Inbound Messages",
     content,
-  );
+    navData,
+  });
 }

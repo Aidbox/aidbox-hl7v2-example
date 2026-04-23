@@ -57,10 +57,10 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 
 ## Task 3b: Migrate remaining page bodies into the shell
 
-- [ ] Migrate every remaining page handler (`messages.ts` both halves, `mapping-tasks.ts`, `code-mappings.ts`, `mllp-client.ts`) to call `renderShell`. Bodies unchanged (Tier-2 bodies will be rebuilt in Tasks 5–11). Use `renderLegacyBody` for Outgoing Messages; the others will get new warm-paper bodies soon so they can go directly in the main column.
-- [ ] Update the remaining UI unit tests that assert nav markup (`test/unit/ui/*`)
-- [ ] Add a smoke-tagged integration test `smoke: every shell page returns 200` that GETs `/`, `/accounts`, `/outgoing-messages`, `/incoming-messages`, `/simulate-sender`, `/unmapped-codes`, `/terminology` and asserts 200 + presence of the `.sidebar` marker in the body
-- [ ] Run validation — must pass; manually confirm every page renders with the new sidebar
+- [x] Migrate every remaining page handler (`messages.ts` both halves, `mapping-tasks.ts`, `code-mappings.ts`, `mllp-client.ts`) to call `renderShell`. Bodies unchanged (Tier-2 bodies will be rebuilt in Tasks 5–11). Use `renderLegacyBody` for Outgoing Messages; the others will get new warm-paper bodies soon so they can go directly in the main column.
+- [x] Update the remaining UI unit tests that assert nav markup (`test/unit/ui/*`) *(no additional updates needed — the existing `code-mappings.test.ts`, `mapping-tasks-ui.test.ts`, `mapping-tasks-pagination.test.ts` assertions all pass against the new shell because they check body-level markup like hrefs and CSS classes that are unchanged; the nav-markup NavData-shape updates already landed in Task 3a)*
+- [x] Add a smoke-tagged integration test `smoke: every shell page returns 200` that GETs `/`, `/accounts`, `/outgoing-messages`, `/incoming-messages`, `/simulate-sender`, `/unmapped-codes`, `/terminology` and asserts 200 + presence of the `.sidebar` marker in the body *(added at `test/integration/ui/shell-smoke.integration.test.ts`; invokes handlers directly rather than starting an HTTP server so it slots cleanly into the existing integration-test machinery)*
+- [x] Run validation — must pass; manually confirm every page renders with the new sidebar *(live smoke via `bun --hot` dev server: all 7 URLs → 200 with `class="sidebar"`; legacy-body wrapping matches plan — Accounts + Outgoing wrapped, the 4 others unwrapped)*
 - [ ] Stop for user review before next task
 
 ## Task 3c: Delete legacy layout

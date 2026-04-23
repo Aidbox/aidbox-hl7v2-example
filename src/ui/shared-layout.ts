@@ -24,6 +24,7 @@ export function highlightHL7WithDataTooltip(
   return html.replace(/\btitle="/g, 'data-tooltip="');
 }
 
+/** @deprecated Use NavKey from `./shell`. Deleted in Task 3c. */
 export type NavTab =
   | "accounts"
   | "outgoing"
@@ -55,6 +56,7 @@ function renderTab(tab: NavTabDef, active: NavTab): string {
   return `<a href="${tab.href}" class="py-4 px-3 border-b-2 flex items-center gap-2 ${classes}">${tab.label}${badge}</a>`;
 }
 
+/** @deprecated Use `renderShell` from `./shell`. Deleted in Task 3c. */
 export function renderNav(active: NavTab, navData: NavData): string {
   // Order by demo flow: inbound pipeline first (messages arrive → simulator →
   // remediation), then outbound (accounts → BAR messages), then reference.
@@ -104,6 +106,7 @@ export function renderNav(active: NavTab, navData: NavData): string {
   </nav>`;
 }
 
+/** @deprecated Use `renderShell` from `./shell`. Deleted in Task 3c. */
 export function renderLayout(
   title: string,
   nav: string,

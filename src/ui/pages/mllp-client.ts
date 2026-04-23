@@ -6,8 +6,8 @@
 
 import * as net from "node:net";
 import { wrapWithMLLP, VT, FS, CR } from "../../mllp/mllp-server";
-import { renderNav, renderLayout, type NavData } from "../shared-layout";
-import { htmlResponse, getNavData } from "../shared";
+import { renderShell } from "../shell";
+import { htmlResponse, getNavData, type NavData } from "../shared";
 
 // ============================================================================
 // Types (internal)
@@ -394,9 +394,10 @@ function renderMLLPClientPage(
       }
     </script>`;
 
-  return renderLayout(
-    "Simulate Sender",
-    renderNav("mllp-client", navData),
+  return renderShell({
+    active: "simulate",
+    title: "Simulate Sender",
     content,
-  );
+    navData,
+  });
 }

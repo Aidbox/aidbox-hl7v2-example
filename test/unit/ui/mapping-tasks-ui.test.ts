@@ -17,7 +17,7 @@ import {
   type MappingTypeFilter,
 } from "../../../src/ui/pages/mapping-tasks";
 import { getMappingTypeShortLabel } from "../../../src/ui/mapping-type-ui";
-import type { NavData } from "../../../src/ui/shared-layout";
+import type { NavData } from "../../../src/ui/shared";
 import type { PaginationData } from "../../../src/ui/pagination";
 import { MAPPING_TYPES } from "../../../src/code-mapping/mapping-types";
 
