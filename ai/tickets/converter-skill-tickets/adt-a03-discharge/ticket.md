@@ -348,13 +348,13 @@ Build ADT_A03 converter following ADT_A01 pattern. Key difference: unconditional
 
 ## Task 2: Register converter in router
 
-- [ ] Open `src/v2-to-fhir/converter.ts`
-- [ ] Add import: `import { convertADT_A03 } from "./messages/adt-a03"`
-- [ ] Add switch case: `case "ADT_A03": return await convertADT_A03(parsed, context);` (alphabetically after ADT_A01)
-- [ ] Open `src/v2-to-fhir/messages/index.ts`
-- [ ] Add export: `export * from "./adt-a03"`
-- [ ] Run `bun run typecheck` — must pass
-- [ ] Stop for review
+- [x] Open `src/v2-to-fhir/converter.ts`
+- [x] Add import: `import { convertADT_A03 } from "./messages/adt-a03"`
+- [x] Add switch case: `case "ADT_A03": return await convertADT_A03(parsed, context);` (alphabetically after ADT_A01)
+- [x] Open `src/v2-to-fhir/messages/index.ts`
+- [x] Add export: `export * from "./adt-a03"`
+- [x] Run `bun run typecheck` — must pass
+- [x] Stop for review
 
 ## Task 3: Configure ADT_A03 in config
 

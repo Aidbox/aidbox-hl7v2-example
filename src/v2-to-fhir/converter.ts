@@ -2,7 +2,7 @@
  * HL7v2 to FHIR Converter Router
  *
  * Routes HL7v2 messages to appropriate converters based on message type.
- * Supports: ADT_A01, ADT_A08, ORU_R01, ORM_O01, VXU_V04
+ * Supports: ADT_A01, ADT_A03, ADT_A08, ORU_R01, ORM_O01, VXU_V04
  */
 
 import type { HL7v2Message, HL7v2Segment } from "../hl7v2/generated/types";
@@ -10,6 +10,7 @@ import { fromMSH } from "../hl7v2/generated/fields";
 import type { DomainResource } from "../fhir/hl7-fhir-r4-core/DomainResource";
 import type { IncomingHL7v2Message } from "../fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { convertADT_A01 } from "./messages/adt-a01";
+import { convertADT_A03 } from "./messages/adt-a03";
 import { convertADT_A08 } from "./messages/adt-a08";
 import { convertORU_R01 } from "./messages/oru-r01";
 import { convertORM_O01 } from "./messages/orm-o01";
@@ -88,6 +89,9 @@ export async function convertToFHIR(
   switch (messageType) {
     case "ADT_A01":
       return await convertADT_A01(parsed, context);
+
+    case "ADT_A03":
+      return await convertADT_A03(parsed, context);
 
     case "ADT_A08":
       return await convertADT_A08(parsed, context);
