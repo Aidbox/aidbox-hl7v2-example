@@ -119,11 +119,16 @@ For anything beyond this file, read `docs/developer-guide/`:
 | HL7 reference JSON generation (XSD+PDF → data/hl7v2-reference)                           | `how-to/hl7v2-reference-generation.md` |
 | Batch-importing HL7v2 zips and triaging errors                                           | `how-to/batch-import.md` |
 | Testing, integration infra, codegen/debug workflows                                      | `how-to/development-guide.md` |
+| UI architecture, shell composition, htmx/Alpine patterns                                 | `ui-architecture.md` |
+| Design tokens, class vocabulary, color palette                                           | `ui-design-tokens.md` |
+| End-to-end recipe for adding a new UI page                                               | `how-to/add-ui-page.md` |
 | VXU ORDER OBX hard error decision                                                        | `adr/001-unknown-order-obx-hard-error.md` |
 
 ## Code Style
 
 IMPORTANT: Read `.claude/code-style.md` before writing or modifying code.
+
+UI conventions: see `docs/developer-guide/ui-architecture.md`.
 
 ## Bun, not Node
 

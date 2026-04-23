@@ -72,13 +72,13 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 
 ## Task 4: UI architecture docs + Chrome DevTools MCP
 
-- [ ] Create `docs/developer-guide/ui-architecture.md` covering: when to use htmx vs Alpine vs plain form POST, partial-endpoint naming (`/{page}/partials/{name}`), design-system class vocabulary, icon sprite usage, shell composition, when server-renders the selected-detail on `?selected=` full page loads
-- [ ] Create `docs/developer-guide/ui-design-tokens.md` — palette (warm-paper), typography (Inter/Fraunces/JetBrains Mono), spacing scale, component class inventory with tiny HTML samples. Direct reference for agents so they don't re-read the design HTML every time
-- [ ] Create `docs/developer-guide/how-to/add-ui-page.md` — recipe: page handler, route registration, sidebar entry, partial pattern, tests
-- [ ] Add Chrome DevTools MCP server to `.claude/settings.json` (or `.claude/settings.local.json`) per its install docs; surface the exact approval steps in `docs/developer-guide/ui-architecture.md`
-- [ ] **Blocking validation**: user-approves MCP and confirms the agent can take a screenshot of `http://localhost:3000/` via Chrome DevTools MCP. Task 4 is not signed off until this works end-to-end.
-- [ ] Add one-line pointer in `CLAUDE.md` under "Code Style" → "UI conventions: see `docs/developer-guide/ui-architecture.md`"
-- [ ] Run validation — typecheck must pass; MCP screenshot must succeed
+- [x] Create `docs/developer-guide/ui-architecture.md` covering: when to use htmx vs Alpine vs plain form POST, partial-endpoint naming (`/{page}/partials/{name}`), design-system class vocabulary, icon sprite usage, shell composition, when server-renders the selected-detail on `?selected=` full page loads
+- [x] Create `docs/developer-guide/ui-design-tokens.md` — palette (warm-paper), typography (Inter/Fraunces/JetBrains Mono), spacing scale, component class inventory with tiny HTML samples. Direct reference for agents so they don't re-read the design HTML every time
+- [x] Create `docs/developer-guide/how-to/add-ui-page.md` — recipe: page handler, route registration, sidebar entry, partial pattern, tests
+- [x] Add Chrome DevTools MCP server to `.claude/settings.json` (or `.claude/settings.local.json`) per its install docs; surface the exact approval steps in `docs/developer-guide/ui-architecture.md` *(Claude Code's settings.json schema rejects `mcpServers`; the correct location is `.mcp.json` at repo root. Created the file with `chrome-devtools` pointing at `npx -y chrome-devtools-mcp@latest`. Opt-in lives in `.claude/settings.local.json` as `enabledMcpjsonServers: ["chrome-devtools"]` — the agent is denied from modifying that field by security policy, so the user must opt in manually or via Claude Code's approval prompt.)*
+- [x] **Blocking validation**: user-approves MCP and confirms the agent can take a screenshot of `http://localhost:3000/` via Chrome DevTools MCP. Task 4 is not signed off until this works end-to-end. *(Verified: MCP approval done; after the user exported `CHROME_EXECUTABLE` and restarted Claude Code, the agent successfully navigated to `http://localhost:3000/unmapped-codes` and captured a screenshot showing the warm-paper shell, sidebar groups, env + health pills, and legacy page body — matches the design intent for this interim state. Screenshot evidence captured in conversation 2026-04-23.)*
+- [x] Add one-line pointer in `CLAUDE.md` under "Code Style" → "UI conventions: see `docs/developer-guide/ui-architecture.md`"
+- [x] Run validation — typecheck must pass; MCP screenshot must succeed *(typecheck passes, unit tests 1700/0. MCP screenshot requires user-approval step above — not verifiable by agent until opt-in lands.)*
 - [ ] Stop for user review before next task
 
 ## Task 5: Simulate Sender page (includes schema change for MSH-10 lookup)
