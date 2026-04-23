@@ -315,3 +315,79 @@ There is no existing `pv2-encounter.ts` segment converter. PV2 fields mapped to 
 
 **OQ-3 — Encounter ID fallback stability across A01/A03 pairs.**
 If REQ-R1 fallback is adopted (PV1-44-based ID), the A01 converter must also use the same fallback scheme — otherwise A01 and A03 generate different IDs and the A03 produces a second Encounter. This requires a coordinated change to A01 as well, or a decision that the fallback is A03-only (accepting the duplicate risk for these senders).
+
+---
+
+# Implementation Plan
+
+## Overview
+
+Build ADT_A03 converter following ADT_A01 pattern. Key difference: unconditionally set `Encounter.status = "finished"` (REQ-1), and require PV1-19 for Encounter ID with no fallback (same behavior as A01 default). Reuse existing segment converters (Patient, Encounter, RelatedPerson, Condition, AllergyIntolerance, Coverage) and registration pattern.
+
+## Validation
+
+- `bun test:local` (unit + smoke tests)
+- `bun run typecheck`
+
+## Task 1: Create adt-a03.ts converter
+
+- [ ] Create `src/v2-to-fhir/messages/adt-a03.ts`
+- [ ] Import: `convertPIDToPatient`, `convertNK1ToRelatedPerson`, `convertDG1ToCondition`, `convertAL1ToAllergyIntolerance`, `convertIN1ToCoverage`, `convertPV1WithMappingSupport`, `buildEncounterIdentifier`, `resolvePatientId`
+- [ ] Export `convertADT_A03(parsed: HL7v2Message, context: ConverterContext): Promise<ConversionResult>`
+- [ ] Signature mirrors `convertADT_A01`; return type `ConversionResult` with `entries: DomainResource[]`
+- [ ] Core logic:
+  - Call `convertPV1WithMappingSupport(...)` with PV1 from parsed message
+  - Override returned `encounter.status = "finished"` (REQ-1, not conditional on PV1-45 presence)
+  - Reuse Encounter identifier from PV1-19 via `buildEncounterFromPV1`; no fallback chain (PV1 required)
+  - Build Patient from PID via `convertPIDToPatient` (required)
+  - Add optional segments: NK1→RelatedPerson[], DG1→Condition[], AL1→AllergyIntolerance[], IN1→Coverage[]
+  - Assemble and return transaction bundle
+- [ ] Handle PV2 fields inline (PV2-3 reasonCode, PV2-11 length of stay, PV2-12 description, PV2-25 priority) — incorporate into Encounter if present; omit if absent (no error)
+- [ ] Run `bun run typecheck` — must pass
+- [ ] Stop for review
+
+## Task 2: Register converter in router
+
+- [ ] Open `src/v2-to-fhir/converter.ts`
+- [ ] Add import: `import { convertADT_A03 } from "./messages/adt-a03"`
+- [ ] Add switch case: `case "ADT_A03": return await convertADT_A03(parsed, context);` (alphabetically after ADT_A01)
+- [ ] Open `src/v2-to-fhir/messages/index.ts`
+- [ ] Add export: `export * from "./adt-a03"`
+- [ ] Run `bun run typecheck` — must pass
+- [ ] Stop for review
+
+## Task 3: Configure ADT_A03 in config
+
+- [ ] Open `config/hl7v2-to-fhir.json`
+- [ ] Add `"ADT-A03"` config block (after `"ADT-A01"`) with:
+  - `preprocess.PID`: Apply `move-pid2-into-pid3`, `inject-authority-from-msh` (same as A01; per REQ-P2)
+  - `preprocess.PV1`: Apply `fix-pv1-authority-with-msh` on field `"19"` (per REQ-P1)
+  - `converter.PV1.required: true` (no fallback; PV1 mandatory)
+- [ ] Run `bun run typecheck` — must pass
+- [ ] Stop for review
+
+## Task 4: Write unit tests
+
+- [ ] Create `test/unit/v2-to-fhir/messages/adt-a03.test.ts`
+- [ ] Test structure mirrors `adt-a01.test.ts`:
+  - Import `{ parseMessage, convertADT_A03 }` and test utilities
+  - Describe block: `"convertADT_A03 - discharge converter"`
+  - Test 1: "with valid PV1-19 creates Encounter with status finished" — parse example message, convert, assert `messageUpdate.status === "processed"`, Encounter.status === "finished", period.end from PV1-45
+  - Test 2: "with missing PV1-19 returns conversion_error" — omit PV1-19, assert `conversion_error` status
+  - Test 3: "with valid NK1/DG1/AL1/IN1 includes all resource types" — add optional segments, assert array lengths
+- [ ] Test 4: Smoke test (name prefix `"smoke: ADT_A03 discharge"`) using de-identified example-01.hl7 from `ai/tickets/converter-skill-tickets/adt-a03-discharge/examples/` — assert status `processed` or `warning`, Encounter.status `finished`, Patient created
+- [ ] Run `bun test:local` — must pass
+- [ ] Stop for review
+
+## Task 5: Validate against real message
+
+- [ ] Run `bun scripts/check-message-support.ts ai/tickets/converter-skill-tickets/adt-a03-discharge/examples/example-01.hl7`
+- [ ] Verify output: `verdict: supported — message converts cleanly` (exit code 0)
+- [ ] Run `bun test:all` locally to ensure no regressions in other converters
+- [ ] Stop for review before merge
+
+## Task 6: Cleanup
+
+- [ ] Update CLAUDE.md if converter patterns changed (none expected — this is straightforward reuse)
+- [ ] Review code for unnecessary comments or debug statements
+- [ ] Final `bun test:local` pass
