@@ -358,13 +358,13 @@ Build ADT_A03 converter following ADT_A01 pattern. Key difference: unconditional
 
 ## Task 3: Configure ADT_A03 in config
 
-- [ ] Open `config/hl7v2-to-fhir.json`
-- [ ] Add `"ADT-A03"` config block (after `"ADT-A01"`) with:
+- [x] Open `config/hl7v2-to-fhir.json`
+- [x] Add `"ADT-A03"` config block (after `"ADT-A01"`) with:
   - `preprocess.PID`: Apply `move-pid2-into-pid3`, `inject-authority-from-msh` (same as A01; per REQ-P2)
   - `preprocess.PV1`: Apply `fix-pv1-authority-with-msh` on field `"19"` (per REQ-P1)
   - `converter.PV1.required: true` (no fallback; PV1 mandatory)
-- [ ] Run `bun run typecheck` — must pass
-- [ ] Stop for review
+- [x] Run `bun run typecheck` — must pass
+- [x] Stop for review
 
 ## Task 4: Write unit tests
 
