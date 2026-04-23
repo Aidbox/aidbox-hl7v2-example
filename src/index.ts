@@ -26,6 +26,7 @@ import {
 import {
   handleSimulateSenderPage,
   handleSimulateSenderSend,
+  handleSimulateSenderStatus,
 } from "./ui/pages/simulate-sender";
 import { handleTaskResolution } from "./api/mapping-tasks";
 import { searchLoincCodes, validateLoincCode } from "./code-mapping/terminology-api";
@@ -64,6 +65,9 @@ Bun.serve({
     },
     "/simulate-sender/send": {
       POST: handleSimulateSenderSend,
+    },
+    "/simulate-sender/status": {
+      GET: handleSimulateSenderStatus,
     },
 
     // =========================================================================

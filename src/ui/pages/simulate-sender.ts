@@ -139,20 +139,29 @@ export const MESSAGE_GROUPS: MessageGroup[] = [
 const DEFAULT_SAMPLE_ID = "oru-r01-unknown-loinc";
 
 // ============================================================================
-// Send endpoint
+// Send endpoint — MLLP only, returns as soon as ACK arrives. The client
+// polls /simulate-sender/status separately so the "Receive ACK" and
+// "Wait for processing" UI steps flip on real, independent events.
 // ============================================================================
 
-const POLL_INTERVAL_MS = 500;
-const POLL_TIMEOUT_MS = 10000;
+// How long the client polls /status after ACK before giving up and showing
+// "processor catching up". 10s comfortably covers one full worker tick
+// (default POLL_INTERVAL_MS=5000ms) plus slack.
+export const STATUS_POLL_DEADLINE_MS = 10000;
+export const STATUS_POLL_INTERVAL_MS = 500;
 
-export type SendOutcome = "sent" | "held" | "error";
+export type SendOutcome = "sent" | "held" | "error" | "pending";
 
 export interface SendResult {
-  status: SendOutcome;
+  status: "sent" | "error";
   ack: string;
   messageControlId: string;
-  messageStatus?: string;
   error?: string;
+}
+
+export interface StatusResult {
+  outcome: SendOutcome;
+  messageStatus?: string;
 }
 
 // HL7v2 2.5.1 caps MSH-10 (ST) at 20 characters. Format: `SIM-` (4) +
@@ -164,36 +173,14 @@ function newMessageControlId(): string {
   return `SIM-${epoch}-${suffix}`;
 }
 
-async function pollForStatus(
-  messageControlId: string,
-): Promise<string | undefined> {
-  const query = `/fhir/IncomingHL7v2Message?message-control-id=${encodeURIComponent(messageControlId)}&_elements=status&_count=1`;
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-
-  const terminalStatuses = new Set([
-    "processed",
-    "warning",
-    "code_mapping_error",
-    "parsing_error",
-    "conversion_error",
-    "sending_error",
-  ]);
-
-  while (Date.now() < deadline) {
-    const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(query);
-    const status = bundle.entry?.[0]?.resource?.status;
-    if (status && terminalStatuses.has(status)) {
-      return status;
-    }
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-  }
-
-  return undefined;
-}
-
+// Anything other than the initial `received` means the worker has made a
+// verdict — treat as terminal. Avoids duplicating the status vocabulary
+// from CLAUDE.md / error-statuses.md; new statuses added to the system
+// automatically roll up as terminal here.
 function outcomeFromStatus(status: string | undefined): SendOutcome {
+  if (!status || status === "received") return "pending";
   if (status === "code_mapping_error") return "held";
-  if (status && status.endsWith("_error")) return "error";
+  if (status.endsWith("_error")) return "error";
   return "sent";
 }
 
@@ -205,9 +192,9 @@ export async function sendSimulateMessage(raw: string): Promise<SendResult> {
   const host = process.env.MLLP_HOST || "localhost";
   const port = parseInt(process.env.MLLP_PORT || "2575", 10);
 
-  let ack: string;
   try {
-    ack = await sendMLLPMessage(host, port, normalized);
+    const ack = await sendMLLPMessage(host, port, normalized);
+    return { status: "sent", ack, messageControlId };
   } catch (error) {
     return {
       status: "error",
@@ -216,26 +203,15 @@ export async function sendSimulateMessage(raw: string): Promise<SendResult> {
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
 
-  // Polling is best-effort — the ACK already confirms the listener received
-  // the message. If Aidbox is unreachable mid-poll, we still report the send
-  // as accepted and let the Inbound page surface the real status later.
-  let messageStatus: string | undefined;
-  try {
-    messageStatus = await pollForStatus(messageControlId);
-  } catch (error) {
-    console.error(
-      `[simulate-sender] poll failed for ${messageControlId}:`,
-      error instanceof Error ? error.message : error,
-    );
-  }
-
-  return {
-    status: outcomeFromStatus(messageStatus),
-    ack,
-    messageControlId,
-    messageStatus,
-  };
+export async function fetchMessageStatus(
+  messageControlId: string,
+): Promise<StatusResult> {
+  const query = `/fhir/IncomingHL7v2Message?message-control-id=${encodeURIComponent(messageControlId)}&_elements=status&_count=1`;
+  const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(query);
+  const status = bundle.entry?.[0]?.resource?.status;
+  return { outcome: outcomeFromStatus(status), messageStatus: status };
 }
 
 export async function handleSimulateSenderSend(req: Request): Promise<Response> {
@@ -259,6 +235,33 @@ export async function handleSimulateSenderSend(req: Request): Promise<Response> 
 
   const result = await sendSimulateMessage(raw);
   return Response.json(result);
+}
+
+export async function handleSimulateSenderStatus(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const mcid = url.searchParams.get("mcid") || "";
+  if (!mcid) {
+    // 400 body intentionally carries no `outcome` — the SendOutcome vocabulary
+    // (sent/held/error/pending) describes processor verdicts, not request
+    // validity. A malformed request shouldn't masquerade as a real terminal.
+    return Response.json(
+      { error: "Missing mcid parameter" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const result = await fetchMessageStatus(mcid);
+    return Response.json(result);
+  } catch (error) {
+    // Aidbox unreachable — the caller keeps polling and will eventually
+    // give up via its own timeout. Not an error state for the UI yet.
+    console.error(
+      `[simulate-sender] status lookup failed for ${mcid}:`,
+      error instanceof Error ? error.message : error,
+    );
+    return Response.json({ outcome: "pending" });
+  }
 }
 
 // ============================================================================
@@ -475,6 +478,10 @@ function renderSimulateScript(): string {
   // pre-built string into the textarea when the user picks a new <option>.
   return `
   <script>
+  const STATUS_POLL_DEADLINE_MS = ${STATUS_POLL_DEADLINE_MS};
+  const STATUS_POLL_INTERVAL_MS = ${STATUS_POLL_INTERVAL_MS};
+  const TERMINAL_OUTCOMES = new Set(['sent', 'held', 'error']);
+
   function simulateEditor(groups, defaultId) {
     // Flatten for fast lookup.
     const allSamples = groups.flatMap(g => g.messages);
@@ -487,9 +494,11 @@ function renderSimulateScript(): string {
       state: 'idle',
       elapsedMs: 0,
       elapsedTimer: null,
+      ackReceived: false,
       ackSummary: '',
       errorMessage: '',
       messageStatus: '',
+      messageControlId: '',
 
       get selected() {
         return this.allSamples.find(s => s.id === this.sampleId) || this.allSamples[0];
@@ -501,10 +510,14 @@ function renderSimulateScript(): string {
       },
 
       get sendSteps() {
+        // All three are real signals. Step 1 flips on click. Step 2 flips when
+        // the /send response lands (MLLP listener ACK'd). Step 3 only flips
+        // when the client-side poll of /status sees a terminal outcome, at
+        // which point the view transitions out of the sending card.
         return [
-          { label: 'Open MLLP connection', done: this.elapsedMs > 200 },
-          { label: 'Transmit message', done: this.elapsedMs > 600 },
-          { label: 'Await ACK from listener', done: this.elapsedMs > 1100 },
+          { label: 'Send', done: true },
+          { label: 'Receive ACK', done: this.ackReceived },
+          { label: 'Wait for processing', done: false },
         ];
       },
 
@@ -514,43 +527,86 @@ function renderSimulateScript(): string {
         this.raw = this.selected.template.replace(/\\r/g, '\\n');
       },
 
+      startElapsed(startedAt) {
+        this.elapsedTimer = setInterval(() => {
+          this.elapsedMs = Date.now() - startedAt;
+        }, 50);
+      },
+
+      stopElapsed() {
+        if (this.elapsedTimer) clearInterval(this.elapsedTimer);
+        this.elapsedTimer = null;
+      },
+
+      buildAckSummary(status) {
+        return 'ACK · MSH-10 ' + this.messageControlId + ' · status ' + (status || 'pending');
+      },
+
       async send() {
         this.state = 'sending';
         this.elapsedMs = 0;
+        this.ackReceived = false;
         this.ackSummary = '';
         this.errorMessage = '';
         this.messageStatus = '';
-        const started = Date.now();
-        this.elapsedTimer = setInterval(() => {
-          this.elapsedMs = Date.now() - started;
-        }, 50);
+        this.messageControlId = '';
+        this.startElapsed(Date.now());
 
+        let sendData;
         try {
           const response = await fetch('/simulate-sender/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ raw: this.raw }),
           });
-          const data = await response.json();
-          clearInterval(this.elapsedTimer);
-          this.elapsedTimer = null;
-
-          if (data.status === 'error') {
-            this.state = 'error';
-            this.errorMessage = data.error || 'Send failed';
-            return;
-          }
-
-          this.messageStatus = data.messageStatus || '';
-          const statusLabel = data.messageStatus || 'pending';
-          this.ackSummary = 'ACK · MSH-10 ' + data.messageControlId + ' · status ' + statusLabel;
-          this.state = data.status;
+          sendData = await response.json();
         } catch (err) {
-          clearInterval(this.elapsedTimer);
-          this.elapsedTimer = null;
+          this.stopElapsed();
           this.state = 'error';
           this.errorMessage = err instanceof Error ? err.message : String(err);
+          return;
         }
+
+        if (sendData.status === 'error') {
+          this.stopElapsed();
+          this.state = 'error';
+          this.errorMessage = sendData.error || 'Send failed';
+          return;
+        }
+
+        this.ackReceived = true;
+        this.messageControlId = sendData.messageControlId;
+
+        // Poll /status until we see a terminal outcome. Deadline starts *now*
+        // (after ACK) so the full processor-wait budget is honored regardless
+        // of how long MLLP took.
+        const deadline = Date.now() + STATUS_POLL_DEADLINE_MS;
+        while (Date.now() < deadline) {
+          await new Promise(r => setTimeout(r, STATUS_POLL_INTERVAL_MS));
+          let statusData;
+          try {
+            const statusResponse = await fetch('/simulate-sender/status?mcid=' + encodeURIComponent(this.messageControlId));
+            statusData = await statusResponse.json();
+          } catch (err) {
+            // Transient fetch failure — keep polling; the deadline caps it.
+            continue;
+          }
+          if (TERMINAL_OUTCOMES.has(statusData.outcome)) {
+            this.stopElapsed();
+            this.messageStatus = statusData.messageStatus || '';
+            this.ackSummary = this.buildAckSummary(statusData.messageStatus);
+            this.state = statusData.outcome;
+            return;
+          }
+        }
+
+        // Deadline hit without terminal status — fall through to "processor
+        // catching up" display. ACK is still real; only the processor verdict
+        // is missing.
+        this.stopElapsed();
+        this.messageStatus = '';
+        this.ackSummary = this.buildAckSummary(undefined);
+        this.state = 'sent';
       },
     };
   }
