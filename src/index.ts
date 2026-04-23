@@ -32,6 +32,7 @@ import {
   isPollingDisabled,
   type WorkersHandle,
 } from "./workers";
+import { handleStaticAsset } from "./ui/static";
 
 // ============================================================================
 // Server
@@ -59,6 +60,11 @@ Bun.serve({
       GET: handleMLLPClientPage,
       POST: sendMLLPTest,
     },
+
+    // =========================================================================
+    // Static Assets (vendored JS/CSS/fonts under public/)
+    // =========================================================================
+    "/static/*": { GET: handleStaticAsset },
 
     // =========================================================================
     // Terminology API (JSON)

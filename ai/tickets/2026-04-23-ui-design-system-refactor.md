@@ -26,11 +26,11 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 
 ## Task 1: Vendor htmx + Alpine + static-file route
 
-- [ ] Create `public/vendor/` (track the directory in git; add `public/` to repo root); download pinned htmx 1.9.x and Alpine 3.14.x minified builds (vendored, not CDN)
-- [ ] Register `GET /static/*` in `src/index.ts` serving from `public/` via `Bun.file()`; set Content-Type from extension; **path must match `^/static/vendor/[A-Za-z0-9._-]+\.(?:js|css|svg|woff2?)$`**, otherwise 404. Rejects `..`, URL-encoded `..`, absolute paths, backslashes.
-- [ ] Keep font delivery on Google Fonts CDN for v1 (`<link>` to `fonts.googleapis.com/css2?family=Inter...&family=Fraunces...&family=JetBrains+Mono`) — matches current Tailwind-CDN pattern; self-hosting is a follow-up
-- [ ] Add unit test in `test/unit/ui/static-route.test.ts`: real-file hit returns 200 + correct Content-Type; missing file returns 404; `../`, `%2E%2E%2F`, and absolute paths all return 404
-- [ ] Run validation — must pass
+- [x] Create `public/vendor/` (track the directory in git; add `public/` to repo root); download pinned htmx 2.0.x and Alpine 3.15.x minified builds (vendored, not CDN). Latest-stable checked against npm registry on 2026-04-23 (htmx 2.0.10, Alpine 3.15.11); htmx 2.x is the current major (1.9.x line is deprecated).
+- [x] Register `GET /static/*` in `src/index.ts` serving from `public/` via `Bun.file()`; set Content-Type from extension; **path must match `^/static/vendor/[A-Za-z0-9._-]+\.(?:js|css|svg|woff2?)$`**, otherwise 404. Rejects `..`, URL-encoded `..`, absolute paths, backslashes.
+- [x] Keep font delivery on Google Fonts CDN for v1 (`<link>` to `fonts.googleapis.com/css2?family=Inter...&family=Fraunces...&family=JetBrains+Mono`) — matches current Tailwind-CDN pattern; self-hosting is a follow-up  *(no-op this task — the shell that will include the `<link>` ships in Task 3a; called out here for continuity)*
+- [x] Add unit test in `test/unit/ui/static-route.test.ts`: real-file hit returns 200 + correct Content-Type; missing file returns 404; `../`, `%2E%2E%2F`, and absolute paths all return 404
+- [x] Run validation — must pass
 - [ ] Stop for user review before next task
 
 ## Task 2: Design system stylesheet + icon sprite
@@ -43,7 +43,7 @@ Implement the new warm-paper design system across 5 pages — Dashboard, Inbound
 
 ## Task 3a: App shell scaffold + route renames + migrate Accounts
 
-- [ ] Create `src/ui/shell.ts` exporting `renderShell({ active, title, content, topActions? })` — doctype + head (Google Fonts, Tailwind CDN kept, `DESIGN_SYSTEM_CSS` inline, `/static/vendor/htmx.min.js`, `/static/vendor/alpine.min.js`, existing health-check IIFE from `shared-layout.ts`) + body with sidebar, main column, and `ICON_SPRITE_SVG` at the bottom. Shell is additive — do **not** delete `renderLayout` in this task.
+- [ ] Create `src/ui/shell.ts` exporting `renderShell({ active, title, content, topActions? })` — doctype + head (Google Fonts, Tailwind CDN kept, `DESIGN_SYSTEM_CSS` inline, `/static/vendor/htmx-2.0.10.min.js`, `/static/vendor/alpine-3.15.11.min.js` — **versioned filenames**, required by the static handler's `Cache-Control: immutable` policy; bump the filename when upgrading the pin, existing health-check IIFE from `shared-layout.ts`) + body with sidebar, main column, and `ICON_SPRITE_SVG` at the bottom. Shell is additive — do **not** delete `renderLayout` in this task.
 - [ ] Sidebar groups: **Workspace** (Dashboard `/`, Inbound Messages `/incoming-messages`, Simulate Sender `/simulate-sender`), **Terminology** (Unmapped Codes `/unmapped-codes`, Terminology Map `/terminology`), **Outbound** (Accounts `/accounts`, Outgoing Messages `/outgoing-messages`); active-state styling + count badges on Inbound (total) and Unmapped (`hot` accent when non-zero). Count fields come from an extended `getNavData()` (see next bullet).
 - [ ] **Rename routes in `src/index.ts` to their final names in this task** (pointing at existing handlers; bodies migrated in 3b): `/mllp-client` → `/simulate-sender`, `/mapping/tasks` → `/unmapped-codes`, `/mapping/table` → `/terminology`. Keeps the sidebar links live from the moment the shell ships.
 - [ ] Grep-audit step: `rg -n '/mllp-client|/mapping/tasks|/mapping/table' src/ docs/ scripts/ test/` — fix each hit (including redirect `Location:` headers in `src/api/*`, doc links, test fixtures, **and hardcoded form `action` attributes inside the page bodies being retained for now** — e.g. `src/ui/pages/mllp-client.ts:245` `action="/mllp-client"` → `action="/simulate-sender"`). No 302 shims; everything points at the final URLs.
