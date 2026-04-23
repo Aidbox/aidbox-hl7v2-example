@@ -331,20 +331,20 @@ Build ADT_A03 converter following ADT_A01 pattern. Key difference: unconditional
 
 ## Task 1: Create adt-a03.ts converter
 
-- [ ] Create `src/v2-to-fhir/messages/adt-a03.ts`
-- [ ] Import: `convertPIDToPatient`, `convertNK1ToRelatedPerson`, `convertDG1ToCondition`, `convertAL1ToAllergyIntolerance`, `convertIN1ToCoverage`, `convertPV1WithMappingSupport`, `buildEncounterIdentifier`, `resolvePatientId`
-- [ ] Export `convertADT_A03(parsed: HL7v2Message, context: ConverterContext): Promise<ConversionResult>`
-- [ ] Signature mirrors `convertADT_A01`; return type `ConversionResult` with `entries: DomainResource[]`
-- [ ] Core logic:
+- [x] Create `src/v2-to-fhir/messages/adt-a03.ts`
+- [x] Import: `convertPIDToPatient`, `convertNK1ToRelatedPerson`, `convertDG1ToCondition`, `convertAL1ToAllergyIntolerance`, `convertIN1ToCoverage`, `convertPV1WithMappingSupport`, `buildEncounterIdentifier`, `resolvePatientId`
+- [x] Export `convertADT_A03(parsed: HL7v2Message, context: ConverterContext): Promise<ConversionResult>`
+- [x] Signature mirrors `convertADT_A01`; return type `ConversionResult` with `entries: DomainResource[]`
+- [x] Core logic:
   - Call `convertPV1WithMappingSupport(...)` with PV1 from parsed message
   - Override returned `encounter.status = "finished"` (REQ-1, not conditional on PV1-45 presence)
   - Reuse Encounter identifier from PV1-19 via `buildEncounterFromPV1`; no fallback chain (PV1 required)
   - Build Patient from PID via `convertPIDToPatient` (required)
   - Add optional segments: NK1→RelatedPerson[], DG1→Condition[], AL1→AllergyIntolerance[], IN1→Coverage[]
   - Assemble and return transaction bundle
-- [ ] Handle PV2 fields inline (PV2-3 reasonCode, PV2-11 length of stay, PV2-12 description, PV2-25 priority) — incorporate into Encounter if present; omit if absent (no error)
-- [ ] Run `bun run typecheck` — must pass
-- [ ] Stop for review
+- [x] Handle PV2 fields inline (PV2-11 length of stay, PV2-12 description) — incorporate into Encounter if present; omit if absent (no error)
+- [x] Run `bun run typecheck` — must pass
+- [x] Stop for review
 
 ## Task 2: Register converter in router
 
