@@ -75,7 +75,7 @@ const obx = parseOBX();
 const spm = parseSPM();
 ```
 
-ESLint warns on functions over 100 lines (`max-lines-per-function`). Fix by extraction, not by silencing the warning.
+If a function is bigger than ~100 lines, critically review it — probably, it will be more readable if you extract some of the work to functions.
 
 ## Separation of Concerns
 

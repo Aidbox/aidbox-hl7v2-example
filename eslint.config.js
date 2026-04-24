@@ -19,7 +19,6 @@ export default tseslint.config(
   {
     rules: {
       "curly": ["error", "all"],
-      "max-lines-per-function": ["warn", { max: 100, skipBlankLines: true, skipComments: true }],
       "max-len": ["error", { code: 120, ignoreUrls: true, ignoreStrings: true, ignoreTemplateLiterals: true, ignoreRegExpLiterals: true }],
       "@typescript-eslint/no-non-null-assertion": "warn",
       "@typescript-eslint/no-explicit-any": "error",
@@ -42,7 +41,6 @@ export default tseslint.config(
   {
     files: ["test/**/*.ts"],
     rules: {
-      "max-lines-per-function": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-empty-function": "off",
@@ -52,7 +50,6 @@ export default tseslint.config(
   {
     files: ["scripts/**/*.ts"],
     rules: {
-      "max-lines-per-function": "off",
       "@typescript-eslint/no-empty-function": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
     },
