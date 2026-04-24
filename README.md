@@ -196,4 +196,4 @@ Skills live in `.claude/skills/`. Exposed to other agents via `.agents/skills` (
 
 ## Reference
 
-`docs/v2-to-fhir-spec/` — V2-to-FHIR IG mapping CSVs (message, segment, codesystem).
+`specs/v2-to-fhir-spec/` — V2-to-FHIR IG mapping CSVs (message, segment, codesystem).

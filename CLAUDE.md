@@ -126,7 +126,7 @@ For segment optionality, field semantics, message structure, datatype components
 
 ### 2. Check the V2-to-FHIR IG mappings
 
-For any HL7v2→FHIR conversion, consult the IG mapping CSVs in `docs/v2-to-fhir-spec/mappings/`:
+For any HL7v2→FHIR conversion, consult the IG mapping CSVs in `specs/v2-to-fhir-spec/mappings/`:
 
 - **Message mappings** (`mappings/messages/`) — which FHIR resources each message type produces
 - **Segment mappings** (`mappings/segments/`) — field-level mappings

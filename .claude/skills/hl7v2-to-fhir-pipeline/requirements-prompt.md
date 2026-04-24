@@ -11,7 +11,7 @@ Inputs:
 
 Hard constraints:
 1. Use `hl7v2-info` skill for HL7v2 structure/field/optionality checks.
-2. Use `docs/v2-to-fhir-spec/mappings/` as the authoritative mapping base.
+2. Use `specs/v2-to-fhir-spec/mappings/` as the authoritative mapping base.
 3. Compare mappings to real example messages and document every misalignment.
 4. Separate clearly:
     - Normative requirements (spec + official mappings)
@@ -23,7 +23,7 @@ Research workflow:
     - List all relevant segments
     - List fields/components that are candidates for mapping
     - Check both 2.5 and 2.8.2 versions - all versions must be supported
-2. Inspect official mappings in `docs/v2-to-fhir-spec/mappings/`:
+2. Inspect official mappings in `specs/v2-to-fhir-spec/mappings/`:
     - Outline baseline mapping requirements and logic
 3. Inspect example messages:
     - Determine what is consistently present, variably present, and often missing
