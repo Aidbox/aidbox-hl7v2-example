@@ -8,13 +8,13 @@ import type { Quantity } from "../../fhir/hl7-fhir-r4-core";
  * - Returns undefined if negative
  */
 export function convertNMToPositiveInt(nm: string | undefined): number | undefined {
-  if (!nm) return undefined;
+  if (!nm) {return undefined;}
 
   const value = parseFloat(nm);
-  if (isNaN(value)) return undefined;
+  if (isNaN(value)) {return undefined;}
 
   // Must be positive
-  if (value < 0) return undefined;
+  if (value < 0) {return undefined;}
 
   // Return as integer
   return Math.floor(value);
@@ -27,10 +27,10 @@ export function convertNMToPositiveInt(nm: string | undefined): number | undefin
  * - NM value -> value (decimal)
  */
 export function convertNMToQuantity(nm: string | undefined): Quantity | undefined {
-  if (!nm) return undefined;
+  if (!nm) {return undefined;}
 
   const value = parseFloat(nm);
-  if (isNaN(value)) return undefined;
+  if (isNaN(value)) {return undefined;}
 
   return {
     value,
@@ -47,13 +47,13 @@ export function convertNMToQuantity(nm: string | undefined): Quantity | undefine
  * - code = "d"
  */
 export function convertNMToQuantityLengthOfStay(nm: string | undefined): Quantity | undefined {
-  if (!nm) return undefined;
+  if (!nm) {return undefined;}
 
   const value = parseFloat(nm);
-  if (isNaN(value)) return undefined;
+  if (isNaN(value)) {return undefined;}
 
   // Must be positive for length of stay
-  if (value < 0) return undefined;
+  if (value < 0) {return undefined;}
 
   return {
     value,
@@ -70,10 +70,10 @@ export function convertNMToQuantityLengthOfStay(nm: string | undefined): Quantit
  * - NM value -> decimal
  */
 export function convertNMToDecimal(nm: string | undefined): number | undefined {
-  if (!nm) return undefined;
+  if (!nm) {return undefined;}
 
   const value = parseFloat(nm);
-  if (isNaN(value)) return undefined;
+  if (isNaN(value)) {return undefined;}
 
   return value;
 }

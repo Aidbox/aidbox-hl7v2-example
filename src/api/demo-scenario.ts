@@ -85,11 +85,11 @@ async function waitForProcessed(
   // provides a hard upper bound independent of clock time.
   const maxIterations = Math.ceil(deadlineMs / pollIntervalMs) + 2;
   for (let iter = 0; iter < maxIterations; iter++) {
-    if (Date.now() - start >= deadlineMs) return;
+    if (Date.now() - start >= deadlineMs) {return;}
     const status = await fetchStatus(mcid);
     // Anything other than `received` means the worker has made a verdict —
     // terminal for our purposes. Matches `outcomeFromStatus` in simulate-sender.
-    if (status && status !== "received") return;
+    if (status && status !== "received") {return;}
     await sleep(pollIntervalMs);
   }
 }

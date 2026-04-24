@@ -50,8 +50,8 @@ export function groupVXUOrders(
     switch (segment.segment) {
       case "ORC": {
         const flushed = flushGroup(currentGroup, currentObservation);
-        if ("error" in flushed) return flushed;
-        if (flushed.group) groups.push(flushed.group);
+        if ("error" in flushed) {return flushed;}
+        if (flushed.group) {groups.push(flushed.group);}
 
         currentObservation = null;
         orderRegionStarted = true;
@@ -66,8 +66,8 @@ export function groupVXUOrders(
         } else {
           // Either no current group or current group already has RXA — start new group
           const flushed = flushGroup(currentGroup, currentObservation);
-          if ("error" in flushed) return flushed;
-          if (flushed.group) groups.push(flushed.group);
+          if ("error" in flushed) {return flushed;}
+          if (flushed.group) {groups.push(flushed.group);}
 
           currentObservation = null;
           orderRegionStarted = true;
@@ -84,7 +84,7 @@ export function groupVXUOrders(
       }
 
       case "OBX": {
-        if (!orderRegionStarted || !currentGroup?.rxa) break;
+        if (!orderRegionStarted || !currentGroup?.rxa) {break;}
 
         if (currentObservation) {
           currentGroup.observations.push(currentObservation);
@@ -104,8 +104,8 @@ export function groupVXUOrders(
 
   // Flush final group
   const flushed = flushGroup(currentGroup, currentObservation);
-  if ("error" in flushed) return flushed;
-  if (flushed.group) groups.push(flushed.group);
+  if ("error" in flushed) {return flushed;}
+  if (flushed.group) {groups.push(flushed.group);}
 
   return { groups };
 }
@@ -121,7 +121,7 @@ function flushGroup(
   builder: VXUOrderGroupBuilder | null,
   pendingObservation: { obx: HL7v2Segment; ntes: HL7v2Segment[] } | null,
 ): FlushResult {
-  if (!builder) return { group: null };
+  if (!builder) {return { group: null };}
 
   if (!builder.rxa) {
     if (builder.orc) {

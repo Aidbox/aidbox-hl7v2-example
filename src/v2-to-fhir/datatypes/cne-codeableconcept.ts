@@ -2,7 +2,7 @@ import type { CNE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
 
 export function convertCNEToCodeableConcept(cne: CNE | undefined): CodeableConcept | undefined {
-  if (!cne) return undefined;
+  if (!cne) {return undefined;}
 
   const codings: Coding[] = [];
 
@@ -24,7 +24,7 @@ export function convertCNEToCodeableConcept(cne: CNE | undefined): CodeableConce
     });
   }
 
-  if (codings.length === 0) return undefined;
+  if (codings.length === 0) {return undefined;}
 
   return {
     coding: codings,

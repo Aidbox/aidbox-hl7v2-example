@@ -78,7 +78,7 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
       }
     }
 
-    if (description) fieldDescriptionCount++;
+    if (description) {fieldDescriptionCount++;}
 
     const pdfLen = lengthLookup.get(key);
 
@@ -113,14 +113,14 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
     const longName = pdf?.longName || null;
     const description = pdf?.description || null;
 
-    if (description) segmentDescriptionCount++;
+    if (description) {segmentDescriptionCount++;}
 
     segmentsOutput[name] = {
       longName,
       description,
       fields: xsd.fields.map(f => {
         const optionality = optionalityLookup.get(f.field) ?? null;
-        if (optionality) fieldUsageCount++;
+        if (optionality) {fieldUsageCount++;}
         return {
           field: f.field,
           position: f.position,
@@ -139,7 +139,7 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
     for (const f of fields) {
       const key = `${f.datatype}.${f.position}`;
       componentOptLookup.set(key, f.optionality);
-      if (f.table) componentTableLookup.set(key, f.table);
+      if (f.table) {componentTableLookup.set(key, f.table);}
     }
   }
 
@@ -151,15 +151,15 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
 
   for (const [name, xsd] of input.xsdDatatypes) {
     const pdfDt = input.pdfDatatypeDescs.get(name);
-    if (pdfDt) datatypeDescriptionCount++;
+    if (pdfDt) {datatypeDescriptionCount++;}
 
     const components: OutputDatatypeComponent[] = xsd.components.map(c => {
       totalComponentCount++;
       const compDesc = input.pdfComponentDescs.get(c.component);
       const optionality = componentOptLookup.get(c.component) ?? null;
       const table = componentTableLookup.get(c.component) ?? null;
-      if (compDesc) componentDescriptionCount++;
-      if (optionality) componentOptionalityCount++;
+      if (compDesc) {componentDescriptionCount++;}
+      if (optionality) {componentOptionalityCount++;}
       return {
         component: c.component,
         position: c.position,
@@ -180,8 +180,8 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
         totalComponentCount++;
         const optionality = componentOptLookup.get(key) ?? null;
         const table = componentTableLookup.get(key) ?? null;
-        if (dep.description) componentDescriptionCount++;
-        if (optionality) componentOptionalityCount++;
+        if (dep.description) {componentDescriptionCount++;}
+        if (optionality) {componentOptionalityCount++;}
         components.push({
           component: key,
           position: dep.position,

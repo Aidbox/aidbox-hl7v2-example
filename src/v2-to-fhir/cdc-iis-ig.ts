@@ -216,7 +216,7 @@ function collectVISField(
   }
 
   const obxValue = obx.$5_observationValue?.[0];
-  if (!obxValue) return;
+  if (!obxValue) {return;}
 
   switch (loincCode) {
     case "69764-9":
@@ -260,6 +260,6 @@ function obxValueAsCodeableConcept(obx: WrappedOBX): CodeableConcept | undefined
   }
 
   const textValue = obx.$5_observationValue?.[0];
-  if (!textValue) return undefined;
+  if (!textValue) {return undefined;}
   return { text: textValue };
 }

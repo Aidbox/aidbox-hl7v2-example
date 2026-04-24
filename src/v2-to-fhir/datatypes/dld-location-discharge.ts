@@ -17,8 +17,8 @@ export interface LocationDischargeData {
  * in some implementations. This function handles it as a code value.
  */
 export function convertDLDToLocationDischarge(dld: DLD | undefined): LocationDischargeData | undefined {
-  if (!dld) return undefined;
-  if (!dld.$1_location) return undefined;
+  if (!dld) {return undefined;}
+  if (!dld.$1_location) {return undefined;}
 
   return {
     type: {

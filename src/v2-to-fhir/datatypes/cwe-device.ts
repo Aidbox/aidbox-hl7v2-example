@@ -12,7 +12,7 @@ export interface Device {
 }
 
 export function convertCWEToDevice(cwe: CWE | undefined): Device | undefined {
-  if (!cwe) return undefined;
+  if (!cwe) {return undefined;}
 
   const identifiers: Identifier[] = [];
   const deviceNames: DeviceName[] = [];
@@ -52,7 +52,7 @@ export function convertCWEToDevice(cwe: CWE | undefined): Device | undefined {
     });
   }
 
-  if (identifiers.length === 0 && deviceNames.length === 0) return undefined;
+  if (identifiers.length === 0 && deviceNames.length === 0) {return undefined;}
 
   return {
     ...(identifiers.length > 0 && { identifier: identifiers }),

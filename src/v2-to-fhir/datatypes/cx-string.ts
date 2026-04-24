@@ -7,7 +7,7 @@ import type { CX } from "../../hl7v2/generated/fields";
  * - CX.1 (ID Number) -> string
  */
 export function convertCXToString(cx: CX | undefined): string | undefined {
-  if (!cx) return undefined;
+  if (!cx) {return undefined;}
 
   return cx.$1_value;
 }

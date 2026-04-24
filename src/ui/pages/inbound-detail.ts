@@ -65,16 +65,16 @@ export function isDetailTab(s: unknown): s is DetailTab {
 // ============================================================================
 
 function toneChip(tone: MessageTone): string {
-  if (tone === "ok") return `<span class="chip chip-ok">processed</span>`;
-  if (tone === "warn") return `<span class="chip chip-warn">needs mapping</span>`;
-  if (tone === "err") return `<span class="chip chip-err">error</span>`;
+  if (tone === "ok") {return `<span class="chip chip-ok">processed</span>`;}
+  if (tone === "warn") {return `<span class="chip chip-warn">needs mapping</span>`;}
+  if (tone === "err") {return `<span class="chip chip-err">error</span>`;}
   return `<span class="chip">pending</span>`;
 }
 
 function formatClock(iso: string | undefined): string {
-  if (!iso) return "--:--:--";
+  if (!iso) {return "--:--:--";}
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "--:--:--";
+  if (Number.isNaN(d.getTime())) {return "--:--:--";}
   return d.toLocaleTimeString("en-US", { hour12: false });
 }
 
@@ -356,13 +356,13 @@ function annotateUnmappedCodings(
   highlighted: string,
   unmappedCodes: UnmappedCode[] | undefined,
 ): string {
-  if (!unmappedCodes?.length) return highlighted;
+  if (!unmappedCodes?.length) {return highlighted;}
   // Applied AFTER syntax highlighting so the unmapped-code red text
   // visually dominates the line. Look for the code value inside its
   // already-wrapped `<span class="text-ok-soft">&quot;CODE&quot;</span>`.
   let out = highlighted;
   for (const u of unmappedCodes) {
-    if (!u.localCode) continue;
+    if (!u.localCode) {continue;}
     const needle = escapeHtml(u.localCode).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const re = new RegExp(
       `(<span class="text-accent-ink">&quot;code&quot;</span>:\\s*<span class="text-ok">&quot;${needle}&quot;</span>)`,
@@ -499,16 +499,16 @@ function stepLabel(
   status: string | undefined,
   prevStatus: string | undefined,
 ): string {
-  if (!status) return "—";
-  if (!prevStatus && status === "received") return "Received by MLLP";
-  if (status === "processed") return "Converted + submitted to Aidbox";
-  if (status === "warning") return "Processed with warning";
-  if (status === "code_mapping_error") return "Routed to unmapped-codes triage";
-  if (status === "parsing_error") return "Parse failed";
-  if (status === "conversion_error") return "Conversion failed";
-  if (status === "sending_error") return "Submit to Aidbox failed";
-  if (status === "deferred") return "Manually deferred";
-  if (status === "received") return "Reset to received (retry)";
+  if (!status) {return "—";}
+  if (!prevStatus && status === "received") {return "Received by MLLP";}
+  if (status === "processed") {return "Converted + submitted to Aidbox";}
+  if (status === "warning") {return "Processed with warning";}
+  if (status === "code_mapping_error") {return "Routed to unmapped-codes triage";}
+  if (status === "parsing_error") {return "Parse failed";}
+  if (status === "conversion_error") {return "Conversion failed";}
+  if (status === "sending_error") {return "Submit to Aidbox failed";}
+  if (status === "deferred") {return "Manually deferred";}
+  if (status === "received") {return "Reset to received (retry)";}
   return status;
 }
 
@@ -656,9 +656,9 @@ export async function handleInboundDetailPartial(
   req: Request,
 ): Promise<Response> {
   const id = (req as Request & { params?: Record<string, string> }).params?.id;
-  if (!id) return notFoundDetail();
+  if (!id) {return notFoundDetail();}
   const m = await loadMessage(decodeURIComponent(id));
-  if (!m) return notFoundDetail();
+  if (!m) {return notFoundDetail();}
   const html = await renderDetailCard(m, "structured");
   return new Response(html, {
     status: 200,

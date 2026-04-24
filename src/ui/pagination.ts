@@ -23,9 +23,9 @@ export function parsePageParam(searchParams: URLSearchParams): number {
 }
 
 export function clampPage(page: number, totalPages: number): number {
-  if (isNaN(page) || page < 1) return 1;
-  if (totalPages <= 0) return 1;
-  if (page > totalPages) return totalPages;
+  if (isNaN(page) || page < 1) {return 1;}
+  if (totalPages <= 0) {return 1;}
+  if (page > totalPages) {return totalPages;}
   return page;
 }
 
@@ -62,7 +62,7 @@ export function renderPaginationControls(options: PaginationOptions): string {
   const { pagination, baseUrl, filterParams } = options;
   const { currentPage, totalPages } = pagination;
 
-  if (totalPages <= 1) return "";
+  if (totalPages <= 1) {return "";}
 
   const isFirstPage = currentPage === 1;
   const isLastPage = currentPage === totalPages;

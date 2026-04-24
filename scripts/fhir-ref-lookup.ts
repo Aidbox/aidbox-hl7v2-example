@@ -49,13 +49,13 @@ function parseFieldType(raw: string): Omit<FieldInfo, "name" | "optional"> {
     let depth = 0;
     let balanced = true;
     for (const ch of inner) {
-      if (ch === "(") depth++;
+      if (ch === "(") {depth++;}
       else if (ch === ")") {
         if (depth === 0) { balanced = false; break; }
         depth--;
       }
     }
-    if (balanced && depth === 0) t = inner.trim();
+    if (balanced && depth === 0) {t = inner.trim();}
   }
 
   let referenceTargets: string[] | null = null;
@@ -114,7 +114,7 @@ async function parseFile(path: string): Promise<InterfaceInfo[]> {
     // All observed fields in the generated files fit on one line.
     for (const bl of bodyLines) {
       const fm = bl.match(/^\s+(\w+)(\?)?:\s*(.+?);\s*$/);
-      if (!fm) continue;
+      if (!fm) {continue;}
       const fname = fm[1]!;
       const optional = fm[2] === "?";
       const rawType = fm[3]!;
@@ -143,7 +143,7 @@ function classifyInterface(
   path: string,
   fields: FieldInfo[],
 ): InterfaceInfo["kind"] {
-  if (parent === "BackboneElement") return "backbone";
+  if (parent === "BackboneElement") {return "backbone";}
   if (path.includes("aidbox-hl7v2-custom")) {
     const isResource = fields.some(f => f.name === "resourceType" && f.rawType.startsWith('"'));
     return isResource ? "custom-resource" : "helper";
@@ -154,8 +154,8 @@ function classifyInterface(
   const hasLiteralResourceType = fields.some(
     f => f.name === "resourceType" && f.rawType.startsWith('"'),
   );
-  if (hasLiteralResourceType) return "resource";
-  if (name === "Resource" || name === "DomainResource") return "resource";
+  if (hasLiteralResourceType) {return "resource";}
+  if (name === "Resource" || name === "DomainResource") {return "resource";}
   return "datatype";
 }
 
@@ -169,11 +169,11 @@ async function buildIndex(): Promise<Index> {
       continue;
     }
     for (const entry of entries) {
-      if (!entry.endsWith(".ts") || entry === "index.ts") continue;
+      if (!entry.endsWith(".ts") || entry === "index.ts") {continue;}
       const path = resolve(dir, entry);
       const ifaces = await parseFile(path);
       for (const iface of ifaces) {
-        if (!index.has(iface.name)) index.set(iface.name, iface);
+        if (!index.has(iface.name)) {index.set(iface.name, iface);}
       }
     }
   }
@@ -225,9 +225,9 @@ function showInterface(iface: InterfaceInfo, index: Index, showInherited: boolea
   }[iface.kind];
 
   let header = `${kindLabel} ${iface.name}`;
-  if (iface.canonicalUrl) header += ` — ${iface.canonicalUrl}`;
+  if (iface.canonicalUrl) {header += ` — ${iface.canonicalUrl}`;}
   console.log(header);
-  if (iface.parent) console.log(`Extends: ${iface.parent}`);
+  if (iface.parent) {console.log(`Extends: ${iface.parent}`);}
 
   if (iface.fields.length > 0) {
     console.log("\nFields:");
@@ -239,10 +239,10 @@ function showInterface(iface: InterfaceInfo, index: Index, showInherited: boolea
     const seen = new Set(iface.fields.map(f => f.name));
     for (const anc of chain) {
       const newFields = anc.fields.filter(f => !seen.has(f.name));
-      if (newFields.length === 0) continue;
+      if (newFields.length === 0) {continue;}
       console.log(`\nInherited from ${anc.name}:`);
       printFields(newFields);
-      for (const f of newFields) seen.add(f.name);
+      for (const f of newFields) {seen.add(f.name);}
     }
   }
 
@@ -287,7 +287,7 @@ function showField(typeName: string, fieldName: string, index: Index) {
 
   const { field, owner } = found;
   console.log(`Field ${typeName}.${fieldName}`);
-  if (owner.name !== typeName) console.log(`  (Inherited from ${owner.name})`);
+  if (owner.name !== typeName) {console.log(`  (Inherited from ${owner.name})`);}
   console.log(`  Type: ${field.rawType}`);
   console.log(`  Cardinality: ${cardinality(field.optional, field.isArray)}`);
 
@@ -296,7 +296,7 @@ function showField(typeName: string, fieldName: string, index: Index) {
   }
   if (field.enumValues && field.enumValues.length > 1) {
     console.log(`  Allowed values:`);
-    for (const v of field.enumValues) console.log(`    ${v}`);
+    for (const v of field.enumValues) {console.log(`    ${v}`);}
   }
 
   // If the field's type resolves to a known interface, show its structure.
@@ -328,9 +328,9 @@ function parseArgs(args: string[]): { query: string; inherited: boolean; list: b
   let inherited = false;
   let list = false;
   for (const arg of args) {
-    if (arg === "--inherited" || arg === "-i") inherited = true;
-    else if (arg === "--list") list = true;
-    else if (!query) query = arg;
+    if (arg === "--inherited" || arg === "-i") {inherited = true;}
+    else if (arg === "--list") {list = true;}
+    else if (!query) {query = arg;}
   }
   if (!query && !list) {
     console.error("Usage: bun scripts/fhir-ref-lookup.ts <Query> [--inherited]");
@@ -359,10 +359,10 @@ if (list) {
 
 // Case-insensitive resolution (prefer exact).
 function resolveName(q: string): string | null {
-  if (index.has(q)) return q;
+  if (index.has(q)) {return q;}
   const lower = q.toLowerCase();
   for (const name of index.keys()) {
-    if (name.toLowerCase() === lower) return name;
+    if (name.toLowerCase() === lower) {return name;}
   }
   return null;
 }

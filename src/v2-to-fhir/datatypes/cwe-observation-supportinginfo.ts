@@ -9,7 +9,7 @@ export function convertCWEToObservationSupportingInfo(
   cwe: CWE | undefined,
   options: CWEToObservationSupportingInfoOptions
 ): Observation | undefined {
-  if (!cwe) return undefined;
+  if (!cwe) {return undefined;}
 
   const codings: Coding[] = [];
 
@@ -29,7 +29,7 @@ export function convertCWEToObservationSupportingInfo(
     });
   }
 
-  if (codings.length === 0) return undefined;
+  if (codings.length === 0) {return undefined;}
 
   const valueCodeableConcept: CodeableConcept = {
     coding: codings,

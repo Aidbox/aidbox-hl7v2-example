@@ -60,7 +60,7 @@ function createPhysicalType(code: string): CodeableConcept {
  * Creates LocationData from an HD field value (for simple string fields like room, bed).
  */
 function createLocationFromString(value: string | undefined, physicalTypeCode: string): LocationData | undefined {
-  if (!value) return undefined;
+  if (!value) {return undefined;}
 
   return {
     identifier: [{ value }],
@@ -73,10 +73,10 @@ function createLocationFromString(value: string | undefined, physicalTypeCode: s
  * Creates LocationData from an HD field.
  */
 function createLocationFromHD(hd: HD | undefined, physicalTypeCode: string): LocationData | undefined {
-  if (!hd) return undefined;
+  if (!hd) {return undefined;}
 
   const identifiers = convertHDToIdentifiers(hd);
-  if (!identifiers || identifiers.length === 0) return undefined;
+  if (!identifiers || identifiers.length === 0) {return undefined;}
 
   return {
     identifier: identifiers,
@@ -104,7 +104,7 @@ function createLocationFromHD(hd: HD | undefined, physicalTypeCode: string): Loc
  * - PL.9 (Location Description) -> description on most granular
  */
 export function convertPLToLocationHierarchy(pl: PL | undefined): PLLocationHierarchy | undefined {
-  if (!pl) return undefined;
+  if (!pl) {return undefined;}
 
   const hierarchy: PLLocationHierarchy = {};
 
@@ -136,12 +136,12 @@ export function convertPLToLocationHierarchy(pl: PL | undefined): PLLocationHier
   // Set status on all locations if provided
   if (pl.$5_status) {
     const status = pl.$5_status;
-    if (hierarchy.bed) hierarchy.bed.status = status;
-    if (hierarchy.room) hierarchy.room.status = status;
-    if (hierarchy.floor) hierarchy.floor.status = status;
-    if (hierarchy.pointOfCare) hierarchy.pointOfCare.status = status;
-    if (hierarchy.building) hierarchy.building.status = status;
-    if (hierarchy.facility) hierarchy.facility.status = status;
+    if (hierarchy.bed) {hierarchy.bed.status = status;}
+    if (hierarchy.room) {hierarchy.room.status = status;}
+    if (hierarchy.floor) {hierarchy.floor.status = status;}
+    if (hierarchy.pointOfCare) {hierarchy.pointOfCare.status = status;}
+    if (hierarchy.building) {hierarchy.building.status = status;}
+    if (hierarchy.facility) {hierarchy.facility.status = status;}
   }
 
   // Determine most granular location and set description
@@ -165,7 +165,7 @@ export function convertPLToLocationHierarchy(pl: PL | undefined): PLLocationHier
   }
 
   // Return undefined if no locations were created
-  if (!hierarchy.mostGranular) return undefined;
+  if (!hierarchy.mostGranular) {return undefined;}
 
   return hierarchy;
 }

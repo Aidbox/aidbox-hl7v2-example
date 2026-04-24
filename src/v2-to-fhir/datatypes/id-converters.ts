@@ -9,7 +9,7 @@ import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
  * Note: Vocabulary mapping is typically done at the segment's field level.
  */
 export function convertIDToBoolean(id: string | undefined): boolean | undefined {
-  if (!id) return undefined;
+  if (!id) {return undefined;}
 
   const normalized = id.toLowerCase().trim();
 
@@ -33,7 +33,7 @@ export function convertIDToBoolean(id: string | undefined): boolean | undefined 
  * Note: Vocabulary mapping is typically done at the segment's field level.
  */
 export function convertIDToCode(id: string | undefined): string | undefined {
-  if (!id) return undefined;
+  if (!id) {return undefined;}
   return id;
 }
 
@@ -44,7 +44,7 @@ export function convertIDToCode(id: string | undefined): string | undefined {
  * - ID value -> coding[0].code
  */
 export function convertIDToCodeableConcept(id: string | undefined): CodeableConcept | undefined {
-  if (!id) return undefined;
+  if (!id) {return undefined;}
 
   return {
     coding: [{ code: id }],
@@ -59,7 +59,7 @@ export function convertIDToCodeableConcept(id: string | undefined): CodeableConc
  * - coding[0].system = "http://terminology.hl7.org/CodeSystem/v2-0301"
  */
 export function convertIDToCodeableConceptUniversalID(id: string | undefined): CodeableConcept | undefined {
-  if (!id) return undefined;
+  if (!id) {return undefined;}
 
   return {
     coding: [
@@ -78,7 +78,7 @@ export function convertIDToCodeableConceptUniversalID(id: string | undefined): C
  * - ID value -> code
  */
 export function convertIDToCoding(id: string | undefined): Coding | undefined {
-  if (!id) return undefined;
+  if (!id) {return undefined;}
 
   return {
     code: id,
@@ -92,6 +92,6 @@ export function convertIDToCoding(id: string | undefined): Coding | undefined {
  * - ID value -> $value (string)
  */
 export function convertIDToString(id: string | undefined): string | undefined {
-  if (!id) return undefined;
+  if (!id) {return undefined;}
   return id;
 }

@@ -92,7 +92,7 @@ export function buildEncounterIdentifier(
 }
 
 function extractHDAuthority(hd: HD | undefined): string | null {
-  if (!hd) return null;
+  if (!hd) {return null;}
 
   // Prefer Universal ID (HD.2), fall back to Namespace ID (HD.1)
   const value = hd.$2_system?.trim() || hd.$1_namespace?.trim();
@@ -100,7 +100,7 @@ function extractHDAuthority(hd: HD | undefined): string | null {
 }
 
 function extractCWEAuthority(cwe: CWE | undefined): string | null {
-  if (!cwe) return null;
+  if (!cwe) {return null;}
 
   // Use coding system (CWE.3) if available, otherwise use code (CWE.1)
   const value = cwe.$3_system?.trim() || cwe.$1_code?.trim();

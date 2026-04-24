@@ -77,7 +77,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([obx]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.programEligibility).toHaveLength(1);
       expect(result.fields.programEligibility![0]!.coding![0]!.code).toBe("V02");
       expect(result.fields.programEligibility![0]!.coding![0]!.display).toBe("VFC ELIGIBLE-MEDICAID");
@@ -93,7 +93,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([obx]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.fundingSource).toBeDefined();
       expect(result.fields.fundingSource!.coding![0]!.code).toBe("VXC1");
     });
@@ -104,7 +104,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([obx]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.protocolApplied).toHaveLength(1);
       expect(result.fields.protocolApplied![0]!.doseNumberString).toBe("2");
     });
@@ -117,7 +117,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([obx]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.note).toHaveLength(1);
       expect(result.fields.note![0]!.text).toBe("Patient was nervous");
     });
@@ -133,7 +133,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([eligibility, doseNumber]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.programEligibility).toBeDefined();
       expect(result.fields.protocolApplied).toBeDefined();
       expect(result.fields.protocolApplied![0]!.doseNumberString).toBe("3");
@@ -217,7 +217,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([docType, pubDate, presDate]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.education).toHaveLength(1);
       const entry = result.fields.education![0]!;
       expect(entry.documentType).toBe("253088698300026411121116^HEPB^cdcgs1vis");
@@ -234,7 +234,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([visRef]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.education).toHaveLength(1);
       expect(result.fields.education![0]!.reference).toBe(
         "https://www.cdc.gov/vaccines/hcp/vis/vis-statements/hep-b.pdf",
@@ -258,7 +258,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([docType1, pubDate1, docType2, pubDate2]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.education).toHaveLength(2);
       expect(result.fields.education![0]!.documentType).toBe("HEPB_VIS^HEPB^cdcgs1vis");
       expect(result.fields.education![0]!.publicationDate).toBe("2012-02-02");
@@ -276,7 +276,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([docType]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.education).toHaveLength(1);
       expect(result.fields.education![0]!.documentType).toBe("HEPB_VIS^HEPB^cdcgs1vis");
       expect(result.fields.education![0]!.publicationDate).toBeUndefined();
@@ -299,7 +299,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([eligibility, docType, pubDate]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.programEligibility).toBeDefined();
       expect(result.fields.education).toHaveLength(1);
       expect(result.fields.education![0]!.documentType).toBe("HEPB_VIS^HEPB^cdcgs1vis");
@@ -316,7 +316,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([docType, pubDate]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.education).toHaveLength(1);
       expect(result.fields.education![0]!.documentType).toBe("HEPB_VIS^HEPB^cdcgs1vis");
       expect(result.fields.education![0]!.publicationDate).toBe("2012-02-02");
@@ -335,7 +335,7 @@ describe("CDC IIS IG", () => {
       const result = applyOrderOBXFields([docType, pubDate, presDate, visRef]);
 
       expect("fields" in result).toBe(true);
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {throw new Error(result.error);}
       expect(result.fields.education).toHaveLength(1);
       const entry = result.fields.education![0]!;
       expect(entry.documentType).toBe("HEPB_VIS^HEPB^cdcgs1vis");

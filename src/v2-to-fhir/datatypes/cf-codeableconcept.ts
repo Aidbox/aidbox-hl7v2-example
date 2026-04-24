@@ -4,7 +4,7 @@ import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
 export type CF = CWE;
 
 export function convertCFToCodeableConcept(cf: CF | undefined): CodeableConcept | undefined {
-  if (!cf) return undefined;
+  if (!cf) {return undefined;}
 
   const codings: Coding[] = [];
 
@@ -26,7 +26,7 @@ export function convertCFToCodeableConcept(cf: CF | undefined): CodeableConcept 
     });
   }
 
-  if (codings.length === 0) return undefined;
+  if (codings.length === 0) {return undefined;}
 
   return {
     coding: codings,

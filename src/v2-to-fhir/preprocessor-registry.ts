@@ -106,7 +106,7 @@ function hasValue(value: string | undefined): boolean {
 function parseHdNamespace(
   hdString: string | undefined,
 ): { namespace?: string; system?: string } {
-  if (!hdString) return {};
+  if (!hdString) {return {};}
   const parts = hdString.split("&");
   return {
     namespace: parts[0] || undefined,
@@ -122,14 +122,14 @@ function movePid2IntoPid3(
   _context: PreprocessorContext,
   segment: HL7v2Segment,
 ): void {
-  if (segment.segment !== "PID") return;
+  if (segment.segment !== "PID") {return;}
 
   const pid2 = segment.fields[2];
-  if (pid2 === undefined || pid2 === null) return;
+  if (pid2 === undefined || pid2 === null) {return;}
 
   // Extract CX.1 value from PID-2
   const cx1Value = extractCx1(pid2);
-  if (!cx1Value) return;
+  if (!cx1Value) {return;}
 
   // Append PID-2 into PID-3's repeat list
   const pid3 = segment.fields[3];
@@ -157,40 +157,40 @@ function injectAuthorityFromMsh(
   context: PreprocessorContext,
   segment: HL7v2Segment,
 ): void {
-  if (segment.segment !== "PID") return;
+  if (segment.segment !== "PID") {return;}
 
   const mshSegment = findSegment(context.parsedMessage, "MSH");
-  if (!mshSegment) return;
+  if (!mshSegment) {return;}
 
   const msh = fromMSH(mshSegment);
   const namespace = deriveMshNamespace(msh);
-  if (!namespace) return;
+  if (!namespace) {return;}
 
   const pid3 = segment.fields[3];
-  if (pid3 === undefined || pid3 === null) return;
+  if (pid3 === undefined || pid3 === null) {return;}
 
   if (Array.isArray(pid3)) {
     for (let i = 0; i < pid3.length; i++) {
       const cx = pid3[i]!;
       const replaced = injectAuthorityIntoCx(cx, namespace);
-      if (replaced) pid3[i] = replaced;
+      if (replaced) {pid3[i] = replaced;}
     }
   } else {
     const replaced = injectAuthorityIntoCx(pid3, namespace);
-    if (replaced) segment.fields[3] = replaced;
+    if (replaced) {segment.fields[3] = replaced;}
   }
 }
 
 /** Extract CX.1 value from a raw FieldValue representing a single CX. */
 function extractCx1(fv: FieldValue): string | undefined {
-  if (typeof fv === "string") return fv.trim() || undefined;
-  if (Array.isArray(fv)) return undefined;
+  if (typeof fv === "string") {return fv.trim() || undefined;}
+  if (Array.isArray(fv)) {return undefined;}
   const v1 = fv[1];
-  if (v1 === undefined) return undefined;
-  if (typeof v1 === "string") return v1.trim() || undefined;
+  if (v1 === undefined) {return undefined;}
+  if (typeof v1 === "string") {return v1.trim() || undefined;}
   if (typeof v1 === "object" && !Array.isArray(v1)) {
     const inner = (v1 as Record<number, FieldValue>)[1];
-    if (typeof inner === "string") return inner.trim() || undefined;
+    if (typeof inner === "string") {return inner.trim() || undefined;}
   }
   return undefined;
 }
@@ -210,7 +210,7 @@ function deriveMshNamespace(msh: ReturnType<typeof fromMSH>): string | undefined
  * CX.9.3 (CWE system), CX.10.1 (CWE code), CX.10.3 (CWE system).
  */
 function cxHasAuthority(fv: FieldValue): boolean {
-  if (typeof fv === "string" || Array.isArray(fv)) return false;
+  if (typeof fv === "string" || Array.isArray(fv)) {return false;}
   const obj = fv as Record<number, FieldValue>;
 
   const hasCx4 = hasSubcomponent(obj[4], 1) || hasSubcomponent(obj[4], 2);
@@ -222,15 +222,15 @@ function cxHasAuthority(fv: FieldValue): boolean {
 
 /** Check if a specific numbered subcomponent of a FieldValue is non-empty. */
 function hasSubcomponent(fv: FieldValue | undefined, key: number): boolean {
-  if (fv === undefined || fv === null) return false;
+  if (fv === undefined || fv === null) {return false;}
   if (typeof fv === "string") {
     // A string field has no subcomponents; for key 1 the string itself is the value
     return key === 1 && fv.trim().length > 0;
   }
-  if (Array.isArray(fv)) return false;
+  if (Array.isArray(fv)) {return false;}
   const sub = (fv as Record<number, FieldValue>)[key];
-  if (sub === undefined || sub === null) return false;
-  if (typeof sub === "string") return sub.trim().length > 0;
+  if (sub === undefined || sub === null) {return false;}
+  if (typeof sub === "string") {return sub.trim().length > 0;}
   return false;
 }
 
@@ -241,15 +241,15 @@ function hasSubcomponent(fv: FieldValue | undefined, key: number): boolean {
  */
 function injectAuthorityIntoCx(fv: FieldValue, namespace: string): FieldValue | undefined {
   const cx1 = extractCx1(fv);
-  if (!cx1) return undefined;
-  if (cxHasAuthority(fv)) return undefined;
+  if (!cx1) {return undefined;}
+  if (cxHasAuthority(fv)) {return undefined;}
 
   if (typeof fv === "string") {
     // String CX — convert to object form with authority
     return { 1: fv, 4: { 1: namespace } } as FieldValue;
   }
 
-  if (Array.isArray(fv)) return undefined;
+  if (Array.isArray(fv)) {return undefined;}
 
   // Complex object — set CX.4.1 (HD.1 = namespace) in place
   (fv as Record<number, FieldValue>)[4] = { 1: namespace } as FieldValue;

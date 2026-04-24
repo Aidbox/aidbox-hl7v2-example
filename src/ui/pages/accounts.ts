@@ -175,7 +175,7 @@ async function getAccounts(
     _count: String(PAGE_SIZE),
     _page: String(page),
   });
-  if (processingStatus) params.set("processing-status", processingStatus);
+  if (processingStatus) {params.set("processing-status", processingStatus);}
 
   const bundle = await aidboxFetch<Bundle<AccountListItem>>(`/fhir/Account?${params}`);
   return {

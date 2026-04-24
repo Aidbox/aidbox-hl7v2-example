@@ -39,7 +39,7 @@ export function extractMetaTags(msh: MSH): Coding[] {
 }
 
 export function addSenderTagToMeta(meta: Meta, senderTag: Coding | undefined): void {
-  if (!senderTag || !meta.tag) return;
+  if (!senderTag || !meta.tag) {return;}
 
   const hasSenderTag = meta.tag.some((t) => t.system === senderTag.system);
   if (!hasSenderTag) {

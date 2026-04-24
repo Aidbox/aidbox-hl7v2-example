@@ -333,11 +333,11 @@ export async function convertVXU_V04(
 
   // 7. Collect entries
   const entries: DomainResource[] = [];
-  if (patient) entries.push(patient);
-  if (encounter) entries.push(encounter);
+  if (patient) {entries.push(patient);}
+  if (encounter) {entries.push(encounter);}
   entries.push(...personObsResult.entries);
   entries.push(...orderEntries);
-  if (patientClassTask) entries.push(patientClassTask);
+  if (patientClassTask) {entries.push(patientClassTask);}
 
   // 8. Return ConversionResult
   if (encounterResult.warning) {

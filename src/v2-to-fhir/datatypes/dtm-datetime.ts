@@ -3,7 +3,7 @@
  * Handles partial dates: YYYY, YYYY-MM, YYYY-MM-DD, full datetime.
  */
 export function convertDTMToDateTime(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
+  if (!dtm) {return undefined;}
 
   const year = dtm.substring(0, 4);
   const month = dtm.substring(4, 6);
@@ -12,9 +12,9 @@ export function convertDTMToDateTime(dtm: string | undefined): string | undefine
   const minute = dtm.substring(10, 12) || "00";
   const second = dtm.substring(12, 14) || "00";
 
-  if (dtm.length <= 4) return year;
-  if (dtm.length <= 6) return `${year}-${month}`;
-  if (dtm.length <= 8) return `${year}-${month}-${day}`;
+  if (dtm.length <= 4) {return year;}
+  if (dtm.length <= 6) {return `${year}-${month}`;}
+  if (dtm.length <= 8) {return `${year}-${month}-${day}`;}
 
   return `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
 }
@@ -25,12 +25,12 @@ export function convertDTMToDateTime(dtm: string | undefined): string | undefine
  * Time components are truncated.
  */
 export function convertDTMToDate(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
+  if (!dtm) {return undefined;}
   const year = dtm.substring(0, 4);
   const month = dtm.substring(4, 6);
   const day = dtm.substring(6, 8);
-  if (dtm.length <= 4) return year;
-  if (dtm.length <= 6) return `${year}-${month}`;
+  if (dtm.length <= 4) {return year;}
+  if (dtm.length <= 6) {return `${year}-${month}`;}
   return `${year}-${month}-${day}`;
 }
 
@@ -49,7 +49,7 @@ export interface AnnotationTimeData {
  * The Annotation's required `text` field must be set separately.
  */
 export function convertDTMToAnnotationTime(dtm: string | undefined): AnnotationTimeData | undefined {
-  if (!dtm) return undefined;
+  if (!dtm) {return undefined;}
 
   return {
     time: dtm,

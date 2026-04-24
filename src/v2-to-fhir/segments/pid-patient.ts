@@ -73,8 +73,8 @@ const GENDER_MAP: Record<string, Patient["gender"]> = {
  * Convert HL7v2 DTM to FHIR date (YYYY-MM-DD)
  */
 function convertDTMToDate(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
-  if (dtm.length < 8) return undefined;
+  if (!dtm) {return undefined;}
+  if (dtm.length < 8) {return undefined;}
 
   const year = dtm.substring(0, 4);
   const month = dtm.substring(4, 6);
@@ -87,7 +87,7 @@ function convertDTMToDate(dtm: string | undefined): string | undefined {
  * Convert HL7v2 DTM to FHIR dateTime
  */
 function convertDTMToDateTime(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
+  if (!dtm) {return undefined;}
 
   const year = dtm.substring(0, 4);
   const month = dtm.substring(4, 6);
@@ -96,12 +96,12 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
   const minute = dtm.substring(10, 12);
   const second = dtm.substring(12, 14);
 
-  if (dtm.length === 4) return year;
-  if (dtm.length === 6) return `${year}-${month}`;
-  if (dtm.length === 8) return `${year}-${month}-${day}`;
+  if (dtm.length === 4) {return year;}
+  if (dtm.length === 6) {return `${year}-${month}`;}
+  if (dtm.length === 8) {return `${year}-${month}-${day}`;}
   if (dtm.length >= 12) {
     const base = `${year}-${month}-${day}T${hour}:${minute}`;
-    if (dtm.length >= 14) return `${base}:${second}`;
+    if (dtm.length >= 14) {return `${base}:${second}`;}
     return `${base}:00`;
   }
 
@@ -114,7 +114,7 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
 function convertCEOrCWEToCodeableConcept(
   value: CE | CWE | undefined
 ): CodeableConcept | undefined {
-  if (!value) return undefined;
+  if (!value) {return undefined;}
   // CE and CWE have compatible structures for basic conversion
   return convertCEToCodeableConcept(value as CE);
 }
@@ -124,7 +124,7 @@ function convertCEOrCWEToCodeableConcept(
  * Returns undefined if no MR identifier with assigning authority is found.
  */
 export function extractSenderTag(pid: PID): Coding | undefined {
-  if (!pid.$3_identifier) return undefined;
+  if (!pid.$3_identifier) {return undefined;}
 
   for (const cx of pid.$3_identifier) {
     if (cx.$5_type === "MR" && cx.$4_system?.$1_namespace) {
@@ -192,14 +192,14 @@ export function convertPIDToPatient(
   // PID-2: Patient ID -> identifier[1]
   if (pid.$2_patientId) {
     const id = convertCXToIdentifier(pid.$2_patientId);
-    if (id) identifiers.push(id);
+    if (id) {identifiers.push(id);}
   }
 
   // PID-3: Patient Identifier List -> identifier[2]
   if (pid.$3_identifier) {
     for (const cx of pid.$3_identifier) {
       const id = convertCXToIdentifier(cx);
-      if (id) identifiers.push(id);
+      if (id) {identifiers.push(id);}
     }
   }
 
@@ -207,7 +207,7 @@ export function convertPIDToPatient(
   if (pid.$4_alternatePatientIdPid) {
     for (const cx of pid.$4_alternatePatientIdPid) {
       const id = convertCXToIdentifier(cx);
-      if (id) identifiers.push(id);
+      if (id) {identifiers.push(id);}
     }
   }
 
@@ -230,7 +230,7 @@ export function convertPIDToPatient(
   // PID-20: Driver's License -> identifier[5]
   if (pid.$20_driversLicenseNumberPatient) {
     const dlId = convertDLNToIdentifier(pid.$20_driversLicenseNumberPatient);
-    if (dlId) identifiers.push(dlId);
+    if (dlId) {identifiers.push(dlId);}
   }
 
   if (identifiers.length > 0) {
@@ -247,7 +247,7 @@ export function convertPIDToPatient(
   if (pid.$5_name) {
     for (const xpn of pid.$5_name) {
       const name = convertXPNToHumanName(xpn);
-      if (name) names.push(name);
+      if (name) {names.push(name);}
     }
   }
 
@@ -297,7 +297,7 @@ export function convertPIDToPatient(
   if (pid.$11_address) {
     for (const xad of pid.$11_address) {
       const address = convertXADToAddress(xad);
-      if (address) addresses.push(address);
+      if (address) {addresses.push(address);}
     }
   }
 
@@ -327,7 +327,7 @@ export function convertPIDToPatient(
       const telecom = convertXTNToContactPoint(xtn);
       if (telecom) {
         // Default to home if not specified
-        if (!telecom.use) telecom.use = "home";
+        if (!telecom.use) {telecom.use = "home";}
         telecoms.push(telecom);
       }
     }
@@ -339,7 +339,7 @@ export function convertPIDToPatient(
       const telecom = convertXTNToContactPoint(xtn);
       if (telecom) {
         // Default to work if not specified
-        if (!telecom.use) telecom.use = "work";
+        if (!telecom.use) {telecom.use = "work";}
         telecoms.push(telecom);
       }
     }

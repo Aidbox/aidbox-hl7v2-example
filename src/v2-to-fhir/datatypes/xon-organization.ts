@@ -32,7 +32,7 @@ function buildIdentifier(xon: XON): Identifier | undefined {
   // XON.10 takes precedence over XON.3
   const value = xon.$10_organizationId || xon.$3_value;
 
-  if (!value) return undefined;
+  if (!value) {return undefined;}
 
   const identifier: Identifier = {
     value,
@@ -86,7 +86,7 @@ function buildIdentifier(xon: XON): Identifier | undefined {
  * Build organization extensions from XON.2 (Name Type Code)
  */
 function buildExtensions(xon: XON): Extension[] | undefined {
-  if (!xon.$2_nameType) return undefined;
+  if (!xon.$2_nameType) {return undefined;}
 
   // XON.2 is CWE but we only have the code in the generated type
   return [
@@ -119,12 +119,12 @@ function buildExtensions(xon: XON): Extension[] | undefined {
 export function convertXONToOrganization(
   xon: XON | undefined
 ): Organization | undefined {
-  if (!xon) return undefined;
+  if (!xon) {return undefined;}
 
   const identifier = buildIdentifier(xon);
 
   // Need at least name or identifier
-  if (!xon.$1_name && !identifier) return undefined;
+  if (!xon.$1_name && !identifier) {return undefined;}
 
   const extension = buildExtensions(xon);
 
@@ -142,13 +142,13 @@ export function convertXONToOrganization(
 export function convertXONArrayToOrganizations(
   xons: XON[] | undefined
 ): Organization[] | undefined {
-  if (!xons || xons.length === 0) return undefined;
+  if (!xons || xons.length === 0) {return undefined;}
 
   const organizations: Organization[] = [];
 
   for (const xon of xons) {
     const organization = convertXONToOrganization(xon);
-    if (organization) organizations.push(organization);
+    if (organization) {organizations.push(organization);}
   }
 
   return organizations.length > 0 ? organizations : undefined;
@@ -159,7 +159,7 @@ export function convertXONArrayToOrganizations(
  * Simply returns the organization name
  */
 export function convertXONToString(xon: XON | undefined): string | undefined {
-  if (!xon) return undefined;
+  if (!xon) {return undefined;}
   return xon.$1_name;
 }
 

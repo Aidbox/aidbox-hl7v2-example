@@ -178,9 +178,9 @@ function newMessageControlId(): string {
 // from CLAUDE.md / error-statuses.md; new statuses added to the system
 // automatically roll up as terminal here.
 function outcomeFromStatus(status: string | undefined): SendOutcome {
-  if (!status || status === "received") return "pending";
-  if (status === "code_mapping_error") return "held";
-  if (status.endsWith("_error")) return "error";
+  if (!status || status === "received") {return "pending";}
+  if (status === "code_mapping_error") {return "held";}
+  if (status.endsWith("_error")) {return "error";}
   return "sent";
 }
 
@@ -354,12 +354,12 @@ export async function extractZipToMessages(
           await walk(full);
           continue;
         }
-        if (!entry.isFile()) continue;
+        if (!entry.isFile()) {continue;}
         // Skip .DS_Store and similar macOS metadata.
-        if (entry.name.startsWith(".")) continue;
+        if (entry.name.startsWith(".")) {continue;}
         try {
           const content = (await readFile(full, "utf-8")).trim();
-          if (!looksLikeHl7(content)) continue;
+          if (!looksLikeHl7(content)) {continue;}
           const rel = relative(outDir, full).split(sep).join("/");
           messages.push({ name: rel, content });
         } catch {

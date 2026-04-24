@@ -38,7 +38,7 @@ interface ExtractedMessage {
 }
 
 function stripRtf(content: string): string {
-  if (!content.startsWith("{\\rtf")) return content;
+  if (!content.startsWith("{\\rtf")) {return content;}
   return content.replace(/\\[a-z]+-?\d*\s?/g, "").replace(/[{}]/g, "");
 }
 
@@ -47,22 +47,22 @@ function extractMessages(raw: string): string[] {
   const lines: string[] = [];
   for (const rawLine of content.split(/\r?\n|\r/)) {
     const line = rawLine.trim();
-    if (!line) continue;
+    if (!line) {continue;}
     const seg = line.split("|")[0]?.trim() ?? "";
-    if (HL7_SEGMENTS.has(seg)) lines.push(line);
+    if (HL7_SEGMENTS.has(seg)) {lines.push(line);}
   }
 
   const messages: string[] = [];
   let current: string[] = [];
   for (const line of lines) {
     if (line.startsWith("MSH|")) {
-      if (current.length) messages.push(current.join("\r"));
+      if (current.length) {messages.push(current.join("\r"));}
       current = [line];
     } else {
       current.push(line);
     }
   }
-  if (current.length) messages.push(current.join("\r"));
+  if (current.length) {messages.push(current.join("\r"));}
   return messages;
 }
 
@@ -72,7 +72,7 @@ function parseMshFields(message: string): {
   sendingFacility?: string;
 } {
   const mshLine = message.split(/\r?\n|\r/).find((l) => l.startsWith("MSH"));
-  if (!mshLine) return { type: "UNKNOWN" };
+  if (!mshLine) {return { type: "UNKNOWN" };}
   const fields = mshLine.split("|");
   return {
     type: (fields[8] || "UNKNOWN").replace("^", "_"),
@@ -118,7 +118,7 @@ async function extractZip(zipPath: string): Promise<string> {
   let lastErr = "";
   for (const { cmd, args } of attempts) {
     const result = spawnSync(cmd, args, { encoding: "utf-8" });
-    if (result.status === 0) return dir;
+    if (result.status === 0) {return dir;}
     lastErr = `${cmd}: ${result.stderr || result.stdout || `exit ${result.status}`}`;
   }
 
@@ -247,7 +247,7 @@ async function main(): Promise<void> {
   }
 
   console.log(`\nImported ${created} message(s) as batchTag=${batchTag}`);
-  if (failed) console.log(`Failed: ${failed}`);
+  if (failed) {console.log(`Failed: ${failed}`);}
   if (countsByType.size) {
     console.log("By type:");
     for (const [type, count] of [...countsByType.entries()].sort()) {
@@ -258,7 +258,7 @@ async function main(): Promise<void> {
     `\nView the batch at: http://localhost:3000/incoming-messages?batch=${encodeURIComponent(batchTag)}`,
   );
 
-  if (failed) process.exit(1);
+  if (failed) {process.exit(1);}
 }
 
 main().catch((err) => {

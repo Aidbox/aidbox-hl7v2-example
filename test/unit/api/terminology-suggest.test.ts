@@ -21,7 +21,7 @@ function fakeSearch(
   opts: { throwOnCall?: Error } = {},
 ) {
   return async (_query: string): Promise<LoincSearchResult[]> => {
-    if (opts.throwOnCall) throw opts.throwOnCall;
+    if (opts.throwOnCall) {throw opts.throwOnCall;}
     return rows;
   };
 }

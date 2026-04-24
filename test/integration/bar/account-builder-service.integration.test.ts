@@ -36,7 +36,7 @@ async function createTestPatient(id: string): Promise<Patient> {
 async function createTestAccount(
   id: string,
   patientId: string,
-  processingStatus: string = "pending",
+  processingStatus = "pending",
 ): Promise<Account & { id: string }> {
   return aidboxFetch<Account & { id: string }>(`/fhir/Account/${id}`, {
     method: "PUT",

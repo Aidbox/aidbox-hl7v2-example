@@ -13,7 +13,7 @@ function findPidSegment(parsed: ReturnType<typeof parseMessage>) {
 
 function getPid(parsed: ReturnType<typeof parseMessage>) {
   const seg = findPidSegment(parsed);
-  if (!seg) throw new Error("PID segment not found");
+  if (!seg) {throw new Error("PID segment not found");}
   return fromPID(seg);
 }
 

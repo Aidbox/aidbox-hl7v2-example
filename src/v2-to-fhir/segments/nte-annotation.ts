@@ -20,7 +20,7 @@ import type { Annotation } from "../../fhir/hl7-fhir-r4-core";
 export function convertNTEsToAnnotation(
   ntes: NTE[]
 ): Annotation | undefined {
-  if (!ntes || ntes.length === 0) return undefined;
+  if (!ntes || ntes.length === 0) {return undefined;}
 
   const textParts: string[] = [];
 

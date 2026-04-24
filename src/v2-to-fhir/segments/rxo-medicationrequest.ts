@@ -59,10 +59,10 @@ function buildUnitQuantity(value: number, unitCE: { $1_code?: string; $2_text?: 
  */
 function buildDoseRange(rxo: RXO): Range | undefined {
   const minStr = rxo.$2_requestedGiveAmountMinimum;
-  if (!minStr) return undefined;
+  if (!minStr) {return undefined;}
 
   const minValue = parseFloat(minStr);
-  if (isNaN(minValue)) return undefined;
+  if (isNaN(minValue)) {return undefined;}
 
   const units = rxo.$4_requestedGiveUnit;
   const range: Range = {};

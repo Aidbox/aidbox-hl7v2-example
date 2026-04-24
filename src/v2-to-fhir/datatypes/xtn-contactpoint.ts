@@ -129,7 +129,7 @@ function buildExtensions(xtn: XTN): Extension[] | undefined {
   const isEmailType = xtn.$3_system && EMAIL_EQUIPMENT_TYPES.includes(xtn.$3_system);
 
   // Don't add phone extensions for email types
-  if (isEmailType) return undefined;
+  if (isEmailType) {return undefined;}
 
   const extensions: Extension[] = [];
 
@@ -189,13 +189,13 @@ function buildExtensions(xtn: XTN): Extension[] | undefined {
 export function convertXTNToContactPoint(
   xtn: XTN | undefined
 ): ContactPoint | undefined {
-  if (!xtn) return undefined;
+  if (!xtn) {return undefined;}
 
   const system = mapSystem(xtn);
   const value = buildValue(xtn);
 
   // Need at least a value
-  if (!value) return undefined;
+  if (!value) {return undefined;}
 
   // XTN.2: Use Code
   const use = xtn.$2_use ? USE_CODE_MAP[xtn.$2_use.toUpperCase()] : undefined;
@@ -217,13 +217,13 @@ export function convertXTNToContactPoint(
 export function convertXTNArrayToContactPoints(
   xtns: XTN[] | undefined
 ): ContactPoint[] | undefined {
-  if (!xtns || xtns.length === 0) return undefined;
+  if (!xtns || xtns.length === 0) {return undefined;}
 
   const contactPoints: ContactPoint[] = [];
 
   for (const xtn of xtns) {
     const contactPoint = convertXTNToContactPoint(xtn);
-    if (contactPoint) contactPoints.push(contactPoint);
+    if (contactPoint) {contactPoints.push(contactPoint);}
   }
 
   return contactPoints.length > 0 ? contactPoints : undefined;

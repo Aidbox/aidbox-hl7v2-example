@@ -84,7 +84,7 @@ export function getValidValues(
   mappingType: MappingTypeName,
 ): string[] | undefined {
   const values = VALID_VALUES[mappingType];
-  if (!values) return undefined;
+  if (!values) {return undefined;}
   return Object.keys(values);
 }
 
@@ -99,7 +99,7 @@ export function getValidValuesWithDisplay(
   mappingType: MappingTypeName,
 ): ValidValueOption[] {
   const values = VALID_VALUES[mappingType];
-  if (!values) return [];
+  if (!values) {return [];}
 
   return Object.entries(values).map(([code, display]) => ({
     code,
@@ -118,7 +118,7 @@ export function getValidValuesWithDisplay(
 export function isValidCode(mappingType: MappingTypeName, code: string): boolean {
   const values = VALID_VALUES[mappingType];
   // Types without fixed values accept any non-empty code
-  if (!values) return code.trim() !== "";
+  if (!values) {return code.trim() !== "";}
   return code in values;
 }
 

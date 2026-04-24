@@ -12,7 +12,7 @@ function seg(name: string, fields: Record<number, string> = {}): HL7v2Segment {
 
 /** Extract groups from result or throw on error. */
 function expectGroups(result: ReturnType<typeof groupVXUOrders>): VXUOrderGroup[] {
-  if ("error" in result) throw new Error(result.error);
+  if ("error" in result) {throw new Error(result.error);}
   return result.groups;
 }
 

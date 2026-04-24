@@ -68,7 +68,7 @@ async function psql(query: string): Promise<PsqlResponse> {
     body: JSON.stringify({ query }),
   });
   const first = response[0];
-  if (!first) throw new Error(`Empty response from $psql: ${query}`);
+  if (!first) {throw new Error(`Empty response from $psql: ${query}`);}
   // Aidbox reports `status: "success"` with an `error` field when a
   // non-SELECT statement produced no rows — treat that as OK.
   if (first.status !== "success") {
@@ -105,13 +105,13 @@ async function truncateResourceTypes(types: string[]): Promise<number> {
   for (const type of types) {
     const t = type.toLowerCase();
     const h = `${t}_history`;
-    if (await tableExists(t)) tables.push(t);
-    if (await tableExists(h)) tables.push(h);
+    if (await tableExists(t)) {tables.push(t);}
+    if (await tableExists(h)) {tables.push(h);}
   }
-  if (tables.length === 0) return 0;
+  if (tables.length === 0) {return 0;}
 
   let before = 0;
-  for (const t of tables) before += await countRows(t);
+  for (const t of tables) {before += await countRows(t);}
 
   const quoted = tables.map((t) => `"${t}"`).join(", ");
   await psql(`TRUNCATE ${quoted} RESTART IDENTITY`);

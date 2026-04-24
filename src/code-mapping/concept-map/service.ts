@@ -310,7 +310,7 @@ export function detectMappingTypeFromConceptMap(
   conceptMap: ConceptMap,
 ): MappingTypeName | null {
   const targetUri = conceptMap.targetUri;
-  if (!targetUri) return null;
+  if (!targetUri) {return null;}
 
   for (const [name, config] of Object.entries(MAPPING_TYPES)) {
     if (config.targetSystem === targetUri) {
@@ -342,7 +342,7 @@ export function checkDuplicateEntry(
   localCode: string,
 ): boolean {
   for (const group of conceptMap.group || []) {
-    if (group.source !== localSystem) continue;
+    if (group.source !== localSystem) {continue;}
     for (const element of group.element || []) {
       if (element.code === localCode) {
         return true;
@@ -512,7 +512,7 @@ export async function addConceptMapEntry(
   // Check if a matching Task exists
   const taskId = generateMappingTaskId(conceptMapId, localSystem, localCode);
   let task: Task | null = null;
-  let taskEtag: string = "";
+  let taskEtag = "";
 
   try {
     const result = await getResourceWithETag<Task>("Task", taskId);
@@ -613,7 +613,7 @@ export async function updateConceptMapEntry(
   let foundElement: ConceptMapGroupElement | null = null;
 
   for (const group of conceptMap.group || []) {
-    if (group.source !== localSystem) continue;
+    if (group.source !== localSystem) {continue;}
     const elements = group.element || [];
     const elementIndex = elements.findIndex((e) => e.code === localCode);
     if (elementIndex >= 0 && elements[elementIndex]) {
@@ -725,7 +725,7 @@ export async function deleteConceptMapEntry(
 
   // Find and remove the element
   for (const group of conceptMap.group || []) {
-    if (group.source !== localSystem) continue;
+    if (group.source !== localSystem) {continue;}
     if (group.element) {
       group.element = group.element.filter((e) => e.code !== localCode);
     }

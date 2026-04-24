@@ -102,9 +102,9 @@ export async function loadAllTerminologyRows(): Promise<TerminologyRow[]> {
   const rows: TerminologyRow[] = [];
 
   for (const cm of maps) {
-    if (!cm.targetUri || !known.has(cm.targetUri)) continue;
+    if (!cm.targetUri || !known.has(cm.targetUri)) {continue;}
     const mappingType = detectMappingTypeFromConceptMap(cm);
-    if (!mappingType) continue;
+    if (!mappingType) {continue;}
 
     const type = MAPPING_TYPES[mappingType];
     const fhirField = targetLabel(type);
@@ -147,7 +147,7 @@ export async function loadAllTerminologyRows(): Promise<TerminologyRow[]> {
 // ============================================================================
 
 function matchesQuery(row: TerminologyRow, q: string): boolean {
-  if (!q) return true;
+  if (!q) {return true;}
   const needle = q.toLowerCase();
   return (
     row.localCode.toLowerCase().includes(needle) ||
@@ -180,7 +180,7 @@ export function buildFacet(
 }
 
 function parseCsv(raw: string | null): string[] {
-  if (!raw) return [];
+  if (!raw) {return [];}
   return raw
     .split(",")
     .map((s) => s.trim())
@@ -584,9 +584,9 @@ export function renderFacetPartial(
 
 function buildTerminologyQs(f: Filters): string {
   const p = new URLSearchParams();
-  if (f.q) p.set("q", f.q);
-  if (f.fhir.length) p.set("fhir", f.fhir.join(","));
-  if (f.sender.length) p.set("sender", f.sender.join(","));
+  if (f.q) {p.set("q", f.q);}
+  if (f.fhir.length) {p.set("fhir", f.fhir.join(","));}
+  if (f.sender.length) {p.set("sender", f.sender.join(","));}
   return p.toString();
 }
 
@@ -595,15 +595,15 @@ function buildTerminologyQs(f: Filters): string {
 // ============================================================================
 
 function formatRelativeDate(iso: string | undefined): string {
-  if (!iso) return "unknown";
+  if (!iso) {return "unknown";}
   const t = new Date(iso).getTime();
-  if (isNaN(t)) return iso;
+  if (isNaN(t)) {return iso;}
   const now = Date.now();
   const diff = now - t;
   const MIN = 60_000, HOUR = 3_600_000, DAY = 86_400_000;
-  if (diff < HOUR) return `${Math.max(1, Math.floor(diff / MIN))} min ago`;
-  if (diff < DAY) return `${Math.floor(diff / HOUR)} hr ago`;
-  if (diff < 30 * DAY) return `${Math.floor(diff / DAY)} d ago`;
+  if (diff < HOUR) {return `${Math.max(1, Math.floor(diff / MIN))} min ago`;}
+  if (diff < DAY) {return `${Math.floor(diff / HOUR)} hr ago`;}
+  if (diff < 30 * DAY) {return `${Math.floor(diff / DAY)} d ago`;}
   return new Date(iso).toISOString().slice(0, 10);
 }
 
@@ -882,7 +882,7 @@ export async function handleTerminologyDetailPartial(
   const params = (req as Request & { params?: Record<string, string> }).params;
   const rawMap = params?.conceptMapId;
   const rawCode = params?.code;
-  if (!rawMap || !rawCode) return new Response("Missing params", { status: 400 });
+  if (!rawMap || !rawCode) {return new Response("Missing params", { status: 400 });}
   let conceptMapId: string;
   let localCode: string;
   try {
@@ -904,7 +904,7 @@ export async function handleTerminologyDetailPartial(
       r.localCode === localCode &&
       (!localSystem || r.localSystem === localSystem),
   );
-  if (!row) return htmlResponse(renderEmptyDetail());
+  if (!row) {return htmlResponse(renderEmptyDetail());}
   return htmlResponse(renderDetailPartial(row));
 }
 
@@ -1216,7 +1216,7 @@ export async function handleTerminologyModalPartial(
       r.localCode === code &&
       (!localSystem || r.localSystem === localSystem),
   );
-  if (!row) return new Response("Mapping not found", { status: 404 });
+  if (!row) {return new Response("Mapping not found", { status: 404 });}
   return htmlResponse(renderModalPartial({ mode: "edit", row }));
 }
 
@@ -1255,7 +1255,7 @@ export function parseFiltersFromFormData(data: FormDataLike): Filters {
 }
 
 export function parseFiltersFromReferer(referer: string | null): Filters {
-  if (!referer) return { q: "", fhir: [], sender: [] };
+  if (!referer) {return { q: "", fhir: [], sender: [] };}
   try {
     return parseFilters(new URL(referer));
   } catch {

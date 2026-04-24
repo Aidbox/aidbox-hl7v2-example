@@ -2,8 +2,11 @@
   "name": "aidbox-hl7",
   "module": "index.ts",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bun": "latest",
-    "fast-xml-parser": "^5.3.5"
+    "eslint": "^10.2.1",
+    "fast-xml-parser": "^5.3.5",
+    "typescript-eslint": "^8.59.0"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -14,6 +17,8 @@
     "stop": "bash scripts/stop.sh",
     "logs": "bash -c 'tail -f logs/server.log'",
     "typecheck": "bash scripts/typecheck.sh",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "mllp": "bun src/mllp/mllp-server.ts",
     "test-mllp": "bun scripts/test-mllp-client.ts",
     "regenerate-hl7v2": "bash scripts/regenerate-hl7v2.sh",

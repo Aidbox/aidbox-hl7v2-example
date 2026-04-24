@@ -41,7 +41,7 @@ import type { BarMessageInput } from "./types";
 // ============================================================================
 
 function formatHL7Date(dateStr: string | undefined): string {
-  if (!dateStr) return "";
+  if (!dateStr) {return "";}
   return dateStr.replace(/[-:T]/g, "").replace(/\.\d+Z?$/, "").substring(0, 14);
 }
 
@@ -60,7 +60,7 @@ function mapGender(gender: string | undefined): string {
 }
 
 function mapPatientClass(encounterClass: { code?: string } | undefined): string {
-  if (!encounterClass?.code) return "";
+  if (!encounterClass?.code) {return "";}
   switch (encounterClass.code) {
     case "IMP":
     case "ACUTE":
@@ -83,18 +83,18 @@ function getCode(concept: CodeableConcept | undefined): { code: string; display:
 }
 
 function mapCodingSystem(system: string | undefined): string {
-  if (!system) return "";
-  if (system.includes("icd-10")) return "ICD10";
-  if (system.includes("icd-9")) return "I9C";
-  if (system.includes("cpt")) return "CPT";
-  if (system.includes("snomed")) return "SCT";
-  if (system.includes("loinc")) return "LN";
+  if (!system) {return "";}
+  if (system.includes("icd-10")) {return "ICD10";}
+  if (system.includes("icd-9")) {return "I9C";}
+  if (system.includes("cpt")) {return "CPT";}
+  if (system.includes("snomed")) {return "SCT";}
+  if (system.includes("loinc")) {return "LN";}
   return system;
 }
 
 function mapGuarantorRelationship(relationship: CodeableConcept | undefined): string {
   const code = relationship?.coding?.[0]?.code;
-  if (!code) return "SE";
+  if (!code) {return "SE";}
   switch (code.toUpperCase()) {
     case "SELF": return "SE";
     case "SPOUSE":

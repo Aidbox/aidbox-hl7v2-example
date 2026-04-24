@@ -83,11 +83,11 @@ export function convertXCNToAnnotationAuthor(
   text: string,
   time?: string
 ): AnnotationWithAuthor | undefined {
-  if (!xcn) return undefined;
+  if (!xcn) {return undefined;}
 
   // Convert XCN to Practitioner
   const practitioner = convertXCNToPractitioner(xcn);
-  if (!practitioner) return undefined;
+  if (!practitioner) {return undefined;}
 
   // Generate temporary ID for the Practitioner
   const practitionerId = generateTempId();
@@ -108,10 +108,10 @@ export function convertXCNToAnnotationAuthor(
     const name = practitioner.name[0];
     const displayParts: string[] = [];
 
-    if (name.prefix?.length) displayParts.push(...name.prefix);
-    if (name.given?.length) displayParts.push(...name.given);
-    if (name.family) displayParts.push(name.family);
-    if (name.suffix?.length) displayParts.push(...name.suffix);
+    if (name.prefix?.length) {displayParts.push(...name.prefix);}
+    if (name.given?.length) {displayParts.push(...name.given);}
+    if (name.family) {displayParts.push(name.family);}
+    if (name.suffix?.length) {displayParts.push(...name.suffix);}
 
     if (displayParts.length > 0) {
       authorReference.display = displayParts.join(" ");
@@ -145,13 +145,13 @@ export function convertXCNArrayToAnnotationAuthors(
   text: string,
   time?: string
 ): AnnotationWithAuthor[] | undefined {
-  if (!xcns || xcns.length === 0) return undefined;
+  if (!xcns || xcns.length === 0) {return undefined;}
 
   const results: AnnotationWithAuthor[] = [];
 
   for (const xcn of xcns) {
     const result = convertXCNToAnnotationAuthor(xcn, text, time);
-    if (result) results.push(result);
+    if (result) {results.push(result);}
   }
 
   return results.length > 0 ? results : undefined;

@@ -12,8 +12,8 @@ const PROCESSING_MODE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0207";
  * - PT.2 (Processing Mode) -> tag[1].code, tag[1].system = v2-0207
  */
 export function convertPTToMeta(pt: PT | undefined): Partial<Meta> | undefined {
-  if (!pt) return undefined;
-  if (!pt.$1_processingId && !pt.$2_processingMode) return undefined;
+  if (!pt) {return undefined;}
+  if (!pt.$1_processingId && !pt.$2_processingMode) {return undefined;}
 
   const tags: Coding[] = [];
 

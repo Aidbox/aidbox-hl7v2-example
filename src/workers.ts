@@ -85,11 +85,11 @@ export function resolvePollIntervalMs(
   explicit: number | undefined,
   env: NodeJS.ProcessEnv = process.env,
 ): number {
-  if (typeof explicit === "number") return explicit;
+  if (typeof explicit === "number") {return explicit;}
   const fromEnv = env.POLL_INTERVAL_MS;
   if (fromEnv) {
     const n = Number.parseInt(fromEnv, 10);
-    if (Number.isFinite(n) && n > 0) return n;
+    if (Number.isFinite(n) && n > 0) {return n;}
   }
   return DEFAULT_DEMO_POLL_INTERVAL_MS;
 }
@@ -165,7 +165,7 @@ export function startAllPollingServices(
   let stopped = false;
   return {
     stop: () => {
-      if (stopped) return;
+      if (stopped) {return;}
       stopped = true;
       inboundProcessor.stop();
       accountBuilder.stop();

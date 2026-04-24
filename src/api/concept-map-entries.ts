@@ -80,7 +80,7 @@ async function htmxErrorResponse(
 
 function redirect(conceptMapId: string, error?: string): Response {
   const qs = new URLSearchParams({ conceptMapId });
-  if (error) qs.set("error", error);
+  if (error) {qs.set("error", error);}
   return new Response(null, {
     status: 302,
     headers: { Location: `/terminology?${qs.toString()}` },

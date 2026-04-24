@@ -104,7 +104,7 @@ export function groupORMOrders(message: HL7v2Message): ORMOrderGroup[] {
       }
 
       case "OBR": {
-        if (!firstOrcSeen || !currentGroup) break;
+        if (!firstOrcSeen || !currentGroup) {break;}
         if (!currentGroup.orderChoice) {
           currentGroup.orderChoice = segment;
           currentGroup.orderChoiceType = "OBR";
@@ -113,7 +113,7 @@ export function groupORMOrders(message: HL7v2Message): ORMOrderGroup[] {
       }
 
       case "RXO": {
-        if (!firstOrcSeen || !currentGroup) break;
+        if (!firstOrcSeen || !currentGroup) {break;}
         if (!currentGroup.orderChoice) {
           currentGroup.orderChoice = segment;
           currentGroup.orderChoiceType = "RXO";
@@ -122,7 +122,7 @@ export function groupORMOrders(message: HL7v2Message): ORMOrderGroup[] {
       }
 
       case "NTE": {
-        if (!firstOrcSeen || !currentGroup) break;
+        if (!firstOrcSeen || !currentGroup) {break;}
         if (currentObservation) {
           // NTE after OBX -> observation-level note
           currentObservation.ntes.push(segment);
@@ -134,13 +134,13 @@ export function groupORMOrders(message: HL7v2Message): ORMOrderGroup[] {
       }
 
       case "DG1": {
-        if (!firstOrcSeen || !currentGroup) break;
+        if (!firstOrcSeen || !currentGroup) {break;}
         currentGroup.dg1s.push(segment);
         break;
       }
 
       case "OBX": {
-        if (!firstOrcSeen || !currentGroup) break;
+        if (!firstOrcSeen || !currentGroup) {break;}
         // Flush previous observation
         if (currentObservation) {
           currentGroup.observations.push(currentObservation);
@@ -211,7 +211,7 @@ export function resolveOrderNumber(
  */
 function buildIdFromEI(ei: EI | undefined): string | undefined {
   const value = ei?.$1_value?.trim();
-  if (!value) return undefined;
+  if (!value) {return undefined;}
 
   const namespace = ei?.$2_namespace?.trim();
   const namespaceDiffers = namespace && namespace !== value;
@@ -267,7 +267,7 @@ function processIN1Segments(
   for (const segment of in1Segments) {
     const in1 = fromIN1(segment);
 
-    if (!hasValidPayorInfo(in1)) continue;
+    if (!hasValidPayorInfo(in1)) {continue;}
 
     const coverage = convertIN1ToCoverage(in1) as Coverage;
     coverage.beneficiary = patientRef as Coverage["beneficiary"];
@@ -316,7 +316,7 @@ function processDG1Segments(
 // ============================================================================
 
 function processOrderNTEs(nteSegments: HL7v2Segment[]): Annotation[] {
-  if (nteSegments.length === 0) return [];
+  if (nteSegments.length === 0) {return [];}
 
   const parsedNtes = nteSegments.map((seg) => fromNTE(seg));
   const annotation = convertNTEsToAnnotation(parsedNtes);
@@ -696,14 +696,14 @@ export async function convertORM_O01(
       );
       allEntries.push(...result.entries);
       allMappingErrors.push(...result.mappingErrors);
-      if (result.entries.length > 0) processableGroupCount++;
+      if (result.entries.length > 0) {processableGroupCount++;}
     } else if (group.orderChoiceType === "RXO" && group.orderChoice) {
       const result = await processRXOOrderGroup(
         group, senderContext, baseMeta, patientRef, encounterRef,
       );
       allEntries.push(...result.entries);
       allMappingErrors.push(...result.mappingErrors);
-      if (result.entries.length > 0) processableGroupCount++;
+      if (result.entries.length > 0) {processableGroupCount++;}
     } else if (group.orderChoiceType === "unknown" || !group.orderChoice) {
       // ORC without ORDER_DETAIL -- skip this group
       continue;
@@ -725,11 +725,11 @@ export async function convertORM_O01(
   // Collect entries
   const entries: DomainResource[] = [];
 
-  if (patient) entries.push(patient);
-  if (encounter) entries.push(encounter);
+  if (patient) {entries.push(patient);}
+  if (encounter) {entries.push(encounter);}
   entries.push(...coverages);
   entries.push(...allEntries);
-  if (patientClassTask) entries.push(patientClassTask);
+  if (patientClassTask) {entries.push(patientClassTask);}
 
   if (encounterResult.warning) {
     return {

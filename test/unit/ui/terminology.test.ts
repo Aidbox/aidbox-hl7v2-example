@@ -80,7 +80,7 @@ function makeConceptMap(
 ): ConceptMapLike {
   const bySource = new Map<string, typeof entries>();
   for (const e of entries) {
-    if (!bySource.has(e.source)) bySource.set(e.source, []);
+    if (!bySource.has(e.source)) {bySource.set(e.source, []);}
     bySource.get(e.source)!.push(e);
   }
   return {

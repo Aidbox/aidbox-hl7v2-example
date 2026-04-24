@@ -36,7 +36,7 @@ function preprocessAndConvertPatient(rawMessage: string, config: Hl7v2ToFhirConf
   const parsed = parseMessage(rawMessage);
   const preprocessed = preprocessMessage(parsed, config);
   const pidSegment = preprocessed.find((s) => s.segment === "PID");
-  if (!pidSegment) throw new Error("PID segment not found");
+  if (!pidSegment) {throw new Error("PID segment not found");}
   const pid = fromPID(pidSegment);
   return convertPIDToPatient(pid);
 }

@@ -16,8 +16,8 @@ export interface RI {
  * - RI.2 (Explicit Time Interval) -> repeat.timeOfDay[] (format: HHMM,HHMM,...)
  */
 export function convertRIToTiming(ri: RI | undefined): Timing | undefined {
-  if (!ri) return undefined;
-  if (!ri.$1_repeatPattern && !ri.$2_explicitTimeInterval) return undefined;
+  if (!ri) {return undefined;}
+  if (!ri.$1_repeatPattern && !ri.$2_explicitTimeInterval) {return undefined;}
 
   const timing: Timing = {};
 

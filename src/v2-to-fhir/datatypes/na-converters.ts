@@ -23,16 +23,16 @@ export interface NA {
  * see the Observations - NA to SampledData section in the Implementation Considerations chapter.
  */
 export function convertNAToSampledData(na: NA | undefined): Partial<SampledData> | undefined {
-  if (!na) return undefined;
+  if (!na) {return undefined;}
 
   // Collect all non-empty values
   const values: string[] = [];
-  if (na.$1_value1) values.push(na.$1_value1);
-  if (na.$2_value2) values.push(na.$2_value2);
-  if (na.$3_value3) values.push(na.$3_value3);
-  if (na.$4_value4) values.push(na.$4_value4);
+  if (na.$1_value1) {values.push(na.$1_value1);}
+  if (na.$2_value2) {values.push(na.$2_value2);}
+  if (na.$3_value3) {values.push(na.$3_value3);}
+  if (na.$4_value4) {values.push(na.$4_value4);}
 
-  if (values.length === 0) return undefined;
+  if (values.length === 0) {return undefined;}
 
   // Return partial SampledData - origin and period must be provided by caller
   return {
@@ -46,11 +46,11 @@ export function convertNAToSampledData(na: NA | undefined): Partial<SampledData>
  * Alternative for when values come as string array rather than NA object.
  */
 export function convertNumericArrayToSampledData(values: string[] | undefined): Partial<SampledData> | undefined {
-  if (!values || values.length === 0) return undefined;
+  if (!values || values.length === 0) {return undefined;}
 
   const filtered = values.filter(v => v !== undefined && v !== "");
 
-  if (filtered.length === 0) return undefined;
+  if (filtered.length === 0) {return undefined;}
 
   return {
     dimensions: filtered.length,

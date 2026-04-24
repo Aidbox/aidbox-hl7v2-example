@@ -16,7 +16,7 @@ export interface MessageHeaderEventData {
  * - MSG.2 (Trigger Event) -> $this (code)
  */
 export function convertMSGToCode(msg: MSG | undefined): string | undefined {
-  if (!msg) return undefined;
+  if (!msg) {return undefined;}
   return msg.$2_event;
 }
 
@@ -29,8 +29,8 @@ export function convertMSGToCode(msg: MSG | undefined): string | undefined {
  * - display = MSG.1^MSG.2^MSG.3 (concatenated)
  */
 export function convertMSGToCoding(msg: MSG | undefined): Coding | undefined {
-  if (!msg) return undefined;
-  if (!msg.$2_event) return undefined;
+  if (!msg) {return undefined;}
+  if (!msg.$2_event) {return undefined;}
 
   const coding: Coding = {
     code: msg.$2_event,
@@ -55,8 +55,8 @@ export function convertMSGToCoding(msg: MSG | undefined): Coding | undefined {
  * - MSG.3 (Message Structure) -> definition (as canonical URI)
  */
 export function convertMSGToMessageHeader(msg: MSG | undefined): MessageHeaderEventData | undefined {
-  if (!msg) return undefined;
-  if (!msg.$2_event && !msg.$3_structure) return undefined;
+  if (!msg) {return undefined;}
+  if (!msg.$2_event && !msg.$3_structure) {return undefined;}
 
   const result: MessageHeaderEventData = {};
 

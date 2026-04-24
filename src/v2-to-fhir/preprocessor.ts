@@ -50,13 +50,13 @@ export function preprocessMessage(
  */
 function extractMessageTypeKey(parsed: HL7v2Message): string | null {
   const mshSegment = findSegment(parsed, "MSH");
-  if (!mshSegment) return null;
+  if (!mshSegment) {return null;}
 
   const msh = fromMSH(mshSegment);
   const code = msh.$9_messageType?.$1_code;
   const event = msh.$9_messageType?.$2_event;
 
-  if (!code || !event) return null;
+  if (!code || !event) {return null;}
 
   return `${code}-${event}`;
 }
@@ -75,17 +75,17 @@ function applyPreprocessors(
 
   for (let i = 0; i < parsed.length; i++) {
     const segment = parsed[i];
-    if (!segment) continue;
+    if (!segment) {continue;}
 
     const segmentType = segment.segment;
 
     const segmentConfig = preprocessConfig[segmentType as keyof typeof preprocessConfig];
     if (!segmentConfig)
-      continue;
+      {continue;}
 
     // Apply preprocessors for each configured field
     for (const [field, preprocessorIds] of Object.entries(segmentConfig)) {
-      if (!Array.isArray(preprocessorIds)) continue;
+      if (!Array.isArray(preprocessorIds)) {continue;}
 
       // Apply each preprocessor in order (each wrapped in try-catch)
       for (const id of preprocessorIds) {
@@ -125,10 +125,10 @@ function shouldRunPreprocessorForField(
 
 function isFieldPresentInSegment(segment: HL7v2Segment, field: string): boolean {
   const fieldIndex = parseInt(field, 10);
-  if (isNaN(fieldIndex)) return false;
+  if (isNaN(fieldIndex)) {return false;}
 
   const fieldValue = segment.fields[fieldIndex];
-  if (fieldValue === undefined || fieldValue === null) return false;
-  if (typeof fieldValue === "string") return fieldValue.trim().length > 0;
+  if (fieldValue === undefined || fieldValue === null) {return false;}
+  if (typeof fieldValue === "string") {return fieldValue.trim().length > 0;}
   return true;
 }

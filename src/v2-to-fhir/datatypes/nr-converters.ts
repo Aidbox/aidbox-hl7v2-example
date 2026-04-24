@@ -16,8 +16,8 @@ export interface NR {
  * - NR.2 (High Value) -> high.value (decimal)
  */
 export function convertNRToRange(nr: NR | undefined): Range | undefined {
-  if (!nr) return undefined;
-  if (!nr.$1_low && !nr.$2_high) return undefined;
+  if (!nr) {return undefined;}
+  if (!nr.$1_low && !nr.$2_high) {return undefined;}
 
   const range: Range = {};
 
@@ -36,7 +36,7 @@ export function convertNRToRange(nr: NR | undefined): Range | undefined {
   }
 
   // Return undefined if neither value parsed successfully
-  if (!range.low && !range.high) return undefined;
+  if (!range.low && !range.high) {return undefined;}
 
   return range;
 }

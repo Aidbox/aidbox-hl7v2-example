@@ -217,16 +217,16 @@ function validatePreprocessorIds(config: Hl7v2ToFhirConfig): void {
   const messages = config.messages ?? {};
 
   for (const [messageType, messageConfig] of Object.entries(messages)) {
-    if (!messageConfig?.preprocess) continue;
+    if (!messageConfig?.preprocess) {continue;}
 
     for (const [segment, segmentConfig] of Object.entries(
       messageConfig.preprocess,
     )) {
-      if (!segmentConfig) continue;
+      if (!segmentConfig) {continue;}
 
       for (const [field, preprocessorIds] of Object.entries(segmentConfig)) {
         // Skip null/undefined values (optional fields)
-        if (preprocessorIds === null || preprocessorIds === undefined) continue;
+        if (preprocessorIds === null || preprocessorIds === undefined) {continue;}
 
         // Non-array values are invalid config
         if (!Array.isArray(preprocessorIds)) {

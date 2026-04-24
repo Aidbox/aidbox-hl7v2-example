@@ -28,8 +28,8 @@ export interface DocumentReferenceContentData {
  * - RP.3 (Type of Data) / RP.4 (Subtype) -> contentType (format: type/subtype)
  */
 export function convertRPToAttachment(rp: RP | undefined): Attachment | undefined {
-  if (!rp) return undefined;
-  if (!rp.$1_pointer && !rp.$3_typeOfData) return undefined;
+  if (!rp) {return undefined;}
+  if (!rp.$1_pointer && !rp.$3_typeOfData) {return undefined;}
 
   const attachment: Attachment = {};
 
@@ -58,7 +58,7 @@ export function convertRPToAttachment(rp: RP | undefined): Attachment | undefine
  */
 export function convertRPToDocumentReference(rp: RP | undefined): DocumentReferenceContentData | undefined {
   const attachment = convertRPToAttachment(rp);
-  if (!attachment) return undefined;
+  if (!attachment) {return undefined;}
 
   return {
     content: [{ attachment }],

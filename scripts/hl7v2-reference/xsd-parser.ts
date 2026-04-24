@@ -34,7 +34,7 @@ export async function parseXsdFields(xsdDir: string): Promise<Map<string, XsdFie
   for (const ag of attrGroups) {
     const name: string = ag["@_name"];
     const match = name.match(/^(\w+)\.(\d+)\.ATTRIBUTES$/);
-    if (!match) continue;
+    if (!match) {continue;}
 
     const segment = match[1]!;
     const position = parseInt(match[2]!, 10);
@@ -46,7 +46,7 @@ export async function parseXsdFields(xsdDir: string): Promise<Map<string, XsdFie
     const maxLengthStr = getFixedAttr(attrs, "maxLength");
     const tableRaw = getFixedAttr(attrs, "Table");
 
-    if (!item || !dataType || !longName) continue;
+    if (!item || !dataType || !longName) {continue;}
 
     const table = tableRaw ? tableRaw.replace(/^HL7/, "") : null;
     const key = `${segment}.${position}`;
@@ -76,7 +76,7 @@ export async function parseXsdSegments(xsdDir: string): Promise<Map<string, XsdS
     const name: string = ct["@_name"];
     // Match SEG.CONTENT but not SEG.N.CONTENT (those are field types)
     const match = name.match(/^([A-Z][A-Z0-9]{1,2})\.CONTENT$/);
-    if (!match) continue;
+    if (!match) {continue;}
 
     const segName = match[1]!;
     const elements = ct["xsd:sequence"]?.["xsd:element"] || [];
@@ -84,10 +84,10 @@ export async function parseXsdSegments(xsdDir: string): Promise<Map<string, XsdS
 
     for (const el of elements) {
       const ref: string | undefined = el["@_ref"];
-      if (!ref || !ref.includes(".")) continue;
+      if (!ref || !ref.includes(".")) {continue;}
 
       const fieldMatch = ref.match(/^(\w+)\.(\d+)$/);
-      if (!fieldMatch) continue;
+      if (!fieldMatch) {continue;}
 
       fields.push({
         field: ref,
@@ -118,7 +118,7 @@ export async function parseXsdDatatypes(xsdDir: string): Promise<Map<string, Xsd
   for (const ag of attrGroups) {
     const name: string = ag["@_name"];
     const match = name.match(/^(\w+)\.(\d+)\.ATTRIBUTES$/);
-    if (!match) continue;
+    if (!match) {continue;}
 
     const attrs = ag["xsd:attribute"] || [];
     const dataType = getFixedAttr(attrs, "Type");
@@ -141,22 +141,22 @@ export async function parseXsdDatatypes(xsdDir: string): Promise<Map<string, Xsd
   for (const ct of complexTypes) {
     const name: string = ct["@_name"];
     // Composite datatype: 2-3 letter name, no dots (not XX.CONTENT or XX.N.CONTENT)
-    if (name.includes(".")) continue;
+    if (name.includes(".")) {continue;}
 
     const elements = ct["xsd:sequence"]?.["xsd:element"];
-    if (!elements) continue;
+    if (!elements) {continue;}
 
     const components: XsdDatatypeComponent[] = [];
 
     for (const el of Array.isArray(elements) ? elements : [elements]) {
       const ref: string | undefined = el["@_ref"];
-      if (!ref) continue;
+      if (!ref) {continue;}
 
       const compMatch = ref.match(/^(\w+)\.(\d+)$/);
-      if (!compMatch) continue;
+      if (!compMatch) {continue;}
 
       const meta = componentMeta.get(ref);
-      if (!meta) continue;
+      if (!meta) {continue;}
 
       components.push({
         component: ref,
@@ -186,10 +186,10 @@ export async function parseXsdMessages(xsdDir: string): Promise<Map<string, XsdM
     const text = await Bun.file(join(xsdDir, file)).text();
     const result = parseXml(text);
     const schema = result["xsd:schema"];
-    if (!schema) continue;
+    if (!schema) {continue;}
 
     const complexTypes = schema["xsd:complexType"] || [];
-    if (complexTypes.length === 0) continue;
+    if (complexTypes.length === 0) {continue;}
 
     // Build a map of all group definitions: name -> elements
     const groupDefs = new Map<string, any[]>();
@@ -197,7 +197,7 @@ export async function parseXsdMessages(xsdDir: string): Promise<Map<string, XsdM
 
     for (const ct of complexTypes) {
       const typeName: string = ct["@_name"];
-      if (!typeName.endsWith(".CONTENT")) continue;
+      if (!typeName.endsWith(".CONTENT")) {continue;}
 
       const cleanName = typeName.replace(/\.CONTENT$/, "");
       const elements = ct["xsd:sequence"]?.["xsd:element"] || [];
@@ -222,13 +222,13 @@ export async function parseXsdMessages(xsdDir: string): Promise<Map<string, XsdM
     if (!rootName) {
       rootName = groupDefs.has(msgName) ? msgName : null;
     }
-    if (!rootName) continue;
+    if (!rootName) {continue;}
 
     const buildElements = (rawElements: any[], visited = new Set<string>()): XsdMessageElement[] => {
       const result: XsdMessageElement[] = [];
       for (const el of rawElements) {
         const ref: string | undefined = el["@_ref"];
-        if (!ref) continue;
+        if (!ref) {continue;}
 
         const minOccurs = parseInt(el["@_minOccurs"] || "0", 10);
         const maxOccurs = parseCardinality(el["@_maxOccurs"] || "1");

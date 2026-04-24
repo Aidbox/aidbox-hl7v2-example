@@ -7,8 +7,8 @@ export interface CQ {
 }
 
 export function convertCQToQuantity(cq: CQ | undefined): Quantity | undefined {
-  if (!cq) return undefined;
-  if (cq.$1_quantity === undefined && !cq.$2_units) return undefined;
+  if (!cq) {return undefined;}
+  if (cq.$1_quantity === undefined && !cq.$2_units) {return undefined;}
 
   return {
     ...(cq.$1_quantity !== undefined && { value: cq.$1_quantity }),
@@ -23,6 +23,6 @@ export function convertCQToDecimal(cq: CQ | undefined): number | undefined {
 }
 
 export function convertCQToUnsignedInt(cq: CQ | undefined): number | undefined {
-  if (cq?.$1_quantity === undefined) return undefined;
+  if (cq?.$1_quantity === undefined) {return undefined;}
   return Math.max(0, Math.floor(cq.$1_quantity));
 }

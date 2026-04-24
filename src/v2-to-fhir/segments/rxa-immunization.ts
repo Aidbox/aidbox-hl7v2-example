@@ -69,7 +69,7 @@ export function deriveImmunizationStatus(
  * Returns a new CodeableConcept with normalized systems.
  */
 function normalizeCodeableConceptSystems(cc: CodeableConcept): CodeableConcept {
-  if (!cc.coding) return cc;
+  if (!cc.coding) {return cc;}
 
   return {
     ...cc,
@@ -87,10 +87,10 @@ function normalizeCodeableConceptSystems(cc: CodeableConcept): CodeableConcept {
  * After preprocessing, RXA-6 is either empty (omit doseQuantity) or a valid number.
  */
 function buildDoseQuantity(amount: string | undefined, unit: CE | undefined): Quantity | undefined {
-  if (!amount) return undefined;
+  if (!amount) {return undefined;}
 
   const numericValue = parseFloat(amount);
-  if (isNaN(numericValue)) return undefined;
+  if (isNaN(numericValue)) {return undefined;}
 
   const quantity: Quantity = { value: numericValue };
 
@@ -118,7 +118,7 @@ function buildDoseQuantity(amount: string | undefined, unit: CE | undefined): Qu
  */
 function deriveRecordedDate(orc: ORC | undefined, rxa: RXA): string | undefined {
   const orcDateTime = convertDTMToDateTime(orc?.$9_transactionDateTime);
-  if (orcDateTime) return orcDateTime;
+  if (orcDateTime) {return orcDateTime;}
 
   const isAddAction = rxa.$21_actionCodeRxa?.toUpperCase() === "A";
   if (isAddAction) {
@@ -300,9 +300,9 @@ export function convertRXAToImmunization(
   if (orc) {
     const identifiers: Identifier[] = [];
     const placerIdentifier = convertEIToTypedIdentifier(orc.$2_placerOrderNumber, "PLAC");
-    if (placerIdentifier) identifiers.push(placerIdentifier);
+    if (placerIdentifier) {identifiers.push(placerIdentifier);}
     const fillerIdentifier = convertEIToTypedIdentifier(orc.$3_fillerOrderNumber, "FILL");
-    if (fillerIdentifier) identifiers.push(fillerIdentifier);
+    if (fillerIdentifier) {identifiers.push(fillerIdentifier);}
     if (identifiers.length > 0) {
       immunization.identifier = identifiers;
     }

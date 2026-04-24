@@ -71,7 +71,7 @@ function buildReq<P extends Record<string, string>>(opts: {
   const headers: Record<string, string> = {
     "Content-Type": "application/x-www-form-urlencoded",
   };
-  if (opts.htmx) headers["HX-Request"] = "true";
+  if (opts.htmx) {headers["HX-Request"] = "true";}
   const req = new Request(opts.url ?? "http://localhost/x", {
     method: opts.method ?? "POST",
     body,

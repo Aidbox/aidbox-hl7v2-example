@@ -2,7 +2,7 @@ import type { CWE } from "../../hl7v2/generated/fields";
 import type { Annotation, CodeableConcept, Coding, Duration, Identifier } from "../../fhir/hl7-fhir-r4-core";
 
 export function convertCWEToCodeableConcept(cwe: CWE | undefined): CodeableConcept | undefined {
-  if (!cwe) return undefined;
+  if (!cwe) {return undefined;}
 
   const codings: Coding[] = [];
 
@@ -24,7 +24,7 @@ export function convertCWEToCodeableConcept(cwe: CWE | undefined): CodeableConce
     });
   }
 
-  if (codings.length === 0) return undefined;
+  if (codings.length === 0) {return undefined;}
 
   return {
     coding: codings,
@@ -33,8 +33,8 @@ export function convertCWEToCodeableConcept(cwe: CWE | undefined): CodeableConce
 }
 
 export function convertCWEToCoding(cwe: CWE | undefined): Coding | undefined {
-  if (!cwe) return undefined;
-  if (!cwe.$1_code && !cwe.$2_text) return undefined;
+  if (!cwe) {return undefined;}
+  if (!cwe.$1_code && !cwe.$2_text) {return undefined;}
 
   return {
     ...(cwe.$1_code && { code: cwe.$1_code }),
@@ -49,20 +49,20 @@ export function convertCWEToCode(cwe: CWE | undefined): string | undefined {
 }
 
 export function convertCWEToAnnotation(cwe: CWE | undefined): Annotation | undefined {
-  if (!cwe) return undefined;
+  if (!cwe) {return undefined;}
 
   const parts: string[] = [];
-  if (cwe.$1_code) parts.push(cwe.$1_code);
-  if (cwe.$2_text) parts.push(cwe.$2_text);
-  if (cwe.$3_system) parts.push(cwe.$3_system);
-  if (cwe.$4_altCode) parts.push(cwe.$4_altCode);
-  if (cwe.$5_altDisplay) parts.push(cwe.$5_altDisplay);
-  if (cwe.$6_altSystem) parts.push(cwe.$6_altSystem);
-  if (cwe.$7_version) parts.push(cwe.$7_version);
-  if (cwe.$8_altVersion) parts.push(cwe.$8_altVersion);
-  if (cwe.$9_originalText) parts.push(cwe.$9_originalText);
+  if (cwe.$1_code) {parts.push(cwe.$1_code);}
+  if (cwe.$2_text) {parts.push(cwe.$2_text);}
+  if (cwe.$3_system) {parts.push(cwe.$3_system);}
+  if (cwe.$4_altCode) {parts.push(cwe.$4_altCode);}
+  if (cwe.$5_altDisplay) {parts.push(cwe.$5_altDisplay);}
+  if (cwe.$6_altSystem) {parts.push(cwe.$6_altSystem);}
+  if (cwe.$7_version) {parts.push(cwe.$7_version);}
+  if (cwe.$8_altVersion) {parts.push(cwe.$8_altVersion);}
+  if (cwe.$9_originalText) {parts.push(cwe.$9_originalText);}
 
-  if (parts.length === 0) return undefined;
+  if (parts.length === 0) {return undefined;}
 
   return {
     text: parts.join("^"),
@@ -70,10 +70,10 @@ export function convertCWEToAnnotation(cwe: CWE | undefined): Annotation | undef
 }
 
 export function convertCWEToDuration(cwe: CWE | undefined): Duration | undefined {
-  if (!cwe) return undefined;
+  if (!cwe) {return undefined;}
 
   const code = cwe.$1_code || cwe.$2_text;
-  if (!code) return undefined;
+  if (!code) {return undefined;}
 
   return {
     code,
@@ -81,7 +81,7 @@ export function convertCWEToDuration(cwe: CWE | undefined): Duration | undefined
 }
 
 export function convertCWEToIdentifier(cwe: CWE | undefined): Identifier[] | undefined {
-  if (!cwe) return undefined;
+  if (!cwe) {return undefined;}
 
   const identifiers: Identifier[] = [];
 
@@ -99,7 +99,7 @@ export function convertCWEToIdentifier(cwe: CWE | undefined): Identifier[] | und
     });
   }
 
-  if (identifiers.length === 0) return undefined;
+  if (identifiers.length === 0) {return undefined;}
 
   return identifiers;
 }

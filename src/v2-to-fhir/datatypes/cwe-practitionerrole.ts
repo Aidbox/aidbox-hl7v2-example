@@ -2,7 +2,7 @@ import type { CWE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding, PractitionerRole } from "../../fhir/hl7-fhir-r4-core";
 
 export function convertCWEToPractitionerRole(cwe: CWE | undefined): PractitionerRole | undefined {
-  if (!cwe) return undefined;
+  if (!cwe) {return undefined;}
 
   const codings: Coding[] = [];
 
@@ -22,7 +22,7 @@ export function convertCWEToPractitionerRole(cwe: CWE | undefined): Practitioner
     });
   }
 
-  if (codings.length === 0) return undefined;
+  if (codings.length === 0) {return undefined;}
 
   const code: CodeableConcept = {
     coding: codings,

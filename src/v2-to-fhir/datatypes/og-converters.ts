@@ -26,7 +26,7 @@ export interface OG {
  * All are nested within observation-v2-subid extension.
  */
 export function convertOGToExtension(og: OG | undefined): Extension | undefined {
-  if (!og) return undefined;
+  if (!og) {return undefined;}
   if (!og.$1_originalSubIdentifier && !og.$2_group && !og.$3_sequence && !og.$4_identifier) {
     return undefined;
   }
@@ -67,7 +67,7 @@ export function convertOGToExtension(og: OG | undefined): Extension | undefined 
     });
   }
 
-  if (subExtensions.length === 0) return undefined;
+  if (subExtensions.length === 0) {return undefined;}
 
   return {
     url: SUBID_EXTENSION_URL,

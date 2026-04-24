@@ -37,8 +37,8 @@ export interface WrappedOBX extends OBX {
  * - {1: "", 2: "1", 3: ":", 4: "128"} → "^1^:^128" (ratio 1:128)
  */
 function reconstructSNValue(rawField: unknown): string | undefined {
-  if (!rawField) return undefined;
-  if (typeof rawField === "string") return rawField;
+  if (!rawField) {return undefined;}
+  if (typeof rawField === "string") {return rawField;}
 
   if (typeof rawField === "object" && rawField !== null) {
     const obj = rawField as Record<string, string>;

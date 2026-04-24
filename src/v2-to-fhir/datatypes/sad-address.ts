@@ -15,15 +15,15 @@ import type { Address } from "../../fhir/hl7-fhir-r4-core";
  * - SAD.3 (Dwelling Number) -> line[2]
  */
 export function convertSADToAddress(sad: SAD | undefined): Address | undefined {
-  if (!sad) return undefined;
+  if (!sad) {return undefined;}
 
   const line: string[] = [];
 
-  if (sad.$1_line) line.push(sad.$1_line);
-  if (sad.$2_streetName) line.push(sad.$2_streetName);
-  if (sad.$3_houseNumber) line.push(sad.$3_houseNumber);
+  if (sad.$1_line) {line.push(sad.$1_line);}
+  if (sad.$2_streetName) {line.push(sad.$2_streetName);}
+  if (sad.$3_houseNumber) {line.push(sad.$3_houseNumber);}
 
-  if (line.length === 0) return undefined;
+  if (line.length === 0) {return undefined;}
 
   return { line };
 }

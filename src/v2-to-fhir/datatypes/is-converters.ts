@@ -10,7 +10,7 @@ import type { CodeableConcept } from "../../fhir/hl7-fhir-r4-core";
  * Vocabulary mapping is typically done at the segment's field level.
  */
 export function convertISToCode(is: string | undefined): string | undefined {
-  if (!is) return undefined;
+  if (!is) {return undefined;}
   return is;
 }
 
@@ -21,7 +21,7 @@ export function convertISToCode(is: string | undefined): string | undefined {
  * - IS value -> coding[0].code
  */
 export function convertISToCodeableConcept(is: string | undefined): CodeableConcept | undefined {
-  if (!is) return undefined;
+  if (!is) {return undefined;}
 
   return {
     coding: [{ code: is }],
@@ -35,6 +35,6 @@ export function convertISToCodeableConcept(is: string | undefined): CodeableConc
  * - IS value -> $value (string)
  */
 export function convertISToString(is: string | undefined): string | undefined {
-  if (!is) return undefined;
+  if (!is) {return undefined;}
   return is;
 }

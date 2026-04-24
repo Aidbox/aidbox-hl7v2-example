@@ -49,7 +49,7 @@ export function buildMappingErrorResult(
   const unmappedCodes: UnmappedCode[] = [];
 
   for (const error of mappingErrors) {
-    if (!error.localCode) continue;
+    if (!error.localCode) {continue;}
     if (!error.localSystem) {
       throw new Error(
         `Cannot create mapping task: localSystem is required. ` +
@@ -64,7 +64,7 @@ export function buildMappingErrorResult(
       error.localCode,
     );
 
-    if (seenTaskIds.has(taskId)) continue;
+    if (seenTaskIds.has(taskId)) {continue;}
     seenTaskIds.add(taskId);
 
     entries.push(composeMappingTask(senderContext, error));

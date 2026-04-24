@@ -25,8 +25,8 @@ import { toKebabCase } from "../../utils/string";
  * Convert HL7v2 DT to FHIR dateTime
  */
 function convertDTToDateTime(dt: string | undefined): string | undefined {
-  if (!dt) return undefined;
-  if (dt.length < 8) return undefined;
+  if (!dt) {return undefined;}
+  if (dt.length < 8) {return undefined;}
 
   const year = dt.substring(0, 4);
   const month = dt.substring(4, 6);
@@ -39,7 +39,7 @@ function convertDTToDateTime(dt: string | undefined): string | undefined {
  * Convert CWE/CE to Identifier
  */
 function convertCEToIdentifier(ce: CE | undefined): Identifier | undefined {
-  if (!ce) return undefined;
+  if (!ce) {return undefined;}
 
   const identifier: Identifier = {};
 
@@ -57,7 +57,7 @@ function convertCEToIdentifier(ce: CE | undefined): Identifier | undefined {
     };
   }
 
-  if (!identifier.value) return undefined;
+  if (!identifier.value) {return undefined;}
 
   return identifier;
 }
@@ -69,7 +69,7 @@ function convertCEToIdentifier(ce: CE | undefined): Identifier | undefined {
 function determineCoverageStatus(
   periodEnd: string | undefined,
 ): "active" | "cancelled" {
-  if (!periodEnd) return "active";
+  if (!periodEnd) {return "active";}
 
   const now = new Date();
   const endDate = new Date(periodEnd);
@@ -177,8 +177,8 @@ export function convertIN1ToCoverage(
 
   if (periodStart || periodEnd) {
     const period: Period = {};
-    if (periodStart) period.start = periodStart;
-    if (periodEnd) period.end = periodEnd;
+    if (periodStart) {period.start = periodStart;}
+    if (periodEnd) {period.end = periodEnd;}
     coverage.period = period;
   }
 
@@ -293,12 +293,12 @@ export function generateCoverageId(in1: IN1, patientId: string | undefined): str
 export function hasValidPayorInfo(in1: IN1): boolean {
   if (in1.$4_insuranceCompanyName && in1.$4_insuranceCompanyName.length > 0) {
     const hasName = in1.$4_insuranceCompanyName.some((xon: XON) => xon.$1_name);
-    if (hasName) return true;
+    if (hasName) {return true;}
   }
 
   if (in1.$3_insuranceCompanyId && in1.$3_insuranceCompanyId.length > 0) {
     const hasId = in1.$3_insuranceCompanyId.some((cx: CX) => cx.$1_value);
-    if (hasId) return true;
+    if (hasId) {return true;}
   }
 
   return false;

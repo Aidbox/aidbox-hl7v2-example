@@ -131,7 +131,7 @@ export async function getTypeChipCounts(): Promise<TypeChipCount[]> {
   let errorCount = 0;
   for (const e of entries) {
     const r = e.resource;
-    if (!r) continue;
+    if (!r) {continue;}
     const t = r.type ?? "—";
     typeBuckets.set(t, (typeBuckets.get(t) ?? 0) + 1);
     if (r.status && (ERROR_STATUSES as readonly string[]).includes(r.status)) {
@@ -232,17 +232,17 @@ export function statusToTone(p: ParsedIncomingMessage): MessageTone {
  * through to "pend" rather than crashing the timeline.
  */
 export function statusStringToTone(s: string | undefined): MessageTone {
-  if (!s) return "pend";
-  if (s === "processed" || s === "warning") return "ok";
-  if (s === "code_mapping_error") return "warn";
-  if (s.endsWith("_error")) return "err";
+  if (!s) {return "pend";}
+  if (s === "processed" || s === "warning") {return "ok";}
+  if (s === "code_mapping_error") {return "warn";}
+  if (s.endsWith("_error")) {return "err";}
   return "pend";
 }
 
 function toneDot(tone: MessageTone): string {
-  if (tone === "ok") return "dot ok";
-  if (tone === "warn") return "dot warn";
-  if (tone === "err") return "dot err";
+  if (tone === "ok") {return "dot ok";}
+  if (tone === "warn") {return "dot warn";}
+  if (tone === "err") {return "dot err";}
   // `pend` (received / queued-for-worker): animated pulse so the user
   // sees the message is actively being worked on, not stuck. The
   // in-process worker polls every ~5s so the flip to "processed" is
@@ -251,9 +251,9 @@ function toneDot(tone: MessageTone): string {
 }
 
 function toneChip(tone: MessageTone): string {
-  if (tone === "ok") return `<span class="chip chip-ok">processed</span>`;
-  if (tone === "warn") return `<span class="chip chip-warn">needs mapping</span>`;
-  if (tone === "err") return `<span class="chip chip-err">error</span>`;
+  if (tone === "ok") {return `<span class="chip chip-ok">processed</span>`;}
+  if (tone === "warn") {return `<span class="chip chip-warn">needs mapping</span>`;}
+  if (tone === "err") {return `<span class="chip chip-err">error</span>`;}
   // Active-state chip: inline spinner + "processing" text so the user
   // sees activity rather than a static "pending" label. Per-row polling
   // (see renderRowStatusCell) swaps this into its settled form when the
@@ -315,9 +315,9 @@ export function renderRowStatusCell(p: ParsedIncomingMessage): string {
 }
 
 function formatTime(iso: string | undefined): string {
-  if (!iso) return "--:--:--";
+  if (!iso) {return "--:--:--";}
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "--:--:--";
+  if (Number.isNaN(d.getTime())) {return "--:--:--";}
   return d.toLocaleTimeString("en-US", { hour12: false });
 }
 
@@ -368,9 +368,9 @@ export function renderTypeChipsPartial(
   const qs = (override: Partial<InboundFilters>): string => {
     const merged = { ...otherFilters, ...override };
     const params = new URLSearchParams();
-    if (merged.type) params.set("type", merged.type);
-    if (merged.status) params.set("status", merged.status);
-    if (merged.batch) params.set("batch", merged.batch);
+    if (merged.type) {params.set("type", merged.type);}
+    if (merged.status) {params.set("status", merged.status);}
+    if (merged.batch) {params.set("batch", merged.batch);}
     const s = params.toString();
     return s ? `?${s}` : "";
   };
@@ -444,9 +444,9 @@ function renderTypeFilterHeader(
   // meaningless).
   const urlFor = (type: string | undefined): string => {
     const p = new URLSearchParams();
-    if (type) p.set("type", type);
-    if (filters.status) p.set("status", filters.status);
-    if (filters.batch) p.set("batch", filters.batch);
+    if (type) {p.set("type", type);}
+    if (filters.status) {p.set("status", filters.status);}
+    if (filters.batch) {p.set("batch", filters.batch);}
     const s = p.toString();
     return `/incoming-messages${s ? `?${s}` : ""}`;
   };
@@ -499,9 +499,9 @@ function renderStatusFilterHeader(filters: InboundFilters): string {
   const errorsOn = filters.status === "errors";
   const urlFor = (status: string | undefined): string => {
     const p = new URLSearchParams();
-    if (filters.type) p.set("type", filters.type);
-    if (status) p.set("status", status);
-    if (filters.batch) p.set("batch", filters.batch);
+    if (filters.type) {p.set("type", filters.type);}
+    if (status) {p.set("status", status);}
+    if (filters.batch) {p.set("batch", filters.batch);}
     const s = p.toString();
     return `/incoming-messages${s ? `?${s}` : ""}`;
   };
@@ -576,10 +576,10 @@ function renderListRow(p: ParsedIncomingMessage, index: number, selectedId: stri
 
 function buildListUrl(filters: InboundFilters): string {
   const params = new URLSearchParams();
-  if (filters.type) params.set("type", filters.type);
-  if (filters.status) params.set("status", filters.status);
-  if (filters.batch) params.set("batch", filters.batch);
-  if (filters.selected) params.set("selected", filters.selected);
+  if (filters.type) {params.set("type", filters.type);}
+  if (filters.status) {params.set("status", filters.status);}
+  if (filters.batch) {params.set("batch", filters.batch);}
+  if (filters.selected) {params.set("selected", filters.selected);}
   const s = params.toString();
   return `/incoming-messages/partials/list${s ? `?${s}` : ""}`;
 }
@@ -630,7 +630,7 @@ function renderPager(
   pageSize: number,
   total: number,
 ): string {
-  if (total === 0) return "";
+  if (total === 0) {return "";}
   const page = filters.page ?? 1;
   const totalPages = Math.max(1, Math.ceil(total / LIST_COUNT));
   const offset = (page - 1) * LIST_COUNT;
@@ -641,10 +641,10 @@ function renderPager(
   const needsPager = total > LIST_COUNT;
   const qsForPage = (p: number): string => {
     const params = new URLSearchParams();
-    if (filters.type) params.set("type", filters.type);
-    if (filters.status) params.set("status", filters.status);
-    if (filters.batch) params.set("batch", filters.batch);
-    if (p > 1) params.set("page", String(p));
+    if (filters.type) {params.set("type", filters.type);}
+    if (filters.status) {params.set("status", filters.status);}
+    if (filters.batch) {params.set("batch", filters.batch);}
+    if (p > 1) {params.set("page", String(p));}
     const s = params.toString();
     return `/incoming-messages${s ? `?${s}` : ""}`;
   };
@@ -673,10 +673,10 @@ function renderPager(
 
 function titleForFilters(filters: InboundFilters, count: number): string {
   const parts: string[] = [];
-  if (filters.type) parts.push(displayMessageType(filters.type));
-  if (filters.status === "errors") parts.push("errors");
-  else if (filters.status) parts.push(filters.status);
-  if (filters.batch) parts.push(`batch ${filters.batch}`);
+  if (filters.type) {parts.push(displayMessageType(filters.type));}
+  if (filters.status === "errors") {parts.push("errors");}
+  else if (filters.status) {parts.push(filters.status);}
+  if (filters.batch) {parts.push(`batch ${filters.batch}`);}
   const base = parts.length ? parts.join(" · ") : "All messages";
   return `${base} (${count})`;
 }
@@ -717,8 +717,8 @@ async function renderInboundBody(
   errorCount: number,
 ): Promise<string> {
   const subBits: string[] = [`${totalToday} received today`];
-  if (triageCount > 0) subBits.push(`<span class="text-warn">${triageCount} in triage</span>`);
-  if (errorCount > 0) subBits.push(`<span class="text-err">${errorCount} errors</span>`);
+  if (triageCount > 0) {subBits.push(`<span class="text-warn">${triageCount} in triage</span>`);}
+  if (errorCount > 0) {subBits.push(`<span class="text-err">${errorCount} errors</span>`);}
 
   const detail = selectedMessage
     ? await renderDetailCard(selectedMessage, "structured")
@@ -869,7 +869,7 @@ export async function handleInboundTypeChipsPartial(
 export async function handleInboundRowStatusPartial(
   id: string,
 ): Promise<Response> {
-  if (!id) return new Response("missing id", { status: 400 });
+  if (!id) {return new Response("missing id", { status: 400 });}
   try {
     const raw = await aidboxFetch<IncomingHL7v2Message>(
       `/fhir/IncomingHL7v2Message/${encodeURIComponent(id)}`,

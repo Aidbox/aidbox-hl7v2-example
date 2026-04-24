@@ -11,7 +11,7 @@
  * @returns FHIR system URI or original value if no mapping exists
  */
 export function normalizeSystem(system: string | undefined): string | undefined {
-  if (!system) return undefined;
+  if (!system) {return undefined;}
 
   const upper = system.toUpperCase();
   if (upper === "LN" || upper === "LOINC") {

@@ -42,7 +42,7 @@ function findPv1Segment(parsed: ReturnType<typeof parseMessage>) {
 
 function getPv1_19Authority(parsed: ReturnType<typeof parseMessage>): string | undefined {
   const pv1Segment = findPv1Segment(parsed);
-  if (!pv1Segment) return undefined;
+  if (!pv1Segment) {return undefined;}
   const pv1 = fromPV1(pv1Segment);
   return pv1.$19_visitNumber?.$4_system?.$1_namespace;
 }
@@ -357,7 +357,7 @@ describe("preprocessMessage", () => {
 
     function getOrc3(parsed: ReturnType<typeof parseMessage>) {
       const orcSegment = parsed.find((s) => s.segment === "ORC");
-      if (!orcSegment) return undefined;
+      if (!orcSegment) {return undefined;}
       return fromORC(orcSegment).$3_fillerOrderNumber;
     }
 
@@ -451,7 +451,7 @@ describe("preprocessMessage", () => {
 
     function getRxaFields(parsed: ReturnType<typeof parseMessage>) {
       const rxaSegment = parsed.find((s) => s.segment === "RXA");
-      if (!rxaSegment) return undefined;
+      if (!rxaSegment) {return undefined;}
       const rxa = fromRXA(rxaSegment);
       return {
         dose: rxa.$6_administeredAmount,
@@ -569,7 +569,7 @@ describe("preprocessMessage", () => {
 
     function getRxa9(parsed: ReturnType<typeof parseMessage>) {
       const rxaSegment = parsed.find((s) => s.segment === "RXA");
-      if (!rxaSegment) return undefined;
+      if (!rxaSegment) {return undefined;}
       return fromRXA(rxaSegment).$9_administrationNotes;
     }
 

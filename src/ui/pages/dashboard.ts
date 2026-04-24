@@ -76,15 +76,15 @@ function computeAvgLatencyMs(entries: ProcessedEntry[]): number | null {
   const samples: number[] = [];
   for (const e of entries) {
     const r = e.resource;
-    if (!r?.date || !r?.meta?.lastUpdated) continue;
+    if (!r?.date || !r?.meta?.lastUpdated) {continue;}
     const sent = Date.parse(r.date);
     const done = Date.parse(r.meta.lastUpdated);
-    if (!Number.isFinite(sent) || !Number.isFinite(done) || done < sent) continue;
+    if (!Number.isFinite(sent) || !Number.isFinite(done) || done < sent) {continue;}
     const dt = done - sent;
-    if (dt > LIVE_PATH_LATENCY_CAP_MS) continue;
+    if (dt > LIVE_PATH_LATENCY_CAP_MS) {continue;}
     samples.push(dt);
   }
-  if (!samples.length) return null;
+  if (!samples.length) {return null;}
   return Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
 }
 
@@ -118,17 +118,17 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 function toTickerStatus(
   status: IncomingHL7v2Message["status"],
 ): TickerRow["status"] {
-  if (!status) return "pend";
-  if (status === "processed" || status === "warning") return "ok";
-  if (status === "code_mapping_error") return "warn";
-  if (status.endsWith("_error")) return "err";
+  if (!status) {return "pend";}
+  if (status === "processed" || status === "warning") {return "ok";}
+  if (status === "code_mapping_error") {return "warn";}
+  if (status.endsWith("_error")) {return "err";}
   return "pend";
 }
 
 function formatClock(iso: string | undefined): string {
-  if (!iso) return "--:--:--";
+  if (!iso) {return "--:--:--";}
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "--:--:--";
+  if (Number.isNaN(d.getTime())) {return "--:--:--";}
   return d.toLocaleTimeString("en-US", { hour12: false });
 }
 
@@ -341,8 +341,8 @@ function formatLatency(ms: number | null): { value: string; sub: string } {
   // (sent → processed, triage outliers stripped) lives on a hover tooltip
   // added next to the label in renderStatsPartial.
   const sub = "avg";
-  if (ms === null) return { value: "—", sub };
-  if (ms < 1000) return { value: `${ms}ms`, sub };
+  if (ms === null) {return { value: "—", sub };}
+  if (ms < 1000) {return { value: `${ms}ms`, sub };}
   return { value: `${(ms / 1000).toFixed(1)}s`, sub };
 }
 
@@ -386,9 +386,9 @@ export function renderStatsPartial(stats: DashboardStats): string {
 }
 
 function statusChip(status: TickerRow["status"]): string {
-  if (status === "ok") return `<span class="chip chip-ok">processed</span>`;
-  if (status === "warn") return `<span class="chip chip-warn">needs mapping</span>`;
-  if (status === "err") return `<span class="chip chip-err">error</span>`;
+  if (status === "ok") {return `<span class="chip chip-ok">processed</span>`;}
+  if (status === "warn") {return `<span class="chip chip-warn">needs mapping</span>`;}
+  if (status === "err") {return `<span class="chip chip-err">error</span>`;}
   return `<span class="chip">pending</span>`;
 }
 

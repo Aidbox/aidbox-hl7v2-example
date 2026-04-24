@@ -105,14 +105,14 @@ function prepareDG1ForExtraction(segments: HL7v2Segment[]): HL7v2Segment[] {
   for (const items of grouped.values()) {
     // Sort by priority: null last, then ascending (1 < 2 < 3)
     items.sort((a, b) => {
-      if (a.priority === null && b.priority === null) return 0;
-      if (a.priority === null) return 1; // null ranks last
-      if (b.priority === null) return -1;
+      if (a.priority === null && b.priority === null) {return 0;}
+      if (a.priority === null) {return 1;} // null ranks last
+      if (b.priority === null) {return -1;}
       return a.priority - b.priority; // ascending
     });
 
     const first = items[0];
-    if (first) deduplicated.push(first.segment);
+    if (first) {deduplicated.push(first.segment);}
   }
 
   return deduplicated;
@@ -413,7 +413,7 @@ export async function convertADT_A01(
   // =========================================================================
 
   const entries: DomainResource[] = [patient];
-  if (encounter) entries.push(encounter);
+  if (encounter) {entries.push(encounter);}
   entries.push(...relatedPersons, ...conditions, ...allergies, ...coverages);
 
   if (encounterWarning) {

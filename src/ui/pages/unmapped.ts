@@ -71,7 +71,7 @@ export async function getQueueEntries(): Promise<QueueEntry[]> {
   for (const msg of messages) {
     const sender = msg.sendingApplication ?? "";
     for (const uc of msg.unmappedCodes ?? []) {
-      if (!uc.localCode) continue;
+      if (!uc.localCode) {continue;}
       const key = `${uc.localCode}|${sender}`;
       msgCounts.set(key, (msgCounts.get(key) ?? 0) + 1);
     }
@@ -85,9 +85,9 @@ export async function getQueueEntries(): Promise<QueueEntry[]> {
     const localCode = getTaskInput(task, "Local code");
     const sender = getTaskInput(task, "Sending application");
     const field = getTaskInput(task, "Field") || getTaskInput(task, "Local system");
-    if (!localCode) continue;
+    if (!localCode) {continue;}
     const key = `${localCode}|${sender}|${field}`;
-    if (groups.has(key)) continue;
+    if (groups.has(key)) {continue;}
     const msgKey = `${localCode}|${sender}`;
     groups.set(key, {
       taskId: task.id ?? "",
@@ -592,8 +592,8 @@ export async function handleUnmappedQueuePartial(
   // the full page. htmx requests come through as-is.
   if (req.headers.get("HX-Request") !== "true") {
     const qs = new URLSearchParams();
-    if (selectedCode) qs.set("code", selectedCode);
-    if (selectedSender) qs.set("sender", selectedSender);
+    if (selectedCode) {qs.set("code", selectedCode);}
+    if (selectedSender) {qs.set("sender", selectedSender);}
     const s = qs.toString();
     return new Response(null, {
       status: 302,
@@ -609,7 +609,7 @@ export async function handleUnmappedEditorPartial(
 ): Promise<Response> {
   const params = (req as Request & { params?: Record<string, string> }).params;
   const rawCode = params?.code;
-  if (!rawCode) return new Response("Missing code", { status: 400 });
+  if (!rawCode) {return new Response("Missing code", { status: 400 });}
   const localCode = decodeURIComponent(rawCode);
 
   const url = new URL(req.url);
@@ -621,7 +621,7 @@ export async function handleUnmappedEditorPartial(
   // sensible instead of a broken-looking dump.
   if (req.headers.get("HX-Request") !== "true") {
     const qs = new URLSearchParams({ code: localCode });
-    if (sender) qs.set("sender", sender);
+    if (sender) {qs.set("sender", sender);}
     return new Response(null, {
       status: 302,
       headers: { Location: `/unmapped-codes?${qs.toString()}` },
@@ -633,9 +633,9 @@ export async function handleUnmappedEditorPartial(
     (e) => e.localCode === localCode && (!sender || e.sender === sender),
   );
   if (!entry)
-    return new Response(renderEmptyEditor(), {
+    {return new Response(renderEmptyEditor(), {
       headers: { "Content-Type": "text/html" },
-    });
+    });}
 
   const suggestions = await suggestCodes(entry.display, entry.field);
   const html = await renderEditorPartial(entry, suggestions);

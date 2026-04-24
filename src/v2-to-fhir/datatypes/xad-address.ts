@@ -47,8 +47,8 @@ function buildPeriod(xad: XAD): Period | undefined {
 
   if (hasExplicitDates) {
     const period: Period = {};
-    if (xad.$13_start) period.start = xad.$13_start;
-    if (xad.$14_end) period.end = xad.$14_end;
+    if (xad.$13_start) {period.start = xad.$13_start;}
+    if (xad.$14_end) {period.end = xad.$14_end;}
     return period;
   }
 
@@ -116,7 +116,7 @@ function buildExtensions(xad: XAD): Extension[] | undefined {
  * - XAD.19             -> line[4]
  */
 export function convertXADToAddress(xad: XAD | undefined): Address | undefined {
-  if (!xad) return undefined;
+  if (!xad) {return undefined;}
 
   // Build address lines
   const line: string[] = [];
@@ -144,7 +144,7 @@ export function convertXADToAddress(xad: XAD | undefined): Address | undefined {
     xad.$6_country ||
     xad.$9_district;
 
-  if (!hasData) return undefined;
+  if (!hasData) {return undefined;}
 
   // XAD.7: Address Type -> type or use
   const addressTypeCode = xad.$7_type?.toUpperCase();
@@ -177,13 +177,13 @@ export function convertXADToAddress(xad: XAD | undefined): Address | undefined {
 export function convertXADArrayToAddresses(
   xads: XAD[] | undefined
 ): Address[] | undefined {
-  if (!xads || xads.length === 0) return undefined;
+  if (!xads || xads.length === 0) {return undefined;}
 
   const addresses: Address[] = [];
 
   for (const xad of xads) {
     const address = convertXADToAddress(xad);
-    if (address) addresses.push(address);
+    if (address) {addresses.push(address);}
   }
 
   return addresses.length > 0 ? addresses : undefined;

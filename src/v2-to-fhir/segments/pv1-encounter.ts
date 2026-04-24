@@ -93,7 +93,7 @@ export type PatientClassResult =
  */
 export function mapPatientClassToFHIRWithResult(
   patientClass: string | undefined,
-  hasDischargeDateTime: boolean = false,
+  hasDischargeDateTime = false,
 ): PatientClassResult {
   // Normalize to uppercase for comparison
   const classCode = patientClass?.toUpperCase() || "U";
@@ -279,7 +279,7 @@ const LOCATION_CLASSIFICATION_URL = "http://hl7.org/fhir/StructureDefinition/sub
  * FHIR requires timezone when time is present
  */
 function convertDTMToDateTime(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
+  if (!dtm) {return undefined;}
 
   // Extract timezone if present (+/-ZZZZ at the end)
   const tzMatch = dtm.match(/([+-]\d{4})$/);
@@ -294,14 +294,14 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
   const second = dtmWithoutTz.substring(12, 14);
 
   // Date-only formats don't need timezone
-  if (dtmWithoutTz.length === 4) return year;
-  if (dtmWithoutTz.length === 6) return `${year}-${month}`;
-  if (dtmWithoutTz.length === 8) return `${year}-${month}-${day}`;
+  if (dtmWithoutTz.length === 4) {return year;}
+  if (dtmWithoutTz.length === 6) {return `${year}-${month}`;}
+  if (dtmWithoutTz.length === 8) {return `${year}-${month}-${day}`;}
 
   // DateTime formats require timezone
   if (dtmWithoutTz.length >= 12) {
     const base = `${year}-${month}-${day}T${hour}:${minute}`;
-    if (dtmWithoutTz.length >= 14) return `${base}:${second}${timezone}`;
+    if (dtmWithoutTz.length >= 14) {return `${base}:${second}${timezone}`;}
     return `${base}:00${timezone}`;
   }
 
@@ -324,7 +324,7 @@ function formatTimezone(tz: string): string {
 function convertCEOrCWEToCodeableConcept(
   value: CE | CWE | string | undefined
 ): CodeableConcept | undefined {
-  if (!value) return undefined;
+  if (!value) {return undefined;}
   if (typeof value === "string") {
     return { coding: [{ code: value }] };
   }
@@ -337,7 +337,7 @@ function convertCEOrCWEToCodeableConcept(
 function convertCEOrCWEToCoding(
   value: CE | CWE | string | undefined
 ): Coding | undefined {
-  if (!value) return undefined;
+  if (!value) {return undefined;}
   if (typeof value === "string") {
     return { code: value };
   }
@@ -352,13 +352,13 @@ function createParticipant(
   typeCode: string,
   typeDisplay: string
 ): EncounterParticipant[] {
-  if (!xcns || xcns.length === 0) return [];
+  if (!xcns || xcns.length === 0) {return [];}
 
   const participants: EncounterParticipant[] = [];
 
   for (const xcn of xcns) {
     const practitioner = convertXCNToPractitioner(xcn);
-    if (!practitioner) continue;
+    if (!practitioner) {continue;}
 
     // Create a contained reference or inline reference
     // For simplicity, we'll use display-only reference
@@ -381,10 +381,10 @@ function createParticipant(
     const name = practitioner.name?.[0];
     if (name) {
       const displayParts: string[] = [];
-      if (name.prefix) displayParts.push(...name.prefix);
-      if (name.given) displayParts.push(...name.given);
-      if (name.family) displayParts.push(name.family);
-      if (name.suffix) displayParts.push(...name.suffix);
+      if (name.prefix) {displayParts.push(...name.prefix);}
+      if (name.given) {displayParts.push(...name.given);}
+      if (name.family) {displayParts.push(name.family);}
+      if (name.suffix) {displayParts.push(...name.suffix);}
 
       if (displayParts.length > 0) {
         participant.individual = {
@@ -417,16 +417,16 @@ function createEncounterLocation(
   status: EncounterLocation["status"],
   extension?: Extension[]
 ): EncounterLocation | undefined {
-  if (!pl) return undefined;
+  if (!pl) {return undefined;}
 
   const locationData = convertPLToLocation(pl);
-  if (!locationData) return undefined;
+  if (!locationData) {return undefined;}
 
   // Build a display name from location identifiers
   const displayParts: string[] = [];
   if (locationData.identifier) {
     for (const id of locationData.identifier) {
-      if (id.value) displayParts.push(id.value);
+      if (id.value) {displayParts.push(id.value);}
     }
   }
   if (locationData.description) {
@@ -534,7 +534,7 @@ export function buildEncounterFromPV1(
   // PV1-50: Alternate Visit ID -> identifier
   if (pv1.$50_alternateVisitId) {
     const altId = convertCXToIdentifier(pv1.$50_alternateVisitId);
-    if (altId) identifiers.push(altId);
+    if (altId) {identifiers.push(altId);}
   }
 
   if (identifiers.length > 0) {
@@ -614,14 +614,14 @@ export function buildEncounterFromPV1(
     pv1.$3_assignedPatientLocation,
     assignedLocationStatus
   );
-  if (assignedLocation) locations.push(assignedLocation);
+  if (assignedLocation) {locations.push(assignedLocation);}
 
   // PV1-6: Prior Patient Location -> location[2] with status=completed
   const priorLocation = createEncounterLocation(
     pv1.$6_priorPatientLocation,
     "completed"
   );
-  if (priorLocation) locations.push(priorLocation);
+  if (priorLocation) {locations.push(priorLocation);}
 
   // PV1-11: Temporary Location -> location[3] with status=active and extension
   if (pv1.$11_temporaryLocation) {
@@ -643,7 +643,7 @@ export function buildEncounterFromPV1(
       "active",
       tempExtension
     );
-    if (tempLocation) locations.push(tempLocation);
+    if (tempLocation) {locations.push(tempLocation);}
   }
 
   // PV1-42: Pending Location -> location[4] with status=reserved
@@ -651,7 +651,7 @@ export function buildEncounterFromPV1(
     pv1.$42_pendingLocation,
     "reserved"
   );
-  if (pendingLocation) locations.push(pendingLocation);
+  if (pendingLocation) {locations.push(pendingLocation);}
 
   if (locations.length > 0) {
     encounter.location = locations;
@@ -695,7 +695,7 @@ export function buildEncounterFromPV1(
     const specialArrangements: CodeableConcept[] = [];
     for (const status of pv1.$15_ambulatoryStatus) {
       const arrangement = convertCEOrCWEToCodeableConcept(status);
-      if (arrangement) specialArrangements.push(arrangement);
+      if (arrangement) {specialArrangements.push(arrangement);}
     }
     if (specialArrangements.length > 0) {
       hospitalization.specialArrangement = specialArrangements;
@@ -801,7 +801,7 @@ export async function convertPV1WithMappingSupport(
  * Returns uppercase code, defaults to "U" (Unknown) if not present.
  */
 export function extractPatientClass(pv1: PV1): string {
-  if (!pv1.$2_class) return "U";
+  if (!pv1.$2_class) {return "U";}
 
   if (typeof pv1.$2_class === "string") {
     return pv1.$2_class.toUpperCase();

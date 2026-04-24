@@ -2,8 +2,8 @@ import type { FN } from "../../hl7v2/generated/fields";
 import type { HumanName, Extension } from "../../fhir/hl7-fhir-r4-core";
 
 export function convertFNToHumanName(fn: FN | undefined): HumanName | undefined {
-  if (!fn) return undefined;
-  if (!fn.$1_family) return undefined;
+  if (!fn) {return undefined;}
+  if (!fn.$1_family) {return undefined;}
 
   const extensions: Extension[] = [];
 

@@ -111,7 +111,7 @@ export interface ParsedReferenceRange {
 export function parseReferenceRange(
   range: string | undefined,
 ): ParsedReferenceRange {
-  if (!range) return {};
+  if (!range) {return {};}
 
   const result: ParsedReferenceRange = {};
 
@@ -168,7 +168,7 @@ export interface ParsedStructuredNumeric {
  * - "^1^:^128" → ratio
  */
 export function parseStructuredNumeric(sn: string): ParsedStructuredNumeric {
-  if (!sn) return { type: "string", raw: sn };
+  if (!sn) {return { type: "string", raw: sn };}
 
   const parts = sn.split("^");
 
@@ -222,7 +222,7 @@ export function parseStructuredNumeric(sn: string): ParsedStructuredNumeric {
  * Convert HL7v2 TM to FHIR time
  */
 function convertTMToTime(tm: string | undefined): string | undefined {
-  if (!tm) return undefined;
+  if (!tm) {return undefined;}
 
   const hour = tm.substring(0, 2);
   const minute = tm.substring(2, 4) || "00";

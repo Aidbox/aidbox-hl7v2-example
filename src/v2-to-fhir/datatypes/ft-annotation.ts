@@ -10,7 +10,7 @@ import type { Annotation } from "../../fhir/hl7-fhir-r4-core";
  * formatting escape sequences. This converter preserves the text as-is.
  */
 export function convertFTToAnnotation(ft: string | undefined): Annotation | undefined {
-  if (!ft) return undefined;
+  if (!ft) {return undefined;}
 
   return {
     text: ft,

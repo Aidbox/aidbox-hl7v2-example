@@ -14,8 +14,8 @@ const DRIVER_LICENSE_TYPE_CODE = "DL";
  * - DLN.3 (Expiration Date) -> period.end
  */
 export function convertDLNToIdentifier(dln: DLN | undefined): Identifier | undefined {
-  if (!dln) return undefined;
-  if (!dln.$1_license) return undefined;
+  if (!dln) {return undefined;}
+  if (!dln.$1_license) {return undefined;}
 
   const identifier: Identifier = {
     value: dln.$1_license,

@@ -30,8 +30,8 @@ const MOTHER_RELATIONSHIP_CODE = "MTH";
  * - Fixed: relationship.coding[0].system = "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
  */
 export function convertCXToRelatedPersonMother(cx: CX | undefined): RelatedPersonMotherData | undefined {
-  if (!cx) return undefined;
-  if (!cx.$1_value) return undefined;
+  if (!cx) {return undefined;}
+  if (!cx.$1_value) {return undefined;}
 
   const result: RelatedPersonMotherData = {
     relationship: {
@@ -67,8 +67,8 @@ export function convertCXToRelatedPersonMother(cx: CX | undefined): RelatedPerso
   // Map period (effective and expiration dates)
   if (cx.$7_start || cx.$8_end) {
     const period: Period = {};
-    if (cx.$7_start) period.start = cx.$7_start;
-    if (cx.$8_end) period.end = cx.$8_end;
+    if (cx.$7_start) {period.start = cx.$7_start;}
+    if (cx.$8_end) {period.end = cx.$8_end;}
     identifier.period = period;
   }
 

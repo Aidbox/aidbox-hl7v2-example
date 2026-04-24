@@ -28,7 +28,7 @@ export function sendMLLPMessage(
       buffer = Buffer.concat([buffer, data]);
 
       const startIndex = buffer.indexOf(VT);
-      if (startIndex === -1) return;
+      if (startIndex === -1) {return;}
 
       for (let i = startIndex + 1; i < buffer.length - 1; i++) {
         if (buffer[i] === FS && buffer[i + 1] === CR) {
@@ -68,10 +68,10 @@ export function rewriteMessageControlId(raw: string, newId: string): string {
   const separators = raw.match(segmentDelimiter) ?? [];
 
   const mshIndex = segments.findIndex((seg) => seg.startsWith("MSH"));
-  if (mshIndex === -1) return raw;
+  if (mshIndex === -1) {return raw;}
 
   const mshSegment = segments[mshIndex];
-  if (mshSegment === undefined) return raw;
+  if (mshSegment === undefined) {return raw;}
   segments[mshIndex] = replaceMshControlId(mshSegment, newId);
 
   const pieces: string[] = [segments[0] ?? ""];

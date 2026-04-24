@@ -12,7 +12,7 @@ import type { Period } from "../../fhir/hl7-fhir-r4-core";
  * returns the value as-is; format conversion should be handled separately.
  */
 export function convertDRToDateTime(dr: DR | undefined): string | undefined {
-  if (!dr) return undefined;
+  if (!dr) {return undefined;}
 
   return dr.$1_start;
 }
@@ -25,13 +25,13 @@ export function convertDRToDateTime(dr: DR | undefined): string | undefined {
  * - DR.2 (Range End Date/Time) -> end
  */
 export function convertDRToPeriod(dr: DR | undefined): Period | undefined {
-  if (!dr) return undefined;
-  if (!dr.$1_start && !dr.$2_end) return undefined;
+  if (!dr) {return undefined;}
+  if (!dr.$1_start && !dr.$2_end) {return undefined;}
 
   const period: Period = {};
 
-  if (dr.$1_start) period.start = dr.$1_start;
-  if (dr.$2_end) period.end = dr.$2_end;
+  if (dr.$1_start) {period.start = dr.$1_start;}
+  if (dr.$2_end) {period.end = dr.$2_end;}
 
   return period;
 }

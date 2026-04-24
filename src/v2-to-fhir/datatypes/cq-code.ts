@@ -6,6 +6,6 @@ export interface CQ {
 }
 
 export function convertCQToCode(cq: CQ | undefined): string | undefined {
-  if (!cq) return undefined;
+  if (!cq) {return undefined;}
   return cq.$2_units?.$1_code;
 }

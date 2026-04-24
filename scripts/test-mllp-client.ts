@@ -23,7 +23,7 @@ function wrapWithMLLP(message: string): Buffer {
  */
 function parseMLLPResponse(data: Buffer): string | null {
   const startIndex = data.indexOf(VT);
-  if (startIndex === -1) return null;
+  if (startIndex === -1) {return null;}
 
   for (let i = startIndex + 1; i < data.length - 1; i++) {
     if (data[i] === FS && data[i + 1] === CR) {

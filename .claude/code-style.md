@@ -1,6 +1,6 @@
 # Code Style Guide
 
-Project-specific coding standards and best practices.
+Project-specific coding standards. **Mechanical rules are enforced by ESLint** (`bun run lint`, `bun run lint:fix`). This doc covers the judgment calls lint can't catch.
 
 ## Readable Code
 
@@ -75,7 +75,7 @@ const obx = parseOBX();
 const spm = parseSPM();
 ```
 
-IMPORTANT: if a function is bigger than 100 lines, critically review it – probably, it will be more readable if you extract some of the work to functions.
+ESLint warns on functions over 100 lines (`max-lines-per-function`). Fix by extraction, not by silencing the warning.
 
 ## Separation of Concerns
 
@@ -125,13 +125,15 @@ Types must accurately represent the actual data flow. If there's a mismatch betw
 
 **If a field is always provided in practice, make it required in the type.**
 
-**Don't use `as` casts to bypass type mismatches.** Refactor until the types align naturally. Acceptable uses: test code testing defensive runtime checks against malformed input.
+ESLint enforces:
+- `@typescript-eslint/no-explicit-any` — no `as any`.
+- `@typescript-eslint/no-non-null-assertion` — no `!` (warn in tests, error in src).
 
-**Don't use `!` (non-null assertion) without local proof.** If a value is proven non-null by a guard or check in the same scope, prefer narrowing (e.g., `if` check, early return) over `!`. If `!` is used, the proof must be obvious within a few lines.
+Double casts like `as unknown as X` bypass the first rule. Don't do them. Refactor the source type until the cast is unnecessary. Acceptable: test code testing defensive runtime checks against malformed input.
 
 ## Usability over code purity
 
-When designing configuration or system interfaces, prioritize the operation and maintenance experience — simplicity, single source of truth, hard to misconfigure. Internal code properties (function purity, testability, etc.) can almost always be achieved through implementation patterns without compromising the external interface. 
+When designing configuration or system interfaces, prioritize the operation and maintenance experience — simplicity, single source of truth, hard to misconfigure. Internal code properties (function purity, testability, etc.) can almost always be achieved through implementation patterns without compromising the external interface.
 
 Example: if the choice is between "elegant internals with fragile config coupling" and "slightly mixed internals with robust single-source-of-truth config" — choose robust config.
 
@@ -179,15 +181,8 @@ const updated = { ...original, ...result.fields };
 
 ## General Principles
 
-- Don't add error handling, fallbacks, or validation for scenarios that can't happen
-- Always use static imports at the top of the file. Never use dynamic `await import()` inside functions or route handlers
-- Remove unused code immediately; do not keep dead code or commented-out code; do not keep code in src/ that is only used in tests
-
-## Code Style
-
-Don't leave `continue` or `return` statements on the same line with the `if` condition.
-
-Line length limit is 120 characters. Don't split a statement across lines if it fits within 120 chars.
+- Don't add error handling, fallbacks, or validation for scenarios that can't happen.
+- Remove unused code immediately; do not keep dead code or commented-out code; do not keep code in src/ that is only used in tests.
 
 # Refactoring
 

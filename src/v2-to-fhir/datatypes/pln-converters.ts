@@ -31,8 +31,8 @@ export interface IdentifierWithExtensions extends Identifier {
  * - PLN.4 (Expiration Date) -> period.end
  */
 export function convertPLNToIdentifier(pln: PLN | undefined): IdentifierWithExtensions | undefined {
-  if (!pln) return undefined;
-  if (!pln.$1_idNumber) return undefined;
+  if (!pln) {return undefined;}
+  if (!pln.$1_idNumber) {return undefined;}
 
   const identifier: IdentifierWithExtensions = {
     value: pln.$1_idNumber,

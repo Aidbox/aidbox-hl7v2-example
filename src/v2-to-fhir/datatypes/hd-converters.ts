@@ -11,7 +11,7 @@ import type { Identifier, CodeableConcept } from "../../fhir/hl7-fhir-r4-core";
  * - HD.2 (Universal ID) with other HD.3 -> HD.2 as-is
  */
 export function convertHDToUri(hd: HD | undefined): string | undefined {
-  if (!hd) return undefined;
+  if (!hd) {return undefined;}
 
   // If namespace is valued, use it directly
   if (hd.$1_namespace) {
@@ -41,7 +41,7 @@ export function convertHDToUri(hd: HD | undefined): string | undefined {
  * - HD.3 (Universal ID Type) -> identifier[1].type and optionally system
  */
 export function convertHDToIdentifiers(hd: HD | undefined): Identifier[] | undefined {
-  if (!hd) return undefined;
+  if (!hd) {return undefined;}
 
   const identifiers: Identifier[] = [];
 
@@ -87,7 +87,7 @@ export interface DeviceIdentifierData {
  */
 export function convertHDToDevice(hd: HD | undefined): DeviceIdentifierData | undefined {
   const identifiers = convertHDToIdentifiers(hd);
-  if (!identifiers) return undefined;
+  if (!identifiers) {return undefined;}
 
   return { identifier: identifiers };
 }
@@ -104,7 +104,7 @@ export interface OrganizationIdentifierData {
  */
 export function convertHDToOrganization(hd: HD | undefined): OrganizationIdentifierData | undefined {
   const identifiers = convertHDToIdentifiers(hd);
-  if (!identifiers) return undefined;
+  if (!identifiers) {return undefined;}
 
   return { identifier: identifiers };
 }
@@ -125,8 +125,8 @@ export interface LocationData {
  * - physicalType set to "si" (site)
  */
 export function convertHDToLocation(hd: HD | undefined): LocationData | undefined {
-  if (!hd) return undefined;
-  if (!hd.$1_namespace && !hd.$2_system) return undefined;
+  if (!hd) {return undefined;}
+  if (!hd.$1_namespace && !hd.$2_system) {return undefined;}
 
   const location: LocationData = {};
 
@@ -170,8 +170,8 @@ export interface MessageHeaderEndpointData {
  * - HD.1 -> name (when HD.2 not valued or HD.3 not standard type)
  */
 export function convertHDToMessageHeaderEndpoint(hd: HD | undefined): MessageHeaderEndpointData | undefined {
-  if (!hd) return undefined;
-  if (!hd.$1_namespace && !hd.$2_system) return undefined;
+  if (!hd) {return undefined;}
+  if (!hd.$1_namespace && !hd.$2_system) {return undefined;}
 
   const result: MessageHeaderEndpointData = {};
 
@@ -210,6 +210,6 @@ export function convertHDToMessageHeaderEndpoint(hd: HD | undefined): MessageHea
  * - HD.1 (Namespace ID) -> name
  */
 export function convertHDToMessageHeaderName(hd: HD | undefined): string | undefined {
-  if (!hd) return undefined;
+  if (!hd) {return undefined;}
   return hd.$1_namespace;
 }

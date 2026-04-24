@@ -50,7 +50,7 @@ export async function selectPatientId(
       "mpiLookup" in rule
         ? await tryMpiLookupRule(pool, rule, mpiClient)
         : tryMatchRule(pool, rule);
-    if (result) return result;
+    if (result) {return result;}
   }
 
   const ids = pool
@@ -77,12 +77,12 @@ function tryMatchRule(pool: CX[], rule: MatchRule): PatientIdResult | null {
     let assignerId: string | null = null;
 
     if (rule.type && cx.$5_type?.trim() !== rule.type)
-      continue;
+      {continue;}
 
     if (rule.assigner) {
       const matchedAssigner = matchAssigner(cx, rule.assigner);
       if (!matchedAssigner)
-        continue;
+        {continue;}
 
       assignerId = getMatchedAssignerId(cx, matchedAssigner);
     } else {
@@ -90,7 +90,7 @@ function tryMatchRule(pool: CX[], rule: MatchRule): PatientIdResult | null {
     }
 
     if (!assignerId)
-      continue;
+      {continue;}
 
     return buildPatientId(assignerId, cx.$1_value!.trim());
   }
@@ -123,7 +123,7 @@ async function tryMpiLookupRule(
     mpiResult = await mpiClient.match({}, mpiLookup.target.system);
   }
 
-  if (!mpiResult) return null;
+  if (!mpiResult) {return null;}
   return handleMpiResult(mpiResult);
 }
 
@@ -158,9 +158,9 @@ function matchAssigner(
   cx: CX,
   assigner: string,
 ): AssignerMatchSource | null {
-  if (cx.$4_system?.$1_namespace?.trim() === assigner) return "cx4";
-  if (cx.$9_jurisdiction?.$1_code?.trim() === assigner) return "cx9";
-  if (cx.$10_department?.$1_code?.trim() === assigner) return "cx10";
+  if (cx.$4_system?.$1_namespace?.trim() === assigner) {return "cx4";}
+  if (cx.$9_jurisdiction?.$1_code?.trim() === assigner) {return "cx9";}
+  if (cx.$10_department?.$1_code?.trim() === assigner) {return "cx10";}
   return null;
 }
 
@@ -172,7 +172,7 @@ function getMatchedAssignerId(
   switch (matchedVia) {
     case "cx4": {
       const cx4_1 = cx.$4_system?.$1_namespace?.trim();
-      if (cx4_1) return cx4_1;
+      if (cx4_1) {return cx4_1;}
       return cx.$4_system?.$2_system?.trim() || null;
     }
     case "cx9":
@@ -185,12 +185,12 @@ function getMatchedAssignerId(
 /** Get assigner ID from any CX authority component. Priority: CX.4.1 → CX.4.2 → CX.9.1 → CX.10.1. */
 function getAnyAssignerId(cx: CX): string | null {
   const cx4_1 = cx.$4_system?.$1_namespace?.trim();
-  if (cx4_1) return cx4_1;
+  if (cx4_1) {return cx4_1;}
   const cx4_2 = cx.$4_system?.$2_system?.trim();
-  if (cx4_2) return cx4_2;
+  if (cx4_2) {return cx4_2;}
   const cx9_1 = cx.$9_jurisdiction?.$1_code?.trim();
-  if (cx9_1) return cx9_1;
+  if (cx9_1) {return cx9_1;}
   const cx10_1 = cx.$10_department?.$1_code?.trim();
-  if (cx10_1) return cx10_1;
+  if (cx10_1) {return cx10_1;}
   return null;
 }

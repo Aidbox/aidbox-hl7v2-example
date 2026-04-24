@@ -9,8 +9,8 @@ import type { Coding, Identifier, Reference, CodeableConcept } from "../../fhir/
  * - EI.2 (Namespace ID) -> system
  */
 export function convertEIToCoding(ei: EI | undefined): Coding | undefined {
-  if (!ei) return undefined;
-  if (!ei.$1_value) return undefined;
+  if (!ei) {return undefined;}
+  if (!ei.$1_value) {return undefined;}
 
   return {
     code: ei.$1_value,
@@ -26,8 +26,8 @@ export function convertEIToCoding(ei: EI | undefined): Coding | undefined {
  * - EI.3 (Universal ID) -> system
  */
 export function convertEIToIdentifierSystem(ei: EI | undefined): Identifier | undefined {
-  if (!ei) return undefined;
-  if (!ei.$1_value) return undefined;
+  if (!ei) {return undefined;}
+  if (!ei.$1_value) {return undefined;}
 
   return {
     value: ei.$1_value,
@@ -43,8 +43,8 @@ export function convertEIToIdentifierSystem(ei: EI | undefined): Identifier | un
  * - EI.2 (Namespace ID) -> system
  */
 export function convertEIToIdentifierExtension(ei: EI | undefined): Identifier | undefined {
-  if (!ei) return undefined;
-  if (!ei.$1_value) return undefined;
+  if (!ei) {return undefined;}
+  if (!ei.$1_value) {return undefined;}
 
   return {
     value: ei.$1_value,
@@ -60,8 +60,8 @@ export function convertEIToIdentifierExtension(ei: EI | undefined): Identifier |
  * - EI.2 (Namespace ID) -> assigner.display
  */
 export function convertEIToIdentifierOrganization(ei: EI | undefined): Identifier | undefined {
-  if (!ei) return undefined;
-  if (!ei.$1_value) return undefined;
+  if (!ei) {return undefined;}
+  if (!ei.$1_value) {return undefined;}
 
   const identifier: Identifier = {
     value: ei.$1_value,
@@ -85,8 +85,8 @@ export function convertEIToIdentifierOrganization(ei: EI | undefined): Identifie
  * - EI.3 (Universal ID) -> assigner.identifier.system
  */
 export function convertEIToIdentifierDefaultAssigner(ei: EI | undefined): Identifier | undefined {
-  if (!ei) return undefined;
-  if (!ei.$1_value) return undefined;
+  if (!ei) {return undefined;}
+  if (!ei.$1_value) {return undefined;}
 
   const identifier: Identifier = {
     value: ei.$1_value,
@@ -119,8 +119,8 @@ export interface ConditionIdentifierData {
  * - EI.4 (Universal ID Type) -> assigner.identifier.type
  */
 export function convertEIToCondition(ei: EI | undefined): ConditionIdentifierData | undefined {
-  if (!ei) return undefined;
-  if (!ei.$1_value) return undefined;
+  if (!ei) {return undefined;}
+  if (!ei.$1_value) {return undefined;}
 
   const identifier: Identifier = {
     value: ei.$1_value,
@@ -129,8 +129,8 @@ export function convertEIToCondition(ei: EI | undefined): ConditionIdentifierDat
   if (ei.$2_namespace || ei.$3_system || ei.$4_systemType) {
     const assignerIdentifier: Identifier = {};
 
-    if (ei.$2_namespace) assignerIdentifier.value = ei.$2_namespace;
-    if (ei.$3_system) assignerIdentifier.system = ei.$3_system;
+    if (ei.$2_namespace) {assignerIdentifier.value = ei.$2_namespace;}
+    if (ei.$3_system) {assignerIdentifier.system = ei.$3_system;}
     if (ei.$4_systemType) {
       assignerIdentifier.type = {
         coding: [{ code: ei.$4_systemType }],
@@ -157,8 +157,8 @@ export interface ProcedureIdentifierData {
  * - EI.1 (Entity Identifier) -> identifier.value
  */
 export function convertEIToProcedure(ei: EI | undefined): ProcedureIdentifierData | undefined {
-  if (!ei) return undefined;
-  if (!ei.$1_value) return undefined;
+  if (!ei) {return undefined;}
+  if (!ei.$1_value) {return undefined;}
 
   return {
     identifier: {
@@ -179,8 +179,8 @@ export interface DeviceUdiCarrierData {
  * - EI.1 (Entity Identifier) -> udiCarrier.deviceIdentifier
  */
 export function convertEIToDeviceUdiCarrier(ei: EI | undefined): DeviceUdiCarrierData | undefined {
-  if (!ei) return undefined;
-  if (!ei.$1_value) return undefined;
+  if (!ei) {return undefined;}
+  if (!ei.$1_value) {return undefined;}
 
   return {
     deviceIdentifier: ei.$1_value,
@@ -216,7 +216,7 @@ export function convertEIToTypedIdentifier(
   typeCode: "FILL" | "PLAC",
 ): Identifier | undefined {
   const baseIdentifier = convertEIToIdentifierExtension(ei);
-  if (!baseIdentifier) return undefined;
+  if (!baseIdentifier) {return undefined;}
 
   return {
     ...baseIdentifier,
@@ -233,8 +233,8 @@ export function convertEIToTypedIdentifier(
  * - Fixed: type.coding.system = "http://terminology.hl7.org/CodeSystem/v2-0203"
  */
 export function convertEIPToPlacerAssignedIdentifier(eip: EIP | undefined): Identifier | undefined {
-  if (!eip) return undefined;
-  if (!eip.$1_placerAssignedIdentifier?.$1_value) return undefined;
+  if (!eip) {return undefined;}
+  if (!eip.$1_placerAssignedIdentifier?.$1_value) {return undefined;}
 
   return {
     value: eip.$1_placerAssignedIdentifier.$1_value,
@@ -258,8 +258,8 @@ export function convertEIPToPlacerAssignedIdentifier(eip: EIP | undefined): Iden
  * - Fixed: type.coding.system = "http://terminology.hl7.org/CodeSystem/v2-0203"
  */
 export function convertEIPToFillerAssignedIdentifier(eip: EIP | undefined): Identifier | undefined {
-  if (!eip) return undefined;
-  if (!eip.$2_fillerAssignedIdentifier?.$1_value) return undefined;
+  if (!eip) {return undefined;}
+  if (!eip.$2_fillerAssignedIdentifier?.$1_value) {return undefined;}
 
   return {
     value: eip.$2_fillerAssignedIdentifier.$1_value,

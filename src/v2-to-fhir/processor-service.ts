@@ -90,7 +90,7 @@ export async function convertMessage(
  * Returns 0 if no previous attempts found.
  */
 export function parseSendingAttempt(error: string | undefined): number {
-  if (!error?.startsWith(SENDING_ATTEMPT_PREFIX)) return 0;
+  if (!error?.startsWith(SENDING_ATTEMPT_PREFIX)) {return 0;}
   const match = error.match(/^Sending failed \(attempt (\d+)\//);
   return match ? parseInt(match[1]!, 10) : 0;
 }
@@ -252,7 +252,7 @@ async function recordProcessingError(
   message: IncomingHL7v2Message,
   error: unknown,
 ): Promise<void> {
-  if (error instanceof SendError) return;
+  if (error instanceof SendError) {return;}
   const errorMessage = error instanceof Error ? error.message : String(error);
   try {
     await applyMessageUpdate(message, {
@@ -271,13 +271,13 @@ async function recordProcessingError(
  */
 export async function processNextMessage(): Promise<boolean> {
   const message = await pollReceivedMessage();
-  if (!message) return false;
+  if (!message) {return false;}
 
   try {
     await processMessage(message);
     return true;
   } catch (error) {
-    if (error instanceof SendError) return true;
+    if (error instanceof SendError) {return true;}
     await recordProcessingError(message, error);
     throw error;
   }

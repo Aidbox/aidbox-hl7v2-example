@@ -51,7 +51,7 @@ const NAME_ASSEMBLY_ORDER_URL = "http://hl7.org/fhir/R4/extension-humanname-asse
  * Build identifier from XCN fields
  */
 function buildIdentifier(xcn: XCN): Identifier | undefined {
-  if (!xcn.$1_value) return undefined;
+  if (!xcn.$1_value) {return undefined;}
 
   const identifier: Identifier = {
     value: xcn.$1_value,
@@ -105,8 +105,8 @@ function buildNamePeriod(xcn: XCN): Period | undefined {
 
   if (hasExplicitDates) {
     const period: Period = {};
-    if (xcn.$19_start) period.start = xcn.$19_start;
-    if (xcn.$20_end) period.end = xcn.$20_end;
+    if (xcn.$19_start) {period.start = xcn.$19_start;}
+    if (xcn.$20_end) {period.end = xcn.$20_end;}
     return period;
   }
 
@@ -117,7 +117,7 @@ function buildNamePeriod(xcn: XCN): Period | undefined {
  * Build name extensions from XCN.18 (Name Assembly Order)
  */
 function buildNameExtensions(xcn: XCN): Extension[] | undefined {
-  if (!xcn.$18_order) return undefined;
+  if (!xcn.$18_order) {return undefined;}
 
   return [
     {
@@ -139,17 +139,17 @@ function buildName(xcn: XCN): HumanName | undefined {
     xcn.$6_prefix ||
     xcn.$21_credential;
 
-  if (!hasNameData) return undefined;
+  if (!hasNameData) {return undefined;}
 
   // Build given names
   const given: string[] = [];
-  if (xcn.$3_given) given.push(xcn.$3_given);
-  if (xcn.$4_additionalGiven) given.push(xcn.$4_additionalGiven);
+  if (xcn.$3_given) {given.push(xcn.$3_given);}
+  if (xcn.$4_additionalGiven) {given.push(xcn.$4_additionalGiven);}
 
   // Build suffixes
   const suffix: string[] = [];
-  if (xcn.$5_suffix) suffix.push(xcn.$5_suffix);
-  if (xcn.$21_credential) suffix.push(xcn.$21_credential);
+  if (xcn.$5_suffix) {suffix.push(xcn.$5_suffix);}
+  if (xcn.$21_credential) {suffix.push(xcn.$21_credential);}
 
   // Build prefix
   const prefix = xcn.$6_prefix ? [xcn.$6_prefix] : undefined;
@@ -178,7 +178,7 @@ function buildName(xcn: XCN): HumanName | undefined {
  * Build qualification from XCN.7 (Degree)
  */
 function buildQualification(xcn: XCN): PractitionerQualification | undefined {
-  if (!xcn.$7_qualification) return undefined;
+  if (!xcn.$7_qualification) {return undefined;}
 
   return {
     code: {
@@ -216,14 +216,14 @@ function buildQualification(xcn: XCN): PractitionerQualification | undefined {
 export function convertXCNToPractitioner(
   xcn: XCN | undefined
 ): Practitioner | undefined {
-  if (!xcn) return undefined;
+  if (!xcn) {return undefined;}
 
   const identifier = buildIdentifier(xcn);
   const name = buildName(xcn);
   const qualification = buildQualification(xcn);
 
   // Need at least identifier or name
-  if (!identifier && !name) return undefined;
+  if (!identifier && !name) {return undefined;}
 
   return {
     resourceType: "Practitioner",
@@ -239,13 +239,13 @@ export function convertXCNToPractitioner(
 export function convertXCNArrayToPractitioners(
   xcns: XCN[] | undefined
 ): Practitioner[] | undefined {
-  if (!xcns || xcns.length === 0) return undefined;
+  if (!xcns || xcns.length === 0) {return undefined;}
 
   const practitioners: Practitioner[] = [];
 
   for (const xcn of xcns) {
     const practitioner = convertXCNToPractitioner(xcn);
-    if (practitioner) practitioners.push(practitioner);
+    if (practitioner) {practitioners.push(practitioner);}
   }
 
   return practitioners.length > 0 ? practitioners : undefined;

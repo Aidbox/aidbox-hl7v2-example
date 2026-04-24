@@ -32,7 +32,7 @@ const EXT_DUE_TO = "http://hl7.org/fhir/StructureDefinition/condition-dueTo";
  * Convert HL7v2 DTM to FHIR dateTime
  */
 function convertDTMToDateTime(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
+  if (!dtm) {return undefined;}
 
   const year = dtm.substring(0, 4);
   const month = dtm.substring(4, 6);
@@ -41,12 +41,12 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
   const minute = dtm.substring(10, 12);
   const second = dtm.substring(12, 14);
 
-  if (dtm.length === 4) return year;
-  if (dtm.length === 6) return `${year}-${month}`;
-  if (dtm.length === 8) return `${year}-${month}-${day}`;
+  if (dtm.length === 4) {return year;}
+  if (dtm.length === 6) {return `${year}-${month}`;}
+  if (dtm.length === 8) {return `${year}-${month}-${day}`;}
   if (dtm.length >= 12) {
     const base = `${year}-${month}-${day}T${hour}:${minute}`;
-    if (dtm.length >= 14) return `${base}:${second}`;
+    if (dtm.length >= 14) {return `${base}:${second}`;}
     return `${base}:00`;
   }
 
@@ -57,7 +57,7 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
  * Convert EI to Identifier
  */
 function convertEIToIdentifier(ei: EI | undefined): Identifier | undefined {
-  if (!ei) return undefined;
+  if (!ei) {return undefined;}
 
   const identifier: Identifier = {};
 
@@ -71,7 +71,7 @@ function convertEIToIdentifier(ei: EI | undefined): Identifier | undefined {
     identifier.system = ei.$2_namespace;
   }
 
-  if (!identifier.value) return undefined;
+  if (!identifier.value) {return undefined;}
 
   return identifier;
 }
@@ -152,8 +152,8 @@ export function convertDG1ToCondition(dg1: DG1): Omit<Condition, "subject"> & { 
       // Build display from name
       const name = practitioner.name?.[0];
       const displayParts: string[] = [];
-      if (name?.given) displayParts.push(...name.given);
-      if (name?.family) displayParts.push(name.family);
+      if (name?.given) {displayParts.push(...name.given);}
+      if (name?.family) {displayParts.push(name.family);}
 
       const asserterRef: Reference<"Practitioner"> = {};
       if (displayParts.length > 0) {

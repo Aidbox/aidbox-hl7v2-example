@@ -11,7 +11,7 @@ import { DESIGN_SYSTEM_CSS, TAILWIND_CSS } from "../../../src/ui/design-system";
 
 function extractRootVars(css: string): string[] {
   const rootBlock = css.match(/:root\s*\{([\s\S]*?)\n\s*\}/);
-  if (!rootBlock) return [];
+  if (!rootBlock) {return [];}
   return Array.from(rootBlock[1]!.matchAll(/--([a-z0-9-]+)\s*:/g))
     .map((m) => m[1]!)
     .sort();
@@ -19,7 +19,7 @@ function extractRootVars(css: string): string[] {
 
 function extractColorThemeKeys(css: string): string[] {
   const themeBlock = css.match(/@theme\s*\{([\s\S]*?)\n\s*\}/);
-  if (!themeBlock) return [];
+  if (!themeBlock) {return [];}
   return Array.from(themeBlock[1]!.matchAll(/--color-([a-z0-9-]+)\s*:/g))
     .map((m) => m[1]!)
     .sort();
@@ -27,7 +27,7 @@ function extractColorThemeKeys(css: string): string[] {
 
 function extractColorThemeMappings(css: string): Record<string, string> {
   const themeBlock = css.match(/@theme\s*\{([\s\S]*?)\n\s*\}/);
-  if (!themeBlock) return {};
+  if (!themeBlock) {return {};}
   const mappings: Record<string, string> = {};
   for (const m of themeBlock[1]!.matchAll(
     /--color-([a-z0-9-]+)\s*:\s*var\(--([a-z0-9-]+)\)/g,

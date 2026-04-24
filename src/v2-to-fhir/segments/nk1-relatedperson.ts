@@ -47,8 +47,8 @@ const GENDER_MAP: Record<string, RelatedPerson["gender"]> = {
  * Convert HL7v2 DT to FHIR date (YYYY-MM-DD)
  */
 function convertDTToDate(dt: string | undefined): string | undefined {
-  if (!dt) return undefined;
-  if (dt.length < 8) return undefined;
+  if (!dt) {return undefined;}
+  if (dt.length < 8) {return undefined;}
 
   const year = dt.substring(0, 4);
   const month = dt.substring(4, 6);
@@ -99,7 +99,7 @@ export function convertNK1ToRelatedPerson(nk1: NK1): Omit<RelatedPerson, "patien
   if (nk1.$2_name) {
     for (const xpn of nk1.$2_name) {
       const name = convertXPNToHumanName(xpn);
-      if (name) names.push(name);
+      if (name) {names.push(name);}
     }
   }
 
@@ -107,7 +107,7 @@ export function convertNK1ToRelatedPerson(nk1: NK1): Omit<RelatedPerson, "patien
   if (nk1.$30_contactPersonsName) {
     for (const xpn of nk1.$30_contactPersonsName) {
       const name = convertXPNToHumanName(xpn);
-      if (name) names.push(name);
+      if (name) {names.push(name);}
     }
   }
 
@@ -124,13 +124,13 @@ export function convertNK1ToRelatedPerson(nk1: NK1): Omit<RelatedPerson, "patien
   // NK1-3: Relationship -> relationship[1]
   if (nk1.$3_relationship) {
     const relationship = convertCEToCodeableConcept(nk1.$3_relationship);
-    if (relationship) relationships.push(relationship);
+    if (relationship) {relationships.push(relationship);}
   }
 
   // NK1-7: Contact Role -> relationship[2]
   if (nk1.$7_contactRole) {
     const contactRole = convertCEToCodeableConcept(nk1.$7_contactRole);
-    if (contactRole) relationships.push(contactRole);
+    if (contactRole) {relationships.push(contactRole);}
   }
 
   if (relationships.length > 0) {
@@ -147,7 +147,7 @@ export function convertNK1ToRelatedPerson(nk1: NK1): Omit<RelatedPerson, "patien
   if (nk1.$4_text) {
     for (const xad of nk1.$4_text) {
       const address = convertXADToAddress(xad);
-      if (address) addresses.push(address);
+      if (address) {addresses.push(address);}
     }
   }
 
@@ -155,7 +155,7 @@ export function convertNK1ToRelatedPerson(nk1: NK1): Omit<RelatedPerson, "patien
   if (nk1.$32_contactPersonsAddress) {
     for (const xad of nk1.$32_contactPersonsAddress) {
       const address = convertXADToAddress(xad);
-      if (address) addresses.push(address);
+      if (address) {addresses.push(address);}
     }
   }
 
@@ -173,7 +173,7 @@ export function convertNK1ToRelatedPerson(nk1: NK1): Omit<RelatedPerson, "patien
   if (nk1.$5_phone) {
     for (const xtn of nk1.$5_phone) {
       const telecom = convertXTNToContactPoint(xtn);
-      if (telecom) telecoms.push(telecom);
+      if (telecom) {telecoms.push(telecom);}
     }
   }
 
@@ -192,7 +192,7 @@ export function convertNK1ToRelatedPerson(nk1: NK1): Omit<RelatedPerson, "patien
   if (nk1.$31_contactPhone) {
     for (const xtn of nk1.$31_contactPhone) {
       const telecom = convertXTNToContactPoint(xtn);
-      if (telecom) telecoms.push(telecom);
+      if (telecom) {telecoms.push(telecom);}
     }
   }
 
@@ -211,8 +211,8 @@ export function convertNK1ToRelatedPerson(nk1: NK1): Omit<RelatedPerson, "patien
 
   if (periodStart || periodEnd) {
     const period: Period = {};
-    if (periodStart) period.start = periodStart;
-    if (periodEnd) period.end = periodEnd;
+    if (periodStart) {period.start = periodStart;}
+    if (periodEnd) {period.end = periodEnd;}
     relatedPerson.period = period;
   }
 
@@ -225,14 +225,14 @@ export function convertNK1ToRelatedPerson(nk1: NK1): Omit<RelatedPerson, "patien
   // NK1-12: Employee Number -> identifier[1]
   if (nk1.$12_nextOfKinAssociatedPartiesEmployeeNumber) {
     const empId = convertCXToIdentifier(nk1.$12_nextOfKinAssociatedPartiesEmployeeNumber);
-    if (empId) identifiers.push(empId);
+    if (empId) {identifiers.push(empId);}
   }
 
   // NK1-33: Associated Party's Identifiers -> identifier[2]
   if (nk1.$33_nextOfKinAssociatedPartysIdentifiers) {
     for (const cx of nk1.$33_nextOfKinAssociatedPartysIdentifiers) {
       const id = convertCXToIdentifier(cx);
-      if (id) identifiers.push(id);
+      if (id) {identifiers.push(id);}
     }
   }
 

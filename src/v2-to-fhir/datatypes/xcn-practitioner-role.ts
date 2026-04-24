@@ -26,7 +26,7 @@ const CHECK_DIGIT_SCHEME_URL = "http://hl7.org/fhir/StructureDefinition/namingsy
  * Build identifier from XCN fields
  */
 function buildIdentifier(xcn: XCN): Identifier | undefined {
-  if (!xcn.$1_value) return undefined;
+  if (!xcn.$1_value) {return undefined;}
 
   const identifier: Identifier = {
     value: xcn.$1_value,
@@ -93,11 +93,11 @@ function buildIdentifier(xcn: XCN): Identifier | undefined {
 export function convertXCNToPractitionerRole(
   xcn: XCN | undefined
 ): PractitionerRole | undefined {
-  if (!xcn) return undefined;
+  if (!xcn) {return undefined;}
 
   const identifier = buildIdentifier(xcn);
 
-  if (!identifier) return undefined;
+  if (!identifier) {return undefined;}
 
   return {
     resourceType: "PractitionerRole",
@@ -111,13 +111,13 @@ export function convertXCNToPractitionerRole(
 export function convertXCNArrayToPractitionerRoles(
   xcns: XCN[] | undefined
 ): PractitionerRole[] | undefined {
-  if (!xcns || xcns.length === 0) return undefined;
+  if (!xcns || xcns.length === 0) {return undefined;}
 
   const roles: PractitionerRole[] = [];
 
   for (const xcn of xcns) {
     const role = convertXCNToPractitionerRole(xcn);
-    if (role) roles.push(role);
+    if (role) {roles.push(role);}
   }
 
   return roles.length > 0 ? roles : undefined;

@@ -149,19 +149,19 @@ export async function resolveOrderStatus(
  * Uses inline display reference for consistency with existing converters.
  */
 export function buildRequesterReference(xcns: XCN[] | undefined): Reference<"Practitioner"> | undefined {
-  if (!xcns || xcns.length === 0) return undefined;
+  if (!xcns || xcns.length === 0) {return undefined;}
 
   const xcn = xcns[0]!;
   const practitioner = convertXCNToPractitioner(xcn);
-  if (!practitioner) return undefined;
+  if (!practitioner) {return undefined;}
 
   const name = practitioner.name?.[0];
   const displayParts: string[] = [];
   if (name) {
-    if (name.prefix) displayParts.push(...name.prefix);
-    if (name.given) displayParts.push(...name.given);
-    if (name.family) displayParts.push(name.family);
-    if (name.suffix) displayParts.push(...name.suffix);
+    if (name.prefix) {displayParts.push(...name.prefix);}
+    if (name.given) {displayParts.push(...name.given);}
+    if (name.family) {displayParts.push(name.family);}
+    if (name.suffix) {displayParts.push(...name.suffix);}
   }
 
   const ref: Reference<"Practitioner"> = {};
@@ -175,7 +175,7 @@ export function buildRequesterReference(xcns: XCN[] | undefined): Reference<"Pra
   }
 
   // Need at least identifier or display to be useful
-  if (!ref.identifier && !ref.display) return undefined;
+  if (!ref.identifier && !ref.display) {return undefined;}
 
   return ref;
 }
@@ -220,10 +220,10 @@ export async function convertORCToServiceRequest(
   // ORC-3: Filler Order Number -> identifier[FILL]
   const identifiers: Identifier[] = [];
   const placerIdentifier = convertEIToTypedIdentifier(orc.$2_placerOrderNumber, "PLAC");
-  if (placerIdentifier) identifiers.push(placerIdentifier);
+  if (placerIdentifier) {identifiers.push(placerIdentifier);}
 
   const fillerIdentifier = convertEIToTypedIdentifier(orc.$3_fillerOrderNumber, "FILL");
-  if (fillerIdentifier) identifiers.push(fillerIdentifier);
+  if (fillerIdentifier) {identifiers.push(fillerIdentifier);}
 
   if (identifiers.length > 0) {
     serviceRequest.identifier = identifiers;

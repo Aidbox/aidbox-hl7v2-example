@@ -13,7 +13,7 @@ import type { CodeableConcept, Identifier } from "../../fhir/hl7-fhir-r4-core";
 export function convertSTToCodeableConcept(
   st: string | undefined
 ): CodeableConcept | undefined {
-  if (!st) return undefined;
+  if (!st) {return undefined;}
 
   return {
     text: st,
@@ -28,7 +28,7 @@ export function convertSTToCodeableConcept(
 export function convertSTToIdentifier(
   st: string | undefined
 ): Identifier | undefined {
-  if (!st) return undefined;
+  if (!st) {return undefined;}
 
   return {
     value: st,
@@ -41,13 +41,13 @@ export function convertSTToIdentifier(
 export function convertSTArrayToCodeableConcepts(
   sts: string[] | undefined
 ): CodeableConcept[] | undefined {
-  if (!sts || sts.length === 0) return undefined;
+  if (!sts || sts.length === 0) {return undefined;}
 
   const concepts: CodeableConcept[] = [];
 
   for (const st of sts) {
     const concept = convertSTToCodeableConcept(st);
-    if (concept) concepts.push(concept);
+    if (concept) {concepts.push(concept);}
   }
 
   return concepts.length > 0 ? concepts : undefined;
@@ -59,13 +59,13 @@ export function convertSTArrayToCodeableConcepts(
 export function convertSTArrayToIdentifiers(
   sts: string[] | undefined
 ): Identifier[] | undefined {
-  if (!sts || sts.length === 0) return undefined;
+  if (!sts || sts.length === 0) {return undefined;}
 
   const identifiers: Identifier[] = [];
 
   for (const st of sts) {
     const identifier = convertSTToIdentifier(st);
-    if (identifier) identifiers.push(identifier);
+    if (identifier) {identifiers.push(identifier);}
   }
 
   return identifiers.length > 0 ? identifiers : undefined;

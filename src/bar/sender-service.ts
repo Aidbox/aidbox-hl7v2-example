@@ -57,7 +57,7 @@ export async function processMessage(message: OutgoingBarMessage): Promise<void>
 
 export async function processNextMessage(): Promise<boolean> {
   const message = await pollPendingMessage();
-  if (!message) return false;
+  if (!message) {return false;}
   await processMessage(message);
   return true;
 }

@@ -34,7 +34,7 @@ export function createPollingService<T>(opts: PollingServiceOptions<T>): Polling
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   async function tick() {
-    if (!running) return;
+    if (!running) {return;}
 
     let currentItem: T | null = null;
     try {
@@ -55,7 +55,7 @@ export function createPollingService<T>(opts: PollingServiceOptions<T>): Polling
 
   return {
     start() {
-      if (running) return;
+      if (running) {return;}
       running = true;
       tick();
     },

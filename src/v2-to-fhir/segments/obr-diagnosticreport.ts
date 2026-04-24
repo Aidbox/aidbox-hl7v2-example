@@ -88,7 +88,7 @@ export function mapOBRStatusToFHIRWithResult(
  * Convert HL7v2 DTM to FHIR dateTime
  */
 function convertDTMToDateTime(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
+  if (!dtm) {return undefined;}
 
   const year = dtm.substring(0, 4);
   const month = dtm.substring(4, 6);
@@ -97,9 +97,9 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
   const minute = dtm.substring(10, 12) || "00";
   const second = dtm.substring(12, 14) || "00";
 
-  if (dtm.length <= 4) return year;
-  if (dtm.length <= 6) return `${year}-${month}`;
-  if (dtm.length <= 8) return `${year}-${month}-${day}`;
+  if (dtm.length <= 4) {return year;}
+  if (dtm.length <= 6) {return `${year}-${month}`;}
+  if (dtm.length <= 8) {return `${year}-${month}-${day}`;}
 
   return `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
 }
@@ -108,7 +108,7 @@ function convertDTMToDateTime(dtm: string | undefined): string | undefined {
  * Convert HL7v2 DTM to FHIR instant (for issued field)
  */
 function convertDTMToInstant(dtm: string | undefined): string | undefined {
-  if (!dtm) return undefined;
+  if (!dtm) {return undefined;}
 
   const year = dtm.substring(0, 4);
   const month = dtm.substring(4, 6) || "01";
@@ -125,7 +125,7 @@ function convertDTMToInstant(dtm: string | undefined): string | undefined {
  * Converts to lowercase and replaces invalid characters
  */
 function generateIdFromEI(ei: EI | undefined): string | undefined {
-  if (!ei?.$1_value) return undefined;
+  if (!ei?.$1_value) {return undefined;}
 
   return ei.$1_value.toLowerCase().replace(/[^a-z0-9-]/g, "-");
 }
@@ -136,7 +136,7 @@ function generateIdFromEI(ei: EI | undefined): string | undefined {
 function convertServiceToCodeableConcept(
   service: CE | undefined
 ): CodeableConcept | undefined {
-  if (!service) return undefined;
+  if (!service) {return undefined;}
 
   const codings: CodeableConcept["coding"] = [];
 
@@ -158,7 +158,7 @@ function convertServiceToCodeableConcept(
     });
   }
 
-  if (codings.length === 0) return undefined;
+  if (codings.length === 0) {return undefined;}
 
   return {
     coding: codings,

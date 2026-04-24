@@ -9,11 +9,11 @@ function shellEscape(s: string): string {
 export async function findPdfToText(): Promise<string[]> {
   // Check if pdftotext is directly available
   const direct = Bun.spawnSync(["which", "pdftotext"]);
-  if (direct.exitCode === 0) return ["pdftotext"];
+  if (direct.exitCode === 0) {return ["pdftotext"];}
 
   // NixOS: use nix-shell wrapper
   const nixShell = Bun.spawnSync(["which", "nix-shell"]);
-  if (nixShell.exitCode === 0) return ["nix-shell", "-p", "poppler-utils", "--run"];
+  if (nixShell.exitCode === 0) {return ["nix-shell", "-p", "poppler-utils", "--run"];}
 
   throw new Error(
     "pdftotext not found. Install poppler-utils (e.g., apt install poppler-utils) " +
@@ -21,7 +21,7 @@ export async function findPdfToText(): Promise<string[]> {
   );
 }
 
-async function extractPdfText(pdfPath: string, cmd: string[], layout: boolean = false): Promise<string> {
+async function extractPdfText(pdfPath: string, cmd: string[], layout = false): Promise<string> {
   let proc;
   if (cmd[0] === "nix-shell") {
     const pdfCmd = `pdftotext ${layout ? "-layout " : ""}${shellEscape(pdfPath)} -`;
@@ -106,17 +106,17 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
 
     // Try bare header (no datatype on this line)
     const bareMatch = lines[i]!.trim().match(BARE_FIELD_HEADER_RE);
-    if (!bareMatch) continue;
+    if (!bareMatch) {continue;}
 
     const seg = bareMatch[1]!;
     const pos = bareMatch[2]!;
-    let longNameParts = [bareMatch[3]!];
+    const longNameParts = [bareMatch[3]!];
 
     // Must look like a real segment code
-    if (!/^[A-Z][A-Z0-9]{1,2}$/.test(seg)) continue;
+    if (!/^[A-Z][A-Z0-9]{1,2}$/.test(seg)) {continue;}
     // The field name should start with an uppercase letter (not lowercase text or digits,
     // which would indicate an inline reference like "RXE-33 and RXE-34 as:")
-    if (!/^[A-Z]/.test(bareMatch[3]!.trim())) continue;
+    if (!/^[A-Z]/.test(bareMatch[3]!.trim())) {continue;}
 
     // Look ahead up to 6 lines for (DT) or continuation of the field name ending with (DT)
     let dataType = "";
@@ -124,7 +124,7 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
     let resolvedLine = i;
     for (let j = i + 1; j <= Math.min(i + 6, lines.length - 1); j++) {
       const ahead = lines[j]!.trim();
-      if (!ahead) continue; // skip blank lines
+      if (!ahead) {continue;} // skip blank lines
 
       // Check for standalone "(DT) NNNNN"
       const dtMatch = ahead.match(DEFERRED_DT_RE);
@@ -146,16 +146,16 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
       }
 
       // Stop lookahead at structural elements
-      if (DEFINITION_RE.test(ahead)) break;
-      if (COMPONENTS_RE.test(ahead)) break;
-      if (/^Attention:/.test(ahead)) break;
-      if (ATTRIBUTE_TABLE_RE.test(ahead)) break;
+      if (DEFINITION_RE.test(ahead)) {break;}
+      if (COMPONENTS_RE.test(ahead)) {break;}
+      if (/^Attention:/.test(ahead)) {break;}
+      if (ATTRIBUTE_TABLE_RE.test(ahead)) {break;}
 
       // Could be a name continuation line (e.g., "Observation (CWE) 00592")
       // If it doesn't match, it might be just a wrapped name part — but only
       // if it doesn't look like a section number or another field header
-      if (/^(\w{2,3})-\d+\s/.test(ahead)) break; // another field header
-      if (/^\d+[\.\d]*\s*$/.test(ahead)) break;   // bare section number (don't consume)
+      if (/^(\w{2,3})-\d+\s/.test(ahead)) {break;} // another field header
+      if (/^\d+[\.\d]*\s*$/.test(ahead)) {break;}   // bare section number (don't consume)
     }
 
     const longName = longNameParts.join(" ").trim().replace(/\s*[-\u2013]\s*\w{2,3}\s*$/, "");
@@ -178,7 +178,7 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
       let isRealField = false;
       for (let j = i + 1; j <= Math.min(i + 4, lines.length - 1); j++) {
         const ahead = lines[j]!.trim();
-        if (!ahead) continue;
+        if (!ahead) {continue;}
         if (/^(Definition:|Attention:|Components:)/.test(ahead)) { isRealField = true; }
         break;
       }
@@ -242,19 +242,19 @@ export function extractDescription(sectionLines: string[]): string | null {
 
     // Stop at section headings, attribute tables, segment headings, examples, or ch02A subsections
     if (definitionFound) {
-      if (SECTION_HEADING_RE.test(trimmed)) break;
-      if (ATTRIBUTE_TABLE_RE.test(trimmed)) break;
-      if (SEGMENT_HEADING_RE.test(trimmed) && !trimmed.includes("....")) break;
-      if (/^Examples?:/i.test(trimmed)) break;
-      if (/^2\.(?:A|9)\.[\d.]+\s+/.test(trimmed)) break;
+      if (SECTION_HEADING_RE.test(trimmed)) {break;}
+      if (ATTRIBUTE_TABLE_RE.test(trimmed)) {break;}
+      if (SEGMENT_HEADING_RE.test(trimmed) && !trimmed.includes("....")) {break;}
+      if (/^Examples?:/i.test(trimmed)) {break;}
+      if (/^2\.(?:A|9)\.[\d.]+\s+/.test(trimmed)) {break;}
       // Bare section number on its own line (e.g., "8.8.9.2") — stop if we already
       // have description content, otherwise skip (it's noise between Definition: and text)
       if (/^\d+[A-Z]?(?:\.\d+){2,}\s*$/.test(trimmed)) {
-        if (descriptionParts.length > 0) break;
+        if (descriptionParts.length > 0) {break;}
         continue;
       }
       // Bare 5-digit item number on its own line (e.g., "00587")
-      if (/^\d{5}\s*$/.test(trimmed)) continue;
+      if (/^\d{5}\s*$/.test(trimmed)) {continue;}
     }
 
     // Skip component listings (multi-line blocks with <Type (DT)> ^ ... patterns)
@@ -297,7 +297,7 @@ export function extractDescription(sectionLines: string[]): string | null {
         descriptionParts.push(...preambleParts);
       }
       const afterDef = trimmed.slice(defMatch[0].length).trim();
-      if (afterDef) descriptionParts.push(afterDef);
+      if (afterDef) {descriptionParts.push(afterDef);}
       continue;
     }
 
@@ -333,7 +333,7 @@ export function extractDescription(sectionLines: string[]): string | null {
     descriptionParts.push(...preambleParts);
   }
 
-  if (descriptionParts.length === 0) return null;
+  if (descriptionParts.length === 0) {return null;}
 
   let description = descriptionParts
     .join(" ")
@@ -342,7 +342,7 @@ export function extractDescription(sectionLines: string[]): string | null {
     .replace(/\s+\d+(?:\.\w+){2,}\s*$|\s+\d+\.[A-Za-z]\w*(?:\.\w+)*\s*$/, "")
     .trim();
 
-  if (!description) return null;
+  if (!description) {return null;}
 
   // Safety net: truncate at sentence boundary if too long
   if (description.length > MAX_DESCRIPTION_LENGTH) {
@@ -373,25 +373,25 @@ function parseSegmentDescriptions(text: string): Map<string, PdfSegmentDescripti
   for (let i = 0; i < lines.length; i++) {
     const trimmedLine = lines[i]!.trim();
     const match = trimmedLine.match(SEGMENT_HEADING_RE);
-    if (!match) continue;
+    if (!match) {continue;}
 
     const segName = match[1]!;
     let longName = match[2]!.trim();
 
     // Skip TOC lines (contain "...." dots)
-    if (longName.includes("....")) continue;
+    if (longName.includes("....")) {continue;}
 
     // Only match actual segment codes (2-3 uppercase letters/digits)
-    if (!/^[A-Z][A-Z0-9]{1,2}$/.test(segName)) continue;
+    if (!/^[A-Z][A-Z0-9]{1,2}$/.test(segName)) {continue;}
 
     // Filter out false positives: table references, message names, numbers
-    if (/^\d/.test(longName)) continue;
+    if (/^\d/.test(longName)) {continue;}
     const longNameLower = longName.toLowerCase();
-    if (longNameLower.includes("event ") && !longNameLower.includes("segment")) continue;
+    if (longNameLower.includes("event ") && !longNameLower.includes("segment")) {continue;}
 
     // Must look like a segment definition — longName should contain a recognizable word
     // (not just a short abbreviation or code). Segment names are like "Patient Identification Segment"
-    if (!/[a-z]/.test(longName)) continue; // All-caps abbreviations are likely not segment headings
+    if (!/[a-z]/.test(longName)) {continue;} // All-caps abbreviations are likely not segment headings
 
     // Clean up long name: strip "Segment" / "Segment Definition" suffix
     longName = longName
@@ -403,16 +403,16 @@ function parseSegmentDescriptions(text: string): Map<string, PdfSegmentDescripti
     const descParts: string[] = [];
     for (let j = i + 1; j < lines.length && j < i + 100; j++) {
       const line = lines[j]!.trim();
-      if (!line) continue;
-      if (ATTRIBUTE_TABLE_RE.test(line)) break;
-      if (FIELD_HEADER_RE.test(line)) break;
+      if (!line) {continue;}
+      if (ATTRIBUTE_TABLE_RE.test(line)) {break;}
+      if (FIELD_HEADER_RE.test(line)) {break;}
       // Stop at next segment heading (that also passes our filters)
       const nextMatch = line.match(SEGMENT_HEADING_RE);
-      if (nextMatch && /^[A-Z]{2,3}$/.test(nextMatch[1]!) && !nextMatch[2]!.includes("....") && /[a-z]/.test(nextMatch[2]!)) break;
+      if (nextMatch && /^[A-Z]{2,3}$/.test(nextMatch[1]!) && !nextMatch[2]!.includes("....") && /[a-z]/.test(nextMatch[2]!)) {break;}
       // Stop at "field definitions" marker
-      if (/field definitions/i.test(line)) break;
+      if (/field definitions/i.test(line)) {break;}
       // Skip table column headers (single short words like "Status", "Chapter", "SEQ", "LEN")
-      if (/^\w+$/.test(line) && line.length <= 10) continue;
+      if (/^\w+$/.test(line) && line.length <= 10) {continue;}
 
       descParts.push(line);
     }
@@ -447,7 +447,7 @@ function parseAppendixTables(text: string): Map<string, PdfTable> {
     if (/HL7 AND USER.DEFINED TABLES.*NUMERIC/i.test(line) && !line.includes("....")) {
       inA5 = false;
     }
-    if (!inA5) continue;
+    if (!inA5) {continue;}
 
     // A.5 layout: Type (indented) + Table number + Name + Chapter ref
     // v2.5:   "   HL7      0357        Message error condition codes                   2.15.5.3"
@@ -482,15 +482,15 @@ function parseAppendixTables(text: string): Map<string, PdfTable> {
       continue;
     }
     // Stop at A.7 section (actual heading, not TOC)
-    if (inA6 && /DATA ELEMENT NAMES/.test(line) && !line.includes("....")) break;
-    if (inA6 && /^A\.7\b/.test(line.trim()) && !line.includes("....")) break;
-    if (!inA6) continue;
+    if (inA6 && /DATA ELEMENT NAMES/.test(line) && !line.includes("....")) {break;}
+    if (inA6 && /^A\.7\b/.test(line.trim()) && !line.includes("....")) {break;}
+    if (!inA6) {continue;}
 
     // Skip page noise lines and column headers
     const trimmed = line.trim();
-    if (!trimmed) continue;
-    if (/^Type\s+Table\s+Name/.test(trimmed)) continue;
-    if (/^Page\s/.test(trimmed)) continue;
+    if (!trimmed) {continue;}
+    if (/^Type\s+Table\s+Name/.test(trimmed)) {continue;}
+    if (/^Page\s/.test(trimmed)) {continue;}
 
     // Table header: "Type                 Table Name"
     // Starts at column 0 with "HL7" or "User"
@@ -580,9 +580,9 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
         if (optColStart !== -1) {
           // Also capture LEN and C.LEN column positions
           const lenMatch = line.match(/\bLEN\b/);
-          if (lenMatch) lenColStart = line.indexOf(lenMatch[0]);
+          if (lenMatch) {lenColStart = line.indexOf(lenMatch[0]);}
           const clenMatch = line.match(/\bC\.LEN\b/);
-          if (clenMatch) clenColStart = line.indexOf(clenMatch[0]);
+          if (clenMatch) {clenColStart = line.indexOf(clenMatch[0]);}
           i++;
           break;
         }
@@ -603,13 +603,13 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
       const line = lines[i]!;
       const trimmed = line.trim();
 
-      if (!trimmed) continue;
+      if (!trimmed) {continue;}
 
       // Recalibrate on repeated header after page break
       if (/^\s*SEQ\b/.test(line) && (/\bOPT\b/.test(line) || /\bUSAGE\b/.test(line) || /\bR\/O\b/.test(line))) {
         optColStart = line.indexOf("OPT");
-        if (optColStart === -1) optColStart = line.indexOf("USAGE");
-        if (optColStart === -1) optColStart = line.indexOf("R/O");
+        if (optColStart === -1) {optColStart = line.indexOf("USAGE");}
+        if (optColStart === -1) {optColStart = line.indexOf("R/O");}
         const lenMatch = line.match(/\bLEN\b/);
         lenColStart = lenMatch ? line.indexOf(lenMatch[0]) : -1;
         const clenMatch = line.match(/\bC\.LEN\b/);
@@ -618,13 +618,13 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
       }
 
       // Stop at next attribute table, section heading, or field definition header
-      if (ATTR_TABLE_TITLE_RE.test(trimmed)) break;
-      if (FIELD_HEADER_RE.test(trimmed)) break;
-      if (SECTION_HEADING_RE.test(trimmed)) break;
+      if (ATTR_TABLE_TITLE_RE.test(trimmed)) {break;}
+      if (FIELD_HEADER_RE.test(trimmed)) {break;}
+      if (SECTION_HEADING_RE.test(trimmed)) {break;}
 
       // Data row: must start with SEQ (digits), allowing "1-n" or "1-N" range notation
       const seqMatch = trimmed.match(/^(\d{1,3})(?:-[nN])?\s/);
-      if (!seqMatch) continue;
+      if (!seqMatch) {continue;}
       const itemMatch = trimmed.match(/\b(\d{5})\b/);
 
       const position = parseInt(seqMatch[1]!, 10);
@@ -634,7 +634,7 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
       const optSlice = line.slice(Math.max(0, optColStart - 5), optColStart + 10).trim();
       // The slice may contain adjacent column data; find the valid usage code
       const usageToken = optSlice.split(/\s+/).find(t => VALID_USAGE_CODES.has(t));
-      if (!usageToken) continue;
+      if (!usageToken) {continue;}
 
       // Extract LEN by column position: "N..M" (range) or "N" (single)
       let minLength: number | null = null;
@@ -746,7 +746,7 @@ function parseDatatypeDescriptions(text: string): {
       continue;
     }
     // Don't clear pendingSectionPrefix on blank lines — v2.4 has blanks between section number and heading
-    if (!trimmed) continue;
+    if (!trimmed) {continue;}
 
     // Check for datatype heading
     const dtMatch = trimmed.match(DATATYPE_HEADING_RE);
@@ -755,13 +755,13 @@ function parseDatatypeDescriptions(text: string): {
       const longName = dtMatch[2]!.trim();
 
       // Skip TOC lines
-      if (longName.includes("....")) continue;
+      if (longName.includes("....")) {continue;}
       // Must have lowercase — unless a section prefix is present (v2.4 uses ALL-CAPS headings like
       // "2.9.12 CX - EXTENDED COMPOSITE ID WITH CHECK DIGIT"), or we have a pending split-line prefix
       const hasSectionPrefix = /^2\.(?:A|9)\.\d+\s+/.test(trimmed) || pendingSectionPrefix?.type === "dt";
-      if (!hasSectionPrefix && !/[a-z]/.test(longName)) continue;
+      if (!hasSectionPrefix && !/[a-z]/.test(longName)) {continue;}
       // Must look like a datatype code (2-5 uppercase alphanumeric)
-      if (!/^[A-Z][A-Z0-9]{0,4}$/.test(name)) continue;
+      if (!/^[A-Z][A-Z0-9]{0,4}$/.test(name)) {continue;}
 
       dtHeaders.push({ index: i, name, longName });
       currentDt = name;
@@ -844,7 +844,7 @@ function parseDatatypeDescriptions(text: string): {
     }
     // Also end at next datatype heading
     const nextDt = dtHeaders.find(d => d.index > header.index);
-    if (nextDt) endLine = Math.min(endLine, nextDt.index);
+    if (nextDt) {endLine = Math.min(endLine, nextDt.index);}
 
     const section = lines.slice(startLine, endLine);
     const description = extractDescription(section);
@@ -901,7 +901,7 @@ function parseComponentTables(text: string): Map<string, PdfComponentTableField[
       }
     }
 
-    if (optColStart === -1) continue;
+    if (optColStart === -1) {continue;}
 
     // Parse data rows
     const fields: PdfComponentTableField[] = [];
@@ -909,7 +909,7 @@ function parseComponentTables(text: string): Map<string, PdfComponentTableField[
       const line = lines[i]!;
       const trimmed = line.trim();
 
-      if (!trimmed) continue;
+      if (!trimmed) {continue;}
 
       // Recalibrate on repeated header after page break
       if (/^\s*SEQ\b/.test(line) && /\bOPT\b/.test(line)) {
@@ -919,28 +919,28 @@ function parseComponentTables(text: string): Map<string, PdfComponentTableField[
       }
 
       // Stop at next table title, section heading, or datatype heading
-      if (COMP_TABLE_TITLE_RE.test(trimmed)) break;
-      if (ATTR_TABLE_TITLE_RE.test(trimmed)) break;
-      if (DATATYPE_HEADING_RE.test(trimmed) && !trimmed.includes("....") && /[a-z]/.test(trimmed)) break;
-      if (COMPONENT_HEADING_RE.test(trimmed)) break;
+      if (COMP_TABLE_TITLE_RE.test(trimmed)) {break;}
+      if (ATTR_TABLE_TITLE_RE.test(trimmed)) {break;}
+      if (DATATYPE_HEADING_RE.test(trimmed) && !trimmed.includes("....") && /[a-z]/.test(trimmed)) {break;}
+      if (COMPONENT_HEADING_RE.test(trimmed)) {break;}
 
       // Data row: must start with SEQ digits and contain a component name
       const seqMatch = trimmed.match(/^(\d{1,2})\s/);
-      if (!seqMatch) continue;
+      if (!seqMatch) {continue;}
 
       const position = parseInt(seqMatch[1]!, 10);
 
       // Extract OPT by column position
       const optSlice = line.slice(optColStart - 2, optColStart + 5).trim();
       const usageToken = optSlice.split(/\s+/).find(t => VALID_USAGE_CODES.has(t));
-      if (!usageToken) continue;
+      if (!usageToken) {continue;}
 
       // Extract TBL# by column position (if TBL# column exists in header)
       let table: string | null = null;
       if (tblColStart >= 0) {
         const tblSlice = line.slice(tblColStart - 2, tblColStart + 8).trim();
         const tblMatch = tblSlice.match(/\b(\d{4})\b/);
-        if (tblMatch) table = tblMatch[1]!;
+        if (tblMatch) {table = tblMatch[1]!;}
       }
 
       fields.push({ datatype: dtName, position, optionality: usageToken, table });
@@ -958,7 +958,7 @@ async function findCh02aFile(pdfDir: string): Promise<string | null> {
   const files = await readdir(pdfDir);
   // Prefer CH02A (v2.5+), fall back to CH02 (v2.4 where datatypes are in the main chapter)
   const ch02a = files.find(f => /CH0?2A/i.test(f) && f.endsWith(".pdf"));
-  if (ch02a) return join(pdfDir, ch02a);
+  if (ch02a) {return join(pdfDir, ch02a);}
   const ch02 = files.find(f => /^CH0?2\.pdf$/i.test(f));
   return ch02 ? join(pdfDir, ch02) : null;
 }
@@ -992,18 +992,18 @@ export async function parsePdfComponentTables(pdfDir: string, cmd: string[]): Pr
 /** Detect descriptions that are TOC listings, overview sections, or cross-references. */
 function isLowQualitySegmentDescription(desc: string): boolean {
   // Starts with a section number like "5.3 ..." (TOC entry)
-  if (/^\d+[\.\d]*\s/.test(desc)) return true;
+  if (/^\d+[\.\d]*\s/.test(desc)) {return true;}
   // Cross-reference: "documented in ... Chapter", "moved to Chapter"
-  if (/documented in .{0,30}Chapter/i.test(desc)) return true;
-  if (/moved to Chapter/i.test(desc)) return true;
+  if (/documented in .{0,30}Chapter/i.test(desc)) {return true;}
+  if (/moved to Chapter/i.test(desc)) {return true;}
   // Overview listing: multiple segment codes (e.g., "NK1 - Next of kin ... PV1 - ...")
   const segRefs = desc.match(/\b[A-Z][A-Z0-9]{1,2}\s*[-\u2013]\s+[A-Z]/g);
-  if (segRefs && segRefs.length > 1) return true;
+  if (segRefs && segRefs.length > 1) {return true;}
   // Repeated structural keywords from chapter intros
-  if ((desc.match(/Segment Definition/gi) || []).length > 1) return true;
-  if ((desc.match(/Static Definition/gi) || []).length > 1) return true;
+  if ((desc.match(/Segment Definition/gi) || []).length > 1) {return true;}
+  if ((desc.match(/Static Definition/gi) || []).length > 1) {return true;}
   // Table listings: multiple "Table NNNN" references
-  if ((desc.match(/\bTable\s+\d{4}\b/g) || []).length > 2) return true;
+  if ((desc.match(/\bTable\s+\d{4}\b/g) || []).length > 2) {return true;}
   return false;
 }
 
@@ -1023,7 +1023,7 @@ export async function parsePdfDescriptions(pdfDir: string, cmd: string[]): Promi
 
     const fieldDescs = parseFieldDescriptions(text);
     for (const [key, value] of fieldDescs) {
-      if (!allFields.has(key)) allFields.set(key, value);
+      if (!allFields.has(key)) {allFields.set(key, value);}
     }
 
     const segDescs = parseSegmentDescriptions(text);

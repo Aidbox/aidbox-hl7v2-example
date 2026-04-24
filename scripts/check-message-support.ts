@@ -114,7 +114,7 @@ if (entries?.length) {
   for (const resource of entries) {
     const rt = resource.resourceType ?? "?";
     const id = (resource as { id?: string }).id ?? "?";
-    if (!byType.has(rt)) byType.set(rt, []);
+    if (!byType.has(rt)) {byType.set(rt, []);}
     byType.get(rt)!.push(id);
   }
   const summary = [...byType.entries()]

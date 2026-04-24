@@ -63,13 +63,13 @@ function extractRefsFromExtension(
   extUrl: string,
   subExtUrl: string,
 ): string[] {
-  if (!account.extension) return [];
+  if (!account.extension) {return [];}
 
   const refs: string[] = [];
   for (const ext of account.extension) {
-    if (ext.url !== extUrl) continue;
+    if (ext.url !== extUrl) {continue;}
     const subExts = (ext as { extension?: Array<{ url: string; valueReference?: { reference?: string } }> }).extension;
-    if (!subExts) continue;
+    if (!subExts) {continue;}
     for (const sub of subExts) {
       if (sub.url === subExtUrl && sub.valueReference?.reference) {
         refs.push(sub.valueReference.reference);
@@ -108,14 +108,14 @@ async function fetchRelatedResources(account: AccountWithId): Promise<{
   const conditionRefs = extractRefsFromExtension(account, DIAGNOSIS_EXT_URL, "condition");
   for (const ref of conditionRefs) {
     const condition = await fetchResource<Condition>(ref);
-    if (condition) result.conditions.push(condition);
+    if (condition) {result.conditions.push(condition);}
   }
 
   // Fetch procedures from account-procedure extensions
   const procedureRefs = extractRefsFromExtension(account, PROCEDURE_EXT_URL, "procedure");
   for (const ref of procedureRefs) {
     const procedure = await fetchResource<Procedure>(ref);
-    if (procedure) result.procedures.push(procedure);
+    if (procedure) {result.procedures.push(procedure);}
   }
 
   // Fetch coverages from Account.coverage[]
@@ -131,7 +131,7 @@ async function fetchRelatedResources(account: AccountWithId): Promise<{
           const payorRef = coverage.payor?.[0]?.reference;
           if (payorRef?.startsWith("Organization/")) {
             const org = await fetchResource<Organization>(payorRef);
-            if (org) result.organizations.set(payorRef, org);
+            if (org) {result.organizations.set(payorRef, org);}
           }
         }
       }
@@ -156,7 +156,7 @@ async function fetchRelatedResources(account: AccountWithId): Promise<{
   const ownerRef = (account as { owner?: { reference?: string } }).owner?.reference;
   if (ownerRef?.startsWith("Organization/") && !result.organizations.has(ownerRef)) {
     const org = await fetchResource<Organization>(ownerRef);
-    if (org) result.organizations.set(ownerRef, org);
+    if (org) {result.organizations.set(ownerRef, org);}
   }
 
   return result;
@@ -306,7 +306,7 @@ export async function processAccount(account: AccountWithId): Promise<void> {
 
 export async function processNextAccount(): Promise<boolean> {
   const account = await pollPendingAccount() as AccountWithId | null;
-  if (!account) return false;
+  if (!account) {return false;}
   await processAccount(account);
   return true;
 }

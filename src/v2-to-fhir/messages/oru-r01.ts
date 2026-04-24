@@ -169,7 +169,7 @@ function createSpecimenFromOBR15(
   obr: OBR,
   orderNumber: string,
 ): Specimen | undefined {
-  if (!obr.$15_specimenSource) return undefined;
+  if (!obr.$15_specimenSource) {return undefined;}
 
   const sps = obr.$15_specimenSource;
   const id = `${orderNumber.toLowerCase()}-specimen-obr15`.replace(
@@ -311,7 +311,7 @@ function linkSpecimensToResources(
   observations: Observation[],
 ): void {
   const firstSpecimen = specimens[0];
-  if (!firstSpecimen) return;
+  if (!firstSpecimen) {return;}
 
   diagnosticReport.specimen = specimens.map(
     (s) => ({ reference: `Specimen/${s.id}` }) as Reference<"Specimen">,
@@ -355,7 +355,7 @@ function linkEncounterToResources(
   diagnosticReport: DiagnosticReport,
   observations: Observation[],
 ): void {
-  if (!encounterRef) return;
+  if (!encounterRef) {return;}
 
   diagnosticReport.encounter = encounterRef;
 

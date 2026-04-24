@@ -27,7 +27,7 @@ function buildRedirect(
 ): Response {
   if (!error) {
     const params = new URLSearchParams();
-    if (savedCode) params.set("saved", savedCode);
+    if (savedCode) {params.set("saved", savedCode);}
     if (typeof replayedCount === "number") {
       params.set("replayed", String(replayedCount));
     }
@@ -38,8 +38,8 @@ function buildRedirect(
     });
   }
   const params = new URLSearchParams();
-  if (localCode) params.set("code", localCode);
-  if (localSender) params.set("sender", localSender);
+  if (localCode) {params.set("code", localCode);}
+  if (localSender) {params.set("sender", localSender);}
   params.set("error", error);
   return new Response(null, {
     status: 302,

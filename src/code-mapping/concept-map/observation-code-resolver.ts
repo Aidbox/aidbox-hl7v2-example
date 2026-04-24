@@ -86,7 +86,7 @@ function extractLoincFromAlternate(ce: CE): Coding {
  * Extract local coding from primary fields (components 1-3)
  */
 function extractLocalFromPrimary(ce: CE): Coding | undefined {
-  if (!ce.$1_code) return undefined;
+  if (!ce.$1_code) {return undefined;}
   return {
     code: ce.$1_code,
     display: ce.$2_text,
@@ -196,7 +196,7 @@ export async function resolveToLoinc(
   sender: SenderContext,
 ): Promise<CodeResolutionResult> {
   const inlineResult = tryResolveFromInlineLoinc(observationIdentifier);
-  if (inlineResult) return inlineResult;
+  if (inlineResult) {return inlineResult;}
 
   return resolveFromConceptMap(observationIdentifier, sender);
 }

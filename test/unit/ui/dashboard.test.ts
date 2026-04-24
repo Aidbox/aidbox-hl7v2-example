@@ -39,11 +39,11 @@ afterEach(() => {
 describe("getDashboardStats", () => {
   test("issues the four plan-specified queries in parallel", async () => {
     mockedFetch = async (path) => {
-      if (path.includes("_lastUpdated=gt")) return bundle(14);
-      if (path.includes("status=code_mapping_error")) return bundle(3);
+      if (path.includes("_lastUpdated=gt")) {return bundle(14);}
+      if (path.includes("status=code_mapping_error")) {return bundle(3);}
       if (path.includes("status=parsing_error,conversion_error,sending_error"))
-        return bundle(1);
-      if (path.includes("status=processed")) return bundle(0, []);
+        {return bundle(1);}
+      if (path.includes("status=processed")) {return bundle(0, []);}
       return bundle(0);
     };
 

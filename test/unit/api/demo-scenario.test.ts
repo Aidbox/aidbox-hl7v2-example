@@ -152,7 +152,7 @@ describe("runDemoScenario", () => {
     let calls = 0;
     mockedSend = async () => {
       calls++;
-      if (calls === 2) throw new Error("transient MLLP error");
+      if (calls === 2) {throw new Error("transient MLLP error");}
       return "MSH|^~\\&|AIDBOX|AIDBOX|T||ACK|1|P|2.4\rMSA|AA|X";
     };
     const fired: string[] = [];
@@ -177,7 +177,7 @@ describe("runDemoScenario", () => {
     let calls = 0;
     mockedSend = async () => {
       calls++;
-      if (calls === 1) throw new Error("mllp down");
+      if (calls === 1) {throw new Error("mllp down");}
       return "ACK";
     };
     const pollCalls: string[] = [];

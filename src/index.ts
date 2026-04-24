@@ -226,7 +226,7 @@ Bun.serve({
       const url = new URL(req.url);
       const display = url.searchParams.get("display") ?? "";
       const field = url.searchParams.get("field") ?? undefined;
-      if (!display.trim()) return Response.json({ results: [] });
+      if (!display.trim()) {return Response.json({ results: [] });}
       try {
         const results = await suggestCodes(display, field);
         return Response.json({ results });
@@ -400,10 +400,10 @@ Bun.serve({
             `/fhir/IncomingHL7v2Message?batch-tag=${encodeURIComponent(batchTag)}&status=${erroredStatuses}&_count=100`,
           );
           const batch = bundle.entry?.map((e) => e.resource) ?? [];
-          if (batch.length === 0) break;
+          if (batch.length === 0) {break;}
 
           for (const msg of batch) {
-            if (!msg.id) continue;
+            if (!msg.id) {continue;}
             const updated: IncomingHL7v2Message = {
               ...msg,
               status: "received",

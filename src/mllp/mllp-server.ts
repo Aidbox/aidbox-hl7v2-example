@@ -30,7 +30,7 @@ interface MSHFields {
 function extractMSHFields(hl7Message: string): MSHFields {
   const lines = hl7Message.split(/\r?\n|\r/);
   const mshLine = lines.find((line) => line.startsWith("MSH"));
-  if (!mshLine) return { messageType: "UNKNOWN" };
+  if (!mshLine) {return { messageType: "UNKNOWN" };}
 
   const fields = mshLine.split("|");
   // MSH field positions (0-indexed after split):
@@ -202,7 +202,7 @@ export interface MLLPServerOptions {
 /**
  * Create MLLP TCP server
  */
-export function createMLLPServer(port: number = 2575, options: MLLPServerOptions = {}): net.Server {
+export function createMLLPServer(port = 2575, options: MLLPServerOptions = {}): net.Server {
   // Overriding is used for testing
   const storeFn = options.storeMessageFn ?? storeMessage;
 

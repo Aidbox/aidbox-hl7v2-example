@@ -12,8 +12,8 @@ import type { Identifier, CodeableConcept, Period } from "../../fhir/hl7-fhir-r4
  * - CX.8 (Expiration Date) -> period.end
  */
 export function convertCXToIdentifier(cx: CX | undefined): Identifier | undefined {
-  if (!cx) return undefined;
-  if (!cx.$1_value) return undefined;
+  if (!cx) {return undefined;}
+  if (!cx.$1_value) {return undefined;}
 
   const identifier: Identifier = {
     value: cx.$1_value,
@@ -38,8 +38,8 @@ export function convertCXToIdentifier(cx: CX | undefined): Identifier | undefine
   // Map period (effective and expiration dates)
   if (cx.$7_start || cx.$8_end) {
     const period: Period = {};
-    if (cx.$7_start) period.start = cx.$7_start;
-    if (cx.$8_end) period.end = cx.$8_end;
+    if (cx.$7_start) {period.start = cx.$7_start;}
+    if (cx.$8_end) {period.end = cx.$8_end;}
     identifier.period = period;
   }
 

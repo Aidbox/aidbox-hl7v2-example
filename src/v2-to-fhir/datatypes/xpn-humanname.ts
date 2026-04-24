@@ -43,7 +43,7 @@ const NAME_ASSEMBLY_ORDER_MAP: Record<string, string> = {
  * Handles formats: YYYY, YYYYMM, YYYYMMDD, YYYYMMDDHHMM, YYYYMMDDHHMMSS
  */
 function convertDateTime(dt: string | undefined): string | undefined {
-  if (!dt) return undefined;
+  if (!dt) {return undefined;}
 
   // Extract date components
   const year = dt.substring(0, 4);
@@ -53,12 +53,12 @@ function convertDateTime(dt: string | undefined): string | undefined {
   const minute = dt.substring(10, 12);
   const second = dt.substring(12, 14);
 
-  if (dt.length === 4) return year;
-  if (dt.length === 6) return `${year}-${month}`;
-  if (dt.length === 8) return `${year}-${month}-${day}`;
+  if (dt.length === 4) {return year;}
+  if (dt.length === 6) {return `${year}-${month}`;}
+  if (dt.length === 8) {return `${year}-${month}-${day}`;}
   if (dt.length >= 12) {
     const base = `${year}-${month}-${day}T${hour}:${minute}`;
-    if (dt.length >= 14) return `${base}:${second}`;
+    if (dt.length >= 14) {return `${base}:${second}`;}
     return `${base}:00`;
   }
 
@@ -69,12 +69,12 @@ function convertDateTime(dt: string | undefined): string | undefined {
  * Convert DR (Date Range) to FHIR Period
  */
 function convertDRToPeriod(dr: DR | undefined): Period | undefined {
-  if (!dr) return undefined;
+  if (!dr) {return undefined;}
 
   const start = convertDateTime(dr.$1_start);
   const end = convertDateTime(dr.$2_end);
 
-  if (!start && !end) return undefined;
+  if (!start && !end) {return undefined;}
 
   return {
     ...(start && { start }),
@@ -86,7 +86,7 @@ function convertDRToPeriod(dr: DR | undefined): Period | undefined {
  * Map XPN.7 Name Type Code to FHIR HumanName.use
  */
 function mapNameUse(nameTypeCode: string | undefined): HumanName["use"] {
-  if (!nameTypeCode) return undefined;
+  if (!nameTypeCode) {return undefined;}
   return NAME_TYPE_MAP[nameTypeCode.toUpperCase()];
 }
 
@@ -100,7 +100,7 @@ function buildPeriod(xpn: XPN): Period | undefined {
   if (hasExplicitDates) {
     const start = convertDateTime(xpn.$12_start);
     const end = convertDateTime(xpn.$13_end);
-    if (!start && !end) return undefined;
+    if (!start && !end) {return undefined;}
     return {
       ...(start && { start }),
       ...(end && { end }),
@@ -115,10 +115,10 @@ function buildPeriod(xpn: XPN): Period | undefined {
  * Build extensions from XPN.11 Name Assembly Order
  */
 function buildExtensions(xpn: XPN): Extension[] | undefined {
-  if (!xpn.$11_order) return undefined;
+  if (!xpn.$11_order) {return undefined;}
 
   const code = NAME_ASSEMBLY_ORDER_MAP[xpn.$11_order.toUpperCase()];
-  if (!code) return undefined;
+  if (!code) {return undefined;}
 
   return [
     {
@@ -150,7 +150,7 @@ function buildExtensions(xpn: XPN): Extension[] | undefined {
  * - XPN.14         -> suffix[2] (professional suffix)
  */
 export function convertXPNToHumanName(xpn: XPN | undefined): HumanName | undefined {
-  if (!xpn) return undefined;
+  if (!xpn) {return undefined;}
 
   // XPN.1: Family Name (FN datatype)
   const family = xpn.$1_family?.$1_family;
@@ -158,11 +158,11 @@ export function convertXPNToHumanName(xpn: XPN | undefined): HumanName | undefin
   // XPN.2: Given Name -> given[0]
   // XPN.3: Second and Further Given Names -> given[1]
   const given: string[] = [];
-  if (xpn.$2_given) given.push(xpn.$2_given);
-  if (xpn.$3_additionalGiven) given.push(xpn.$3_additionalGiven);
+  if (xpn.$2_given) {given.push(xpn.$2_given);}
+  if (xpn.$3_additionalGiven) {given.push(xpn.$3_additionalGiven);}
 
   // Must have at least family or given
-  if (!family && given.length === 0) return undefined;
+  if (!family && given.length === 0) {return undefined;}
 
   // XPN.5: Prefix -> prefix
   const prefix = xpn.$5_prefix ? [xpn.$5_prefix] : undefined;
@@ -171,9 +171,9 @@ export function convertXPNToHumanName(xpn: XPN | undefined): HumanName | undefin
   // XPN.6: Degree -> suffix[1]
   // XPN.14: Professional Suffix -> suffix[2]
   const suffix: string[] = [];
-  if (xpn.$4_suffix) suffix.push(xpn.$4_suffix);
-  if (xpn.$6_qualification) suffix.push(xpn.$6_qualification);
-  if (xpn.$14_credential) suffix.push(xpn.$14_credential);
+  if (xpn.$4_suffix) {suffix.push(xpn.$4_suffix);}
+  if (xpn.$6_qualification) {suffix.push(xpn.$6_qualification);}
+  if (xpn.$14_credential) {suffix.push(xpn.$14_credential);}
 
   // XPN.7: Name Type Code -> use
   const use = mapNameUse(xpn.$7_use);
@@ -186,10 +186,10 @@ export function convertXPNToHumanName(xpn: XPN | undefined): HumanName | undefin
 
   // Build text representation
   const textParts: string[] = [];
-  if (prefix) textParts.push(...prefix);
-  if (given.length > 0) textParts.push(...given);
-  if (family) textParts.push(family);
-  if (suffix.length > 0) textParts.push(...suffix);
+  if (prefix) {textParts.push(...prefix);}
+  if (given.length > 0) {textParts.push(...given);}
+  if (family) {textParts.push(family);}
+  if (suffix.length > 0) {textParts.push(...suffix);}
 
   return {
     ...(use && { use }),
@@ -210,13 +210,13 @@ export function convertXPNToHumanName(xpn: XPN | undefined): HumanName | undefin
 export function convertXPNArrayToHumanNames(
   xpns: XPN[] | undefined
 ): HumanName[] | undefined {
-  if (!xpns || xpns.length === 0) return undefined;
+  if (!xpns || xpns.length === 0) {return undefined;}
 
   const names: HumanName[] = [];
 
   for (const xpn of xpns) {
     const name = convertXPNToHumanName(xpn);
-    if (name) names.push(name);
+    if (name) {names.push(name);}
   }
 
   return names.length > 0 ? names : undefined;
@@ -228,7 +228,7 @@ export function convertXPNArrayToHumanNames(
  * Default order: Prefix Given Family Suffix
  */
 export function convertXPNToString(xpn: XPN | undefined): string | undefined {
-  if (!xpn) return undefined;
+  if (!xpn) {return undefined;}
 
   const parts: string[] = [];
 
@@ -238,26 +238,26 @@ export function convertXPNToString(xpn: XPN | undefined): string | undefined {
   const isFamilyFirst = xpn.$11_order?.toUpperCase() === "F";
 
   // Prefix
-  if (xpn.$5_prefix) parts.push(xpn.$5_prefix);
+  if (xpn.$5_prefix) {parts.push(xpn.$5_prefix);}
 
   if (isFamilyFirst) {
     // Family first order
-    if (xpn.$1_family?.$1_family) parts.push(xpn.$1_family.$1_family);
-    if (xpn.$2_given) parts.push(xpn.$2_given);
-    if (xpn.$3_additionalGiven) parts.push(xpn.$3_additionalGiven);
+    if (xpn.$1_family?.$1_family) {parts.push(xpn.$1_family.$1_family);}
+    if (xpn.$2_given) {parts.push(xpn.$2_given);}
+    if (xpn.$3_additionalGiven) {parts.push(xpn.$3_additionalGiven);}
   } else {
     // Given first order (default)
-    if (xpn.$2_given) parts.push(xpn.$2_given);
-    if (xpn.$3_additionalGiven) parts.push(xpn.$3_additionalGiven);
-    if (xpn.$1_family?.$1_family) parts.push(xpn.$1_family.$1_family);
+    if (xpn.$2_given) {parts.push(xpn.$2_given);}
+    if (xpn.$3_additionalGiven) {parts.push(xpn.$3_additionalGiven);}
+    if (xpn.$1_family?.$1_family) {parts.push(xpn.$1_family.$1_family);}
   }
 
   // Suffixes
-  if (xpn.$4_suffix) parts.push(xpn.$4_suffix);
-  if (xpn.$6_qualification) parts.push(xpn.$6_qualification);
-  if (xpn.$14_credential) parts.push(xpn.$14_credential);
+  if (xpn.$4_suffix) {parts.push(xpn.$4_suffix);}
+  if (xpn.$6_qualification) {parts.push(xpn.$6_qualification);}
+  if (xpn.$14_credential) {parts.push(xpn.$14_credential);}
 
-  if (parts.length === 0) return undefined;
+  if (parts.length === 0) {return undefined;}
 
   return parts.join(" ");
 }

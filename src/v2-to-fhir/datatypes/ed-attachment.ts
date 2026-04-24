@@ -28,8 +28,8 @@ export interface ED {
  * This basic implementation returns the data as-is.
  */
 export function convertEDToAttachment(ed: ED | undefined): Attachment | undefined {
-  if (!ed) return undefined;
-  if (!ed.$5_data && !ed.$3_dataSubtype) return undefined;
+  if (!ed) {return undefined;}
+  if (!ed.$5_data && !ed.$3_dataSubtype) {return undefined;}
 
   const attachment: Attachment = {};
 
@@ -62,8 +62,8 @@ export interface DocumentReferenceData {
  * This basic implementation returns the data as-is.
  */
 export function convertEDToDocumentReference(ed: ED | undefined): DocumentReferenceData | undefined {
-  if (!ed) return undefined;
-  if (!ed.$5_data && !ed.$3_dataSubtype) return undefined;
+  if (!ed) {return undefined;}
+  if (!ed.$5_data && !ed.$3_dataSubtype) {return undefined;}
 
   const attachment: Attachment = {};
 

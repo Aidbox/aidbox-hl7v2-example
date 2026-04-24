@@ -27,7 +27,7 @@ function buildIdentifier(xon: XON): Identifier | undefined {
   // XON.10 takes precedence over XON.3
   const value = xon.$10_organizationId || xon.$3_value;
 
-  if (!value) return undefined;
+  if (!value) {return undefined;}
 
   const identifier: Identifier = {
     value,
@@ -81,7 +81,7 @@ function buildIdentifier(xon: XON): Identifier | undefined {
  * Build location extensions from XON.2 (Name Type Code)
  */
 function buildExtensions(xon: XON): Extension[] | undefined {
-  if (!xon.$2_nameType) return undefined;
+  if (!xon.$2_nameType) {return undefined;}
 
   return [
     {
@@ -111,12 +111,12 @@ function buildExtensions(xon: XON): Extension[] | undefined {
  * - XON.10         -> identifier.value
  */
 export function convertXONToLocation(xon: XON | undefined): Location | undefined {
-  if (!xon) return undefined;
+  if (!xon) {return undefined;}
 
   const identifier = buildIdentifier(xon);
 
   // Need at least name or identifier
-  if (!xon.$1_name && !identifier) return undefined;
+  if (!xon.$1_name && !identifier) {return undefined;}
 
   const extension = buildExtensions(xon);
 
@@ -134,13 +134,13 @@ export function convertXONToLocation(xon: XON | undefined): Location | undefined
 export function convertXONArrayToLocations(
   xons: XON[] | undefined
 ): Location[] | undefined {
-  if (!xons || xons.length === 0) return undefined;
+  if (!xons || xons.length === 0) {return undefined;}
 
   const locations: Location[] = [];
 
   for (const xon of xons) {
     const location = convertXONToLocation(xon);
-    if (location) locations.push(location);
+    if (location) {locations.push(location);}
   }
 
   return locations.length > 0 ? locations : undefined;

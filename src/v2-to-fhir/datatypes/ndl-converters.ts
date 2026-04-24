@@ -77,7 +77,7 @@ function createPhysicalType(code: string) {
  * Note: The actual Practitioner resource must be created separately from NDL.1.
  */
 export function convertNDLToPractitionerRole(ndl: NDL | undefined): NDLPractitionerRoleData | undefined {
-  if (!ndl) return undefined;
+  if (!ndl) {return undefined;}
 
   const result: NDLPractitionerRoleData = {};
 
@@ -112,7 +112,7 @@ export function convertNDLToPractitionerRole(ndl: NDL | undefined): NDLPractitio
       mode: "instance",
       physicalType: createPhysicalType("poc"),
     };
-    if (ndl.$8_locationStatus) loc.status = ndl.$8_locationStatus;
+    if (ndl.$8_locationStatus) {loc.status = ndl.$8_locationStatus;}
     locations.push(loc);
   }
 
@@ -123,7 +123,7 @@ export function convertNDLToPractitionerRole(ndl: NDL | undefined): NDLPractitio
       mode: "instance",
       physicalType: createPhysicalType("ro"),
     };
-    if (ndl.$8_locationStatus) loc.status = ndl.$8_locationStatus;
+    if (ndl.$8_locationStatus) {loc.status = ndl.$8_locationStatus;}
     locations.push(loc);
   }
 
@@ -134,7 +134,7 @@ export function convertNDLToPractitionerRole(ndl: NDL | undefined): NDLPractitio
       mode: "instance",
       physicalType: createPhysicalType("bd"),
     };
-    if (ndl.$8_locationStatus) loc.status = ndl.$8_locationStatus;
+    if (ndl.$8_locationStatus) {loc.status = ndl.$8_locationStatus;}
     locations.push(loc);
   }
 
@@ -147,7 +147,7 @@ export function convertNDLToPractitionerRole(ndl: NDL | undefined): NDLPractitio
         mode: "instance",
         physicalType: createPhysicalType("si"),
       };
-      if (ndl.$8_locationStatus) loc.status = ndl.$8_locationStatus;
+      if (ndl.$8_locationStatus) {loc.status = ndl.$8_locationStatus;}
       locations.push(loc);
     }
   }
@@ -159,7 +159,7 @@ export function convertNDLToPractitionerRole(ndl: NDL | undefined): NDLPractitio
       mode: "instance",
       physicalType: createPhysicalType("bu"),
     };
-    if (ndl.$8_locationStatus) loc.status = ndl.$8_locationStatus;
+    if (ndl.$8_locationStatus) {loc.status = ndl.$8_locationStatus;}
     locations.push(loc);
   }
 
@@ -170,7 +170,7 @@ export function convertNDLToPractitionerRole(ndl: NDL | undefined): NDLPractitio
       mode: "instance",
       physicalType: createPhysicalType("lvl"),
     };
-    if (ndl.$8_locationStatus) loc.status = ndl.$8_locationStatus;
+    if (ndl.$8_locationStatus) {loc.status = ndl.$8_locationStatus;}
     locations.push(loc);
   }
 

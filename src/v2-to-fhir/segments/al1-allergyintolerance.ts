@@ -77,8 +77,8 @@ const SEVERITY_MAP: Record<string, AllergyIntoleranceReaction["severity"]> = {
  * Convert HL7v2 DT to FHIR dateTime
  */
 function convertDTToDateTime(dt: string | undefined): string | undefined {
-  if (!dt) return undefined;
-  if (dt.length < 8) return undefined;
+  if (!dt) {return undefined;}
+  if (dt.length < 8) {return undefined;}
 
   const year = dt.substring(0, 4);
   const month = dt.substring(4, 6);

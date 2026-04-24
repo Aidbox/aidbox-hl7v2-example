@@ -25,10 +25,10 @@ export interface SuggestedCode {
 function scoreMatch(query: string, display: string): number {
   const q = query.trim().toLowerCase();
   const d = display.toLowerCase();
-  if (!q) return 40;
-  if (d.includes(q)) return 100;
+  if (!q) {return 40;}
+  if (d.includes(q)) {return 100;}
   const tokens = q.split(/\s+/).filter((t) => t.length > 2);
-  if (tokens.some((t) => d.includes(t))) return 70;
+  if (tokens.some((t) => d.includes(t))) {return 70;}
   return 40;
 }
 
@@ -42,7 +42,7 @@ export async function suggestCodes(
   // test/unit/code-mapping/terminology-api.test.ts for details).
   searchFn: typeof searchLoincCodes = searchLoincCodes,
 ): Promise<SuggestedCode[]> {
-  if (!display.trim()) return [];
+  if (!display.trim()) {return [];}
   try {
     const results = await searchFn(display);
     return results

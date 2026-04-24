@@ -133,7 +133,7 @@ describe("renderShell", () => {
       const html = renderShell({ active: "dashboard", title: "D", content: "", navData });
       expect(html).toContain('<span class="dot ok"></span>');
     } finally {
-      if (originalEnv !== undefined) process.env.ENV = originalEnv;
+      if (originalEnv !== undefined) {process.env.ENV = originalEnv;}
     }
   });
 
@@ -146,7 +146,7 @@ describe("renderShell", () => {
       expect(html).toContain(">staging<");
     } finally {
       process.env.ENV = originalEnv ?? "";
-      if (originalEnv === undefined) delete process.env.ENV;
+      if (originalEnv === undefined) {delete process.env.ENV;}
     }
   });
 
@@ -158,7 +158,7 @@ describe("renderShell", () => {
       expect(html).toContain('<span class="dot err"></span>');
     } finally {
       process.env.ENV = originalEnv ?? "";
-      if (originalEnv === undefined) delete process.env.ENV;
+      if (originalEnv === undefined) {delete process.env.ENV;}
     }
   });
 
@@ -170,7 +170,7 @@ describe("renderShell", () => {
       expect(html).not.toMatch(/<span class="dot err"[^>]*data-health-dot/);
     } finally {
       process.env.ENV = originalEnv ?? "";
-      if (originalEnv === undefined) delete process.env.ENV;
+      if (originalEnv === undefined) {delete process.env.ENV;}
     }
   });
 
@@ -184,7 +184,7 @@ describe("renderShell", () => {
       expect(html).not.toMatch(/data-health-label[^>]*>prod</);
     } finally {
       process.env.ENV = originalEnv ?? "";
-      if (originalEnv === undefined) delete process.env.ENV;
+      if (originalEnv === undefined) {delete process.env.ENV;}
     }
   });
 
@@ -208,7 +208,7 @@ describe("renderShell", () => {
       expect(html).toContain("&quot;&gt;&lt;img src=x&gt;");
     } finally {
       process.env.MLLP_HOST = originalHost ?? "";
-      if (originalHost === undefined) delete process.env.MLLP_HOST;
+      if (originalHost === undefined) {delete process.env.MLLP_HOST;}
     }
   });
 
@@ -221,8 +221,8 @@ describe("renderShell", () => {
       const html = renderShell({ active: "dashboard", title: "D", content: "", navData });
       expect(html).toContain("mllp://localhost:2575");
     } finally {
-      if (originalHost !== undefined) process.env.MLLP_HOST = originalHost;
-      if (originalPort !== undefined) process.env.MLLP_PORT = originalPort;
+      if (originalHost !== undefined) {process.env.MLLP_HOST = originalHost;}
+      if (originalPort !== undefined) {process.env.MLLP_PORT = originalPort;}
     }
   });
 
@@ -237,8 +237,8 @@ describe("renderShell", () => {
     } finally {
       process.env.MLLP_HOST = originalHost ?? "";
       process.env.MLLP_PORT = originalPort ?? "";
-      if (originalHost === undefined) delete process.env.MLLP_HOST;
-      if (originalPort === undefined) delete process.env.MLLP_PORT;
+      if (originalHost === undefined) {delete process.env.MLLP_HOST;}
+      if (originalPort === undefined) {delete process.env.MLLP_PORT;}
     }
   });
 });

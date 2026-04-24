@@ -15,12 +15,12 @@ export interface CNN {
 }
 
 export function convertCNNToPractitioner(cnn: CNN | undefined): Practitioner | undefined {
-  if (!cnn) return undefined;
+  if (!cnn) {return undefined;}
 
   const hasName = cnn.$2_family || cnn.$3_given;
   const hasId = cnn.$1_id;
 
-  if (!hasName && !hasId) return undefined;
+  if (!hasName && !hasId) {return undefined;}
 
   const practitioner: Practitioner = {
     resourceType: "Practitioner",
@@ -35,12 +35,12 @@ export function convertCNNToPractitioner(cnn: CNN | undefined): Practitioner | u
 
   if (hasName) {
     const given: string[] = [];
-    if (cnn.$3_given) given.push(cnn.$3_given);
-    if (cnn.$4_additionalGiven) given.push(cnn.$4_additionalGiven);
+    if (cnn.$3_given) {given.push(cnn.$3_given);}
+    if (cnn.$4_additionalGiven) {given.push(cnn.$4_additionalGiven);}
 
     const suffix: string[] = [];
-    if (cnn.$5_suffix) suffix.push(cnn.$5_suffix);
-    if (cnn.$7_degree) suffix.push(cnn.$7_degree);
+    if (cnn.$5_suffix) {suffix.push(cnn.$5_suffix);}
+    if (cnn.$7_degree) {suffix.push(cnn.$7_degree);}
 
     const name: HumanName = {
       ...(cnn.$2_family && { family: cnn.$2_family }),

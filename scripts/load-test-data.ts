@@ -146,7 +146,7 @@ function formatDate(daysAgo: number): string {
   return date.toISOString().split("T")[0] ?? "";
 }
 
-function formatDateTime(daysAgo: number, hour: number = 9): string {
+function formatDateTime(daysAgo: number, hour = 9): string {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
   date.setHours(hour, 0, 0, 0);

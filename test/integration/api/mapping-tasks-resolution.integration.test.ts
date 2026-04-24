@@ -76,7 +76,7 @@ async function createTaskForType(
 async function resolveTaskWithValidation(
   taskId: string,
   resolvedCode: string,
-  resolvedDisplay: string = "",
+  resolvedDisplay = "",
 ): Promise<{ success: boolean; error?: string }> {
   // Fetch the task to get its type
   let task: Task;

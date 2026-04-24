@@ -2,7 +2,7 @@ import type { CWE } from "../../hl7v2/generated/fields";
 import type { Identifier, Organization } from "../../fhir/hl7-fhir-r4-core";
 
 export function convertCWEToOrganization(cwe: CWE | undefined): Organization | undefined {
-  if (!cwe) return undefined;
+  if (!cwe) {return undefined;}
 
   const name = cwe.$2_text || cwe.$9_originalText;
 
@@ -14,7 +14,7 @@ export function convertCWEToOrganization(cwe: CWE | undefined): Organization | u
     };
   }
 
-  if (!name && !identifier) return undefined;
+  if (!name && !identifier) {return undefined;}
 
   return {
     resourceType: "Organization",
