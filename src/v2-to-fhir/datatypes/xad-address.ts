@@ -189,4 +189,3 @@ export function convertXADArrayToAddresses(
   return addresses.length > 0 ? addresses : undefined;
 }
 
-export default convertXADToAddress;

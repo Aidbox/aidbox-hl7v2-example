@@ -50,7 +50,7 @@ import { convertIN1ToCoverage, generateCoverageId, hasValidPayorInfo } from "../
 // Order Grouping Types
 // ============================================================================
 
-export interface ORMOrderGroup {
+interface ORMOrderGroup {
   orc: HL7v2Segment;
   orderChoice?: HL7v2Segment;
   orderChoiceType: "OBR" | "RXO" | "unknown";
@@ -163,12 +163,12 @@ export function groupORMOrders(message: HL7v2Message): ORMOrderGroup[] {
 // Order Number Resolution
 // ============================================================================
 
-export interface OrderNumberResult {
+interface OrderNumberResult {
   orderNumber: string;
   error?: never;
 }
 
-export interface OrderNumberError {
+interface OrderNumberError {
   orderNumber?: never;
   error: string;
 }

@@ -439,4 +439,3 @@ export async function convertADT_A03(
   };
 }
 
-export default convertADT_A03;

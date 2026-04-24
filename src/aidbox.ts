@@ -76,7 +76,7 @@ export async function resourceExists(
   }
 }
 
-export class PreconditionFailedError extends Error {
+class PreconditionFailedError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "PreconditionFailedError";
@@ -90,7 +90,7 @@ export class NotFoundError extends Error {
   }
 }
 
-export interface ResourceWithETag<T> {
+interface ResourceWithETag<T> {
   resource: T;
   etag: string;
 }

@@ -20,7 +20,7 @@
 import type { CX, HD, CWE } from "../../hl7v2/generated/fields";
 import type { Encounter } from "../../fhir/hl7-fhir-r4-core";
 
-export type EncounterIdentifierResult = {
+type EncounterIdentifierResult = {
   identifier?: Encounter["identifier"];
   error?: string;
 };

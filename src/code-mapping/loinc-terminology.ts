@@ -104,7 +104,7 @@ export async function searchLoincCodes(
   }));
 }
 
-export interface LoincValidationResult {
+interface LoincValidationResult {
   code: string;
   display: string;
 }

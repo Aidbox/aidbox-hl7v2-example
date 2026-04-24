@@ -67,7 +67,7 @@ const OBX11_STATUS_MAP: Record<string, Observation["status"]> = {
  * Result type for OBX-11 status mapping.
  * Returns either a valid FHIR status or a mapping error.
  */
-export type OBXStatusResult =
+type OBXStatusResult =
   | { status: Observation["status"]; error?: never }
   | { status?: never; error: MappingError };
 
@@ -96,7 +96,7 @@ export function mapOBXStatusToFHIRWithResult(
 // Reference Range Parsing
 // ============================================================================
 
-export interface ParsedReferenceRange {
+interface ParsedReferenceRange {
   low?: { value: number; unit?: string };
   high?: { value: number; unit?: string };
   text?: string;
@@ -145,7 +145,7 @@ export function parseReferenceRange(
 // Structured Numeric (SN) Parsing
 // ============================================================================
 
-export interface ParsedStructuredNumeric {
+interface ParsedStructuredNumeric {
   type: "quantity" | "range" | "ratio" | "string";
   value?: number;
   comparator?: "<" | "<=" | ">=" | ">";
@@ -353,7 +353,7 @@ async function resolveOBXStatus(
  * Result type for OBX conversion with mapping support.
  * Returns either an Observation or a mapping error for the status field.
  */
-export type OBXConversionResult =
+type OBXConversionResult =
   | { observation: Observation; error?: never }
   | { observation?: never; error: MappingError };
 
@@ -542,7 +542,7 @@ export async function convertOBXWithMappingSupportAsync(
 // OBX Conversion with Full Resolution (Status + LOINC)
 // ============================================================================
 
-export type OBXResolutionResult =
+type OBXResolutionResult =
   | { observation: Observation; errors?: never }
   | { observation?: never; errors: MappingError[] };
 

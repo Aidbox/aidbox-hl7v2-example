@@ -224,4 +224,3 @@ export function convertAL1ToAllergyIntolerance(al1: AL1): Omit<AllergyIntoleranc
   return allergyIntolerance;
 }
 
-export default convertAL1ToAllergyIntolerance;

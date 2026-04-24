@@ -301,4 +301,3 @@ export function hasValidPayorInfo(in1: IN1): boolean {
   return false;
 }
 
-export default convertIN1ToCoverage;

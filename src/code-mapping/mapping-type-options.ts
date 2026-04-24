@@ -12,14 +12,6 @@
 import type { MappingTypeName } from "./mapping-types";
 
 /**
- * A valid value option with code and display name.
- */
-export interface ValidValueOption {
-  code: string;
-  display: string;
-}
-
-/**
  * Valid values for mapping types with fixed value sets.
  *
  * - Keys are mapping type names
@@ -89,25 +81,6 @@ export function getValidValues(
 }
 
 /**
- * Get valid values with display names for UI dropdowns.
- * Returns empty array for types that don't have a fixed set (e.g., LOINC).
- *
- * @param mappingType - The mapping type name
- * @returns Array of {code, display} objects
- */
-export function getValidValuesWithDisplay(
-  mappingType: MappingTypeName,
-): ValidValueOption[] {
-  const values = VALID_VALUES[mappingType];
-  if (!values) {return [];}
-
-  return Object.entries(values).map(([code, display]) => ({
-    code,
-    display,
-  }));
-}
-
-/**
  * Check if a code is valid for a given mapping type.
  * Returns true for types without fixed value sets (e.g., LOINC).
  *
@@ -120,20 +93,4 @@ export function isValidCode(mappingType: MappingTypeName, code: string): boolean
   // Types without fixed values accept any non-empty code
   if (!values) {return code.trim() !== "";}
   return code in values;
-}
-
-/**
- * Get the display name for a valid code.
- * Returns the code itself if no display name is defined.
- *
- * @param mappingType - The mapping type name
- * @param code - The code to look up
- * @returns Display name or the code itself
- */
-export function getDisplayForCode(
-  mappingType: MappingTypeName,
-  code: string,
-): string {
-  const values = VALID_VALUES[mappingType];
-  return values?.[code] ?? code;
 }

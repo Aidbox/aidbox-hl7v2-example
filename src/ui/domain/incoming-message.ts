@@ -82,10 +82,6 @@ export type ParsedIncomingMessage = IncomingMessageBase & (
   | { kind: "warning"; entries: readonly DomainResource[]; error: string }
 );
 
-/** Public alias for all `kind` values. Useful when code needs to refer
- *  to "any valid status" without constructing a fake record. */
-export type MessageKind = ParsedIncomingMessage["kind"];
-
 // ============================================================================
 // Malformed records
 // ============================================================================
@@ -96,7 +92,7 @@ export type MessageKind = ParsedIncomingMessage["kind"];
  * payload fields but doesn't have them). These are dropped from list
  * views with a logged warning rather than crashing the page.
  */
-export interface MalformedWireRecord {
+interface MalformedWireRecord {
   kind: "malformed-wire-record";
   wireId: string | undefined;
   reason: string;

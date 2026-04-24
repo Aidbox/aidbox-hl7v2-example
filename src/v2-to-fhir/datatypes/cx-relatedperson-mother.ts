@@ -2,7 +2,7 @@ import type { CX } from "../../hl7v2/generated/fields";
 import type { Identifier, CodeableConcept, Period } from "../../fhir/hl7-fhir-r4-core";
 
 /** Result of CX to RelatedPerson-Mother conversion (partial RelatedPerson data) */
-export interface RelatedPersonMotherData {
+interface RelatedPersonMotherData {
   identifier?: Identifier;
   relationship: CodeableConcept;
 }

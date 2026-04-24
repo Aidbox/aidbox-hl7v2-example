@@ -1,12 +1,12 @@
 import type { CWE } from "../../hl7v2/generated/fields";
 import type { Identifier } from "../../fhir/hl7-fhir-r4-core";
 
-export interface DeviceName {
+interface DeviceName {
   name: string;
   type: "udi-label-name" | "user-friendly-name" | "patient-reported-name" | "manufacturer-name" | "model-name" | "other";
 }
 
-export interface Device {
+interface Device {
   identifier?: Identifier[];
   deviceName?: DeviceName[];
 }

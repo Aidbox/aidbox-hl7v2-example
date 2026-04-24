@@ -204,25 +204,6 @@ export function convertXPNToHumanName(xpn: XPN | undefined): HumanName | undefin
 }
 
 /**
- * Convert array of XPN to array of HumanName
- * Handles XPN.15 (Called By) by creating an additional nickname entry
- */
-export function convertXPNArrayToHumanNames(
-  xpns: XPN[] | undefined
-): HumanName[] | undefined {
-  if (!xpns || xpns.length === 0) {return undefined;}
-
-  const names: HumanName[] = [];
-
-  for (const xpn of xpns) {
-    const name = convertXPNToHumanName(xpn);
-    if (name) {names.push(name);}
-  }
-
-  return names.length > 0 ? names : undefined;
-}
-
-/**
  * Convert XPN to string (for XPN[string] mapping)
  * Concatenates name parts according to XPN.11 (assembly order)
  * Default order: Prefix Given Family Suffix
@@ -262,4 +243,3 @@ export function convertXPNToString(xpn: XPN | undefined): string | undefined {
   return parts.join(" ");
 }
 
-export default convertXPNToHumanName;

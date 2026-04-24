@@ -11,7 +11,7 @@
  * Error (poll throws or process throws) → onError + setTimeout(pollIntervalMs).
  */
 
-export interface PollingServiceOptions<T> {
+interface PollingServiceOptions<T> {
   poll: () => Promise<T | null>;
   process: (item: T) => Promise<void>;
   pollIntervalMs?: number;

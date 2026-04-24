@@ -230,4 +230,3 @@ export function convertDG1ToCondition(dg1: DG1): Omit<Condition, "subject"> & { 
   return condition;
 }
 
-export default convertDG1ToCondition;

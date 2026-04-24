@@ -296,4 +296,3 @@ export function convertNK1ToRelatedPerson(nk1: NK1): Omit<RelatedPerson, "patien
   return relatedPerson;
 }
 
-export default convertNK1ToRelatedPerson;

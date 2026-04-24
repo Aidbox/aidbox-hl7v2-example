@@ -1,7 +1,7 @@
 import type { CWE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding, Observation } from "../../fhir/hl7-fhir-r4-core";
 
-export interface CWEToObservationSupportingInfoOptions {
+interface CWEToObservationSupportingInfoOptions {
   code: CodeableConcept;
 }
 

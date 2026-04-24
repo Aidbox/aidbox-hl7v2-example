@@ -44,7 +44,7 @@ import {
 // Types + constants
 // ============================================================================
 
-export type DetailTab = "structured" | "raw" | "fhir" | "timeline";
+type DetailTab = "structured" | "raw" | "fhir" | "timeline";
 
 const TABS: { key: DetailTab; label: string }[] = [
   { key: "structured", label: "Structured" },
@@ -135,7 +135,7 @@ function isHeaderTerminal(p: ParsedIncomingMessage): boolean {
   }
 }
 
-export function renderDetailHeader(p: ParsedIncomingMessage): string {
+function renderDetailHeader(p: ParsedIncomingMessage): string {
   const tone = statusToTone(p);
   const mcid = p.messageControlId ?? p.id;
   const time = formatClock(p.lastUpdated || p.date);
@@ -421,7 +421,7 @@ function emptyEntriesReason(
 // Tab: Timeline — Aidbox `_history` rendering
 // ============================================================================
 
-export interface HistoryVersion {
+interface HistoryVersion {
   versionId?: string;
   lastUpdated?: string;
   status?: string;
@@ -551,7 +551,7 @@ export async function getHistoryVersions(
 // Detail card composition
 // ============================================================================
 
-export async function renderTabBody(
+async function renderTabBody(
   tab: DetailTab,
   p: ParsedIncomingMessage,
 ): Promise<string> {

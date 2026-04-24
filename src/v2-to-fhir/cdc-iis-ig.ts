@@ -48,7 +48,7 @@ const VIS_LOINC_CODES = new Set(["69764-9", "29768-9", "29769-7", "30956-7"]);
 
 const NIP001_SYSTEM_OID = "urn:oid:2.16.840.1.114222.4.5.274";
 
-export interface RXA9SourceResult {
+interface RXA9SourceResult {
   primarySource: boolean;
   reportOrigin?: CodeableConcept;
 }

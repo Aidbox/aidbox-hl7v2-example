@@ -1,7 +1,7 @@
 import type { CWE } from "../../hl7v2/generated/fields";
 import type { Quantity } from "../../fhir/hl7-fhir-r4-core";
 
-export interface CQ {
+interface CQ {
   $1_quantity?: number;
   $2_units?: CWE;
 }

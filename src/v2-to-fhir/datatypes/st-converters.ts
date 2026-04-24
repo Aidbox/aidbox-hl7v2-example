@@ -71,4 +71,3 @@ export function convertSTArrayToIdentifiers(
   return identifiers.length > 0 ? identifiers : undefined;
 }
 
-export default convertSTToCodeableConcept;

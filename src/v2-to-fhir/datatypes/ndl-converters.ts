@@ -6,7 +6,7 @@ import { convertHDToIdentifiers } from "./hd-converters";
 const LOCATION_PHYSICAL_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/location-physical-type";
 
 /** NDL (Name with Date and Location) datatype */
-export interface NDL {
+interface NDL {
   /** NDL.1 - Name */
   $1_name?: CNN;
   /** NDL.2 - Start Date/time */
@@ -32,7 +32,7 @@ export interface NDL {
 }
 
 /** Partial Location data for NDL */
-export interface NDLLocationData {
+interface NDLLocationData {
   identifier?: { value: string }[];
   mode?: "instance" | "kind";
   physicalType?: {
@@ -42,7 +42,7 @@ export interface NDLLocationData {
 }
 
 /** PractitionerRole data from NDL */
-export interface NDLPractitionerRoleData {
+interface NDLPractitionerRoleData {
   /** Reference to Practitioner (from NDL.1) */
   practitioner?: Reference;
   /** Period (from NDL.2-3) */

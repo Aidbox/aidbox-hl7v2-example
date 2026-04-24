@@ -70,7 +70,7 @@ const PATIENT_CLASS_V2_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0004";
  * Result type for PV1-2 Patient Class mapping.
  * Returns either a valid FHIR class and status or a mapping error.
  */
-export type PatientClassResult =
+type PatientClassResult =
   | {
       class: Coding;
       status: Encounter["status"];
@@ -160,7 +160,7 @@ const FHIR_CLASS_STATUS_MAP: Record<string, Encounter["status"]> = {
  * Default fallback class for when patient class cannot be resolved.
  * Used by ORU processing which cannot block on mapping errors.
  */
-export const FALLBACK_ENCOUNTER_CLASS: Coding = {
+const FALLBACK_ENCOUNTER_CLASS: Coding = {
   system: ENCOUNTER_CLASS_SYSTEM,
   code: "AMB",
   display: "ambulatory",
@@ -196,7 +196,7 @@ const VALID_ENCOUNTER_CLASS_CODES = new Set([
  * @param hasDischargeDateTime - Whether PV1-45 (Discharge Date/Time) is valued
  * @param sender - The sender context for ConceptMap lookup
  */
-export async function resolvePatientClass(
+async function resolvePatientClass(
   patientClass: string | undefined,
   hasDischargeDateTime: boolean,
   sender: SenderContext,
@@ -442,7 +442,7 @@ function createEncounterLocation(
  * Always returns an encounter (using fallback class if mapping fails).
  * Caller decides policy for handling errors.
  */
-export type PV1ConversionResult = {
+type PV1ConversionResult = {
   encounter: Encounter;
   /** Present if patient class couldn't be mapped - caller decides whether to block or create Task */
   mappingError?: MappingError;
@@ -808,7 +808,7 @@ export function extractPatientClass(pv1: PV1): string {
 // Encounter Lookup and Draft Creation (non-ADT converters)
 // ============================================================================
 
-export interface EncounterHandlingResult {
+interface EncounterHandlingResult {
   encounterRef: Reference<"Encounter"> | null;
   encounter: Encounter | null;
   patientClassTask?: Task;

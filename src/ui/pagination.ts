@@ -6,9 +6,9 @@ export interface PaginationData {
   totalPages: number;
 }
 
-export type FilterParams = Record<string, string | undefined>;
+type FilterParams = Record<string, string | undefined>;
 
-export interface PaginationOptions {
+interface PaginationOptions {
   pagination: PaginationData;
   baseUrl: string;
   filterParams?: FilterParams;

@@ -239,4 +239,3 @@ export function convertXCNArrayToPatients(
   return patients.length > 0 ? patients : undefined;
 }
 
-export default convertXCNToPatient;

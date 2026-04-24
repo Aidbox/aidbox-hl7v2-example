@@ -2,7 +2,7 @@ import type { HD } from "../../hl7v2/generated/fields";
 import type { Attachment } from "../../fhir/hl7-fhir-r4-core";
 
 /** RP (Reference Pointer) datatype */
-export interface RP {
+interface RP {
   /** RP.1 - Pointer */
   $1_pointer?: string;
   /** RP.2 - Application ID */
@@ -14,7 +14,7 @@ export interface RP {
 }
 
 /** Partial DocumentReference data */
-export interface DocumentReferenceContentData {
+interface DocumentReferenceContentData {
   content?: {
     attachment?: Attachment;
   }[];

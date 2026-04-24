@@ -41,7 +41,7 @@ export const DEMO_SAMPLE_IDS = [
 export const DEMO_WAIT_DEADLINE_MS = 8000;
 export const DEMO_POLL_INTERVAL_MS = 500;
 
-export interface RunDemoScenarioOptions {
+interface RunDemoScenarioOptions {
   send?: (host: string, port: number, message: string) => Promise<string>;
   sleep?: (ms: number) => Promise<void>;
   /** Fetch current status for a message by MSH-10. Inject for tests. */

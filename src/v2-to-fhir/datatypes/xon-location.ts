@@ -146,4 +146,3 @@ export function convertXONArrayToLocations(
   return locations.length > 0 ? locations : undefined;
 }
 
-export default convertXONToLocation;

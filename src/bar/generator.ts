@@ -348,6 +348,3 @@ export function generateBarMessage(input: BarMessageInput): HL7v2Message {
     .addVISIT(buildVisit(input))
     .build();
 }
-
-// Re-export types
-export type { BarMessageInput } from "./types";

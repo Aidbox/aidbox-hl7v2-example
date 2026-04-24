@@ -19,7 +19,7 @@ export function redirectResponse(location: string): Response {
   return new Response(null, { status: 302, headers: { Location: location } });
 }
 
-export async function getPendingTasksCount(): Promise<number> {
+async function getPendingTasksCount(): Promise<number> {
   const mappingTypes = Object.keys(MAPPING_TYPES);
   const codeParam = mappingTypes.join(",");
   const bundle = await aidboxFetch<Bundle<Task>>(
@@ -28,7 +28,7 @@ export async function getPendingTasksCount(): Promise<number> {
   return bundle.total || 0;
 }
 
-export async function getIncomingMessagesTotal(): Promise<number> {
+async function getIncomingMessagesTotal(): Promise<number> {
   const bundle = await aidboxFetch<Bundle<{ id?: string }>>(
     "/fhir/IncomingHL7v2Message?_count=0&_total=accurate",
   );

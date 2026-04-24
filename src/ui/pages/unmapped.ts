@@ -28,7 +28,7 @@ import { suggestCodes, type SuggestedCode } from "../../api/terminology-suggest"
 // Types
 // ============================================================================
 
-export interface QueueEntry {
+interface QueueEntry {
   /** First Task id in this group — used for the resolve POST. */
   taskId: string;
   localCode: string;

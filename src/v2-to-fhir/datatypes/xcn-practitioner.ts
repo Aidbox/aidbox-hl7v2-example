@@ -267,4 +267,3 @@ export function buildPractitionerIdFromXCN(xcn: XCN): string | undefined {
   return sanitizeForId(xcn.$1_value);
 }
 
-export default convertXCNToPractitioner;

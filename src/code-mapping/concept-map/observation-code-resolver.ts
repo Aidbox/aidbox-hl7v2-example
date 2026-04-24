@@ -14,7 +14,7 @@ import {
   type SenderContext,
 } from "./service";
 
-export interface CodeResolutionResult {
+interface CodeResolutionResult {
   loinc: Coding;
   local?: Coding;
 }
@@ -33,7 +33,7 @@ export class LoincResolutionError extends Error {
   }
 }
 
-export class MissingLocalSystemError extends Error {
+class MissingLocalSystemError extends Error {
   constructor(
     message: string,
     public readonly localCode: string | undefined,

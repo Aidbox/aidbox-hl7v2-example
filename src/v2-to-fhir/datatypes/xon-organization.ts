@@ -163,4 +163,3 @@ export function convertXONToString(xon: XON | undefined): string | undefined {
   return xon.$1_name;
 }
 
-export default convertXONToOrganization;

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/workers.ts",
+    "src/bar/sender-service.ts",
+    "src/bar/account-builder-service.ts",
+    "src/v2-to-fhir/processor-service.ts",
+    "scripts/**/*.ts",
+    "test/**/*.test.ts",
+    "test/integration/preload.ts",
+    "test/integration/helpers.ts",
+    "test/unit/v2-to-fhir/helpers.ts"
+  ],
+  "project": [
+    "src/**/*.ts",
+    "scripts/**/*.ts",
+    "test/**/*.ts"
+  ],
+  "ignore": [
+    "src/fhir/**",
+    "src/hl7v2/generated/**"
+  ]
+}

@@ -12,7 +12,7 @@ export interface PreprocessorContext {
   parsedMessage: HL7v2Message;
 }
 
-export type SegmentPreprocessorFn = (
+type SegmentPreprocessorFn = (
   context: PreprocessorContext,
   segment: HL7v2Segment,
 ) => void;

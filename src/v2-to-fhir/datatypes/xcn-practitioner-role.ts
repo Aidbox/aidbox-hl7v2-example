@@ -123,4 +123,3 @@ export function convertXCNArrayToPractitionerRoles(
   return roles.length > 0 ? roles : undefined;
 }
 
-export default convertXCNToPractitionerRole;

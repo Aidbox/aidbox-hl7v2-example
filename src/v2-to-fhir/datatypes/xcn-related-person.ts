@@ -242,4 +242,3 @@ export function convertXCNArrayToRelatedPersons(
   return persons.length > 0 ? persons : undefined;
 }
 
-export default convertXCNToRelatedPerson;

@@ -32,7 +32,7 @@ export type NavKey =
   | "accounts"
   | "outgoing";
 
-export interface ShellOptions {
+interface ShellOptions {
   active: NavKey;
   title: string;
   content: string;

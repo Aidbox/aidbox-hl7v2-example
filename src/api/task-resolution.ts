@@ -28,7 +28,7 @@ import {
 /**
  * Get a value from a Task's input array by type text.
  */
-export function getTaskInputValue(
+function getTaskInputValue(
   task: Task,
   typeText: string,
 ): string | undefined {

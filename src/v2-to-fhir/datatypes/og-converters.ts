@@ -3,7 +3,7 @@ import type { Extension } from "../../fhir/hl7-fhir-r4-core";
 const SUBID_EXTENSION_URL = "http://hl7.org/fhir/StructureDefinition/observation-v2-subid";
 
 /** OG (Observation Grouper) datatype */
-export interface OG {
+interface OG {
   /** OG.1 - Original Sub-Identifier */
   $1_originalSubIdentifier?: string;
   /** OG.2 - Group */

@@ -33,7 +33,7 @@ export const ICON_NAMES = [
 export type IconName = (typeof ICON_NAMES)[number];
 
 // The only modifier used today; widen this union when a new vocabulary lands.
-export type IconClassModifier = "sm";
+type IconClassModifier = "sm";
 
 // Shared utility stacks. Kept as constants so the test and renderer never
 // drift in their expectation of what class an icon actually carries.

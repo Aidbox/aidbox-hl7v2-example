@@ -14,5 +14,4 @@ export {
   searchLoincCodes,
   validateLoincCode,
   type LoincSearchResult,
-  type LoincValidationResult,
 } from "./loinc-terminology";

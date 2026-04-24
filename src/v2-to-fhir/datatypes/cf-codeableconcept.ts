@@ -1,7 +1,7 @@
 import type { CWE } from "../../hl7v2/generated/fields";
 import type { CodeableConcept, Coding } from "../../fhir/hl7-fhir-r4-core";
 
-export type CF = CWE;
+type CF = CWE;
 
 export function convertCFToCodeableConcept(cf: CF | undefined): CodeableConcept | undefined {
   if (!cf) {return undefined;}

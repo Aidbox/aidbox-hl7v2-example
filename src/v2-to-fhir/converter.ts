@@ -109,5 +109,3 @@ export async function convertToFHIR(
       throw new Error(`Unsupported message type: ${messageType}`);
   }
 }
-
-export default convertToFHIR;

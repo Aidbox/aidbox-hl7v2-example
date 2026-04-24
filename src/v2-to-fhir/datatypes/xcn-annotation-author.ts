@@ -19,7 +19,7 @@ import { convertXCNToPractitioner } from "./xcn-practitioner";
  * Result of XCN to Annotation-Author conversion
  * Contains both the Practitioner resource and the Annotation with authorReference
  */
-export interface AnnotationWithAuthor {
+interface AnnotationWithAuthor {
   /** The Practitioner resource created from XCN */
   practitioner: Practitioner;
   /** The Annotation with authorReference pointing to the Practitioner */
@@ -157,4 +157,3 @@ export function convertXCNArrayToAnnotationAuthors(
   return results.length > 0 ? results : undefined;
 }
 
-export default convertXCNToAnnotationAuthor;

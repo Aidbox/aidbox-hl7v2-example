@@ -45,16 +45,16 @@ export interface SenderContext {
  * Mapping type filter options for the UI.
  * "all" shows all mapping types.
  */
-export type MappingTypeFilter = MappingTypeName | "all";
+type MappingTypeFilter = MappingTypeName | "all";
 
-export interface ConceptMapSummary {
+interface ConceptMapSummary {
   id: string;
   displayName: string;
   mappingType: MappingTypeName;
   targetSystem: string;
 }
 
-export interface MappingEntry {
+interface MappingEntry {
   localCode: string;
   localDisplay: string;
   localSystem: string;
@@ -79,7 +79,7 @@ interface TranslateResponse {
   parameter?: TranslateResponseParameter[];
 }
 
-export type TranslateResult =
+type TranslateResult =
   | { status: "found"; coding: Coding }
   | { status: "no_mapping" }
   | { status: "not_found" };
@@ -92,7 +92,7 @@ export type TranslateResult =
  * Generate the base ConceptMap ID from sender context (without mapping type).
  * Format: hl7v2-{sendingApplication}-{sendingFacility}
  */
-export function generateBaseConceptMapId(sender: SenderContext): string {
+function generateBaseConceptMapId(sender: SenderContext): string {
   const app = toKebabCase(sender.sendingApplication);
   const facility = toKebabCase(sender.sendingFacility);
   return `hl7v2-${app}-${facility}`;
@@ -116,7 +116,7 @@ export function generateConceptMapId(
  * Format sender context as title string (format: "APP | FACILITY")
  * Used for ConceptMap.title field
  */
-export function formatSenderAsTitle(sender: SenderContext): string {
+function formatSenderAsTitle(sender: SenderContext): string {
   return `${sender.sendingApplication} | ${sender.sendingFacility}`;
 }
 
@@ -197,19 +197,6 @@ export async function translateCode(
 // ============================================================================
 // ConceptMap CRUD operations
 // ============================================================================
-
-export async function fetchConceptMap(
-  conceptMapId: string,
-): Promise<ConceptMap | null> {
-  try {
-    return await aidboxFetch<ConceptMap>(`/fhir/ConceptMap/${conceptMapId}`);
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("404")) {
-      return null;
-    }
-    throw error;
-  }
-}
 
 export function createEmptyConceptMap(
   sender: SenderContext,
@@ -323,7 +310,7 @@ export function detectMappingTypeFromConceptMap(
 /**
  * Check if a mapping entry matches a search query
  */
-export function matchesSearch(entry: MappingEntry, search: string): boolean {
+function matchesSearch(entry: MappingEntry, search: string): boolean {
   const query = search.toLowerCase();
   return (
     entry.localCode.toLowerCase().includes(query) ||
@@ -336,7 +323,7 @@ export function matchesSearch(entry: MappingEntry, search: string): boolean {
 /**
  * Check if a mapping entry already exists
  */
-export function checkDuplicateEntry(
+function checkDuplicateEntry(
   conceptMap: ConceptMap,
   localSystem: string,
   localCode: string,

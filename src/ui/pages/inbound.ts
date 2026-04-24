@@ -34,7 +34,7 @@ import {
 // Types + constants
 // ============================================================================
 
-export interface InboundFilters {
+interface InboundFilters {
   type?: string;
   status?: string;
   batch?: string;
@@ -44,7 +44,7 @@ export interface InboundFilters {
   page?: number;
 }
 
-export interface TypeChipCount {
+interface TypeChipCount {
   /** Display label — "ORU^R01", "ADT^A01", etc., or "All" / "errors". */
   label: string;
   /** Value for the `?type=` URL param. Empty string for All. */
@@ -157,7 +157,7 @@ export async function getTypeChipCounts(): Promise<TypeChipCount[]> {
   return chips;
 }
 
-export async function getMessageById(
+async function getMessageById(
   id: string,
 ): Promise<ParsedIncomingMessage | null> {
   try {
@@ -677,7 +677,7 @@ function titleForFilters(filters: InboundFilters, count: number): string {
 // Detail pane (Task 8 scaffold — Task 9 replaces the tab area with real tabs)
 // ----------------------------------------------------------------------------
 
-export function renderEmptyDetail(): string {
+function renderEmptyDetail(): string {
   // NOTE: no `data-selected` attr — that's the signal the list's
   // `hx-trigger="every 5s[!...]"` filter uses to decide whether to
   // poll. Empty detail → polls. Populated detail → skips.

@@ -22,14 +22,14 @@ import { escapeHtml } from "../../utils/html";
 // for a more usable <select> with <optgroup>. Exported so Task 7's scripted
 // demo can reuse the same samples via stable ids without re-hardcoding them.
 
-export interface MessageSample {
+interface MessageSample {
   id: string;
   name: string;
   tone: "ok" | "warn";
   desc: string;
 }
 
-export interface MessageGroup {
+interface MessageGroup {
   type: string;
   label: string;
   messages: MessageSample[];
@@ -92,7 +92,7 @@ export const SAMPLE_BUILDERS: Record<string, (ctx: TemplateContext) => string> =
     `MSH|^~\\&|TEST_APP|TEST_CLINIC|||20231005162929.774+0000||VXU^V04^VXU_V04|MSG0000020000001|P|2.5.1\rPID|1||PAT300^^^^FI||TESTPATIENT^ZETA||20000101|U||2076-8^Native Hawaiian or Other Pacific Islander^HL70005|100 TEST ST^^ANYTOWN^CA^99999^USA|||||||||||U^Unknown^HL70189\rPV1|1|R||||||||||||||||||||||||||||||||||||||||||20230906050813\rRXA|0|1|||1119349007^COVID-19 mRNA vaccine^SCT|40 mg|||||||||1|20190815|^Generic\rRXR|78421000^ID (Intradermal) Route^HL70162|368209003^Left Deltoid (Upper arm)^HL70163`,
 };
 
-export const MESSAGE_GROUPS: MessageGroup[] = [
+const MESSAGE_GROUPS: MessageGroup[] = [
   {
     type: "ADT",
     label: "ADT (Admit/Discharge/Transfer)",
@@ -147,19 +147,19 @@ const DEFAULT_SAMPLE_ID = "oru-r01-unknown-loinc";
 // How long the client polls /status after ACK before giving up and showing
 // "processor catching up". 10s comfortably covers multiple worker ticks
 // (default POLL_INTERVAL_MS=1000ms) plus slack.
-export const STATUS_POLL_DEADLINE_MS = 10000;
-export const STATUS_POLL_INTERVAL_MS = 500;
+const STATUS_POLL_DEADLINE_MS = 10000;
+const STATUS_POLL_INTERVAL_MS = 500;
 
-export type SendOutcome = "sent" | "held" | "error" | "pending";
+type SendOutcome = "sent" | "held" | "error" | "pending";
 
-export interface SendResult {
+interface SendResult {
   status: "sent" | "error";
   ack: string;
   messageControlId: string;
   error?: string;
 }
 
-export interface StatusResult {
+interface StatusResult {
   outcome: SendOutcome;
   messageStatus?: string;
 }
@@ -268,7 +268,7 @@ export async function handleSimulateSenderStatus(req: Request): Promise<Response
 // ZIP extraction for drag-and-drop upload
 // ============================================================================
 
-export interface ExtractedMessage {
+interface ExtractedMessage {
   /** Filename relative to the archive root, e.g. "01-lab/sample.hl7". */
   name: string;
   /** Raw HL7v2 text (CR line endings stripped, caller normalizes on send). */
@@ -279,7 +279,7 @@ export interface ExtractedMessage {
  * Natural alphanumeric comparator — so `01-foo` sorts before `02-bar` and
  * `msg-10` sorts after `msg-2`. Handles mixed-depth paths too.
  */
-export function compareAlphanumeric(a: string, b: string): number {
+function compareAlphanumeric(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 }
 
@@ -296,7 +296,7 @@ function looksLikeHl7(text: string): boolean {
  * add a JS zip library — `unzip` / `tar` / `Expand-Archive` are near-
  * universal on the host OS.
  */
-export async function extractZipToMessages(
+async function extractZipToMessages(
   zipBytes: ArrayBuffer,
 ): Promise<ExtractedMessage[]> {
   const { spawnSync } = await import("node:child_process");

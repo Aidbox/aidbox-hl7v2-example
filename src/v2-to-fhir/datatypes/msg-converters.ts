@@ -4,7 +4,7 @@ import type { Coding } from "../../fhir/hl7-fhir-r4-core";
 const MSG_EVENT_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0003";
 
 /** Partial MessageHeader data for eventCoding and definition */
-export interface MessageHeaderEventData {
+interface MessageHeaderEventData {
   eventCoding?: Coding;
   definition?: string;
 }

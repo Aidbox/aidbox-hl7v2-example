@@ -27,5 +27,3 @@ export function convertSADToAddress(sad: SAD | undefined): Address | undefined {
 
   return { line };
 }
-
-export default convertSADToAddress;

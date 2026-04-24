@@ -15,7 +15,7 @@ const PHYSICAL_TYPE = {
 } as const;
 
 /** Partial Location data */
-export interface LocationData {
+interface LocationData {
   identifier?: Identifier[];
   mode?: "instance" | "kind";
   physicalType?: CodeableConcept;
@@ -25,7 +25,7 @@ export interface LocationData {
 }
 
 /** Location hierarchy result from PL conversion */
-export interface PLLocationHierarchy {
+interface PLLocationHierarchy {
   /** Bed location (most granular) */
   bed?: LocationData;
   /** Room location */

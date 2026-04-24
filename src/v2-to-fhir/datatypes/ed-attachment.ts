@@ -4,7 +4,7 @@ import type { Attachment, DocumentReferenceContent } from "../../fhir/hl7-fhir-r
  * ED (Encapsulated Data) structure for HL7v2.
  * Note: May not be in generated types, defined here for converter use.
  */
-export interface ED {
+interface ED {
   /** ED.1 - Source Application */
   $1_sourceApplication?: string;
   /** ED.2 - Type of Data */
@@ -45,7 +45,7 @@ export function convertEDToAttachment(ed: ED | undefined): Attachment | undefine
 }
 
 /** Partial DocumentReference data for ED conversion */
-export interface DocumentReferenceData {
+interface DocumentReferenceData {
   status: "current" | "superseded" | "entered-in-error";
   content: DocumentReferenceContent[];
 }

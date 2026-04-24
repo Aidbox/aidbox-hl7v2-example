@@ -54,7 +54,7 @@ const OBR25_STATUS_MAP: Record<string, DiagnosticReport["status"]> = {
  * Result type for OBR-25 status mapping.
  * Returns either a valid FHIR status or a mapping error.
  */
-export type OBRStatusResult =
+type OBRStatusResult =
   | { status: DiagnosticReport["status"]; error?: never }
   | { status?: never; error: MappingError };
 
@@ -173,7 +173,7 @@ function convertServiceToCodeableConcept(
  * Result type for OBR conversion with mapping support.
  * Returns either a DiagnosticReport or a mapping error for the status field.
  */
-export type OBRConversionResult =
+type OBRConversionResult =
   | { diagnosticReport: DiagnosticReport; error?: never }
   | { diagnosticReport?: never; error: MappingError };
 

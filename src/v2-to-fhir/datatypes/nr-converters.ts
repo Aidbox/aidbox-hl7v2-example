@@ -1,7 +1,7 @@
 import type { Range } from "../../fhir/hl7-fhir-r4-core";
 
 /** NR (Numeric Range) datatype */
-export interface NR {
+interface NR {
   /** NR.1 - Low Value */
   $1_low?: string;
   /** NR.2 - High Value */

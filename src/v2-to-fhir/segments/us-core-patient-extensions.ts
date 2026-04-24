@@ -185,7 +185,7 @@ export function mapPid22ToOmbCategory(code: string | undefined): Coding | undefi
   return US_CORE_ETHNICITY_OMB_MAP[normalizedCode];
 }
 
-export function summarizeDemographicText(
+function summarizeDemographicText(
   repeats: Array<CWE | CE>,
 ): string | undefined {
   const values: string[] = [];

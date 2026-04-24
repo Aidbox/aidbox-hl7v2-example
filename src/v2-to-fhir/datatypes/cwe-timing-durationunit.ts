@@ -1,7 +1,7 @@
 import type { CWE } from "../../hl7v2/generated/fields";
 
 /** Duration unit codes for Timing.repeat.durationUnit */
-export type DurationUnit = "s" | "min" | "h" | "d" | "wk" | "mo" | "a";
+type DurationUnit = "s" | "min" | "h" | "d" | "wk" | "mo" | "a";
 
 /**
  * Converts CWE (Coded with Exceptions) to Timing duration unit code.

@@ -2,7 +2,7 @@ import type { DLD } from "../../hl7v2/generated/fields";
 import type { CodeableConcept } from "../../fhir/hl7-fhir-r4-core";
 
 /** Partial Location data for discharge location */
-export interface LocationDischargeData {
+interface LocationDischargeData {
   type?: CodeableConcept;
 }
 

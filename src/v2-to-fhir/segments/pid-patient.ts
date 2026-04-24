@@ -560,13 +560,11 @@ export function convertPIDToPatient(
   return patient;
 }
 
-export default convertPIDToPatient;
-
 // ============================================================================
 // Patient Lookup and Draft Creation (non-ADT converters)
 // ============================================================================
 
-export type PatientHandlingResult =
+type PatientHandlingResult =
   | { patientRef: Reference<"Patient">; patient: Patient | null }
   | { error: string };
 
@@ -578,7 +576,7 @@ export type PatientHandlingResult =
  * a new message will recreate them as a draft. This is intentional — we treat
  * it as a new patient since the previous record no longer exists.
  */
-export function createDraftPatient(
+function createDraftPatient(
   pid: PID,
   patientId: string,
   baseMeta: Meta,

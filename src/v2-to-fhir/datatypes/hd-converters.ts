@@ -76,7 +76,7 @@ export function convertHDToIdentifiers(hd: HD | undefined): Identifier[] | undef
 }
 
 /** Partial Device data */
-export interface DeviceIdentifierData {
+interface DeviceIdentifierData {
   identifier?: Identifier[];
 }
 
@@ -93,7 +93,7 @@ export function convertHDToDevice(hd: HD | undefined): DeviceIdentifierData | un
 }
 
 /** Partial Organization data */
-export interface OrganizationIdentifierData {
+interface OrganizationIdentifierData {
   identifier?: Identifier[];
 }
 
@@ -110,7 +110,7 @@ export function convertHDToOrganization(hd: HD | undefined): OrganizationIdentif
 }
 
 /** Partial Location data */
-export interface LocationData {
+interface LocationData {
   name?: string;
   identifier?: Identifier;
   physicalType?: CodeableConcept;
@@ -154,7 +154,7 @@ export function convertHDToLocation(hd: HD | undefined): LocationData | undefine
 }
 
 /** MessageHeader endpoint data */
-export interface MessageHeaderEndpointData {
+interface MessageHeaderEndpointData {
   endpoint?: string;
   name?: string;
 }

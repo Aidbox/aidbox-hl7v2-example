@@ -8,7 +8,7 @@ import { fromMSH, type MSH } from "../../hl7v2/generated/fields";
 import type { Coding, Meta } from "../../fhir/hl7-fhir-r4-core";
 import type { SenderContext } from "../../code-mapping/concept-map";
 
-export interface ParsedMSH {
+interface ParsedMSH {
   msh: MSH;
   senderContext: SenderContext;
   baseMeta: Meta;

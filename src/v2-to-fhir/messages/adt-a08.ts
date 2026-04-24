@@ -103,4 +103,3 @@ export async function convertADT_A08(
   };
 }
 
-export default convertADT_A08;

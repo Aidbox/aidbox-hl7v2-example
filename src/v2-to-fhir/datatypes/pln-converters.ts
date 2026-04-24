@@ -5,7 +5,7 @@ import { convertCWEToCodeableConcept } from "./cwe-codeableconcept";
 const STATE_QUALIFIER_EXTENSION_URL = "http://hl7.org/fhir/StructureDefinition/identifier-state-qualifier";
 
 /** PLN (Practitioner License or Other ID Number) datatype */
-export interface PLN {
+interface PLN {
   /** PLN.1 - ID Number */
   $1_idNumber?: string;
   /** PLN.2 - Type of ID Number */
@@ -17,7 +17,7 @@ export interface PLN {
 }
 
 /** Extended Identifier with _value extension support */
-export interface IdentifierWithExtensions extends Identifier {
+interface IdentifierWithExtensions extends Identifier {
   _value?: Element;
 }
 

@@ -35,7 +35,7 @@ export function convertDTMToDate(dtm: string | undefined): string | undefined {
 }
 
 /** Partial Annotation data for time field */
-export interface AnnotationTimeData {
+interface AnnotationTimeData {
   time: string;
 }
 

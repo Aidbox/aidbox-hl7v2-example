@@ -229,4 +229,3 @@ export function convertXTNArrayToContactPoints(
   return contactPoints.length > 0 ? contactPoints : undefined;
 }
 
-export default convertXTNToContactPoint;

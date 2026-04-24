@@ -105,7 +105,7 @@ export function convertEIToIdentifierDefaultAssigner(ei: EI | undefined): Identi
 }
 
 /** Partial Condition data with identifier */
-export interface ConditionIdentifierData {
+interface ConditionIdentifierData {
   identifier: Identifier;
 }
 
@@ -146,7 +146,7 @@ export function convertEIToCondition(ei: EI | undefined): ConditionIdentifierDat
 }
 
 /** Partial Procedure data with identifier */
-export interface ProcedureIdentifierData {
+interface ProcedureIdentifierData {
   identifier: Identifier;
 }
 
@@ -168,7 +168,7 @@ export function convertEIToProcedure(ei: EI | undefined): ProcedureIdentifierDat
 }
 
 /** Device UDI carrier data */
-export interface DeviceUdiCarrierData {
+interface DeviceUdiCarrierData {
   deviceIdentifier: string;
 }
 
@@ -191,7 +191,7 @@ export function convertEIToDeviceUdiCarrier(ei: EI | undefined): DeviceUdiCarrie
  * EIP (Entity Identifier Pair) structure for HL7v2.
  * Note: May not be in generated types, defined here for converter use.
  */
-export interface EIP {
+interface EIP {
   /** EIP.1 - Placer Assigned Identifier */
   $1_placerAssignedIdentifier?: EI;
   /** EIP.2 - Filler Assigned Identifier */

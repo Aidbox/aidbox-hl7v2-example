@@ -74,7 +74,7 @@ const VALID_REQUEST_STATUSES: ServiceRequest["status"][] = [
 // Status Resolution
 // ============================================================================
 
-export interface OrderStatusResult {
+interface OrderStatusResult {
   status: ServiceRequest["status"];
   mappingError?: MappingError;
 }
@@ -184,7 +184,7 @@ export function buildRequesterReference(xcns: XCN[] | undefined): Reference<"Pra
 // Main Converter Function
 // ============================================================================
 
-export interface ORCServiceRequestResult {
+interface ORCServiceRequestResult {
   serviceRequest: Partial<ServiceRequest>;
   mappingError?: MappingError;
 }

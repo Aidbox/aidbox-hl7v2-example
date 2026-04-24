@@ -20,14 +20,14 @@ import { escapeHtml } from "../../utils/html";
 // Types + constants
 // ============================================================================
 
-export interface DashboardStats {
+interface DashboardStats {
   receivedToday: number;
   needMapping: number;
   errors: number;
   avgLatencyMs: number | null;
 }
 
-export interface TickerRow {
+interface TickerRow {
   id?: string;
   time: string;
   type: string;
@@ -461,7 +461,7 @@ function renderDashboardBody(
 // Handlers
 // ============================================================================
 
-export interface DashboardDeps {
+interface DashboardDeps {
   demoEnabled: boolean;
 }
 

@@ -1,7 +1,7 @@
 import type { SampledData } from "../../fhir/hl7-fhir-r4-core";
 
 /** NA (Numeric Array) datatype - represents an array of numeric values */
-export interface NA {
+interface NA {
   /** NA.1 - Value1 */
   $1_value1?: string;
   /** NA.2 - Value2 */

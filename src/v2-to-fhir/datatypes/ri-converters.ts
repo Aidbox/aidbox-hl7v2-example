@@ -2,7 +2,7 @@ import type { Timing, CodeableConcept } from "../../fhir/hl7-fhir-r4-core";
 import type { TimingRepeat } from "../../fhir/hl7-fhir-r4-core/Timing";
 
 /** RI (Repeat Interval) datatype */
-export interface RI {
+interface RI {
   /** RI.1 - Repeat Pattern */
   $1_repeatPattern?: string;
   /** RI.2 - Explicit Time Interval */

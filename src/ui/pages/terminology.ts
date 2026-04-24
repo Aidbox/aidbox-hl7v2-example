@@ -45,7 +45,7 @@ import { suggestCodes } from "../../api/terminology-suggest";
 // Types
 // ============================================================================
 
-export interface TerminologyRow {
+interface TerminologyRow {
   conceptMapId: string;
   localCode: string;
   localDisplay: string;
@@ -64,7 +64,7 @@ export interface TerminologyRow {
   createdAt?: string;
 }
 
-export interface FacetEntry {
+interface FacetEntry {
   name: string;
   count: number;
 }
@@ -198,7 +198,7 @@ function parseFilters(url: URL): Filters {
 // KPI strip
 // ============================================================================
 
-export interface TerminologyKpis {
+interface TerminologyKpis {
   totalMappings: number;
   coveragePercent: number | null;
   processedCount: number;
