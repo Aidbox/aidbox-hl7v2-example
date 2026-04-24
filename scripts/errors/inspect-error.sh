@@ -101,6 +101,7 @@ if [ "$STATUS" = "conversion_error" ] && printf '%s' "$ERROR_TEXT" | grep -q 'HT
         case "$CONSTRAINT_ID" in
           per-1)
             echo "- Constraint \`per-1\`: period start must be <= end. Likely: sender reversed start/end fields. Candidate fix: \`swap-if-reversed\` preprocessor with params \`{ a, b }\` pointing at the two date fields."
+            SUGGEST_SWAP=1
             ;;
           ref-1)
             echo "- Constraint \`ref-1\`: SHALL have a contained resource or a reference (not both / need one). Likely: empty or dangling reference target."
@@ -185,6 +186,24 @@ if [ "$STATUS" = "conversion_error" ] && printf '%s' "$ERROR_TEXT" | grep -q 'HT
                     fi
                   done
                 fi
+                # Suggest a ready-to-run wire-preprocessor command when the fix is obvious
+                # (per-1 reversed dates: exactly 2 fields in the same segment).
+                if [ "${SUGGEST_SWAP:-0}" = "1" ]; then
+                  PAIR=$(printf '%s\n' "$FIELDS_TO_SHOW" | sort -u)
+                  PAIR_CNT=$(printf '%s\n' "$PAIR" | grep -c .)
+                  if [ "$PAIR_CNT" = "2" ]; then
+                    SEG=$(printf '%s\n' "$PAIR" | head -1 | cut -d- -f1)
+                    SEG2=$(printf '%s\n' "$PAIR" | tail -1 | cut -d- -f1)
+                    if [ "$SEG" = "$SEG2" ]; then
+                      A=$(printf '%s\n' "$PAIR" | head -1 | cut -d- -f2)
+                      B=$(printf '%s\n' "$PAIR" | tail -1 | cut -d- -f2)
+                      # Normalize msg type "ADT_A01^ADT_A01" -> "ADT-A01" for config key
+                      MSGKEY=$(printf '%s' "$TYPE" | cut -d'^' -f1 | tr '_' '-')
+                      echo "  Ready-to-run fix:"
+                      echo "    bun scripts/errors/wire-preprocessor.ts $MSGKEY $SEG $A swap-if-reversed '{\"a\":$A,\"b\":$B}'"
+                    fi
+                  fi
+                fi
               else
                 echo "  (no matching row in IG segment CSVs for path \`$PATH_TAIL\`)"
               fi
@@ -215,5 +234,24 @@ if [ "$STATUS" = "code_mapping_error" ] && [ "$UNMAPPED" != "[]" ]; then
     echo '```'
     "$PROJECT_DIR/scripts/hl7v2-inspect.sh" "$TMP" --segment OBX --values 2>&1 || true
     echo '```'
+
+    # Auto-run LOINC search on each observation-code-loinc task's localDisplay
+    # so common cases (Creatinine, Sodium, ...) are answered without another call.
+    echo
+    echo "### LOINC candidates (from ValueSet/\$expand)"
+    printf '%s' "$JSON" | jq -r '
+      . as $root |
+      .unmappedCodes[]? |
+      . as $u |
+      (($u.mappingTask.reference // "") | sub("^Task/"; "")) as $tid |
+      ([$root.entries[]? | select(.resourceType=="Task" and .id==$tid)] | first) as $t |
+      select($t.code.coding[0].code == "observation-code-loinc") |
+      "\($u.localCode // "")\t\($u.localDisplay // "")\t\($tid)"
+    ' | while IFS=$'\t' read -r LCODE LDISPLAY LTID; do
+      [ -z "$LDISPLAY" ] && continue
+      echo "- \`$LCODE\` ($LDISPLAY) — task \`$LTID\`:"
+      "$PROJECT_DIR/scripts/errors/loinc-search.sh" "$LDISPLAY" --count 5 2>/dev/null \
+        | sed 's/^/    /' || echo "    (lookup failed)"
+    done
   fi
 fi
