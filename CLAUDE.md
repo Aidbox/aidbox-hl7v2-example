@@ -15,88 +15,33 @@ This file is the project memory — checked into the repo, shared across agents 
 
 Do NOT use the auto-memory file (MEMORY.md) for this project.
 
-Architecture, workflows, routes, and directory structure are **not** kept here — they go stale. Look them up live in the code.
+Architecture, workflows, routes, directory structure, and script lists are **not** kept here — they go stale. Look them up live in the code. `README.md` has quick start, status reference, and UI routes.
 
 # Aidbox HL7 Integration
 
-HL7v2 message processing with Aidbox FHIR server. Bidirectional: FHIR → HL7v2 BAR (billing) and HL7v2 → FHIR (lab results, ADT, orders, immunization).
+HL7v2 message processing with Aidbox FHIR server. Bidirectional: FHIR → HL7v2 BAR (billing) and HL7v2 → FHIR (lab results, ADT, orders, immunization, documents).
 
-## Quick Start
+## Aidbox auth
 
-```sh
-docker compose up -d              # Start Aidbox and PostgreSQL
-bun src/migrate.ts                # Run database migrations
-bun run dev                       # Start web server (logs to logs/server.log)
-```
+Never hardcode the client secret in code or docs. Use the `aidbox-request` skill for ad-hoc curl. App code uses `src/aidbox.ts` which reads the secret from env.
 
-- **Web UI**: http://localhost:3000
-- **Aidbox Console**: http://localhost:8080 — login as `admin` with `BOX_ADMIN_PASSWORD` from `docker-compose.yaml`.
-- **Aidbox API auth**: use the `aidbox-request` skill. Never hardcode the client secret in code or docs.
+## Bun, not Node
 
-## Development Scripts
+Use `bun`/`bun install`/`bun run` instead of `node`/`npm`/`yarn`/`pnpm`. Unit tests use `bun test` (not jest/vitest). Bun auto-loads `.env` (no `dotenv`). HTTP: `Bun.serve()`. File I/O: `Bun.file`.
 
-```sh
-bun run dev                       # Start server with hot reload
-bun run stop                      # Stop the server
-bun run logs                      # Tail server logs
-bun run mllp                      # Start MLLP server (port 2575). Separate process from `bun run dev`; no hot-reload. Restart it after changes to src/mllp/mllp-server.ts.
-bun scripts/load-test-data.ts     # Load 5 test patients with related resources
-bun scripts/import-batch.ts <zip|dir> [--tag <name>]  # Bulk-import HL7v2 messages under a batchTag
-bun run typecheck                 # TypeScript type checking
-bun test:local                    # Unit tests + smoke tests — the everyday local loop (~10s)
-bun test:all                      # Unit + full integration — for CI, slow locally
-bun test:unit                     # Unit tests only
-bun test:smoke                    # Smoke subset of integration tests (tests whose name starts with "smoke: ")
-bun test:integration              # Full integration suite — runs in CI, takes minutes locally
-bun reset-integration-aidbox      # Destroy and recreate test Aidbox from scratch (if test data in the db creates problems)
-bun run truncate-aidbox           # Delete all project-created data from dev Aidbox (demo reset; preserves terminology/profiles)
-bun scripts/truncate-aidbox.ts --yes  # Skip confirmation prompt (use -y for short form)
-bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
-bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
-bun run generate-hl7v2-reference  # Generate specs/hl7v2-reference/ from XSD+PDF
-```
+## Testing rules
 
-Integration tests use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
-
-**Testing rules:**
 1. **Run `bun test:local` after any change.** Unit tests + the smoke subset of integration tests (~10s). CI runs the full `bun test:all`; don't also run it locally unless debugging a CI-only failure.
 2. **Smoke tests are tagged by name prefix.** A test (or `describe`) whose name starts with `smoke: ` is included in `test:smoke` via `--test-name-pattern "smoke: "`. Promote by prepending the prefix; demote by removing it. Keep the smoke set small and focused on one happy-path per major flow.
-3. **Don't manually run `docker compose` for integration tests.** The test commands auto-start containers, wait for health, and run migrations.
+3. **Don't manually run `docker compose` for integration tests.** The test commands auto-start containers, wait for health, and run migrations. Integration tests use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
 
-## In-process polling workers
+## Polling workers env flags
 
-`bun run dev` boots three polling services inside the web server (`src/workers.ts`): inbound HL7v2 processor, Account BAR builder, BAR message sender. Messages flow through the pipeline without manual "Process All" / "Build BAR" / "Send Pending" clicks.
+`bun run dev` boots in-process pollers via `src/workers.ts`. Flags:
 
-Env flags:
-- `DISABLE_POLLING=1` — do not start any workers (useful for tests or when running the standalone `bun src/v2-to-fhir/processor-service.ts` scripts).
-- `POLL_INTERVAL_MS` — override poll interval. Default 1000ms. The standalone scripts still use their own 60000ms default.
-- `DEMO_MODE` — default-on. Controls the Dashboard's "Run demo now" endpoint (`POST /demo/run-scenario`). Unset, empty, or any non-`"off"` value enables it; only `DEMO_MODE=off` disables (returns 403).
-
-The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) are unchanged and still work — they share the same factories.
-
-## In-process polling workers
-
-`bun run dev` boots three polling services inside the web server (`src/workers.ts`): inbound HL7v2 processor, Account BAR builder, BAR message sender. Messages flow through the pipeline without manual "Process All" / "Build BAR" / "Send Pending" clicks.
-
-Env flags:
-- `DISABLE_POLLING=1` — do not start any workers (useful for tests or when running the standalone `bun src/v2-to-fhir/processor-service.ts` scripts).
-- `POLL_INTERVAL_MS` — override poll interval. Default 1000ms. The standalone scripts still use their own 60000ms default.
-- `DEMO_MODE` — default-on. Controls the Dashboard's "Run demo now" endpoint (`POST /demo/run-scenario`). Unset, empty, or any non-`"off"` value enables it; only `DEMO_MODE=off` disables (returns 403).
-
-The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) are unchanged and still work — they share the same factories.
-
-## IncomingHL7v2Message statuses
-
-Referenced constantly when diagnosing errors.
-
-- `received` — unprocessed
-- `processed` — converted + submitted to Aidbox successfully
-- `warning` — converted + submitted, but with a non-fatal gap (e.g., PV1 missing → no Encounter)
-- `parsing_error` — malformed HL7v2, parse failed; sender must fix
-- `conversion_error` — parsed OK but missing/invalid data for FHIR conversion
-- `code_mapping_error` — unmapped code, Task created; auto-requeued on resolution
-- `sending_error` — FHIR bundle submission to Aidbox failed; auto-retried 3 times
-- `deferred` — manually set via `POST /defer/:id` when resolution needs external input; eligible for retry via `POST /mark-for-retry/:id`
+- `DISABLE_POLLING=1` — disable all workers (useful for tests or when running standalone service scripts).
+- `POLL_INTERVAL_MS` — override poll interval. Default 1000ms. Standalone scripts still use their own 60000ms default.
+- `DEMO_MODE` — default-on. Controls the Dashboard's "Run demo now" endpoint (`POST /demo/run-scenario`). Only `DEMO_MODE=off` disables (returns 403).
 
 ## US Core demographic extension runtime note
 
@@ -107,10 +52,6 @@ If `profileConformance.implementationGuides` enables US Core (`hl7.fhir.us.core`
 IMPORTANT: Read `.claude/code-style.md` before writing or modifying code.
 
 Tailwind v4 gotcha: Tailwind utilities are emitted inside cascade layers, while `DESIGN_SYSTEM_CSS` is plain unlayered CSS. Broad unlayered resets override utilities even when the utility selector looks more specific; e.g. `a { color: inherit; }` breaks legacy anchor tabs using `text-white` / `text-gray-*`. Scope resets to unclassed elements (`a:not([class])`) or put them in Tailwind's base layer.
-
-## Bun, not Node
-
-This project uses Bun. Use `bun`/`bun install`/`bun run` instead of `node`/`npm`/`yarn`/`pnpm`. Unit tests use `bun test` (not jest/vitest). Bun auto-loads `.env` (no `dotenv`). HTTP: `Bun.serve()`. File I/O: `Bun.file`.
 
 ## Before Touching HL7v2
 
