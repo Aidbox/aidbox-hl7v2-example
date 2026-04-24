@@ -336,10 +336,10 @@ export async function renderEditorPartial(
             <div class="font-mono text-[30px] font-semibold tracking-[-0.01em] text-accent-ink leading-none">
               ${escapeHtml(entry.localCode)}
             </div>
-            <div class="text-[14px] text-ink-2 mt-1 font-serif italic">"${escapeHtml(entry.display)}"</div>
+            <div class="text-[13px] text-ink-2 mt-1">${escapeHtml(entry.display)}</div>
           </div>
           <div class="text-right pl-5 border-l border-line shrink-0">
-            <div class="font-serif text-[30px] font-medium text-ink tracking-[-0.02em] leading-none">${entry.count}</div>
+            <div class="font-mono text-[24px] font-semibold text-ink tracking-[-0.01em] tabular-nums leading-none">${entry.count}</div>
             <div class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium mt-0.5">messages waiting</div>
           </div>
         </div>
@@ -354,7 +354,9 @@ export async function renderEditorPartial(
       <form id="resolve-form-${escapeHtml(entry.taskId)}"
             method="POST"
             action="/api/mapping/tasks/${encodeURIComponent(entry.taskId)}/resolve"
-            class="contents">
+            class="contents"
+            x-data="{ saving: false }"
+            x-on:submit="saving = true">
         <input type="hidden" name="resolvedCode" :value="picked.code"/>
         <input type="hidden" name="resolvedDisplay" :value="picked.display"/>
         <!-- Preserved across validation failures so the editor stays open on
@@ -419,9 +421,15 @@ export async function renderEditorPartial(
                   x-on:click="selectedIndex = Math.min(selectedIndex + 1, queue.length - 1); if (queue[selectedIndex]) window.location.href = '/unmapped-codes?code=' + queue[selectedIndex].code + '&sender=' + queue[selectedIndex].sender">Skip</button>
           <button type="submit"
                   class="btn btn-primary py-1.5 px-3 text-[12px] flex items-center gap-1.5"
-                  :disabled="!picked.code"
-                  :class="!picked.code ? 'opacity-50 cursor-not-allowed' : ''">
-            ${renderIcon("check", "sm")} Save mapping
+                  :disabled="!picked.code || saving"
+                  :class="(!picked.code || saving) ? 'opacity-70 cursor-not-allowed' : ''">
+            <template x-if="saving">
+              <span class="spinner w-3 h-3 border-[1.5px]"></span>
+            </template>
+            <template x-if="!saving">
+              <span class="contents">${renderIcon("check", "sm")}</span>
+            </template>
+            <span x-text="saving ? 'Saving…' : 'Save mapping'"></span>
           </button>
         </div>
       </form>
@@ -504,9 +512,7 @@ async function renderUnmappedBody(
         <div class="flex-1">
           <div class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium mb-1.5">${escapeHtml(eyebrow)}</div>
           <h1 class="h1">Unmapped codes</h1>
-          <div class="text-[13.5px] text-ink-2 mt-1">Map once, the backlog replays automatically.
-            <em class="font-serif italic">No lost messages, no manual fixups.</em>
-          </div>
+          <div class="text-[13px] text-ink-2 mt-1">Map once, the backlog replays automatically. No lost messages, no manual fixups.</div>
         </div>
         <div class="flex gap-2">
           <button class="btn btn-ghost py-1.5 px-3 text-[12.5px] opacity-50 cursor-not-allowed" disabled>

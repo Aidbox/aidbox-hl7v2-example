@@ -9,6 +9,7 @@ mock.module("../../../src/aidbox", () => ({
     return mockedFetch(path, init);
   },
   getResources: async () => [],
+  putResource: async () => ({}),
 }));
 
 const {
@@ -18,15 +19,29 @@ const {
   getTypeChipCounts,
   renderTypeChipsPartial,
   renderListPartial,
+  renderRowStatusCell,
   handleInboundListPartial,
   handleInboundTypeChipsPartial,
+  handleInboundRowStatusPartial,
   handleInboundMessagesPage,
 } = await import("../../../src/ui/pages/inbound");
+
+const { parseIncomingMessage, toMessageId, assertNever } = await import(
+  "../../../src/ui/domain/incoming-message"
+);
+type ParsedIncomingMessage =
+  import("../../../src/ui/domain/incoming-message").ParsedIncomingMessage;
 
 function bundle(total: number | undefined, entries: unknown[] = []): unknown {
   return { resourceType: "Bundle", total, entry: entries };
 }
 
+/**
+ * Test fixture. By default returns a *wire-shaped* record so handler
+ * tests (which feed data through `aidboxFetch` mocks) work unchanged.
+ * For readers that now take `ParsedIncomingMessage` directly, wrap in
+ * `parsed(...)` — see below.
+ */
 function msg(over: Record<string, unknown> = {}): unknown {
   return {
     resourceType: "IncomingHL7v2Message",
@@ -36,8 +51,33 @@ function msg(over: Record<string, unknown> = {}): unknown {
     sendingApplication: over.sendingApplication ?? "ACME_LAB",
     date: over.date ?? "2026-04-23T12:00:00Z",
     meta: over.meta ?? { lastUpdated: "2026-04-23T12:00:01Z" },
+    message: over.message ?? "MSH|^~\\&|TEST|TEST|DEST|DEST|20260423120000||ORU^R01|1|P|2.5.1",
     ...over,
   };
+}
+
+/**
+ * Construct a valid `ParsedIncomingMessage` variant directly. Each
+ * status maps to a variant; `unmappedCodes` for `code_mapping_error`
+ * defaults to one placeholder entry so the parser's non-empty
+ * invariant holds.
+ */
+function parsed(
+  over: { status?: string; id?: string; type?: string; sendingApplication?: string; error?: string; entries?: unknown[]; unmappedCodes?: unknown[]; message?: string } = {},
+): ParsedIncomingMessage {
+  const wire = msg({
+    ...over,
+    status: over.status ?? "processed",
+    unmappedCodes:
+      over.status === "code_mapping_error"
+        ? over.unmappedCodes ?? [{ localCode: "UNKNOWN_TEST", mappingTask: { reference: "Task/1" } }]
+        : over.unmappedCodes,
+  });
+  const result = parseIncomingMessage(wire as never);
+  if (result.kind === "malformed-wire-record") {
+    throw new Error(`parsed() test fixture produced malformed: ${result.reason}`);
+  }
+  return result;
 }
 
 beforeEach(() => {
@@ -71,21 +111,56 @@ describe("displayMessageType", () => {
 
 describe("statusToTone", () => {
   test("maps processed + warning to ok", () => {
-    expect(statusToTone("processed")).toBe("ok");
-    expect(statusToTone("warning")).toBe("ok");
+    expect(statusToTone(parsed({ status: "processed" }))).toBe("ok");
+    expect(statusToTone(parsed({ status: "warning", error: "gap" }))).toBe("ok");
   });
   test("maps code_mapping_error to warn", () => {
-    expect(statusToTone("code_mapping_error")).toBe("warn");
+    expect(statusToTone(parsed({ status: "code_mapping_error" }))).toBe("warn");
   });
   test("maps hard errors to err", () => {
-    expect(statusToTone("parsing_error")).toBe("err");
-    expect(statusToTone("conversion_error")).toBe("err");
-    expect(statusToTone("sending_error")).toBe("err");
+    expect(statusToTone(parsed({ status: "parsing_error", error: "x" }))).toBe("err");
+    expect(statusToTone(parsed({ status: "conversion_error", error: "x" }))).toBe("err");
+    expect(statusToTone(parsed({ status: "sending_error", error: "x" }))).toBe("err");
   });
-  test("maps received/deferred/undefined to pend", () => {
-    expect(statusToTone("received")).toBe("pend");
-    expect(statusToTone("deferred")).toBe("pend");
-    expect(statusToTone(undefined)).toBe("pend");
+  test("maps received/deferred to pend", () => {
+    expect(statusToTone(parsed({ status: "received" }))).toBe("pend");
+    expect(statusToTone(parsed({ status: "deferred" }))).toBe("pend");
+  });
+});
+
+describe("sound-typing invariants (compile-time demos)", () => {
+  test("processed variant CANNOT be constructed with an `error` field", () => {
+    // The type system rejects this construction. The @ts-expect-error
+    // must live directly above the line that actually errors — if the
+    // type ever loosens and stops rejecting this, the directive itself
+    // becomes unused and the test file fails to compile.
+    const nonsense: ParsedIncomingMessage = {
+      id: toMessageId("x"),
+      type: "ORU^R01",
+      date: "2026-04-23T12:00:00Z",
+      sendingApplication: "T",
+      lastUpdated: "2026-04-23T12:00:01Z",
+      rawMessage: "",
+      kind: "processed",
+      entries: [],
+      // @ts-expect-error - "processed" variant has no "error" field
+      error: "oops",
+    };
+    expect(nonsense).toBeDefined();
+  });
+
+  test("switch missing a variant fails to typecheck via assertNever", () => {
+    function incompleteToneLookup(p: ParsedIncomingMessage): string {
+      switch (p.kind) {
+        case "received": return "pend";
+        case "processed": return "ok";
+        default:
+          // @ts-expect-error - `p` is not `never`: 6 variants unhandled
+          return assertNever(p);
+      }
+    }
+    // Runs at runtime with a handled variant, so no throw.
+    expect(incompleteToneLookup(parsed({ status: "processed" }))).toBe("ok");
   });
 });
 
@@ -94,10 +169,10 @@ describe("statusToTone", () => {
 // ============================================================================
 
 describe("getInboundList", () => {
-  test("default query sorts by -_lastUpdated with _count=100", async () => {
+  test("default query sorts by -_lastUpdated with _count=20 (page size)", async () => {
     await getInboundList({});
     expect(fetchPaths[0]).toContain("_sort=-_lastUpdated");
-    expect(fetchPaths[0]).toContain("_count=100");
+    expect(fetchPaths[0]).toContain("_count=20");
     expect(fetchPaths[0]).not.toContain("type=");
     expect(fetchPaths[0]).not.toContain("status=");
   });
@@ -255,16 +330,14 @@ describe("renderTypeChipsPartial", () => {
 // ============================================================================
 
 describe("renderListPartial", () => {
-  test("polls every 5s via Alpine setInterval that skips ticks when detail is populated", () => {
+  test("does NOT poll the whole list — list is a snapshot; per-row status cells own their own polling", () => {
     const html = renderListPartial([], {});
-    // Polling is driven by Alpine setInterval + htmx.ajax() rather than
-    // hx-trigger/hx-vals. The condition reads `#detail[data-selected]`
-    // at tick time — populated detail → skips, empty detail → fires.
-    expect(html).toContain("setInterval");
-    expect(html).toContain("'/incoming-messages/partials/list'");
-    expect(html).toContain("data-selected");
+    expect(html).not.toContain("setInterval");
     expect(html).toContain("All messages");
     expect(html).toContain("No messages match these filters.");
+    // The Replay flow still needs a one-shot refresh when a user hits
+    // "Replay" on a detail pane — that listener stays.
+    expect(html).toContain("message-replayed.window");
   });
 
   test("marks data-has-selection=true when a row is selected", () => {
@@ -277,9 +350,9 @@ describe("renderListPartial", () => {
   test("renders each message as a row with status chip + dot tone", () => {
     const html = renderListPartial(
       [
-        msg({ id: "a", type: "ORU^R01", status: "processed" }) as never,
-        msg({ id: "b", type: "ORU^R01", status: "code_mapping_error" }) as never,
-        msg({ id: "c", type: "ADT^A01", status: "parsing_error" }) as never,
+        parsed({ id: "a", type: "ORU^R01", status: "processed" }),
+        parsed({ id: "b", type: "ORU^R01", status: "code_mapping_error" }),
+        parsed({ id: "c", type: "ADT^A01", status: "parsing_error", error: "bad" }),
       ],
       {},
     );
@@ -292,7 +365,7 @@ describe("renderListPartial", () => {
 
   test("row wires htmx to detail endpoint + pushes ?selected", () => {
     const html = renderListPartial(
-      [msg({ id: "abc-123", type: "ORU^R01" }) as never],
+      [parsed({ id: "abc-123", type: "ORU^R01" })],
       {},
     );
     expect(html).toContain(
@@ -304,7 +377,7 @@ describe("renderListPartial", () => {
 
   test("URL-encodes message id with special chars in htmx attributes", () => {
     const html = renderListPartial(
-      [msg({ id: "id/with^slash" }) as never],
+      [parsed({ id: "id/with^slash" })],
       {},
     );
     expect(html).toContain("id%2Fwith%5Eslash");
@@ -313,7 +386,7 @@ describe("renderListPartial", () => {
 
   test("selected row gets accent-bar + paper-2 background", () => {
     const html = renderListPartial(
-      [msg({ id: "sel" }) as never, msg({ id: "other" }) as never],
+      [parsed({ id: "sel" }), parsed({ id: "other" })],
       { selected: "sel" },
     );
     // Match the selected row's opening div block (ends before the 2nd row's).
@@ -333,7 +406,7 @@ describe("renderListPartial", () => {
 
   test("title includes filter summary and count", () => {
     const html = renderListPartial(
-      [msg() as never],
+      [parsed({})],
       { type: "ORU^R01", status: "errors" },
     );
     expect(html).toContain("ORU^R01 · errors (1)");
@@ -341,7 +414,7 @@ describe("renderListPartial", () => {
 
   test("title normalizes stored MSH-9 underscore form to canonical caret form", () => {
     const html = renderListPartial(
-      [msg() as never],
+      [parsed({})],
       { type: "ADT_A01^ADT_A01" },
     );
     expect(html).toContain("ADT^A01^ADT_A01 (1)");
@@ -349,7 +422,7 @@ describe("renderListPartial", () => {
 
   test("row MESSAGE column is empty for processed rows (redundant with status chip)", () => {
     const html = renderListPartial(
-      [msg({ id: "r1", status: "processed" }) as never],
+      [parsed({ id: "r1", status: "processed" })],
       {},
     );
     // Match the MESSAGE-column span directly: the note span has the
@@ -364,11 +437,11 @@ describe("renderListPartial", () => {
 
   test("row MESSAGE column shows unmapped code detail on code_mapping_error", () => {
     const html = renderListPartial(
-      [msg({
+      [parsed({
         id: "r2",
         status: "code_mapping_error",
         unmappedCodes: [{ localCode: "UNKNOWN_TEST", mappingTask: { reference: "Task/t" } }],
-      }) as never],
+      })],
       {},
     );
     expect(html).toContain("UNKNOWN_TEST — no mapping");
@@ -381,6 +454,148 @@ describe("renderListPartial", () => {
 // ============================================================================
 // Handlers
 // ============================================================================
+
+describe("renderListPartial filter popovers", () => {
+  const chips: unknown = [
+    { label: "All", value: "", count: 48, tone: "accent" },
+    { label: "ORU^R01", value: "ORU^R01", count: 22 },
+    { label: "ADT_A01^ADT_A01", value: "ADT_A01^ADT_A01", count: 12 },
+    { label: "VXU_V04^VXU_V04", value: "VXU_V04^VXU_V04", count: 11 },
+    { label: "errors", value: "", count: 3, tone: "err" },
+  ];
+
+  test("renders type filter popover with an 'All types' clear link + one row per type", () => {
+    const html = renderListPartial([], {}, 0, chips as never);
+    expect(html).toContain("All types");
+    // The popover lists each real type — 'errors' and 'All' are not types
+    expect(html).toContain("ORU^R01");
+    expect(html).toContain("ADT^A01^ADT_A01"); // displayMessageType normalizes underscore→caret
+    expect(html).toContain("VXU^V04^VXU_V04");
+  });
+
+  test("type filter link URLs carry the type param (server-side filtering)", () => {
+    const html = renderListPartial([], {}, 0, chips as never);
+    expect(html).toContain("href=\"/incoming-messages?type=ORU%5ER01\"");
+  });
+
+  test("'All types' link has no type param (clears filter)", () => {
+    const html = renderListPartial([], { type: "ORU^R01" }, 0, chips as never);
+    // The 'All types' link is a bare href — preserves other filters if present.
+    expect(html).toContain("href=\"/incoming-messages\"");
+  });
+
+  test("type filter icon gets accent-soft background when a type is active", () => {
+    const active = renderListPartial([], { type: "ORU^R01" }, 0, chips as never);
+    const inactive = renderListPartial([], {}, 0, chips as never);
+    // Active filter → bg-accent-soft; inactive → bg-transparent.
+    expect(active).toContain("bg-accent-soft");
+    expect(inactive).not.toContain("bg-accent-soft");
+  });
+
+  test("status filter popover offers 'Any status' + 'Errors only'", () => {
+    const html = renderListPartial([], {}, 0, chips as never);
+    expect(html).toContain("Any status");
+    expect(html).toContain("Errors only");
+    expect(html).toContain("href=\"/incoming-messages?status=errors\"");
+  });
+
+  test("status filter link preserves existing type filter", () => {
+    const html = renderListPartial([], { type: "ORU^R01" }, 0, chips as never);
+    expect(html).toContain("href=\"/incoming-messages?type=ORU%5ER01&amp;status=errors\"");
+  });
+
+  test("filter popovers are scoped Alpine x-data (isolated open state)", () => {
+    const html = renderListPartial([], {}, 0, chips as never);
+    // Each popover has its own x-data="{ open: false }" scope so clicking
+    // TYPE doesn't open STATUS (and vice versa).
+    const matches = html.match(/x-data="\{ open: false \}"/g) || [];
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("renderListPartial pager", () => {
+  test("shows N–M of T counter when messages exist", () => {
+    const html = renderListPartial(
+      [parsed({ id: "a" })],
+      {},
+      3,
+    );
+    expect(html).toContain("1–1 of 3");
+  });
+
+  test("omits pager buttons when total fits in one page", () => {
+    const html = renderListPartial(
+      [parsed({ id: "a" })],
+      {},
+      20,
+    );
+    expect(html).toContain("1–1 of 20");
+    expect(html).not.toContain("Prev");
+    expect(html).not.toContain("Next");
+  });
+
+  test("shows Prev/Next when total exceeds one page", () => {
+    const msgs = Array.from({ length: 20 }, (_, i) => parsed({ id: `m${i}` }));
+    const html = renderListPartial(msgs, {}, 50);
+    expect(html).toContain("1–20 of 50");
+    expect(html).toContain("Prev");
+    expect(html).toContain("Next");
+    // Next link should carry page=2
+    expect(html).toContain("page=2");
+    // "1 / 3" indicator (50 / 20 = 3 pages)
+    expect(html).toContain("1 / 3");
+  });
+
+  test("threads filters into pager URLs", () => {
+    const msgs = Array.from({ length: 20 }, (_, i) => parsed({ id: `m${i}` }));
+    const html = renderListPartial(msgs, { type: "ORU^R01" }, 50);
+    expect(html).toContain("type=ORU");
+  });
+
+  test("Prev disabled on first page, Next disabled on last page", () => {
+    const msgs = Array.from({ length: 20 }, (_, i) => parsed({ id: `m${i}` }));
+    // First page
+    const first = renderListPartial(msgs, {}, 50);
+    expect(first).toContain("cursor-not-allowed");
+    // Last page (page=3 of 50 total, 10 rows shown)
+    const lastPage = renderListPartial(msgs.slice(0, 10), { page: 3 }, 50);
+    expect(lastPage).toContain("41–50 of 50");
+    expect(lastPage).toContain("3 / 3");
+    expect(lastPage).toContain("cursor-not-allowed");
+  });
+
+  test("omits entire pager when no messages", () => {
+    const html = renderListPartial([], {}, 0);
+    expect(html).not.toContain("of 0");
+    expect(html).toContain("No messages match");
+  });
+});
+
+describe("buildListQuery pagination", () => {
+  test("adds page=N when page > 1", async () => {
+    mockedFetch = async () => bundle(0, []);
+    await getInboundList({ page: 3 });
+    expect(fetchPaths.at(-1)).toContain("page=3");
+  });
+
+  test("omits page param on first page", async () => {
+    mockedFetch = async () => bundle(0, []);
+    await getInboundList({});
+    expect(fetchPaths.at(-1)).not.toMatch(/[?&]page=/);
+  });
+
+  test("does NOT send HAPI's _getpagesoffset (Aidbox rejects it)", async () => {
+    mockedFetch = async () => bundle(0, []);
+    await getInboundList({ page: 2 });
+    expect(fetchPaths.at(-1)).not.toContain("_getpagesoffset");
+  });
+
+  test("always requests _total=accurate so the pager can show T", async () => {
+    mockedFetch = async () => bundle(0, []);
+    await getInboundList({});
+    expect(fetchPaths.at(-1)).toContain("_total=accurate");
+  });
+});
 
 describe("handleInboundListPartial", () => {
   test("returns list partial with html content-type", async () => {
@@ -402,7 +617,89 @@ describe("handleInboundListPartial", () => {
         "http://localhost/incoming-messages/partials/list?type=ADT%5EA01",
       ),
     );
-    expect(fetchPaths.at(-1)).toContain("type=ADT%5EA01");
+    // handleInboundListPartial now also fetches chip counts in parallel
+    // (so the filter popover has up-to-date numbers on refresh), so the
+    // type-filtered request isn't guaranteed to be last. Assert it
+    // happened at all.
+    expect(fetchPaths.some((p) => p.includes("type=ADT%5EA01"))).toBe(true);
+  });
+});
+
+describe("renderRowStatusCell", () => {
+  test("non-terminal status (received) emits Alpine setInterval self-poll", () => {
+    const html = renderRowStatusCell(parsed({ id: "abc-123", status: "received" }) as never);
+    expect(html).toContain('id="status-abc-123"');
+    // Alpine-driven poll (not hx-trigger="every Xs" — that fires once
+    // then stops after outerHTML swap replaces the element).
+    expect(html).toContain("x-data");
+    expect(html).toContain("setInterval");
+    expect(html).toContain("/incoming-messages/abc-123/partials/status");
+    expect(html).toContain("outerHTML");
+    // Self-cleans when row leaves the DOM (e.g. pager moves to next page).
+    expect(html).toContain("isConnected");
+    expect(html).toContain("processing");
+  });
+
+  test("terminal status (processed) renders plain chip with NO polling", () => {
+    const html = renderRowStatusCell(parsed({ id: "abc-123", status: "processed" }) as never);
+    expect(html).toContain('id="status-abc-123"');
+    expect(html).not.toContain("setInterval");
+    expect(html).not.toContain("x-data");
+    expect(html).toContain("processed");
+  });
+
+  test("terminal error statuses do not poll", () => {
+    for (const s of ["parsing_error", "conversion_error", "code_mapping_error", "sending_error", "warning", "deferred"]) {
+      const html = renderRowStatusCell(
+        parsed({ id: "e", status: s, error: "x" }),
+      );
+      expect(html, `status ${s} should not poll`).not.toContain("setInterval");
+    }
+  });
+
+  test("URL-encodes ids with special characters", () => {
+    const html = renderRowStatusCell(parsed({ id: "id/with?slash", status: "received" }) as never);
+    expect(html).toContain("/incoming-messages/id%2Fwith%3Fslash/partials/status");
+  });
+});
+
+describe("handleInboundRowStatusPartial", () => {
+  test("returns terminal cell for processed message (no polling)", async () => {
+    mockedFetch = async () => msg({ id: "m1", status: "processed" });
+    const res = await handleInboundRowStatusPartial("m1");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+    const body = await res.text();
+    expect(body).toContain('id="status-m1"');
+    expect(body).not.toContain("hx-trigger");
+    expect(body).toContain("processed");
+  });
+
+  test("returns polling cell for received message", async () => {
+    mockedFetch = async () => msg({ id: "m2", status: "received" });
+    const res = await handleInboundRowStatusPartial("m2");
+    const body = await res.text();
+    // New mechanism: Alpine setInterval (not hx-trigger="every 5s",
+    // which doesn't re-arm after outerHTML self-swap).
+    expect(body).toContain("setInterval");
+    expect(body).toContain("processing");
+  });
+
+  test("missing id returns 400", async () => {
+    const res = await handleInboundRowStatusPartial("");
+    expect(res.status).toBe(400);
+  });
+
+  test("Aidbox failure returns a static em-dash cell (stops polling)", async () => {
+    mockedFetch = async () => {
+      throw new Error("aidbox unreachable");
+    };
+    const res = await handleInboundRowStatusPartial("m3");
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain('id="status-m3"');
+    expect(body).not.toContain("hx-trigger");
+    expect(body).toContain("—");
   });
 });
 

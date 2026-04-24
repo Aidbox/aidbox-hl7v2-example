@@ -28,7 +28,18 @@ import type {
 } from "../../fhir/aidbox-hl7v2-custom";
 import { escapeHtml } from "../../utils/html";
 import { highlightHL7WithDataTooltip } from "../hl7-display";
-import { displayMessageType, statusToTone, type MessageTone } from "./inbound";
+import {
+  displayMessageType,
+  statusToTone,
+  statusStringToTone,
+  type MessageTone,
+} from "./inbound";
+import {
+  parseIncomingMessage,
+  assertNever,
+  isMalformed,
+  type ParsedIncomingMessage,
+} from "../domain/incoming-message";
 
 // ============================================================================
 // Types + constants
@@ -75,53 +86,93 @@ function truncate(s: string, max: number): string {
 // Detail header (status chip, type chip, MCID, Replay, Map code)
 // ============================================================================
 
-function detailSubtitle(m: IncomingHL7v2Message): string {
-  if (m.status === "code_mapping_error") {
-    const code = m.unmappedCodes?.[0]?.localCode;
-    if (code) {
-      return `Code <span class="font-mono text-accent-ink font-semibold bg-accent-soft px-1.5 py-0.5 rounded">${escapeHtml(code)}</span> has no mapping — routed to triage.`;
-    }
-    return "Contains an unmapped code — routed to triage.";
+function detailSubtitle(p: ParsedIncomingMessage): string {
+  switch (p.kind) {
+    case "code_mapping_error":
+      // p.unmappedCodes is non-empty by the parser's invariant.
+      return `Code <span class="font-mono text-accent-ink font-semibold bg-accent-soft px-1.5 py-0.5 rounded">${escapeHtml(p.unmappedCodes[0]!.localCode)}</span> has no mapping — routed to triage.`;
+    case "warning":
+      return `<span class="text-warn">${escapeHtml(truncate(p.error, 200))}</span>`;
+    case "parsing_error":
+    case "conversion_error":
+    case "sending_error":
+      return `<span class="text-err">${escapeHtml(truncate(p.error, 200))}</span>`;
+    case "deferred":
+      return p.note
+        ? `<span class="text-ink-3">${escapeHtml(truncate(p.note, 200))}</span>`
+        : "";
+    case "received":
+    case "processed":
+      // No subtitle on the processed happy-path or received in-flight —
+      // the sender→receiver h2 above carries the only info we'd put here.
+      return "";
+    default:
+      return assertNever(p);
   }
-  if (m.status === "warning" && m.error) {
-    return `<span class="text-warn">${escapeHtml(truncate(m.error, 200))}</span>`;
-  }
-  if (m.status?.endsWith("_error") && m.error) {
-    return `<span class="text-err">${escapeHtml(truncate(m.error, 200))}</span>`;
-  }
-  if (m.status === "processed") {
-    return `${escapeHtml(m.sendingApplication ?? "—")} → ${escapeHtml(
-      m.sendingFacility ?? "—",
-    )}`;
-  }
-  return "";
 }
 
-function renderDetailHeader(m: IncomingHL7v2Message): string {
-  const tone = statusToTone(m.status);
-  const mcid = m.messageControlId ?? m.id ?? "—";
-  const time = formatClock(m.meta?.lastUpdated ?? m.date);
-  const unmapped: UnmappedCode | undefined = m.unmappedCodes?.[0];
-  const canMapCode = tone === "warn" && unmapped?.localCode;
-  // `sender` must match the Unmapped queue's grouping key, which is
-  // `task.input["Sending application"]` — i.e. the HL7v2 sending app
-  // (MSH-3), NOT the local code system. Earlier this passed localSystem
-  // ("LOCAL") and the queue pre-selection silently failed to match.
-  const mapCodeHref = canMapCode
-    ? `/unmapped-codes?code=${encodeURIComponent(unmapped.localCode)}${
-        m.sendingApplication
-          ? `&sender=${encodeURIComponent(m.sendingApplication)}`
-          : ""
-      }`
-    : "";
-  const senderToReceiver = [m.sendingApplication, m.sendingFacility]
+/**
+ * True when no further status transition is expected — settled rows
+ * don't need the self-polling wrapper on the header.
+ */
+function isHeaderTerminal(p: ParsedIncomingMessage): boolean {
+  switch (p.kind) {
+    case "received":
+      return false;
+    case "processed":
+    case "warning":
+    case "deferred":
+    case "parsing_error":
+    case "conversion_error":
+    case "sending_error":
+    case "code_mapping_error":
+      return true;
+    default:
+      return assertNever(p);
+  }
+}
+
+export function renderDetailHeader(p: ParsedIncomingMessage): string {
+  const tone = statusToTone(p);
+  const mcid = p.messageControlId ?? p.id;
+  const time = formatClock(p.lastUpdated || p.date);
+  // The "Map code" button is now structurally gated: it only exists when
+  // the variant is `code_mapping_error`, so `unmappedCode` is guaranteed
+  // non-null with a `.localCode` string. No more tone-triangulation.
+  const mapCodeHref =
+    p.kind === "code_mapping_error"
+      ? `/unmapped-codes?code=${encodeURIComponent(p.unmappedCodes[0]!.localCode)}&sender=${encodeURIComponent(p.sendingApplication)}`
+      : "";
+  const senderToReceiver = [p.sendingApplication, p.sendingFacility]
     .filter(Boolean)
     .join(" → ");
+  // Non-terminal detail headers self-poll: after the user clicks
+  // "Replay" the status flips to `received` and sits there until the
+  // worker re-processes (~5s). Without this poll the header shows
+  // "processing" forever and the user has to reload.
+  //
+  // Uses Alpine setInterval + htmx.ajax() rather than hx-trigger="every 5s"
+  // because htmx's interval is tied to the element reference, and
+  // `hx-swap="outerHTML"` replaces the element each tick — the new
+  // reference doesn't inherit the old interval and polling stops after
+  // one fire. Alpine's `x-data` is re-initialized on each swap, so the
+  // interval self-restarts. `$el.isConnected` cleans up dead intervals.
+  const headerUrl = `/incoming-messages/${encodeURIComponent(p.id)}/partials/header`;
+  const pollAttrs = isHeaderTerminal(p)
+    ? ""
+    : ` x-data
+        x-init="(() => {
+          var self = $el;
+          var pid = setInterval(function() {
+            if (!self || !self.isConnected) { clearInterval(pid); return; }
+            window.htmx.ajax('GET', '${headerUrl}', { target: self, swap: 'outerHTML' });
+          }, 5000);
+        })()"`;
   return `
-    <div class="px-5 py-4 border-b border-line">
+    <div id="detail-header-${escapeHtml(p.id)}" class="px-5 py-4 border-b border-line"${pollAttrs}>
       <div class="flex items-center gap-2 mb-2.5 flex-wrap">
         ${toneChip(tone)}
-        <span class="chip">${escapeHtml(m.type ? displayMessageType(m.type) : "—")}</span>
+        <span class="chip">${escapeHtml(displayMessageType(p.type))}</span>
         <span class="font-mono text-[11.5px] text-ink-3">${escapeHtml(mcid)} · ${escapeHtml(time)}</span>
         <div class="ml-auto flex gap-1.5">
           <!-- Replay button: while the htmx POST is in flight the Alpine
@@ -135,21 +186,24 @@ function renderDetailHeader(m: IncomingHL7v2Message): string {
                   x-on:htmx:after-request="loading = false"
                   x-bind:disabled="loading"
                   x-bind:class="loading ? 'opacity-60 cursor-wait' : ''"
-                  hx-post="/mark-for-retry/${encodeURIComponent(m.id ?? "")}"
+                  hx-post="/mark-for-retry/${encodeURIComponent(p.id)}"
                   hx-target="#detail"
                   hx-swap="outerHTML">
             <span class="spinner" x-show="loading"></span>
             <span x-text="loading ? 'Replaying…' : 'Replay'"></span>
           </button>
           ${
-            canMapCode
+            p.kind === "code_mapping_error"
               ? `<a class="btn btn-primary py-1 px-3 text-[11.5px]" href="${escapeHtml(mapCodeHref)}">Map code</a>`
               : ""
           }
         </div>
       </div>
       ${senderToReceiver ? `<div class="h2">${escapeHtml(senderToReceiver)}</div>` : ""}
-      <div class="text-[13px] text-ink-2 mt-1 leading-[1.5]">${detailSubtitle(m)}</div>
+      ${(() => {
+        const sub = detailSubtitle(p);
+        return sub ? `<div class="text-[13px] text-ink-2 mt-1 leading-[1.5]">${sub}</div>` : "";
+      })()}
     </div>
   `;
 }
@@ -190,13 +244,17 @@ function renderDetailTabBar(currentTab: DetailTab, messageId: string): string {
 // Tab: Structured — split stored `message` into segments
 // ============================================================================
 
-export function renderStructuredTab(m: IncomingHL7v2Message): string {
-  const raw = m.message ?? "";
+export function renderStructuredTab(p: ParsedIncomingMessage): string {
+  const raw = p.rawMessage;
   if (!raw.trim()) {
     return `<div class="p-8 text-center text-ink-3 text-[13px]">No HL7v2 message stored.</div>`;
   }
   const segments = raw.split(/[\r\n]+/).filter((s) => s.trim());
-  const problemCode = m.unmappedCodes?.[0]?.localCode;
+  // Only `code_mapping_error` variants carry an unmapped code to warn-
+  // highlight against; every other variant has `problemCode = undefined`
+  // by construction, so no runtime ?. chains required.
+  const problemCode =
+    p.kind === "code_mapping_error" ? p.unmappedCodes[0]!.localCode : undefined;
 
   return `
     <div class="p-5 flex flex-col gap-2">
@@ -232,8 +290,8 @@ export function renderStructuredTab(m: IncomingHL7v2Message): string {
 // Tab: Raw HL7 — reuse existing highlighter
 // ============================================================================
 
-export function renderRawTab(m: IncomingHL7v2Message): string {
-  const raw = m.message ?? "";
+export function renderRawTab(p: ParsedIncomingMessage): string {
+  const raw = p.rawMessage;
   if (!raw.trim()) {
     return `<div class="p-8 text-center text-ink-3 text-[13px]">No HL7v2 message stored.</div>`;
   }
@@ -258,29 +316,38 @@ export function renderRawTab(m: IncomingHL7v2Message): string {
 function highlightJson(pretty: string): string {
   let html = escapeHtml(pretty);
   // Single-pass match of every quoted token + the optional `:` that
-  // follows. If a colon is present → key (accent-ink); otherwise → string
-  // value (green ink — use `text-ok`, NOT `text-ok-soft` which is a pale
-  // green *background* color that disappears on the warm-paper pane).
-  // One pass avoids double-wrapping a key when we later look for values.
+  // follows. If a colon is present → key; otherwise → string value.
+  // Palette borrowed from the Aidbox console: dark-red keys, teal-green
+  // string values, blue-underlined URL strings, blue numbers. One pass
+  // avoids double-wrapping a key when we later look for values.
   html = html.replace(
-    /(&quot;(?:\\.|[^\\&]|&(?!quot;))*?&quot;)(\s*)(:?)/g,
-    (_, quoted, whitespace, colon) => {
-      const cls = colon ? "text-accent-ink" : "text-ok";
-      return `<span class="${cls}">${quoted}</span>${whitespace}${colon}`;
+    /(&quot;((?:\\.|[^\\&]|&(?!quot;))*?)&quot;)(\s*)(:?)/g,
+    (_, quoted, inner, whitespace, colon) => {
+      if (colon) {
+        return `<span class="text-accent-ink">${quoted}</span>${whitespace}${colon}`;
+      }
+      // Value-slot string: URLs get a blue-underline Aidbox treatment,
+      // everything else stays in the teal/green "string" family.
+      if (/^https?:\/\//i.test(inner)) {
+        return `<span class="text-info underline decoration-info/40 underline-offset-2">${quoted}</span>`;
+      }
+      return `<span class="text-ok">${quoted}</span>`;
     },
   );
-  // Numbers — only at the start of a JSON value slot (after `: `, `, `,
-  // `[ `, or a line start). Avoids matching digits that happen to appear
-  // inside already-wrapped string spans.
+  // Numbers — blue in Aidbox. Only match at the start of a JSON value
+  // slot (after `: `, `, `, `[ `, or a line start). Avoids matching digits
+  // that happen to appear inside already-wrapped string spans.
   html = html.replace(
     /(:\s*|,\s*|\[\s*|^\s*)(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)(?=[,\s\]}])/gm,
-    '$1<span class="text-warn">$2</span>',
+    '$1<span class="text-info">$2</span>',
   );
-  // Literals: true / false / null. `\b` keeps us from matching inside
-  // attribute values like `class="text-ink-2"`.
+  // Literals: true / false / null — Aidbox renders these in a purple-ish
+  // dark tone. Using info-ink (deep blue) gets us close without adding a
+  // fifth palette slot. `\b` keeps us from matching inside attribute
+  // values like `class="text-ink-2"`.
   html = html.replace(
     /\b(true|false|null)\b(?!-)/g,
-    '<span class="text-ink-2 font-medium">$1</span>',
+    '<span class="text-info-ink font-medium">$1</span>',
   );
   return html;
 }
@@ -309,22 +376,36 @@ function annotateUnmappedCodings(
   return out;
 }
 
-export function renderFhirTab(m: IncomingHL7v2Message): string {
-  if (!m.entries || !Array.isArray(m.entries) || m.entries.length === 0) {
+export function renderFhirTab(p: ParsedIncomingMessage): string {
+  // Structural invariant: only `processed` / `warning` variants carry
+  // `entries`. Every other variant gets an empty-state card with a
+  // variant-appropriate reason — no more "status?.endsWith" fallbacks.
+  if (p.kind !== "processed" && p.kind !== "warning") {
+    const reason = emptyEntriesReason(p);
     return `
       <div class="p-8 text-center text-ink-3 text-[13px]">
-        No FHIR resources attached. ${m.status?.endsWith("_error") ? "The message failed before conversion." : "Processor hasn't run yet."}
+        No FHIR resources attached. ${reason}
       </div>
     `;
   }
-  const pretty = JSON.stringify(m.entries, null, 2);
-  const body = annotateUnmappedCodings(highlightJson(pretty), m.unmappedCodes);
+  if (p.entries.length === 0) {
+    return `
+      <div class="p-8 text-center text-ink-3 text-[13px]">
+        No FHIR resources attached. Processor produced no output.
+      </div>
+    `;
+  }
+  const pretty = JSON.stringify(p.entries, null, 2);
+  // Only code_mapping_error has unmappedCodes; processed/warning don't,
+  // so no annotation happens for those variants. Guarded explicitly so
+  // the helper's interface stays narrow and honest.
+  const body = highlightJson(pretty);
   const lineCount = pretty.split("\n").length;
   return `
     <div class="p-5">
       <div class="flex items-center justify-between mb-2">
         <span class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium">
-          ${m.entries.length} resource${m.entries.length !== 1 ? "s" : ""} · ${lineCount} line${lineCount !== 1 ? "s" : ""}
+          ${p.entries.length} resource${p.entries.length !== 1 ? "s" : ""} · ${lineCount} line${lineCount !== 1 ? "s" : ""}
         </span>
       </div>
       <!-- Height-constrained viewer: the JSON can run to thousands of
@@ -334,6 +415,26 @@ export function renderFhirTab(m: IncomingHL7v2Message): string {
       <pre class="p-3 bg-paper-2 border border-line rounded font-mono text-[12px] leading-[1.55] overflow-auto max-h-[520px] whitespace-pre">${body}</pre>
     </div>
   `;
+}
+
+/** Variant-specific empty-state reason for the FHIR tab. */
+function emptyEntriesReason(
+  p: Exclude<ParsedIncomingMessage, { kind: "processed" | "warning" }>,
+): string {
+  switch (p.kind) {
+    case "parsing_error":
+    case "conversion_error":
+    case "sending_error":
+      return "The message failed before conversion.";
+    case "code_mapping_error":
+      return "Processing held in triage until the unmapped code resolves.";
+    case "received":
+      return "Processor hasn't run yet.";
+    case "deferred":
+      return "Message was manually deferred.";
+    default:
+      return assertNever(p);
+  }
 }
 
 // ============================================================================
@@ -428,9 +529,7 @@ export function renderTimelineTab(versions: HistoryVersion[]): string {
         .map((v, i) => {
           const chronoIdx = versions.length - 1 - i;
           const prev = prevStatusByIdx.get(chronoIdx);
-          const tone = statusToTone(
-            v.status as IncomingHL7v2Message["status"],
-          );
+          const tone = statusStringToTone(v.status);
           const isLatest = i === 0;
           const border = isLatest ? "" : "border-t border-line";
           return `
@@ -474,37 +573,37 @@ export async function getHistoryVersions(
 
 export async function renderTabBody(
   tab: DetailTab,
-  m: IncomingHL7v2Message,
+  p: ParsedIncomingMessage,
 ): Promise<string> {
   switch (tab) {
     case "structured":
-      return renderStructuredTab(m);
+      return renderStructuredTab(p);
     case "raw":
-      return renderRawTab(m);
+      return renderRawTab(p);
     case "fhir":
-      return renderFhirTab(m);
+      return renderFhirTab(p);
     case "timeline": {
-      const versions = await getHistoryVersions(m.id ?? "");
+      const versions = await getHistoryVersions(p.id);
       return renderTimelineTab(versions);
     }
   }
 }
 
 export async function renderDetailCard(
-  m: IncomingHL7v2Message,
+  p: ParsedIncomingMessage,
   tab: DetailTab = "structured",
 ): Promise<string> {
-  const tabBody = await renderTabBody(tab, m);
+  const tabBody = await renderTabBody(tab, p);
   // Alpine scope for the detail card — `activeTab` drives the tab-bar
   // underline client-side so switching tabs doesn't wait for the htmx body
   // swap to visibly change the active tab. Escaped so `"` inside the JSON
   // doesn't terminate the outer double-quoted attribute early.
   const initialTab = escapeHtml(JSON.stringify(tab));
   return `
-    <div id="detail" data-selected="${escapeHtml(m.id ?? "")}" class="card flex flex-col self-start overflow-hidden"
+    <div id="detail" data-selected="${escapeHtml(p.id)}" class="card flex flex-col self-start overflow-hidden"
          x-data="{ activeTab: ${initialTab} }">
-      ${renderDetailHeader(m)}
-      ${renderDetailTabBar(tab, m.id ?? "")}
+      ${renderDetailHeader(p)}
+      ${renderDetailTabBar(tab, p.id)}
       <div id="detail-body">${tabBody}</div>
     </div>
   `;
@@ -514,11 +613,19 @@ export async function renderDetailCard(
 // HTTP handlers
 // ============================================================================
 
-async function loadMessage(id: string): Promise<IncomingHL7v2Message | null> {
+async function loadMessage(id: string): Promise<ParsedIncomingMessage | null> {
   try {
-    return await aidboxFetch<IncomingHL7v2Message>(
+    const raw = await aidboxFetch<IncomingHL7v2Message>(
       `/fhir/IncomingHL7v2Message/${encodeURIComponent(id)}`,
     );
+    const parsed = parseIncomingMessage(raw);
+    if (isMalformed(parsed)) {
+      console.warn(
+        `[inbound-detail] loadMessage(${id}) malformed: ${parsed.reason}`,
+      );
+      return null;
+    }
+    return parsed;
   } catch (error) {
     console.error(
       `[inbound-detail] GET ${id} failed:`,
@@ -554,6 +661,34 @@ export async function handleInboundDetailPartial(
   if (!m) return notFoundDetail();
   const html = await renderDetailCard(m, "structured");
   return new Response(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html" },
+  });
+}
+
+/**
+ * Per-detail-pane header refresh — swaps just the header block in
+ * place every 5s while the message is in a non-terminal state. Once
+ * the message settles, the returned header has no hx-trigger and the
+ * poll stops. Keeps the tab body untouched so the user's chosen tab
+ * (Raw, FHIR, Timeline) doesn't reset.
+ */
+export async function handleInboundDetailHeaderPartial(
+  req: Request,
+): Promise<Response> {
+  const id = (req as Request & { params?: Record<string, string> }).params?.id;
+  if (!id) {
+    return new Response("missing id", { status: 400 });
+  }
+  const m = await loadMessage(decodeURIComponent(id));
+  if (!m) {
+    // Stop polling and surface a small notice rather than break the layout.
+    return new Response(
+      `<div id="detail-header-${escapeHtml(decodeURIComponent(id))}" class="px-5 py-4 border-b border-line text-[12px] text-ink-3">Message no longer available.</div>`,
+      { status: 200, headers: { "Content-Type": "text/html" } },
+    );
+  }
+  return new Response(renderDetailHeader(m), {
     status: 200,
     headers: { "Content-Type": "text/html" },
   });
@@ -600,16 +735,28 @@ export async function handleMarkForRetry(req: Request): Promise<Response> {
   const message = await aidboxFetch<IncomingHL7v2Message>(
     `/fhir/IncomingHL7v2Message/${id}`,
   );
-  const updated: IncomingHL7v2Message = {
+  const updatedWire: IncomingHL7v2Message = {
     ...message,
     status: "received",
     error: undefined,
     entries: undefined,
   };
-  await putResource("IncomingHL7v2Message", id, updated);
+  await putResource("IncomingHL7v2Message", id, updatedWire);
 
   if (req.headers.get("HX-Request") === "true") {
-    const detailHtml = await renderDetailCard(updated, "structured");
+    // Re-parse the post-reset wire record so the rerendered detail pane
+    // consumes the same narrow type as all other render paths.
+    const parsed = parseIncomingMessage(updatedWire);
+    if (isMalformed(parsed)) {
+      // Extremely unlikely — we just constructed a known-good shape —
+      // but fail loud if the parser ever rejects a shape we build
+      // internally.
+      return new Response(
+        `<div class="p-8 text-center text-err text-[13px]">Replay succeeded but the refreshed record is malformed: ${escapeHtml(parsed.reason)}</div>`,
+        { status: 500, headers: { "Content-Type": "text/html" } },
+      );
+    }
+    const detailHtml = await renderDetailCard(parsed, "structured");
     return new Response(detailHtml, {
       status: 200,
       headers: {

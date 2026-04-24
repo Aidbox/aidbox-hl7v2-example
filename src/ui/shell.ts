@@ -105,11 +105,30 @@ function renderNavLink(link: NavLink, active: NavKey): string {
   // sets `font-medium`. The `ml-auto` is load-bearing: it pushes the count
   // to the row's right edge inside `.nav-item`'s flex container.
   const countTone = link.hot ? "text-accent font-medium" : "text-ink-3";
+  // Counts are OOB-swap targets for the sidebar poller — each count span
+  // has a stable id so /partials/sidebar-counts can refresh both from a
+  // single request without replacing the whole nav. See renderSidebarCountSpan.
+  const countId = link.key === "inbound" ? "nav-count-inbound"
+    : link.key === "unmapped" ? "nav-count-unmapped" : "";
   const count =
-    link.count !== undefined
-      ? `<span data-count${link.hot ? " data-hot" : ""} class="ml-auto text-[11px] font-mono ${countTone}">${link.count}</span>`
+    link.count !== undefined && countId
+      ? `<span data-count${link.hot ? " data-hot" : ""} id="${countId}" class="ml-auto text-[11px] font-mono ${countTone}">${link.count}</span>`
       : "";
   return `<a class="nav-item${activeClass}" href="${link.href}">${renderIcon(link.icon)}<span>${link.label}</span>${count}</a>`;
+}
+
+/**
+ * Renders a count span suitable for htmx out-of-band swap. Used by
+ * /partials/sidebar-counts to refresh both counts in a single poll without
+ * replacing the surrounding nav structure (which would lose focus/hover).
+ */
+export function renderSidebarCountSpan(
+  id: "nav-count-inbound" | "nav-count-unmapped",
+  count: number,
+  hot: boolean,
+): string {
+  const tone = hot ? "text-accent font-medium" : "text-ink-3";
+  return `<span data-count${hot ? " data-hot" : ""} id="${id}" hx-swap-oob="true" class="ml-auto text-[11px] font-mono ${tone}">${count}</span>`;
 }
 
 function renderNavGroup(group: NavGroup, active: NavKey, isFirst: boolean): string {
@@ -178,13 +197,20 @@ function renderSidebar(active: NavKey, navData: NavData): string {
       </div>
     </div>
     <div class="nav">${nav}</div>
+    <!-- Hidden poller — refreshes the sidebar counts every 5s via OOB swap.
+         hx-swap="none" because the response body only contains the OOB spans,
+         nothing to swap into the poller element itself. -->
+    <div hx-get="/partials/sidebar-counts" hx-trigger="every 5s" hx-swap="none" class="hidden"></div>
     ${renderEnvPill()}
   </aside>`;
 }
 
 export function renderShell(opts: ShellOptions): string {
   const sidebar = renderSidebar(opts.active, opts.navData);
-  const googleFonts = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap";
+  // Fraunces dropped 2026-04-24 — the editorial serif read as magazine
+  // rather than developer tool. Inter 400/500/600 + JetBrains Mono
+  // 400/500 cover all the typographic needs now.
+  const googleFonts = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap";
 
   return `<!DOCTYPE html>
 <html lang="en">

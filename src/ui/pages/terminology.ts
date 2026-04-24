@@ -321,7 +321,7 @@ function renderKpiStrip(k: TerminologyKpis): string {
         <div class="${i === 0 ? "" : "border-l border-line"}" style="padding:20px 24px; min-width:140px">
           <div class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium mb-1.5">${escapeHtml(s.label)}</div>
           <div class="flex items-baseline gap-2">
-            <div class="font-serif text-[30px] font-medium text-ink" style="letter-spacing:-0.02em">${escapeHtml(s.value)}</div>
+            <div class="font-mono text-[22px] font-medium text-ink tabular-nums" style="letter-spacing:-0.01em">${escapeHtml(s.value)}</div>
           </div>
           <div class="text-[11.5px] text-ink-3 mt-0.5">${escapeHtml(s.sub)}</div>
         </div>
@@ -407,25 +407,35 @@ export function renderTablePartial(
       <!-- Toolbar -->
       <div class="flex items-center gap-2.5 bg-paper-2 border-b border-line flex-wrap"
            style="padding: 12px 16px">
-        ${renderIcon("search", "sm")}
-        <!-- hx-preserve keeps this exact DOM node across swaps of the
-             parent #terminology-table wrapper, so the user's focus, caret
-             position, and selection survive the 300ms-debounced fetch.
-             Without it every keystroke settle would replace the input
-             element, dropping focus and making Ctrl+A select the page. -->
-        <input type="text"
-               id="terminology-search-q"
-               hx-preserve="true"
-               class="flex-1 min-w-0 bg-transparent border-none outline-none text-ink text-[13px]"
-               name="q"
-               value="${escapeHtml(f.q)}"
-               placeholder="Search local code, standard code, or display…"
-               hx-get="/terminology/partials/table"
-               hx-include="[name='fhir'],[name='sender']"
-               hx-trigger="keyup changed delay:300ms, search"
-               hx-target="#terminology-table"
-               hx-swap="outerHTML"
-               hx-push-url="true"/>
+        <!-- Search pill: white surface so the input stands out from the
+             paper-2 toolbar bg (previously invisible since both shared
+             the same tone). Icon + input share one focus-within ring. -->
+        <div class="flex-1 min-w-[240px] flex items-center gap-2 px-3 py-[7px] bg-surface border border-line rounded-[6px] transition-colors focus-within:border-info focus-within:shadow-[0_0_0_3px_var(--info-soft)]">
+          <span class="text-ink-3 shrink-0">${renderIcon("search", "sm")}</span>
+          <!-- hx-preserve keeps this exact DOM node across swaps of the
+               parent #terminology-table wrapper, so the user's focus, caret
+               position, and selection survive the 300ms-debounced fetch.
+               Without it every keystroke settle would replace the input
+               element, dropping focus and making Ctrl+A select the page. -->
+          <input type="text"
+                 id="terminology-search-q"
+                 hx-preserve="true"
+                 autocomplete="off"
+                 autocorrect="off"
+                 autocapitalize="off"
+                 spellcheck="false"
+                 role="searchbox"
+                 class="flex-1 min-w-0 bg-transparent border-none outline-none text-ink text-[13px]"
+                 name="q"
+                 value="${escapeHtml(f.q)}"
+                 placeholder="Search local code, standard code, or display…"
+                 hx-get="/terminology/partials/table"
+                 hx-include="[name='fhir'],[name='sender']"
+                 hx-trigger="keyup changed delay:300ms, search"
+                 hx-target="#terminology-table"
+                 hx-swap="outerHTML"
+                 hx-push-url="true"/>
+        </div>
         <input type="hidden" name="fhir" value="${escapeHtml(f.fhir.join(","))}"/>
         <input type="hidden" name="sender" value="${escapeHtml(f.sender.join(","))}"/>
         ${
@@ -539,8 +549,12 @@ export function renderFacetPartial(
     <div>
       <div class="border-b border-line flex items-center gap-2" style="padding: 10px 12px 8px">
         ${renderIcon("search", "sm")}
-        <input type="text"
+        <input type="search"
                x-data=""
+               autocomplete="off"
+               autocorrect="off"
+               autocapitalize="off"
+               spellcheck="false"
                x-on:input="$root.querySelectorAll('[data-facet-row]').forEach(el => { el.style.display = el.dataset.name.toLowerCase().includes($event.target.value.toLowerCase()) ? '' : 'none' })"
                placeholder="Search…"
                class="flex-1 min-w-0 bg-transparent border-none outline-none text-ink text-[12.5px]"/>
@@ -616,7 +630,7 @@ export function renderDetailPartial(row: TerminologyRow): string {
       <div style="padding: 22px 22px 18px">
         <div class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium mb-1">Local</div>
         <div class="font-mono font-semibold text-ink" style="font-size:22px; letter-spacing:-0.01em">${escapeHtml(row.localCode)}</div>
-        <div class="text-[13px] text-ink-2 font-serif italic mt-0.5">"${escapeHtml(row.localDisplay || row.localCode)}"</div>
+        <div class="text-[12.5px] text-ink-2 mt-0.5">${escapeHtml(row.localDisplay || row.localCode)}</div>
 
         <div class="flex items-center gap-2 text-ink-3" style="margin: 14px 0">
           <div class="flex-1 bg-line" style="height:1px"></div>
@@ -629,57 +643,101 @@ export function renderDetailPartial(row: TerminologyRow): string {
         <div class="text-[13px] text-ink-2 mt-1" style="line-height:1.4">${escapeHtml(row.targetDisplay)}</div>
       </div>
 
-      <!-- Source (HL7 path = implementation detail) -->
+      <!-- Source (HL7 path = implementation detail). Show "Created" column
+           only when the ConceptMap actually carries a timestamp —
+           otherwise Source spans the row; avoids surfacing "unknown". -->
       <div class="border-t border-line bg-paper-2 grid gap-3.5"
-           style="padding: 14px 22px; grid-template-columns: 1fr 1fr">
+           style="padding: 14px 22px; grid-template-columns: ${row.createdAt ? "1fr 1fr" : "1fr"}">
         <div>
           <div class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium mb-1">Source</div>
           <div class="text-[13px] text-ink">${escapeHtml(row.sender)}</div>
           <div class="font-mono text-[11px] text-ink-3 mt-0.5">HL7 ${escapeHtml(row.hl7Field)}</div>
         </div>
-        <div>
+        ${
+          row.createdAt
+            ? `<div>
           <div class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium mb-1">Created</div>
           <div class="text-[13px] text-ink">${escapeHtml(formatRelativeDate(row.createdAt))}</div>
           <div class="text-[11px] text-ink-3 mt-0.5">from ConceptMap metadata</div>
-        </div>
+        </div>`
+            : ""
+        }
       </div>
 
-      <!-- Lineage (minimal — from meta.createdAt only, per plan decision) -->
+      <!-- Lineage — "Mapping created" row is shown only when createdAt is
+           known, since an undated event is just noise. -->
       <div class="border-t border-line" style="padding: 16px 22px">
         <div class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium mb-2.5">Lineage</div>
         <div class="flex flex-col gap-2.5 text-[12px]">
-          <div class="flex gap-2.5">
+          ${
+            row.createdAt
+              ? `<div class="flex gap-2.5">
             <div class="rounded-full shrink-0" style="width:6px; height:6px; background:var(--accent); margin-top:6px"></div>
             <div class="flex-1">
               <div class="text-ink">Mapping created</div>
-              <div class="text-ink-3 text-[11px] mt-px">${escapeHtml(row.createdAt ? new Date(row.createdAt).toISOString().slice(0, 10) : "unknown date")}</div>
+              <div class="text-ink-3 text-[11px] mt-px">${escapeHtml(new Date(row.createdAt).toISOString().slice(0, 10))}</div>
             </div>
-          </div>
+          </div>`
+              : ""
+          }
           <div class="flex gap-2.5">
-            <div class="rounded-full shrink-0" style="width:6px; height:6px; background:var(--ink-3); margin-top:6px"></div>
+            <div class="rounded-full shrink-0" style="width:6px; height:6px; background:var(--${row.createdAt ? "ink-3" : "accent"}); margin-top:6px"></div>
             <div class="flex-1">
               <div class="text-ink-2">Applied to ${escapeHtml(row.sender)}</div>
-              <div class="text-ink-3 text-[11px] mt-px">every ${escapeHtml(row.hl7Field)} since</div>
+              <div class="text-ink-3 text-[11px] mt-px">every ${escapeHtml(row.hl7Field)}</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Footer: Edit + Delete (no Deprecate per plan) -->
-      <div class="border-t border-line flex gap-2" style="padding: 14px 22px">
+      <!-- Footer: Edit + Delete (no Deprecate per plan). Delete opens an
+           in-page modal instead of window.confirm — a browser prompt feels
+           out of place in a designed tool and can't carry context. -->
+      <div class="border-t border-line flex gap-2" style="padding: 14px 22px"
+           x-data="{ confirmDelete: false }">
         <button type="button"
                 class="btn btn-ghost flex-1 justify-center"
-                hx-post="${escapeHtml(deleteAction)}"
-                hx-target="#terminology-table"
-                hx-swap="outerHTML"
-                hx-include="[name='q'],[name='fhir'],[name='sender']"
-                hx-vals="${escapeHtml(JSON.stringify({ localSystem: row.localSystem }))}"
-                hx-confirm="Delete this mapping?">Delete</button>
+                x-on:click="confirmDelete = true">Delete</button>
         <button type="button"
                 class="btn flex-1 justify-center"
                 hx-get="${escapeHtml(editUrl)}"
                 hx-target="#terminology-modal-container"
                 hx-swap="innerHTML">Edit</button>
+
+        <!-- Confirm modal: covers viewport with a dimmed backdrop + centered
+             card. Cancel / Delete buttons inside. Only the Delete button
+             fires the htmx POST — Cancel just flips confirmDelete=false. -->
+        <div x-show="confirmDelete"
+             x-transition.opacity
+             x-cloak
+             class="fixed inset-0 z-[500] grid place-items-center"
+             style="background: rgba(15, 18, 25, 0.45)"
+             x-on:mousedown.self="confirmDelete = false"
+             x-on:keyup.escape.window="confirmDelete = false">
+          <div class="bg-surface rounded-[8px] shadow-xl border border-line max-w-[420px] w-[90%]"
+               style="padding: 20px 22px">
+            <div class="text-[15px] font-semibold text-ink mb-1.5">Delete mapping?</div>
+            <div class="text-[13px] text-ink-2 leading-[1.5] mb-4">
+              <span class="font-mono text-accent-ink">${escapeHtml(row.localCode)}</span> → <span class="font-mono">${escapeHtml(row.targetCode)}</span>.
+              This removes the mapping from the ConceptMap. Future messages using
+              <span class="font-mono">${escapeHtml(row.localCode)}</span> will route to triage.
+            </div>
+            <div class="flex gap-2 justify-end">
+              <button type="button"
+                      class="btn btn-ghost px-3 py-1.5 text-[12.5px]"
+                      x-on:click="confirmDelete = false">Cancel</button>
+              <button type="button"
+                      class="btn btn-primary px-3 py-1.5 text-[12.5px]"
+                      style="background: var(--err); border-color: var(--err)"
+                      hx-post="${escapeHtml(deleteAction)}"
+                      hx-target="#terminology-table"
+                      hx-swap="outerHTML"
+                      hx-include="[name='q'],[name='fhir'],[name='sender']"
+                      hx-vals="${escapeHtml(JSON.stringify({ localSystem: row.localSystem }))}"
+                      x-on:htmx:after-request="confirmDelete = false">Delete</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -722,9 +780,7 @@ function renderPageBody(
         <div class="flex-1">
           <div class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium mb-1.5">Terminology · canonical ledger</div>
           <h1 class="h1">Terminology map</h1>
-          <div class="text-[13.5px] text-ink-2 mt-1">Every local code, bound to a FHIR field —
-            <em class="font-serif italic">written once, replayed forever.</em>
-          </div>
+          <div class="text-[13px] text-ink-2 mt-1">Every local code, bound to a FHIR field. Written once, replayed forever.</div>
         </div>
         <div class="flex gap-2">
           <button type="button"
@@ -976,7 +1032,7 @@ export function renderModalPartial(props: ModalProps): string {
         <div class="border-b border-line flex items-center gap-3 shrink-0"
              style="padding: 18px 22px">
           <div class="flex-1">
-            <div class="font-serif font-medium text-ink" style="font-size:20px; letter-spacing:-0.02em">${escapeHtml(heading)}</div>
+            <div class="font-semibold text-ink" style="font-size:16px; letter-spacing:-0.005em">${escapeHtml(heading)}</div>
             <div class="text-[12.5px] text-ink-3 mt-1">${subtitle}</div>
           </div>
           <button type="button"

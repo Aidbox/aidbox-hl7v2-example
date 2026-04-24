@@ -18,9 +18,11 @@ import {
   handleInboundMessagesPage,
   handleInboundListPartial,
   handleInboundTypeChipsPartial,
+  handleInboundRowStatusPartial,
 } from "./ui/pages/inbound";
 import {
   handleInboundDetailPartial,
+  handleInboundDetailHeaderPartial,
   handleInboundDetailTabPartial,
   handleMarkForRetry,
 } from "./ui/pages/inbound-detail";
@@ -49,6 +51,7 @@ import {
   handleSimulateSenderPage,
   handleSimulateSenderSend,
   handleSimulateSenderStatus,
+  handleSimulateSenderExtract,
 } from "./ui/pages/simulate-sender";
 import {
   handleDashboardPage,
@@ -66,6 +69,8 @@ import {
   type WorkersHandle,
 } from "./workers";
 import { handleStaticAsset } from "./ui/static";
+import { renderSidebarCountSpan } from "./ui/shell";
+import { getNavData } from "./ui/shared";
 
 // ============================================================================
 // Workers — started before Bun.serve so request handlers can close over the
@@ -99,7 +104,6 @@ Bun.serve({
     // =========================================================================
     "/": (req) =>
       handleDashboardPage(req, {
-        workersHandle: globalState.__workers,
         demoEnabled: isDemoEnabled(),
       }),
     "/accounts": {
@@ -118,8 +122,14 @@ Bun.serve({
     "/incoming-messages/:id/partials/detail": {
       GET: handleInboundDetailPartial,
     },
+    "/incoming-messages/:id/partials/header": {
+      GET: handleInboundDetailHeaderPartial,
+    },
     "/incoming-messages/:id/partials/detail/:tab": {
       GET: handleInboundDetailTabPartial,
+    },
+    "/incoming-messages/:id/partials/status": {
+      GET: (req) => handleInboundRowStatusPartial(req.params.id),
     },
     "/unmapped-codes": { GET: handleUnmappedCodesPage },
     "/unmapped-codes/partials/queue": { GET: handleUnmappedQueuePartial },
@@ -147,12 +157,27 @@ Bun.serve({
     "/simulate-sender/status": {
       GET: handleSimulateSenderStatus,
     },
+    "/simulate-sender/extract": {
+      POST: handleSimulateSenderExtract,
+    },
     "/dashboard/partials/stats": {
-      GET: (req) =>
-        handleDashboardStats(req, { workersHandle: globalState.__workers }),
+      GET: handleDashboardStats,
     },
     "/dashboard/partials/ticker": {
       GET: handleDashboardTicker,
+    },
+    "/partials/sidebar-counts": {
+      GET: async () => {
+        try {
+          const nav = await getNavData();
+          const inbound = renderSidebarCountSpan("nav-count-inbound", nav.incomingTotal, false);
+          const unmapped = renderSidebarCountSpan("nav-count-unmapped", nav.pendingMappingTasksCount, nav.pendingMappingTasksCount > 0);
+          return new Response(inbound + unmapped, { headers: { "Content-Type": "text/html" } });
+        } catch {
+          // Transient Aidbox blip — return empty; existing spans stay put.
+          return new Response("", { headers: { "Content-Type": "text/html" } });
+        }
+      },
     },
     "/demo/run-scenario": {
       POST: handleRunDemoScenario,

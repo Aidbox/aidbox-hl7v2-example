@@ -28,42 +28,65 @@
 
 export const DESIGN_SYSTEM_CSS = `
   :root {
-    /* Warm paper palette — taken from wireframes, production-refined.
-       These are the SINGLE SOURCE OF TRUTH for palette values. Tailwind's
-       @theme block below maps them into the utility namespace; editing a
-       hex here updates both direct var(--paper) usages AND bg-paper/text-* etc. */
-    --paper:      #FBF8F2;   /* canvas */
-    --paper-2:    #F5F0E6;   /* soft fill */
+    /* Aidbox-aligned palette (2026-04-24). Values below are sampled
+       directly from the Aidbox console (http://localhost:8080/ui/console)
+       via getComputedStyle frequency count — neutrals, lines, and accent
+       all match so that the two tools read as one product family.
+       The one deliberate departure from Aidbox: we keep orange as the
+       primary-action color (Aidbox itself uses red-orange for brand/logo
+       and blue for primary buttons, which would conflict with our HL7
+       accent semantics). These are the SINGLE SOURCE OF TRUTH for palette
+       values — Tailwind's @theme block below maps them into the utility
+       namespace; editing a hex here updates both direct var(--paper)
+       usages AND bg-paper/text-* etc. */
+    --paper:      #F9F9F9;   /* canvas — Aidbox panel bg */
+    --paper-2:    #F4F5F6;   /* soft fill — slightly deeper panel */
     --surface:    #FFFFFF;   /* card */
-    --ink:        #1F1A15;   /* primary text */
-    --ink-2:      #5A4F43;   /* body text */
-    --ink-3:      #968B7D;   /* muted */
-    --line:       #E8E0D0;   /* hairline */
-    --line-2:     #D8CCB4;   /* stronger divider */
-    --accent:     #C6532A;   /* terracotta — slightly deeper than wireframe for trust */
-    --accent-soft:#F6E3D8;
-    --accent-ink: #8A3014;
+    --ink:        #1D2331;   /* primary text — Aidbox deep navy */
+    --ink-2:      #3B4050;   /* body text — softer navy */
+    --ink-3:      #717684;   /* muted — exact Aidbox muted gray */
+    --line:       #E5E7EB;   /* hairline — Aidbox's dominant border */
+    --line-2:     #CCCED3;   /* stronger divider */
+    --accent:     #EA4A35;   /* red-orange — matches Aidbox logo accent */
+    --accent-soft:#FDEDEA;   /* accent-bg — matches Aidbox soft bg */
+    --accent-ink: #B82E1C;   /* accent-ink — deeper red for sufficient contrast on accent-soft */
+    /* Blue family — sampled from Aidbox console (#2278E1 primary buttons,
+       #D0E2F8 focus ring, #175DB1 hover-dark). We use blue for links,
+       focus rings, and info chips. Primary CTAs stay accent (red-orange)
+       since it's the product's own brand signal, not Aidbox's primary. */
+    --info:       #2278E1;
+    --info-soft:  #E8F1FD;
+    --info-ink:   #175DB1;
     --ok:         #3F8A5C;
     --ok-soft:    #E3F1E6;
-    --warn:       #A37319;
-    --warn-soft:  #F5ECCF;
-    --err:        #A84428;
-    --err-soft:   #F5DFD5;
+    --warn:       #8F4E00;   /* matches Aidbox warn text */
+    --warn-soft:  #FCF0D9;
+    --err:        #D72710;   /* matches Aidbox error */
+    --err-soft:   #FDE5E0;
     --sans: 'Inter', system-ui, -apple-system, sans-serif;
-    --serif: 'Fraunces', 'Tiempos', Georgia, serif;
+    /* --serif kept as an alias of --sans so legacy font-serif usages
+       continue to resolve without breaking builds. Typography now uses
+       sans everywhere — the editorial Fraunces look read as "newspaper",
+       not "pipeline inspector tool". */
+    --serif: 'Inter', system-ui, -apple-system, sans-serif;
     --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
   }
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; font-feature-settings: 'ss01', 'cv11'; }
-  a:not([class]) { color: inherit; }
+  a:not([class]) { color: var(--info); text-decoration: none; }
+  a:not([class]):hover { color: var(--info-ink); text-decoration: underline; }
   button { font-family: inherit; cursor: pointer; }
+  /* Alpine cloak — without this rule, elements with x-show="false" flash
+     visible on page load until Alpine initializes and hides them. The
+     attribute is removed from the DOM once init finishes. */
+  [x-cloak] { display: none !important; }
 
   /* Shell layout */
   .app { display: grid; grid-template-columns: 252px 1fr; min-height: 100vh; }
   .sidebar { background: var(--paper-2); border-right: 1px solid var(--line); padding: 22px 14px 16px; display:flex; flex-direction:column; gap: 18px; position: sticky; top:0; height: 100vh; }
   .brand { display:flex; align-items:center; gap:10px; padding: 2px 8px 4px; }
-  .brand-mark { width: 30px; height: 30px; border-radius: 6px; background: var(--ink); color: var(--paper); display:grid; place-items:center; font-family: var(--serif); font-weight: 500; font-size: 15px; letter-spacing: -0.02em; }
-  .brand-name { font-family: var(--serif); font-weight: 500; font-size: 18px; letter-spacing: -0.01em; color: var(--ink); }
+  .brand-mark { width: 28px; height: 28px; border-radius: 6px; background: var(--ink); color: var(--paper); display:grid; place-items:center; font-weight: 600; font-size: 12px; letter-spacing: 0.02em; text-transform: uppercase; }
+  .brand-name { font-weight: 600; font-size: 14px; letter-spacing: -0.005em; color: var(--ink); }
   .brand-sub { font-size: 11px; color: var(--ink-3); margin-top: -2px; letter-spacing: 0.02em; }
   .nav { display:flex; flex-direction:column; gap:1px; }
   .nav-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); padding: 14px 10px 6px; font-weight: 500; }
@@ -104,6 +127,9 @@ export const TAILWIND_CSS = `
     --color-warn-soft: var(--warn-soft);
     --color-err: var(--err);
     --color-err-soft: var(--err-soft);
+    --color-info: var(--info);
+    --color-info-soft: var(--info-soft);
+    --color-info-ink: var(--info-ink);
 
     --font-sans: var(--sans);
     --font-serif: var(--serif);
@@ -119,7 +145,7 @@ export const TAILWIND_CSS = `
        pre-emit the full (bg|text|border)-<token> matrix via brace expansion
        so tone transitions don't flicker during the first JIT recompile. */
   @source inline("spinner");
-  @source inline("{bg,text,border}-{paper,paper-2,surface,ink,ink-2,ink-3,line,line-2,accent,accent-soft,accent-ink,ok,ok-soft,warn,warn-soft,err,err-soft}");
+  @source inline("{bg,text,border}-{paper,paper-2,surface,ink,ink-2,ink-3,line,line-2,accent,accent-soft,accent-ink,ok,ok-soft,warn,warn-soft,err,err-soft,info,info-soft,info-ink}");
 
   @layer components {
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
@@ -141,6 +167,7 @@ export const TAILWIND_CSS = `
     .chip-ok   { background: var(--ok-soft);   color: var(--ok);   border-color: transparent; }
     .chip-warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
     .chip-err  { background: var(--err-soft);  color: var(--err);  border-color: transparent; }
+    .chip-info { background: var(--info-soft); color: var(--info-ink); border-color: transparent; }
 
     .dot { width:6px; height:6px; border-radius:50%; background: var(--ink-3); display:inline-block; flex-shrink:0; }
     .dot.ok { background: var(--ok); }
@@ -155,13 +182,17 @@ export const TAILWIND_CSS = `
        refresh cadence (2s) so the two animations read as one rhythm. */
     .pulse-accent { animation: pulse-accent 1.4s ease-out infinite; }
     @keyframes pulse-accent {
-      0%   { box-shadow: 0 0 0 0 rgba(198, 83, 42, 0.45); }
-      100% { box-shadow: 0 0 0 7px rgba(198, 83, 42, 0); }
+      0%   { box-shadow: 0 0 0 0 rgba(234, 74, 53, 0.45); }
+      100% { box-shadow: 0 0 0 7px rgba(234, 74, 53, 0); }
     }
     .dot.pulse { animation: pulse-accent 1.4s ease-out infinite; }
 
     .inp { padding: 9px 11px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.1s; width: 100%; box-sizing: border-box; min-width: 0; }
-    .inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    /* Focus ring uses the info/blue family, matching Aidbox's form conventions.
+       Primary CTAs still use accent (red-orange) for the filled tone; the
+       focus ring is a separate signal and blue reads as "active input" in a
+       developer tool. */
+    .inp:focus { border-color: var(--info); box-shadow: 0 0 0 3px var(--info-soft); }
     .inp::placeholder { color: var(--ink-3); }
     select.inp { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%); background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 28px; cursor: pointer; }
 
@@ -177,11 +208,14 @@ export const TAILWIND_CSS = `
     .clean-scroll::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
     .clean-scroll::-webkit-scrollbar-track { background: transparent; }
 
-    .h1 { font-family: var(--serif); font-size: 30px; font-weight: 500; letter-spacing: -0.02em; margin: 0; line-height: 1.1; }
-    .h2 { font-family: var(--serif); font-size: 20px; font-weight: 500; letter-spacing: -0.01em; margin: 0; }
+    /* Heading scale rebuilt 2026-04-24 — was serif (Fraunces 30px/500),
+       which read as magazine editorial. Sans, smaller, medium-600 weight,
+       tight tracking reads as dev-tool chrome. */
+    .h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.012em; margin: 0; line-height: 1.25; }
+    .h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.005em; margin: 0; }
 
     @media (min-width: 1600px) {
-      .h1 { font-size: 34px; }
+      .h1 { font-size: 24px; }
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }

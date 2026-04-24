@@ -32,10 +32,12 @@ describe("DESIGN_SYSTEM_CSS", () => {
 
   test("does not reset colors on classed anchors", () => {
     // Tailwind v4 emits utilities inside cascade layers. An unlayered
-    // `a { color: inherit }` reset outranks class utilities like `text-white`
-    // on legacy filter tabs, so only unclassed links may inherit color here.
-    expect(DESIGN_SYSTEM_CSS).toContain("a:not([class]) { color: inherit; }");
+    // `a { color: ... }` reset outranks class utilities like `text-white`
+    // on legacy filter tabs, so only unclassed links may be styled here.
+    // Unclassed links get the info/blue color (Aidbox-aligned link tone).
+    expect(DESIGN_SYSTEM_CSS).toMatch(/a:not\(\[class\]\)\s*\{\s*color:\s*var\(--info\)/);
     expect(DESIGN_SYSTEM_CSS).not.toContain("a { color: inherit; }");
+    expect(DESIGN_SYSTEM_CSS).not.toMatch(/(^|[^:])a\s*\{\s*color:/m);
   });
 
   test("former utility-ish classes are gone (Task 6b deleted them after migrating usages)", () => {

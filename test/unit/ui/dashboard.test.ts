@@ -74,7 +74,10 @@ describe("getDashboardStats", () => {
     };
 
     const stats = await getDashboardStats();
-    expect(stats.avgLatencyMs).toBe(60); // (50 + 100 + 30) / 3 = 60
+    // Mean of [50, 100, 30] = 60. The triage-outlier filter (>60s excluded
+    // in computeAvgLatencyMs) makes a plain mean robust enough here; the
+    // samples that used to swamp the average are dropped before sum.
+    expect(stats.avgLatencyMs).toBe(60);
   });
 
   test("skips rows missing date or lastUpdated", async () => {
@@ -113,85 +116,44 @@ describe("renderStatsPartial", () => {
   };
 
   test("renders all four stat values and the htmx auto-refresh trigger", () => {
-    const html = renderStatsPartial(
-      stats,
-      { oruProcessor: "up", barBuilder: "up", barSender: "up" },
-      5000,
-    );
+    const html = renderStatsPartial(stats);
     expect(html).toContain("Received · today");
     expect(html).toContain("42");
     expect(html).toContain("Need mapping");
     expect(html).toContain("Errors");
-    expect(html).toContain("Avg latency");
+    expect(html).toContain("End-to-end time");
     expect(html).toContain("87ms");
     expect(html).toContain('hx-get="/dashboard/partials/stats"');
     expect(html).toContain('hx-trigger="every 10s"');
   });
 
   test("applies warn tone to Need mapping when non-zero", () => {
-    const html = renderStatsPartial(
-      { ...stats, needMapping: 4 },
-      { oruProcessor: "up", barBuilder: "up", barSender: "up" },
-      5000,
-    );
+    const html = renderStatsPartial({ ...stats, needMapping: 4 });
     expect(html).toContain("text-warn");
   });
 
   test("applies err tone to Errors when non-zero", () => {
-    const html = renderStatsPartial(
-      { ...stats, errors: 2 },
-      { oruProcessor: "up", barBuilder: "up", barSender: "up" },
-      5000,
-    );
+    const html = renderStatsPartial({ ...stats, errors: 2 });
     expect(html).toContain("text-err");
   });
 
   test("empty state — all zeros, null latency — renders without warn/err tones", () => {
-    const html = renderStatsPartial(
-      { receivedToday: 0, needMapping: 0, errors: 0, avgLatencyMs: null },
-      { oruProcessor: "up", barBuilder: "up", barSender: "up" },
-      5000,
-    );
+    const html = renderStatsPartial({
+      receivedToday: 0,
+      needMapping: 0,
+      errors: 0,
+      avgLatencyMs: null,
+    });
     expect(html).not.toContain("text-warn");
     expect(html).not.toContain("text-err");
     expect(html).toContain(">—<"); // no samples placeholder
   });
 
-  test("worker-disabled state surfaces 'polling disabled'", () => {
-    const html = renderStatsPartial(
-      stats,
-      { oruProcessor: "disabled", barBuilder: "disabled", barSender: "disabled" },
-      5000,
-    );
-    expect(html).toContain("polling disabled");
-  });
-
-  test("workers up — shows polling cadence", () => {
-    const html = renderStatsPartial(
-      stats,
-      { oruProcessor: "up", barBuilder: "up", barSender: "up" },
-      5000,
-    );
-    expect(html).toContain("polling every 5s");
-    // Three worker labels.
-    expect(html).toContain("ORU processor");
-    expect(html).toContain("BAR builder");
-    expect(html).toContain("BAR sender");
-  });
-
   test("formats sub-second latency in ms, ≥1s latency in s", () => {
-    const htmlMs = renderStatsPartial(
-      { ...stats, avgLatencyMs: 999 },
-      { oruProcessor: "up", barBuilder: "up", barSender: "up" },
-      5000,
-    );
+    const htmlMs = renderStatsPartial({ ...stats, avgLatencyMs: 999 });
     expect(htmlMs).toContain("999ms");
 
-    const htmlS = renderStatsPartial(
-      { ...stats, avgLatencyMs: 1500 },
-      { oruProcessor: "up", barBuilder: "up", barSender: "up" },
-      5000,
-    );
+    const htmlS = renderStatsPartial({ ...stats, avgLatencyMs: 1500 });
     expect(htmlS).toContain("1.5s");
   });
 });
@@ -243,9 +205,11 @@ describe("getTickerRows", () => {
     const first = rows[0]!;
     const second = rows[1]!;
     expect(first.type).toBe("ORU^R01");
-    expect(first.note).toContain("ACME_LAB");
-    expect(first.note).toContain("processed");
-    expect(second.note).toContain("unmapped code");
+    // Note column carries the sender only — the status chip on the row's
+    // right edge encodes the outcome, so echoing it in the middle is
+    // redundant. See buildNote.
+    expect(first.note).toBe("ACME_LAB");
+    expect(second.note).toBe("ACME_LAB");
   });
 
   test("clamps limit to [1, 100]", async () => {
@@ -299,15 +263,12 @@ describe("renderTickerPartial", () => {
 describe("handleDashboardStats", () => {
   test("returns HTML with the stats partial", async () => {
     mockedFetch = async () => bundle(0, []);
-    const res = await handleDashboardStats(
-      new Request("http://localhost/dashboard/partials/stats"),
-      { workersHandle: null },
-    );
+    const res = await handleDashboardStats();
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
     const body = await res.text();
     expect(body).toContain('id="dashboard-stats"');
-    expect(body).toContain("polling disabled");
+    expect(body).toContain('id="dashboard-stats"');
   });
 });
 

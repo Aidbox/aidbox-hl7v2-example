@@ -427,7 +427,9 @@ describe("renderDetailPartial", () => {
   it("renders local code + display + maps-to + standard code + display", () => {
     const html = renderDetailPartial(row);
     expect(html).toContain("GLUC");
-    expect(html).toContain('"Glucose"');
+    // The local-display line is a plain sentence now (was previously wrapped
+    // in serif italic quotes — dropped as part of the typography refresh).
+    expect(html).toContain("Glucose");
     expect(html).toContain("MAPS TO".toLowerCase()); // lowercase matches uppercase via CSS
     expect(html).toContain("2345-7");
     expect(html).toContain("Glucose [Mass/volume] in Serum or Plasma");
@@ -454,15 +456,21 @@ describe("renderDetailPartial", () => {
     expect(html).toContain(`hx-target="#terminology-modal-container"`);
   });
 
-  it("Delete button uses hx-post with hx-confirm + hx-vals (Task 12 rewire)", () => {
+  it("Delete button opens an in-page modal (not window.confirm) and fires hx-post on confirm", () => {
     const html = renderDetailPartial(row);
+    // The outer Delete button no longer carries hx-post directly — it only
+    // flips the Alpine `confirmDelete` flag. The real hx-post lives on the
+    // Delete button *inside* the modal.
     expect(html).toContain(`hx-post="/api/concept-maps/cm-a/entries/GLUC/delete"`);
     expect(html).toContain(`hx-target="#terminology-table"`);
-    expect(html).toContain(`hx-confirm="Delete this mapping?"`);
+    // Browser prompt is gone; an Alpine-driven modal replaces it.
+    expect(html).not.toContain(`hx-confirm="`);
+    expect(html).toContain(`x-data="{ confirmDelete: false }"`);
+    expect(html).toContain(`x-on:click="confirmDelete = true"`);
     // hx-vals is double-quoted with HTML-escaped JSON (XSS-safe against
     // single-quote injection in localSystem values).
     expect(html).toContain(`hx-vals="{&quot;localSystem&quot;:&quot;LOCAL&quot;}"`);
-    // No inline onclick confirm (replaced by hx-confirm).
+    // No inline onclick confirm either.
     expect(html).not.toContain("onclick=");
   });
 

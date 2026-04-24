@@ -326,8 +326,9 @@ describe("renderEditorPartial", () => {
   it("initializes picked with empty code when there are no suggestions (Save disabled)", async () => {
     const html = await renderEditorPartial(entry, []);
     expect(html).toContain("x-data='{ picked: {&quot;code&quot;:&quot;&quot;,&quot;display&quot;:&quot;&quot;}");
-    // Save button should have :disabled binding on picked.code
-    expect(html).toMatch(/:disabled="!picked\.code"/);
+    // Save button is disabled when no code is picked OR the form is
+    // currently saving (spinner state).
+    expect(html).toMatch(/:disabled="!picked\.code \|\| saving"/);
   });
 
   it("manual-search input wires into Alpine picked state, clearing display", async () => {
@@ -373,8 +374,15 @@ describe("handleUnmappedQueuePartial", () => {
     mockTaskEntries = [];
   });
 
+  // Partial handlers redirect (302) when the request isn't from htmx, so a
+  // direct browser hit lands on the styled full page. All handler tests
+  // set `HX-Request: true` to exercise the real partial-rendering path.
+  const htmxHeaders = { "HX-Request": "true" };
+
   it("returns 200 with queue HTML", async () => {
-    const req = new Request("http://localhost/unmapped-codes/partials/queue");
+    const req = new Request("http://localhost/unmapped-codes/partials/queue", {
+      headers: htmxHeaders,
+    });
     const res = await handleUnmappedQueuePartial(req);
     expect(res.status).toBe(200);
     const text = await res.text();
@@ -383,10 +391,23 @@ describe("handleUnmappedQueuePartial", () => {
 
   it("passes code+sender params through to queue highlight", async () => {
     mockTaskEntries = [makeTask("t1", "GLUC", "LAB", "OBX-3", "Glucose")];
-    const req = new Request("http://localhost/unmapped-codes/partials/queue?code=GLUC&sender=LAB");
+    const req = new Request("http://localhost/unmapped-codes/partials/queue?code=GLUC&sender=LAB", {
+      headers: htmxHeaders,
+    });
     const res = await handleUnmappedQueuePartial(req);
     const text = await res.text();
     expect(text).toContain("border-l-accent");
+  });
+
+  it("redirects non-htmx browser hits to the full page", async () => {
+    const req = new Request(
+      "http://localhost/unmapped-codes/partials/queue?code=GLUC&sender=LAB",
+    );
+    const res = await handleUnmappedQueuePartial(req);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe(
+      "/unmapped-codes?code=GLUC&sender=LAB",
+    );
   });
 });
 
@@ -400,6 +421,9 @@ describe("handleUnmappedEditorPartial", () => {
     mockLoincRows = [];
   });
 
+  // Partial handlers redirect (302) when the request isn't from htmx.
+  const htmxHeaders = { "HX-Request": "true" };
+
   it("returns 400 when code param is missing", async () => {
     const req = new Request("http://localhost/unmapped-codes//partials/editor");
     Object.defineProperty(req, "params", { value: {}, writable: false });
@@ -408,7 +432,10 @@ describe("handleUnmappedEditorPartial", () => {
   });
 
   it("returns empty editor when code not found in queue", async () => {
-    const req = new Request("http://localhost/unmapped-codes/NOTFOUND/partials/editor?sender=LAB");
+    const req = new Request(
+      "http://localhost/unmapped-codes/NOTFOUND/partials/editor?sender=LAB",
+      { headers: htmxHeaders },
+    );
     Object.defineProperty(req, "params", { value: { code: "NOTFOUND" }, writable: false });
     const res = await handleUnmappedEditorPartial(req);
     const text = await res.text();
@@ -420,7 +447,10 @@ describe("handleUnmappedEditorPartial", () => {
     mockLoincRows = [
       { code: "2345-7", display: "Glucose [Mass/volume]" },
     ];
-    const req = new Request("http://localhost/unmapped-codes/GLUC/partials/editor?sender=LAB");
+    const req = new Request(
+      "http://localhost/unmapped-codes/GLUC/partials/editor?sender=LAB",
+      { headers: htmxHeaders },
+    );
     Object.defineProperty(req, "params", { value: { code: "GLUC" }, writable: false });
     const res = await handleUnmappedEditorPartial(req);
     expect(res.status).toBe(200);
@@ -429,11 +459,24 @@ describe("handleUnmappedEditorPartial", () => {
     expect(text).toContain("2345-7");
   });
 
+  it("redirects non-htmx browser hits to the full page", async () => {
+    const req = new Request(
+      "http://localhost/unmapped-codes/GLUC/partials/editor?sender=LAB",
+    );
+    Object.defineProperty(req, "params", { value: { code: "GLUC" }, writable: false });
+    const res = await handleUnmappedEditorPartial(req);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe(
+      "/unmapped-codes?code=GLUC&sender=LAB",
+    );
+  });
+
   it("round-trips a ^-containing localCode via decodeURIComponent", async () => {
     const rawCode = "UNKNOWN%5ETEST"; // URL-encoded ^
     mockTaskEntries = [makeTask("t1", "UNKNOWN^TEST", "SYS", "OBX-3", "Unknown Test")];
     const req = new Request(
       `http://localhost/unmapped-codes/${rawCode}/partials/editor?sender=SYS`,
+      { headers: htmxHeaders },
     );
     Object.defineProperty(req, "params", { value: { code: rawCode }, writable: false });
     const res = await handleUnmappedEditorPartial(req);

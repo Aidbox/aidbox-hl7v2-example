@@ -23,6 +23,13 @@ import { htmlResponse, getNavData } from "../shared";
 import { renderIcon } from "../icons";
 import { escapeHtml } from "../../utils/html";
 import { renderDetailCard } from "./inbound-detail";
+import {
+  parseIncomingMessage,
+  parseIncomingMessages,
+  assertNever,
+  isMalformed,
+  type ParsedIncomingMessage,
+} from "../domain/incoming-message";
 
 // ============================================================================
 // Types + constants
@@ -33,6 +40,9 @@ export interface InboundFilters {
   status?: string;
   batch?: string;
   selected?: string;
+  /** 1-indexed page number. Aidbox pagination uses `page=N` (not
+   *  `_getpagesoffset` which is HAPI-specific). */
+  page?: number;
 }
 
 export interface TypeChipCount {
@@ -56,7 +66,9 @@ const ERROR_STATUSES = [
 ] as const;
 
 const TYPE_CHIP_SCAN_COUNT = 500;
-const LIST_COUNT = 100;
+// Page size — sized so the list fits one common laptop/desktop viewport
+// (≈ 900px list area ÷ ~45px row + chrome) without scrolling the body.
+const LIST_COUNT = 20;
 
 // ============================================================================
 // FHIR queries
@@ -66,7 +78,16 @@ function buildListQuery(filters: InboundFilters): string {
   const params: string[] = [
     `_sort=-_lastUpdated`,
     `_count=${LIST_COUNT}`,
+    // _total=accurate lets the pager show "Showing N–M of T" without a
+    // second count query.
+    `_total=accurate`,
   ];
+  // Aidbox's offset pagination uses `page=N` (1-indexed). HAPI's
+  // `_getpagesoffset` is NOT supported and 404s with "Search parameter
+  // 'getpagesoffset' is not found".
+  if (filters.page && filters.page > 1) {
+    params.push(`page=${filters.page}`);
+  }
   if (filters.type) {
     // `type` values like "ORU^R01" contain `^` which must be URL-encoded.
     params.push(`type=${encodeURIComponent(filters.type)}`);
@@ -84,11 +105,17 @@ function buildListQuery(filters: InboundFilters): string {
 
 export async function getInboundList(
   filters: InboundFilters,
-): Promise<IncomingHL7v2Message[]> {
+): Promise<{ messages: ParsedIncomingMessage[]; total: number }> {
   const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(
     buildListQuery(filters),
   );
-  return bundle.entry?.map((e) => e.resource) ?? [];
+  const raw = bundle.entry?.map((e) => e.resource) ?? [];
+  return {
+    // parseIncomingMessages drops malformed records with a logged warning;
+    // downstream readers only see cleanly-classified parsed variants.
+    messages: parseIncomingMessages(raw),
+    total: bundle.total ?? 0,
+  };
 }
 
 export async function getTypeChipCounts(): Promise<TypeChipCount[]> {
@@ -133,11 +160,19 @@ export async function getTypeChipCounts(): Promise<TypeChipCount[]> {
 
 export async function getMessageById(
   id: string,
-): Promise<IncomingHL7v2Message | null> {
+): Promise<ParsedIncomingMessage | null> {
   try {
-    return await aidboxFetch<IncomingHL7v2Message>(
+    const raw = await aidboxFetch<IncomingHL7v2Message>(
       `/fhir/IncomingHL7v2Message/${encodeURIComponent(id)}`,
     );
+    const parsed = parseIncomingMessage(raw);
+    if (isMalformed(parsed)) {
+      console.warn(
+        `[inbound] getMessageById(${id}) returned malformed wire record: ${parsed.reason}`,
+      );
+      return null;
+    }
+    return parsed;
   } catch (error) {
     // Can't distinguish 404 from 500 without reading the response
     // status; aidboxFetch throws a plain Error either way. Log-and-
@@ -169,13 +204,39 @@ export function displayMessageType(stored: string): string {
   return stored.replace(/^([A-Z][A-Z0-9]*)_/, "$1^");
 }
 
-export function statusToTone(
-  status: IncomingHL7v2Message["status"],
-): MessageTone {
-  if (!status) return "pend";
-  if (status === "processed" || status === "warning") return "ok";
-  if (status === "code_mapping_error") return "warn";
-  if (status.endsWith("_error")) return "err";
+export function statusToTone(p: ParsedIncomingMessage): MessageTone {
+  // Exhaustive — adding a new variant to ParsedIncomingMessage will
+  // fail to compile here (default arm narrows `p` to `never`).
+  switch (p.kind) {
+    case "processed":
+    case "warning":
+      return "ok";
+    case "code_mapping_error":
+      return "warn";
+    case "parsing_error":
+    case "conversion_error":
+    case "sending_error":
+      return "err";
+    case "received":
+    case "deferred":
+      return "pend";
+    default:
+      return assertNever(p);
+  }
+}
+
+/**
+ * Permissive string-based tone lookup for contexts where we only have
+ * the status wire string — typically Aidbox `_history` entries, where
+ * each version carries `resource.status` but we don't parse every
+ * version into a full ParsedIncomingMessage. Unknown strings fall
+ * through to "pend" rather than crashing the timeline.
+ */
+export function statusStringToTone(s: string | undefined): MessageTone {
+  if (!s) return "pend";
+  if (s === "processed" || s === "warning") return "ok";
+  if (s === "code_mapping_error") return "warn";
+  if (s.endsWith("_error")) return "err";
   return "pend";
 }
 
@@ -195,9 +256,63 @@ function toneChip(tone: MessageTone): string {
   if (tone === "warn") return `<span class="chip chip-warn">needs mapping</span>`;
   if (tone === "err") return `<span class="chip chip-err">error</span>`;
   // Active-state chip: inline spinner + "processing" text so the user
-  // sees activity rather than a static "pending" label. Worker poll
-  // (~5s) will flip this to `processed` on the next list refresh tick.
+  // sees activity rather than a static "pending" label. Per-row polling
+  // (see renderRowStatusCell) swaps this into its settled form when the
+  // worker flips the status.
   return `<span class="chip inline-flex items-center gap-1.5"><span class="spinner" style="width:10px;height:10px"></span>processing</span>`;
+}
+
+/** True when a status is settled and no further transition is expected. */
+function isTerminalStatus(p: ParsedIncomingMessage): boolean {
+  switch (p.kind) {
+    case "processed":
+    case "warning":
+    case "deferred":
+    case "parsing_error":
+    case "conversion_error":
+    case "sending_error":
+    case "code_mapping_error":
+      return true;
+    case "received":
+      return false;
+    default:
+      return assertNever(p);
+  }
+}
+
+/**
+ * Status cell for a row. Non-terminal statuses render a self-polling
+ * wrapper so the chip flips in place (received → processed/needs mapping/
+ * error) without refreshing the whole list. Terminal statuses render as
+ * plain static HTML.
+ *
+ * The poll uses Alpine `setInterval` + `htmx.ajax()` rather than
+ * `hx-trigger="every 5s"`. Reason: htmx's interval timer is tied to the
+ * element reference, and `hx-swap="outerHTML"` replaces the element with
+ * a new one — the new reference doesn't inherit the old interval, so
+ * polling fires once and then stops. Alpine's `x-data` is re-initialized
+ * by the framework on each swapped replacement, so its `setInterval`
+ * self-restarts on every tick cycle. The `$el.isConnected` check cleans
+ * up dead intervals when the row gets removed from the list.
+ */
+export function renderRowStatusCell(p: ParsedIncomingMessage): string {
+  const id = p.id;
+  const tone = statusToTone(p);
+  const chip = toneChip(tone);
+  if (isTerminalStatus(p)) {
+    return `<span id="status-${escapeHtml(id)}" class="justify-self-end">${chip}</span>`;
+  }
+  const url = `/incoming-messages/${encodeURIComponent(id)}/partials/status`;
+  return `<span id="status-${escapeHtml(id)}"
+                class="justify-self-end"
+                x-data
+                x-init="(() => {
+                  var self = $el;
+                  var pid = setInterval(function() {
+                    if (!self || !self.isConnected) { clearInterval(pid); return; }
+                    window.htmx.ajax('GET', '${url}', { target: self, swap: 'outerHTML' });
+                  }, 5000);
+                })()">${chip}</span>`;
 }
 
 function formatTime(iso: string | undefined): string {
@@ -207,7 +322,7 @@ function formatTime(iso: string | undefined): string {
   return d.toLocaleTimeString("en-US", { hour12: false });
 }
 
-function summarize(m: IncomingHL7v2Message): string {
+function summarize(p: ParsedIncomingMessage): string {
   // The MESSAGE column's job is to tell the user *why this row stands
   // out* — NOT to restate the status chip rendered at the end of the
   // same row. For `processed` / `warning` rows there's nothing
@@ -216,27 +331,25 @@ function summarize(m: IncomingHL7v2Message): string {
   // and let the chip carry the signal. Only `*_error` / `code_mapping_error`
   // rows get text, because those are the rows a user actually needs
   // to read.
-  switch (m.status) {
+  switch (p.kind) {
+    case "received":
     case "processed":
     case "warning":
-    case "received":
     case "deferred":
       return "";
-    case "code_mapping_error": {
-      const first = m.unmappedCodes?.[0];
-      if (first?.localCode) {
-        return `${first.localCode} — no mapping`;
-      }
-      return "unmapped code — routed to triage";
-    }
+    case "code_mapping_error":
+      // p.unmappedCodes is non-empty by construction: the parser returns
+      // a MalformedWireRecord if a code_mapping_error wire record has
+      // no codes, so this arm never runs on that invalid shape.
+      return `${p.unmappedCodes[0]!.localCode} — no mapping`;
     case "parsing_error":
-      return `parse failed${m.error ? ` — ${truncate(m.error, 60)}` : ""}`;
+      return `parse failed — ${truncate(p.error, 60)}`;
     case "conversion_error":
-      return `conversion failed${m.error ? ` — ${truncate(m.error, 60)}` : ""}`;
+      return `conversion failed — ${truncate(p.error, 60)}`;
     case "sending_error":
       return "submit to Aidbox failed";
     default:
-      return m.error ? truncate(m.error, 80) : "";
+      return assertNever(p);
   }
 }
 
@@ -300,41 +413,164 @@ export function renderTypeChipsPartial(
 // List pane
 // ----------------------------------------------------------------------------
 
-function renderListHeader(): string {
+function renderListHeader(
+  filters: InboundFilters,
+  chips: TypeChipCount[],
+): string {
+  // Column-header popovers for TYPE and STATUS — matches the
+  // terminology-map filter pattern. The filter icon is warm-accent
+  // when a filter is active. Popovers render inline (small data set,
+  // no lazy fetch needed).
   return `
-    <div class="grid gap-3 px-5 py-2 border-b border-line text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium bg-paper-2"
+    <div class="grid gap-3 px-5 py-2 border-b border-line text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium bg-paper-2 relative"
          style="grid-template-columns: 14px 80px 160px 140px 1fr 110px">
       <span></span>
       <span>time</span>
-      <span>type</span>
+      ${renderTypeFilterHeader(filters, chips)}
       <span>sender</span>
       <span>message</span>
-      <span class="justify-self-end">status</span>
+      ${renderStatusFilterHeader(filters)}
     </div>
   `;
 }
 
-function renderListRow(m: IncomingHL7v2Message, index: number, selectedId: string | undefined): string {
-  const tone = statusToTone(m.status);
-  const selected = m.id === selectedId;
+function renderTypeFilterHeader(
+  filters: InboundFilters,
+  chips: TypeChipCount[],
+): string {
+  const activeType = filters.type;
+  const isActive = !!activeType;
+  // Build URL that preserves everything except type/page (paging
+  // resets on filter change — page 2 of a different filter is
+  // meaningless).
+  const urlFor = (type: string | undefined): string => {
+    const p = new URLSearchParams();
+    if (type) p.set("type", type);
+    if (filters.status) p.set("status", filters.status);
+    if (filters.batch) p.set("batch", filters.batch);
+    const s = p.toString();
+    return `/incoming-messages${s ? `?${s}` : ""}`;
+  };
+  // Filter chips are everything except the synthetic "All" and
+  // "errors" entries — those are status filters, not type filters.
+  const typeChips = chips.filter((c) => c.label !== "All" && c.label !== "errors");
+  const rows = [
+    // "All types" entry — clears the type filter.
+    `<a href="${escapeHtml(urlFor(undefined))}"
+        class="flex items-center gap-2.5 no-underline ${!activeType ? "bg-paper-2 font-semibold" : ""}"
+        style="padding:7px 12px; user-select:none; text-transform:none; letter-spacing:normal; color:var(--ink)">
+        <span class="flex-1 min-w-0 truncate text-[12.5px]">All types</span>
+        <span class="font-mono text-[10.5px] text-ink-3 shrink-0">${chips.find((c) => c.label === "All")?.count ?? 0}</span>
+     </a>`,
+    ...typeChips.map(
+      (c) => `<a href="${escapeHtml(urlFor(c.value))}"
+        class="flex items-center gap-2.5 no-underline ${activeType === c.value ? "bg-paper-2 font-semibold" : ""}"
+        style="padding:7px 12px; user-select:none; text-transform:none; letter-spacing:normal; color:var(--ink)">
+        <span class="flex-1 min-w-0 truncate font-mono text-[12px]">${escapeHtml(displayMessageType(c.value))}</span>
+        <span class="font-mono text-[10.5px] text-ink-3 shrink-0">${c.count}</span>
+     </a>`,
+    ),
+  ].join("");
+  return `
+    <div class="relative flex items-center gap-1"
+         x-data="{ open: false }"
+         x-on:click.outside="open = false"
+         x-on:keyup.escape.window="open = false">
+      <span>type</span>
+      <button type="button"
+              x-on:click="open = !open"
+              class="inline-flex items-center gap-0.5 border-none rounded cursor-pointer ${isActive ? "bg-accent-soft text-accent-ink" : "bg-transparent text-ink-3"}"
+              style="padding:2px 5px; font-family:inherit"
+              title="Filter by type">
+        ${renderIcon("filter", "sm")}
+      </button>
+      <div x-show="open"
+           x-cloak
+           x-transition.opacity
+           x-on:click.stop
+           class="absolute bg-paper border border-line rounded-lg overflow-hidden shadow-xl z-50 left-0"
+           style="top: calc(100% + 6px); min-width:220px; max-width:300px">
+        <div class="overflow-y-auto" style="max-height:320px; padding:4px 0">${rows}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderStatusFilterHeader(filters: InboundFilters): string {
+  const errorsOn = filters.status === "errors";
+  const urlFor = (status: string | undefined): string => {
+    const p = new URLSearchParams();
+    if (filters.type) p.set("type", filters.type);
+    if (status) p.set("status", status);
+    if (filters.batch) p.set("batch", filters.batch);
+    const s = p.toString();
+    return `/incoming-messages${s ? `?${s}` : ""}`;
+  };
+  const isActive = !!filters.status;
+  return `
+    <div class="relative justify-self-end flex items-center gap-1"
+         x-data="{ open: false }"
+         x-on:click.outside="open = false"
+         x-on:keyup.escape.window="open = false">
+      <span>status</span>
+      <button type="button"
+              x-on:click="open = !open"
+              class="inline-flex items-center gap-0.5 border-none rounded cursor-pointer ${isActive ? "bg-accent-soft text-accent-ink" : "bg-transparent text-ink-3"}"
+              style="padding:2px 5px; font-family:inherit"
+              title="Filter by status">
+        ${renderIcon("filter", "sm")}
+      </button>
+      <div x-show="open"
+           x-cloak
+           x-transition.opacity
+           x-on:click.stop
+           class="absolute bg-paper border border-line rounded-lg overflow-hidden shadow-xl z-50 right-0"
+           style="top: calc(100% + 6px); min-width:200px; max-width:260px">
+        <div class="overflow-y-auto" style="padding:4px 0">
+          <a href="${escapeHtml(urlFor(undefined))}"
+             class="flex items-center gap-2.5 no-underline ${!filters.status ? "bg-paper-2 font-semibold" : ""}"
+             style="padding:7px 12px; user-select:none; text-transform:none; letter-spacing:normal; color:var(--ink)">
+            <span class="flex-1 min-w-0 truncate text-[12.5px]">Any status</span>
+          </a>
+          <a href="${escapeHtml(urlFor("errors"))}"
+             class="flex items-center gap-2.5 no-underline ${errorsOn ? "bg-paper-2 font-semibold" : ""}"
+             style="padding:7px 12px; user-select:none; text-transform:none; letter-spacing:normal; color:var(--err)">
+            <span class="flex-1 min-w-0 truncate text-[12.5px]">Errors only</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderListRow(p: ParsedIncomingMessage, index: number, selectedId: string | undefined): string {
+  const tone = statusToTone(p);
+  const selected = p.id === selectedId;
   const borderTop = index === 0 ? "" : "border-t border-line";
   const bg = selected ? "bg-paper-2" : "";
   const accentBar = selected ? "border-l-2 border-l-accent" : "border-l-2 border-l-transparent";
-  const id = m.id ?? "";
+  const id = p.id;
+  // onclick flips the highlight instantly (before the htmx request resolves
+  // and before the next list refresh). Without this the clicked row stays
+  // unstyled for up to 1s, which reads as a broken click. The server-
+  // rendered class strings still win on the next poll — the JS is purely
+  // cosmetic pre-alignment.
+  const clickHighlight = `document.querySelectorAll('[data-message-id]').forEach(function(r){r.classList.remove('bg-paper-2','border-l-accent');r.classList.add('border-l-transparent');});this.classList.add('bg-paper-2','border-l-accent');this.classList.remove('border-l-transparent');`;
   return `
     <div class="grid gap-3 items-center px-5 py-2.5 cursor-pointer ${borderTop} ${bg} ${accentBar} hover:bg-paper-2/60"
          style="grid-template-columns: 14px 80px 160px 140px 1fr 110px"
+         onclick="${clickHighlight}"
          hx-get="/incoming-messages/${encodeURIComponent(id)}/partials/detail"
          hx-target="#detail"
          hx-swap="outerHTML"
          hx-push-url="?selected=${encodeURIComponent(id)}"
          data-message-id="${escapeHtml(id)}">
       <span class="${toneDot(tone)}"></span>
-      <span class="font-mono text-ink-3 text-[11.5px] whitespace-nowrap">${escapeHtml(formatTime(m.meta?.lastUpdated ?? m.date))}</span>
-      <span class="chip text-[10.5px] justify-self-start max-w-full truncate" title="${escapeHtml(m.type ?? "")}">${escapeHtml(m.type ? displayMessageType(m.type) : "—")}</span>
-      <span class="text-[12.5px] text-ink-2 whitespace-nowrap overflow-hidden text-ellipsis">${escapeHtml(m.sendingApplication ?? "—")}</span>
-      <span class="text-[13px] text-ink min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">${escapeHtml(summarize(m))}</span>
-      <span class="justify-self-end">${toneChip(tone)}</span>
+      <span class="font-mono text-ink-3 text-[11.5px] whitespace-nowrap">${escapeHtml(formatTime(p.lastUpdated || p.date))}</span>
+      <span class="chip text-[10.5px] justify-self-start max-w-full truncate" title="${escapeHtml(p.type)}">${escapeHtml(displayMessageType(p.type))}</span>
+      <span class="text-[12.5px] text-ink-2 whitespace-nowrap overflow-hidden text-ellipsis">${escapeHtml(p.sendingApplication)}</span>
+      <span class="text-[13px] text-ink min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">${escapeHtml(summarize(p))}</span>
+      ${renderRowStatusCell(p)}
     </div>
   `;
 }
@@ -350,8 +586,10 @@ function buildListUrl(filters: InboundFilters): string {
 }
 
 export function renderListPartial(
-  messages: IncomingHL7v2Message[],
+  messages: ParsedIncomingMessage[],
   filters: InboundFilters,
+  total: number = messages.length,
+  chips: TypeChipCount[] = [],
 ): string {
   const selectedId = filters.selected;
   const hasSelection = !!selectedId;
@@ -362,49 +600,74 @@ export function renderListPartial(
     messages.length === 0
       ? `<div class="px-5 py-10 text-center text-ink-3 text-[13px]">No messages match these filters.</div>`
       : rows;
-  const latestClock = messages[0]?.meta?.lastUpdated ?? messages[0]?.date;
-  const subLabel = latestClock ? `streaming · ${formatTime(latestClock)}` : "streaming";
-  // Auto-refresh: polls every 5s via a filtered `hx-trigger` that
-  // skips the tick when `#detail` contains a selection marker. Using
-  // `hx-trigger`'s `[condition]` clause so no Alpine/JS state needs
-  // to stay in sync with the DOM — the condition reads the DOM at
-  // tick time. `hx-vals` re-reads `window.location.search` on each
-  // fire so `?selected=...` pushed by row clicks and `?type=...`
-  // pushed by chip clicks are threaded through without re-rendering
-  // the list at click time.
-  // Polling lives in Alpine rather than htmx attributes. `hx-trigger`'s
-  // `[condition]` filter and `hx-vals`' `js:` expression both tokenize
-  // JS-ish in a way that breaks on property access (`.`), optional
-  // chaining (`?.`), and nested `[...]`. Every attempt to thread the
-  // current URL through `hx-vals` or gate the trigger via a DOM query
-  // bailed out htmx's entire subtree — which silently disabled the
-  // row click's hx-get too. Alpine's `setInterval` + `htmx.ajax()` is
-  // ordinary JS with no tokenizer footguns.
   return `
     <div id="inbound-list"
          class="card flex flex-col overflow-hidden self-start"
          data-has-selection="${hasSelection ? "true" : "false"}"
-         x-data="{
-           _poll: null,
-           start() {
-             this.stop();
-             this._poll = setInterval(() => {
-               var detail = document.getElementById('detail');
-               if (detail && detail.getAttribute('data-selected')) return;
-               window.htmx.ajax('GET', '/incoming-messages/partials/list' + window.location.search, { target: '#inbound-list', swap: 'outerHTML' });
-             }, 5000);
-           },
-           stop() { if (this._poll) { clearInterval(this._poll); this._poll = null; } }
-         }"
-         x-init="start()"
-         x-on:htmx:before-swap.window="stop()"
+         x-data
          x-on:message-replayed.window="window.htmx.ajax('GET', '/incoming-messages/partials/list' + window.location.search, { target: '#inbound-list', swap: 'outerHTML' })">
       <div class="card-head">
-        <span class="card-title">${escapeHtml(titleForFilters(filters, messages.length))}</span>
-        <span class="card-sub">${escapeHtml(subLabel)}</span>
+        <span class="card-title">${escapeHtml(titleForFilters(filters, total))}</span>
       </div>
-      ${renderListHeader()}
+      ${renderListHeader(filters, chips)}
       ${body}
+      ${renderPager(filters, messages.length, total)}
+    </div>
+  `;
+}
+
+/**
+ * Offset-based pager. Always shows the "N–M of T" counter so the user
+ * knows they're looking at a stable snapshot, not a live feed. Prev/
+ * Next buttons appear only when there's more than one page.
+ *
+ * Links use full-page navigation (plain hrefs) rather than hx-boost —
+ * paging changes the URL *and* replaces the list snapshot, and
+ * hx-boost on anchors inside an hx-target card has edge-case swap
+ * behavior we don't need to fight.
+ */
+function renderPager(
+  filters: InboundFilters,
+  pageSize: number,
+  total: number,
+): string {
+  if (total === 0) return "";
+  const page = filters.page ?? 1;
+  const totalPages = Math.max(1, Math.ceil(total / LIST_COUNT));
+  const offset = (page - 1) * LIST_COUNT;
+  const from = offset + 1;
+  const to = Math.min(offset + pageSize, total);
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
+  const needsPager = total > LIST_COUNT;
+  const qsForPage = (p: number): string => {
+    const params = new URLSearchParams();
+    if (filters.type) params.set("type", filters.type);
+    if (filters.status) params.set("status", filters.status);
+    if (filters.batch) params.set("batch", filters.batch);
+    if (p > 1) params.set("page", String(p));
+    const s = params.toString();
+    return `/incoming-messages${s ? `?${s}` : ""}`;
+  };
+  const btn = (href: string, label: string, enabled: boolean): string => {
+    if (!enabled) {
+      return `<span class="text-[12px] text-ink-3 opacity-40 cursor-not-allowed select-none" style="padding:4px 10px">${label}</span>`;
+    }
+    return `<a href="${escapeHtml(href)}" class="text-[12px] text-ink-2 no-underline rounded hover:bg-paper-2" style="padding:4px 10px">${label}</a>`;
+  };
+  return `
+    <div class="flex items-center justify-between border-t border-line bg-paper-2"
+         style="padding:8px 18px">
+      <span class="text-[11.5px] text-ink-3 font-mono tabular-nums">${from}–${to} of ${total}</span>
+      ${
+        needsPager
+          ? `<div class="flex items-center gap-2">
+               ${btn(qsForPage(page - 1), "‹ Prev", hasPrev)}
+               <span class="text-[11.5px] text-ink-3 font-mono tabular-nums">${page} / ${totalPages}</span>
+               ${btn(qsForPage(page + 1), "Next ›", hasNext)}
+             </div>`
+          : ""
+      }
     </div>
   `;
 }
@@ -446,9 +709,10 @@ export function renderEmptyDetail(): string {
 
 async function renderInboundBody(
   filters: InboundFilters,
-  messages: IncomingHL7v2Message[],
+  messages: ParsedIncomingMessage[],
+  total: number,
   chips: TypeChipCount[],
-  selectedMessage: IncomingHL7v2Message | null,
+  selectedMessage: ParsedIncomingMessage | null,
   totalToday: number,
   triageCount: number,
   errorCount: number,
@@ -470,10 +734,8 @@ async function renderInboundBody(
         </div>
       </div>
 
-      ${renderTypeChipsPartial(chips, filters.type, filters)}
-
       <div class="grid gap-4 mt-4" style="grid-template-columns: minmax(560px, 1fr) 1fr; min-height: 620px">
-        ${renderListPartial(messages, filters)}
+        ${renderListPartial(messages, filters, total, chips)}
         ${detail}
       </div>
     </div>
@@ -486,17 +748,26 @@ async function renderInboundBody(
 
 function parseFilters(req: Request): InboundFilters {
   const url = new URL(req.url);
+  const pageRaw = url.searchParams.get("page");
+  const page = pageRaw ? Math.max(1, parseInt(pageRaw, 10) || 1) : 1;
   return {
     type: url.searchParams.get("type") || undefined,
     status: url.searchParams.get("status") || undefined,
     batch: url.searchParams.get("batch") || undefined,
     selected: url.searchParams.get("selected") || undefined,
+    page: page > 1 ? page : undefined,
   };
 }
 
 function startOfTodayIso(): string {
+  // Use *local* midnight, not UTC midnight — for a user east of UTC,
+  // their "today" starts earlier in UTC time. UTC midnight would drop
+  // messages that landed last evening local-time (still "today" to
+  // the user) and make the hero say "0 received today" when 20+
+  // messages are visible. `toISOString()` converts back to UTC so
+  // Aidbox can consume the `_lastUpdated=gt<iso>` filter unchanged.
   const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
   return d.toISOString();
 }
 
@@ -531,7 +802,7 @@ async function countsForHero(): Promise<{ totalToday: number; triage: number; er
 
 export async function handleInboundMessagesPage(req: Request): Promise<Response> {
   const filters = parseFilters(req);
-  const [navData, messages, chips, hero, selectedMessage] = await Promise.all([
+  const [navData, list, chips, hero, selectedMessage] = await Promise.all([
     getNavData(),
     getInboundList(filters),
     getTypeChipCounts(),
@@ -540,7 +811,8 @@ export async function handleInboundMessagesPage(req: Request): Promise<Response>
   ]);
   const content = await renderInboundBody(
     filters,
-    messages,
+    list.messages,
+    list.total,
     chips,
     selectedMessage,
     hero.totalToday,
@@ -559,8 +831,13 @@ export async function handleInboundMessagesPage(req: Request): Promise<Response>
 
 export async function handleInboundListPartial(req: Request): Promise<Response> {
   const filters = parseFilters(req);
-  const messages = await getInboundList(filters);
-  return htmlResponse(renderListPartial(messages, filters));
+  // Chips fetched in parallel so the refreshed list carries up-to-date
+  // type counts in its column-header filter popover.
+  const [{ messages, total }, chips] = await Promise.all([
+    getInboundList(filters),
+    getTypeChipCounts(),
+  ]);
+  return htmlResponse(renderListPartial(messages, filters, total, chips));
 }
 
 export async function handleInboundTypeChipsPartial(
@@ -569,4 +846,42 @@ export async function handleInboundTypeChipsPartial(
   const filters = parseFilters(req);
   const chips = await getTypeChipCounts();
   return htmlResponse(renderTypeChipsPartial(chips, filters.type, filters));
+}
+
+/**
+ * Per-row status refresh — fetches a single message and returns just
+ * the status cell. Swapped in place via outerHTML; if the message is
+ * still non-terminal, the returned cell carries its own hx-trigger so
+ * polling continues. If the message hit a terminal state, the returned
+ * cell is static HTML and self-polling stops.
+ */
+export async function handleInboundRowStatusPartial(
+  id: string,
+): Promise<Response> {
+  if (!id) return new Response("missing id", { status: 400 });
+  try {
+    const raw = await aidboxFetch<IncomingHL7v2Message>(
+      `/fhir/IncomingHL7v2Message/${encodeURIComponent(id)}`,
+    );
+    const parsed = parseIncomingMessage(raw);
+    if (isMalformed(parsed)) {
+      console.warn(
+        `[inbound] row status for ${id}: malformed wire record — ${parsed.reason}`,
+      );
+      return htmlResponse(
+        `<span id="status-${escapeHtml(id)}" class="justify-self-end text-ink-3 text-[11.5px]">—</span>`,
+      );
+    }
+    return htmlResponse(renderRowStatusCell(parsed));
+  } catch (error) {
+    // Row no longer resolvable (deleted, Aidbox down) — stop polling by
+    // returning a static "—" cell rather than an error page.
+    console.error(
+      "[inbound] row status fetch failed:",
+      error instanceof Error ? error.message : error,
+    );
+    return htmlResponse(
+      `<span id="status-${escapeHtml(id)}" class="justify-self-end text-ink-3 text-[11.5px]">—</span>`,
+    );
+  }
 }

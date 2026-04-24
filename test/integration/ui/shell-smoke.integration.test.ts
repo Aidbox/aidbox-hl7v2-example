@@ -26,7 +26,6 @@ const ROUTES: Route[] = [
     label: "Dashboard",
     call: () =>
       handleDashboardPage(new Request("http://localhost:3000/"), {
-        workersHandle: null,
         demoEnabled: true,
       }),
   },

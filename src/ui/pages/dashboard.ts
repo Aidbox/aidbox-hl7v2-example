@@ -16,12 +16,6 @@ import { renderShell } from "../shell";
 import { htmlResponse, getNavData } from "../shared";
 import { renderIcon } from "../icons";
 import { escapeHtml } from "../../utils/html";
-import {
-  getWorkerHealth,
-  type WorkersHandle,
-  type WorkerHealth,
-  resolvePollIntervalMs,
-} from "../../workers";
 
 // ============================================================================
 // Types + constants
@@ -35,6 +29,7 @@ export interface DashboardStats {
 }
 
 export interface TickerRow {
+  id?: string;
   time: string;
   type: string;
   note: string;
@@ -63,6 +58,21 @@ type ProcessedEntry = {
   resource?: IncomingHL7v2Message & { meta?: { lastUpdated?: string } };
 };
 
+// Samples over 60s are almost certainly "held in triage → mapping added →
+// replayed" (MSH-7 date = original send; meta.lastUpdated = replay write).
+// Those minute-scale spans are operator-response time, not live processing,
+// and they completely dominated a naive mean. 60s is well beyond the async
+// worker poll cadence (5s) so any healthy message is comfortably under it.
+const LIVE_PATH_LATENCY_CAP_MS = 60_000;
+
+/**
+ * Average end-to-end time on the live path (sent → processed), in ms.
+ * Samples above LIVE_PATH_LATENCY_CAP_MS are excluded — those messages
+ * spent most of their "latency" waiting for an operator to map a code,
+ * which is a separate signal already surfaced by the Need-mapping cell.
+ * With the outlier filter in place a plain mean is fine (and easier to
+ * read than a percentile).
+ */
 function computeAvgLatencyMs(entries: ProcessedEntry[]): number | null {
   const samples: number[] = [];
   for (const e of entries) {
@@ -70,9 +80,10 @@ function computeAvgLatencyMs(entries: ProcessedEntry[]): number | null {
     if (!r?.date || !r?.meta?.lastUpdated) continue;
     const sent = Date.parse(r.date);
     const done = Date.parse(r.meta.lastUpdated);
-    if (Number.isFinite(sent) && Number.isFinite(done) && done >= sent) {
-      samples.push(done - sent);
-    }
+    if (!Number.isFinite(sent) || !Number.isFinite(done) || done < sent) continue;
+    const dt = done - sent;
+    if (dt > LIVE_PATH_LATENCY_CAP_MS) continue;
+    samples.push(dt);
   }
   if (!samples.length) return null;
   return Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
@@ -123,27 +134,10 @@ function formatClock(iso: string | undefined): string {
 }
 
 function buildNote(m: IncomingHL7v2Message): string {
-  const sender = m.sendingApplication || "unknown sender";
-  switch (m.status) {
-    case "processed":
-      return `${sender} → processed`;
-    case "warning":
-      return `${sender} → processed with warning`;
-    case "code_mapping_error":
-      return `${sender} → unmapped code — routed to triage`;
-    case "parsing_error":
-      return `${sender} → parse failed`;
-    case "conversion_error":
-      return `${sender} → conversion failed`;
-    case "sending_error":
-      return `${sender} → submit to Aidbox failed`;
-    case "deferred":
-      return `${sender} → deferred`;
-    case "received":
-      return `${sender} → received`;
-    default:
-      return sender;
-  }
+  // The ticker chip on the row's right edge already encodes the outcome
+  // (processed/needs mapping/error/pending). Echoing it in the middle
+  // column is redundant — show the sender and let the chip carry state.
+  return m.sendingApplication || "unknown sender";
 }
 
 export async function getTickerRows(limit: number): Promise<TickerRow[]> {
@@ -159,6 +153,7 @@ export async function getTickerRows(limit: number): Promise<TickerRow[]> {
   return (bundle.entry ?? []).map((e) => {
     const r = e.resource;
     return {
+      id: r?.id,
       time: formatClock(r?.meta?.lastUpdated ?? r?.date),
       type: r?.type ?? "—",
       note: r ? buildNote(r) : "—",
@@ -210,7 +205,7 @@ function renderDemoStep(step: DemoStep, index: number): string {
                'bg-surface text-ink border-line-2': !(running && currentIndex === ${index}) && !(!running && ${idleAccent})`;
   return `
     <div class="flex flex-col items-center gap-1.5 min-w-[100px]">
-      <div class="w-[34px] h-[34px] rounded-full grid place-items-center font-serif text-[15px] font-medium border transition-colors"
+      <div class="w-[32px] h-[32px] rounded-full grid place-items-center font-mono text-[13px] font-semibold tabular-nums border transition-colors"
            :class="{ ${cls} }">${step.n}</div>
       <div class="font-mono text-[11.5px] text-ink">${escapeHtml(step.label)}</div>
       <div class="text-[10.5px] text-ink-3 text-center">${escapeHtml(step.sub)}</div>
@@ -223,7 +218,6 @@ function renderHero(): string {
     <div>
       <div class="text-ink-3 text-[12.5px] font-medium uppercase tracking-[0.05em] mb-1.5">Staging · scripted demo</div>
       <h1 class="h1">Demo control</h1>
-      <div class="text-ink-2 text-[13.5px] mt-1 max-w-[620px] leading-[1.5]">One click runs a full HL7v2 scenario end-to-end — so any prospect sees the whole story in under a minute.</div>
     </div>
   `;
 }
@@ -293,8 +287,8 @@ function renderDemoConductor(demoEnabled: boolean): string {
     <div class="card" style="padding:26px 28px; background:linear-gradient(180deg, var(--surface) 0%, var(--paper-2) 100%)" x-data="${escapeHtml(xData)}">
       <div class="flex items-center gap-7">
         <div class="flex-1">
-          <div class="font-serif text-[26px] font-medium tracking-tight mb-1">Run scripted demo <em class="text-accent italic">in 4 steps</em></div>
-          <div class="text-ink-3 text-[12.5px] mb-5">2s spacing between sends · fire-and-forget · watch the ticker below</div>
+          <div class="text-[17px] font-semibold tracking-tight mb-1">Run scripted demo <span class="text-accent">· 4 steps</span></div>
+          <div class="text-ink-3 text-[12.5px] mb-5">2s spacing between sends</div>
           <div class="flex items-center gap-0 flex-wrap">
             ${steps}
           </div>
@@ -314,6 +308,8 @@ function renderStatValue(
   sub: string,
   tone: "default" | "warn" | "err" = "default",
   last = false,
+  href?: string,
+  labelHint?: string,
 ): string {
   const border = last ? "" : "border-r border-line";
   const valueTone =
@@ -322,62 +318,36 @@ function renderStatValue(
       : tone === "err"
       ? "text-err"
       : "text-ink";
+  const subEl = sub
+    ? href
+      ? `<a href="${href}" class="text-[11.5px] text-info hover:text-info-ink hover:underline font-mono">${escapeHtml(sub)}</a>`
+      : `<div class="text-[11.5px] text-ink-3 font-mono">${escapeHtml(sub)}</div>`
+    : "";
+  const labelInner = labelHint
+    ? `<span title="${escapeHtml(labelHint)}" class="cursor-help underline decoration-dotted decoration-ink-3 underline-offset-[3px]">${escapeHtml(label)}</span><span class="ml-1 text-ink-3" title="${escapeHtml(labelHint)}">ⓘ</span>`
+    : escapeHtml(label);
   return `
     <div class="px-5 py-4 flex flex-col gap-1.5 min-w-[150px] whitespace-nowrap ${border}">
-      <div class="text-ink-3 text-[11.5px] font-medium uppercase tracking-[0.05em]">${escapeHtml(label)}</div>
+      <div class="text-ink-3 text-[11.5px] font-medium uppercase tracking-[0.05em]">${labelInner}</div>
       <div class="flex items-baseline gap-2">
-        <div class="font-serif text-[26px] font-medium tracking-tight ${valueTone}">${escapeHtml(value)}</div>
-        ${sub ? `<div class="text-[11.5px] text-ink-3 font-mono">${escapeHtml(sub)}</div>` : ""}
+        <div class="font-mono text-[22px] font-medium tracking-tight tabular-nums ${valueTone}">${escapeHtml(value)}</div>
+        ${subEl}
       </div>
-    </div>
-  `;
-}
-
-function workerDotClass(status: WorkerHealth["oruProcessor"]): string {
-  if (status === "up") return "dot ok";
-  if (status === "down") return "dot err";
-  return "dot"; // disabled — neutral
-}
-
-function renderWorkersCell(workers: WorkerHealth, pollMs: number): string {
-  const items = [
-    { label: "ORU processor", status: workers.oruProcessor },
-    { label: "BAR builder", status: workers.barBuilder },
-    { label: "BAR sender", status: workers.barSender },
-  ];
-  const footer =
-    workers.oruProcessor === "disabled"
-      ? "workers · polling disabled"
-      : `workers · polling every ${Math.round(pollMs / 1000)}s`;
-  return `
-    <div class="flex-1 min-w-[240px] px-4 py-3.5 flex flex-col gap-1.5 justify-center">
-      <div class="flex gap-3.5 flex-wrap">
-        ${items
-          .map(
-            (it) => `
-              <span class="flex items-center gap-1.5 text-ink-2 text-[12px]">
-                <span class="${workerDotClass(it.status)}"></span>${escapeHtml(it.label)}
-              </span>
-            `,
-          )
-          .join("")}
-      </div>
-      <div class="text-ink-3 text-[11px]">${escapeHtml(footer)}</div>
     </div>
   `;
 }
 
 function formatLatency(ms: number | null): { value: string; sub: string } {
-  if (ms === null) return { value: "—", sub: "no samples" };
-  if (ms < 1000) return { value: `${ms}ms`, sub: "mean · last 100" };
-  return { value: `${(ms / 1000).toFixed(1)}s`, sub: "mean · last 100" };
+  // Keep the sub short. "avg" names the exact metric — the full definition
+  // (sent → processed, triage outliers stripped) lives on a hover tooltip
+  // added next to the label in renderStatsPartial.
+  const sub = "avg";
+  if (ms === null) return { value: "—", sub };
+  if (ms < 1000) return { value: `${ms}ms`, sub };
+  return { value: `${(ms / 1000).toFixed(1)}s`, sub };
 }
 
-export function renderStatsPartial(
-  stats: DashboardStats,
-  workers: WorkerHealth,
-  pollMs: number,
-): string {
+export function renderStatsPartial(stats: DashboardStats): string {
   const latency = formatLatency(stats.avgLatencyMs);
   const needTone = stats.needMapping > 0 ? "warn" : "default";
   const errTone = stats.errors > 0 ? "err" : "default";
@@ -390,17 +360,28 @@ export function renderStatsPartial(
       ${renderStatValue(
         "Need mapping",
         String(stats.needMapping),
-        stats.needMapping > 0 ? "go to triage →" : "",
+        stats.needMapping > 0 ? "go to triage" : "",
         needTone,
+        false,
+        stats.needMapping > 0 ? "/unmapped-codes" : undefined,
       )}
       ${renderStatValue(
         "Errors",
         String(stats.errors),
         stats.errors > 0 ? "see Inbound" : "",
         errTone,
+        false,
+        stats.errors > 0 ? "/incoming-messages?status=errors" : undefined,
       )}
-      ${renderStatValue("Avg latency", latency.value, latency.sub, "default")}
-      ${renderWorkersCell(workers, pollMs)}
+      ${renderStatValue(
+        "End-to-end time",
+        latency.value,
+        latency.sub,
+        "default",
+        true,
+        undefined,
+        "Average time from message sent (MSH-7) to processed in Aidbox, over the last 100 messages. Covers MLLP + parse + convert + FHIR submit. Messages held in triage (>60s end-to-end) are excluded so operator response time doesn't swamp the metric.",
+      )}
     </div>
   `;
 }
@@ -412,15 +393,35 @@ function statusChip(status: TickerRow["status"]): string {
   return `<span class="chip">pending</span>`;
 }
 
+const TICKER_GRID_COLS = "80px 170px 90px minmax(160px, 1fr) 130px";
+
+function renderTickerHeader(): string {
+  return `
+    <div class="grid gap-3 items-center px-5 py-2 text-[10.5px] text-ink-3 font-medium uppercase tracking-[0.06em] border-t border-line bg-paper-2" style="grid-template-columns: ${TICKER_GRID_COLS}">
+      <span>Time</span>
+      <span>Type</span>
+      <span>Sender</span>
+      <span></span>
+      <span class="justify-self-end">Status</span>
+    </div>
+  `;
+}
+
 function renderTickerRow(row: TickerRow, first: boolean): string {
   const border = first ? "" : "border-t border-line";
+  // Each row is a link to Inbound. When we have the resource id, deep-link
+  // to its detail pane via `?selected=`; otherwise land on the Inbound list.
+  const href = row.id
+    ? `/incoming-messages?selected=${encodeURIComponent(row.id)}`
+    : "/incoming-messages";
   return `
-    <div class="grid gap-3 items-center px-5 py-2.5 text-[13px] ${border}" style="grid-template-columns: 80px 96px minmax(180px, 1fr) 130px">
+    <a href="${href}" class="grid gap-3 items-center px-5 py-2.5 text-[13px] ${border} no-underline text-ink hover:bg-paper-2 transition-colors" style="grid-template-columns: ${TICKER_GRID_COLS}">
       <span class="font-mono text-ink-3 text-[11.5px]">${escapeHtml(row.time)}</span>
-      <span class="chip text-[10.5px] justify-self-start">${escapeHtml(row.type)}</span>
-      <span class="text-ink-2 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">${escapeHtml(row.note)}</span>
+      <span class="chip text-[10.5px] justify-self-start truncate max-w-full" title="${escapeHtml(row.type)}">${escapeHtml(row.type)}</span>
+      <span class="font-mono text-[11.5px] text-ink-2 min-w-0 truncate" title="${escapeHtml(row.note)}">${escapeHtml(row.note)}</span>
+      <span></span>
       <span class="justify-self-end">${statusChip(row.status)}</span>
-    </div>
+    </a>
   `;
 }
 
@@ -428,7 +429,7 @@ export function renderTickerPartial(rows: TickerRow[], limit: number): string {
   const body =
     rows.length === 0
       ? `<div class="px-5 py-6 text-center text-ink-3 text-[13px]">No messages yet. Click <span class="font-medium text-ink-2">Run demo now</span> to seed the ticker.</div>`
-      : rows.map((r, i) => renderTickerRow(r, i === 0)).join("");
+      : renderTickerHeader() + rows.map((r, i) => renderTickerRow(r, i === 0)).join("");
   return `
     <div id="dashboard-ticker" class="card"
          hx-get="/dashboard/partials/ticker?limit=${limit}"
@@ -446,15 +447,13 @@ export function renderTickerPartial(rows: TickerRow[], limit: number): string {
 
 function renderDashboardBody(
   stats: DashboardStats,
-  workers: WorkerHealth,
   ticker: TickerRow[],
-  pollMs: number,
   demoEnabled: boolean,
 ): string {
   return `
     ${renderHero()}
     ${renderDemoConductor(demoEnabled)}
-    ${renderStatsPartial(stats, workers, pollMs)}
+    ${renderStatsPartial(stats)}
     ${renderTickerPartial(ticker, DEFAULT_TICKER_LIMIT)}
   `;
 }
@@ -464,7 +463,6 @@ function renderDashboardBody(
 // ============================================================================
 
 export interface DashboardDeps {
-  workersHandle: WorkersHandle | null | undefined;
   demoEnabled: boolean;
 }
 
@@ -501,26 +499,19 @@ export async function handleDashboardPage(
     safeStats(),
     safeTicker(DEFAULT_TICKER_LIMIT),
   ]);
-  const workers = getWorkerHealth(deps.workersHandle);
-  const pollMs = resolvePollIntervalMs(undefined);
   return htmlResponse(
     renderShell({
       active: "dashboard",
       title: "Dashboard",
-      content: renderDashboardBody(stats, workers, ticker, pollMs, deps.demoEnabled),
+      content: renderDashboardBody(stats, ticker, deps.demoEnabled),
       navData,
     }),
   );
 }
 
-export async function handleDashboardStats(
-  _req: Request,
-  deps: Pick<DashboardDeps, "workersHandle">,
-): Promise<Response> {
+export async function handleDashboardStats(): Promise<Response> {
   const stats = await safeStats();
-  const workers = getWorkerHealth(deps.workersHandle);
-  const pollMs = resolvePollIntervalMs(undefined);
-  return htmlResponse(renderStatsPartial(stats, workers, pollMs));
+  return htmlResponse(renderStatsPartial(stats));
 }
 
 export async function handleDashboardTicker(req: Request): Promise<Response> {

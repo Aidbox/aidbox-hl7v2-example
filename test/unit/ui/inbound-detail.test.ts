@@ -29,6 +29,16 @@ const {
   handleMarkForRetry,
 } = await import("../../../src/ui/pages/inbound-detail");
 
+const { parseIncomingMessage } = await import(
+  "../../../src/ui/domain/incoming-message"
+);
+type ParsedIncomingMessage =
+  import("../../../src/ui/domain/incoming-message").ParsedIncomingMessage;
+
+/**
+ * Wire-shaped fixture for handler tests that go through `aidboxFetch`
+ * mocks (the handler re-parses internally).
+ */
 function msg(over: Record<string, unknown> = {}): unknown {
   return {
     resourceType: "IncomingHL7v2Message",
@@ -40,6 +50,30 @@ function msg(over: Record<string, unknown> = {}): unknown {
     meta: over.meta ?? { lastUpdated: "2026-04-23T12:00:01Z" },
     ...over,
   };
+}
+
+/**
+ * Build a `ParsedIncomingMessage` directly for tests that call
+ * renderers that now take the parsed domain type. `unmappedCodes`
+ * is auto-populated for `code_mapping_error` so the parser's
+ * non-empty invariant is satisfied.
+ */
+function parsed(
+  over: Record<string, unknown> = {},
+): ParsedIncomingMessage {
+  const wire = msg({
+    ...over,
+    message: over.message ?? "",
+    unmappedCodes:
+      over.status === "code_mapping_error"
+        ? over.unmappedCodes ?? [{ localCode: "UNKNOWN_TEST", mappingTask: { reference: "Task/1" } }]
+        : over.unmappedCodes,
+  });
+  const result = parseIncomingMessage(wire as never);
+  if (result.kind === "malformed-wire-record") {
+    throw new Error(`parsed() test fixture produced malformed: ${result.reason}`);
+  }
+  return result;
 }
 
 beforeEach(() => {
@@ -85,7 +119,7 @@ const SAMPLE_HL7 = [
 
 describe("renderStructuredTab", () => {
   test("renders each segment as a mini-card with segment name chip", () => {
-    const html = renderStructuredTab(msg({ message: SAMPLE_HL7 }) as never);
+    const html = renderStructuredTab(parsed({ message: SAMPLE_HL7 }) as never);
     expect(html).toContain(">MSH<");
     expect(html).toContain(">PID<");
     expect(html).toContain(">OBR<");
@@ -94,18 +128,15 @@ describe("renderStructuredTab", () => {
 
   test("warn-borders the segment containing the unmapped code", () => {
     const html = renderStructuredTab(
-      msg({
+      parsed({
+        status: "code_mapping_error",
         message: SAMPLE_HL7,
         unmappedCodes: [
           { localCode: "UNKNOWN_TEST", mappingTask: { reference: "Task/t" } },
         ],
-      }) as never,
+      }),
     );
-    // Warn chip appears only on the flagged segment; it gives us a
-    // reliable anchor inside the OBX wrapper.
     expect(html).toContain("contains UNKNOWN_TEST");
-    // Parent wrapper for OBX must carry `border-warn` — look at the
-    // div immediately preceding `>OBX<`.
     const obxIdx = html.indexOf(">OBX<");
     const wrapperStart = html.lastIndexOf("<div", obxIdx);
     const wrapperOpen = html.slice(wrapperStart, obxIdx);
@@ -114,14 +145,14 @@ describe("renderStructuredTab", () => {
 
   test("does NOT warn-border segments that don't contain the code", () => {
     const html = renderStructuredTab(
-      msg({
+      parsed({
+        status: "code_mapping_error",
         message: SAMPLE_HL7,
         unmappedCodes: [
           { localCode: "UNKNOWN_TEST", mappingTask: { reference: "Task/t" } },
         ],
-      }) as never,
+      }),
     );
-    // PID doesn't contain UNKNOWN_TEST — its wrapper div should NOT have border-warn.
     const pidIdx = html.indexOf(">PID<");
     const pidWrapperStart = html.lastIndexOf("<div", pidIdx);
     const pidWrapperOpen = html.slice(pidWrapperStart, pidIdx);
@@ -130,13 +161,13 @@ describe("renderStructuredTab", () => {
   });
 
   test("empty-state when message is blank", () => {
-    const html = renderStructuredTab(msg({ message: "" }) as never);
+    const html = renderStructuredTab(parsed({ message: "" }));
     expect(html).toContain("No HL7v2 message stored");
   });
 
   test("handles LF terminators as well as CR", () => {
     const html = renderStructuredTab(
-      msg({ message: SAMPLE_HL7.replace(/\r/g, "\n") }) as never,
+      parsed({ message: SAMPLE_HL7.replace(/\r/g, "\n") }),
     );
     expect(html).toContain(">MSH<");
     expect(html).toContain(">OBX<");
@@ -149,14 +180,14 @@ describe("renderStructuredTab", () => {
 
 describe("renderRawTab", () => {
   test("renders the raw HL7v2 through the highlighter", () => {
-    const html = renderRawTab(msg({ message: SAMPLE_HL7 }) as never);
+    const html = renderRawTab(parsed({ message: SAMPLE_HL7 }) as never);
     expect(html).toContain("hl7-message-container");
     // The highlighter wraps segment names in markup — check MSH survives.
     expect(html).toContain("MSH");
   });
 
   test("empty-state when message is blank", () => {
-    const html = renderRawTab(msg({ message: "" }) as never);
+    const html = renderRawTab(parsed({ message: "" }) as never);
     expect(html).toContain("No HL7v2 message stored");
   });
 });
@@ -168,12 +199,12 @@ describe("renderRawTab", () => {
 describe("renderFhirTab", () => {
   test("pretty-prints the entries array", () => {
     const html = renderFhirTab(
-      msg({
+      parsed({
         entries: [
           { resourceType: "Patient", id: "p1" },
           { resourceType: "Observation", id: "o1" },
         ],
-      }) as never,
+      }),
     );
     // The FHIR tab now runs output through a small JSON syntax highlighter,
     // so keys (accent-ink) and string values (ok = green ink) each land
@@ -183,48 +214,48 @@ describe("renderFhirTab", () => {
     expect(html).toContain('<span class="text-accent-ink">&quot;id&quot;</span>: <span class="text-ok">&quot;p1&quot;</span>');
   });
 
-  test("annotates unmapped codings with a warn comment", () => {
+  test("code_mapping_error variant cannot carry entries — empty-state surfaces triage reason", () => {
+    // The parsed type prevents constructing a `code_mapping_error` with
+    // entries. The old behavior of `annotateUnmappedCodings` — which
+    // overlayed warn comments on entries when both existed — is now
+    // dead code because the two fields are mutually exclusive by
+    // construction. This test documents the new invariant: asking for
+    // the FHIR tab on a code_mapping_error row gets the triage-reason
+    // empty state, not an entries JSON with warn annotations.
     const html = renderFhirTab(
-      msg({
-        entries: [
-          {
-            resourceType: "Observation",
-            code: { coding: [{ system: "local", code: "UNKNOWN_TEST" }] },
-          },
-        ],
+      parsed({
+        status: "code_mapping_error",
         unmappedCodes: [
           { localCode: "UNKNOWN_TEST", mappingTask: { reference: "Task/t" } },
         ],
-      }) as never,
+      }),
     );
-    expect(html).toContain("⚠ no LOINC mapping");
-    expect(html).toContain("text-warn");
+    expect(html).toContain("No FHIR resources attached");
+    expect(html).toContain("held in triage");
   });
 
   test("does NOT annotate when no unmapped codes", () => {
     const html = renderFhirTab(
-      msg({
+      parsed({
         entries: [{ resourceType: "Patient", id: "p1" }],
-      }) as never,
+      }),
     );
     expect(html).not.toContain("⚠");
   });
 
-  test("empty-state when entries is absent — different message for error vs queued", () => {
+  test("empty-state when entries is absent — variant-specific reason", () => {
     const errorCase = renderFhirTab(
-      msg({ status: "conversion_error", entries: undefined }) as never,
+      parsed({ status: "conversion_error", error: "OBR missing" }),
     );
     expect(errorCase).toContain("No FHIR resources attached");
     expect(errorCase).toContain("failed before conversion");
 
-    const queuedCase = renderFhirTab(
-      msg({ status: "received", entries: undefined }) as never,
-    );
+    const queuedCase = renderFhirTab(parsed({ status: "received" }));
     expect(queuedCase).toContain("Processor hasn't run yet");
   });
 
   test("empty-state when entries is an empty array", () => {
-    const html = renderFhirTab(msg({ entries: [] }) as never);
+    const html = renderFhirTab(parsed({ entries: [] }));
     expect(html).toContain("No FHIR resources attached");
   });
 });
@@ -381,7 +412,7 @@ describe("getHistoryVersions", () => {
 describe("renderDetailCard", () => {
   test("renders header + tab bar + default Structured tab body", async () => {
     const html = await renderDetailCard(
-      msg({ message: SAMPLE_HL7, messageControlId: "MCID-1" }) as never,
+      parsed({ message: SAMPLE_HL7, messageControlId: "MCID-1" }),
       "structured",
     );
     expect(html).toContain('id="detail"');
@@ -409,19 +440,19 @@ describe("renderDetailCard", () => {
         },
       ],
     });
-    const html = await renderDetailCard(msg() as never, "timeline");
+    const html = await renderDetailCard(parsed() as never, "timeline");
     expect(fetchPaths.some((p) => p.includes("/_history"))).toBe(true);
     expect(html).toContain("Received by MLLP");
   });
 
   test("active tab gets accent underline styling", async () => {
-    const html = await renderDetailCard(msg() as never, "raw");
+    const html = await renderDetailCard(parsed() as never, "raw");
     // Raw HL7 tab should have the accent-underline class.
     expect(html).toMatch(/border-accent[^>]*>Raw HL7/);
   });
 
   test("tab buttons wire hx-get with the tab key", async () => {
-    const html = await renderDetailCard(msg({ id: "abc" }) as never);
+    const html = await renderDetailCard(parsed({ id: "abc" }) as never);
     // Tab buttons use single-quoted attributes so JSON inside Alpine
     // `:class` / `x-on:click` expressions doesn't collide with the
     // surrounding attribute quote.
@@ -435,25 +466,23 @@ describe("renderDetailCard", () => {
   });
 
   test("Replay button wired to /mark-for-retry", async () => {
-    const html = await renderDetailCard(msg({ id: "retry-me" }) as never);
+    const html = await renderDetailCard(parsed({ id: "retry-me" }) as never);
     expect(html).toContain('hx-post="/mark-for-retry/retry-me"');
     expect(html).toContain('hx-target="#detail"');
   });
 
   test('"Map code" shown only when status is code_mapping_error', async () => {
-    const ok = await renderDetailCard(
-      msg({ status: "processed" }) as never,
-    );
+    const ok = await renderDetailCard(parsed({ status: "processed" }));
     expect(ok).not.toContain("Map code");
 
     const warn = await renderDetailCard(
-      msg({
+      parsed({
         status: "code_mapping_error",
         sendingApplication: "ACME_LAB",
         unmappedCodes: [
           { localCode: "X^Y", localSystem: "LOCAL", mappingTask: { reference: "Task/t" } },
         ],
-      }) as never,
+      }),
     );
     expect(warn).toContain("Map code");
     expect(warn).toContain("code=X%5EY");
@@ -464,9 +493,7 @@ describe("renderDetailCard", () => {
   });
 
   test("normalizes MSH-9 to canonical display form", async () => {
-    const html = await renderDetailCard(
-      msg({ type: "ADT_A01^ADT_A01" }) as never,
-    );
+    const html = await renderDetailCard(parsed({ type: "ADT_A01^ADT_A01" }));
     expect(html).toContain("ADT^A01^ADT_A01");
   });
 });
