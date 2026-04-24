@@ -35,6 +35,10 @@ Use `bun`/`bun install`/`bun run` instead of `node`/`npm`/`yarn`/`pnpm`. Unit te
 2. **Smoke tests are tagged by name prefix.** A test (or `describe`) whose name starts with `smoke: ` is included in `test:smoke` via `--test-name-pattern "smoke: "`. Promote by prepending the prefix; demote by removing it. Keep the smoke set small and focused on one happy-path per major flow.
 3. **Don't manually run `docker compose` for integration tests.** The test commands auto-start containers, wait for health, and run migrations. Integration tests use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
 
+## Dev server
+
+Use `bun run dev` alone to (re)start. It already stops any running instance first — never chain `bun run stop && bun run dev` (causes a stale process to keep port 3000, leading to EADDRINUSE and the old config continuing to serve requests).
+
 ## Polling workers env flags
 
 `bun run dev` boots in-process pollers via `src/workers.ts`. Flags:
