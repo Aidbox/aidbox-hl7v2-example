@@ -5,7 +5,9 @@ description: Check recent HL7v2 processing errors in Aidbox, diagnose root cause
 
 # Check HL7v2 Processing Errors
 
-Diagnose and help resolve `IncomingHL7v2Message` errors from the HL7v2→FHIR pipeline. Work iteratively — summary first, one error at a time, never auto-fix without approval.
+Diagnose and help resolve `IncomingHL7v2Message` errors from the HL7v2→FHIR pipeline. Work iteratively — summary first, one error at a time.
+
+**MANDATORY APPROVAL GATE.** Never run any fix command without explicit user approval, even in auto mode and even when the inspect script prints a "ready-to-run" line. "Ready-to-run" means *ready for the user to approve*, not *ready for you to execute*. Present the proposed command, wait for an explicit "yes" / "do it" / "go ahead", then run. This applies to `wire-preprocessor.ts`, `defer.sh`, `resolve-mapping.sh`, `verify-retry.sh`, `mark-for-retry`, config edits, and any other state-changing action. Read-only inspection (`list-errors.sh`, `triage.sh`, `inspect-error.sh`, `status.sh`, `loinc-search.sh`, `list-preprocessors.sh`, `check-message-support.ts`) does not require approval.
 
 ## Step 1: Summary
 
@@ -27,6 +29,8 @@ Prints each error with a suggested class (auto-swap / fhir-422 / sender-missing 
 
 Ask: **"Which error would you like me to investigate?"** Skip `deferred` rows unless the user explicitly asks.
 
+**Present the summary back to the user as a markdown table** (not a bullet list), even when condensing or rewording the script output. Columns: `#`, `Type`, short `Summary`, `ID`.
+
 ## Step 2: Inspect one
 
 ```sh
@@ -35,7 +39,7 @@ scripts/errors/inspect-error.sh <id>
 
 Emits: status, type, sender, full error, unmapped codes (if present), raw HL7v2 saved to `/tmp/hl7v2-<id>.hl7`, and an `hl7v2-inspect` overview for `parsing_error`/`conversion_error`. **You do not need to curl the resource yourself.**
 
-For `HTTP 422` conversion errors the script also prints the **current values** of each candidate HL7v2 field, so you typically don't need an additional `hl7v2-inspect --field` call. For `per-1` (reversed period) it also emits a **ready-to-run** `wire-preprocessor.ts` command — just copy/run it. For `code_mapping_error` with any `observation-code-loinc` task, peer OBX rows are dumped automatically AND LOINC candidates are fetched via ValueSet/$expand on each localDisplay — you usually have everything needed to pick the right LOINC without another call.
+For `HTTP 422` conversion errors the script also prints the **current values** of each candidate HL7v2 field, so you typically don't need an additional `hl7v2-inspect --field` call. For `per-1` (reversed period) it also emits a **ready-to-run** `wire-preprocessor.ts` command — present it to the user for approval, do NOT run it yourself. For `code_mapping_error` with any `observation-code-loinc` task, peer OBX rows are dumped automatically AND LOINC candidates are fetched via ValueSet/$expand on each localDisplay — you usually have everything needed to pick the right LOINC without another call.
 
 Pick the playbook below by the `Status` line from Step 2.
 
@@ -148,7 +152,7 @@ scripts/errors/status.sh <id>
 ## Rules
 
 - Summary first, then one error at a time.
-- Never auto-fix without approval.
+- **Never run a fix command without explicit user approval** — applies even in auto mode, even when a "ready-to-run" command is printed, even when the fix seems obvious. Propose → wait for "yes" → run. Covers `wire-preprocessor.ts`, `defer.sh`, `resolve-mapping.sh`, `verify-retry.sh`, `mark-for-retry`, and any config edit.
 - Skip `deferred` rows in the summary unless the user asks about them.
 - Don't hand-count pipes — the inspect script already ran `hl7v2-inspect.sh`. For deeper field lookup use `scripts/hl7v2-inspect.sh --field SEG.N`.
 - Use the `hl7v2-info` skill to verify HL7v2 spec compliance when needed.

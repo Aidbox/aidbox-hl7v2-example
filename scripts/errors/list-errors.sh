@@ -30,7 +30,7 @@ fi
 
 AIDBOX=http://localhost:8080
 ERROR_STATUSES="parsing_error,conversion_error,code_mapping_error,sending_error"
-ELEMENTS="id,status,type,error,sendingApplication,sendingFacility,meta"
+ELEMENTS="id,status,type,error,sendingApplication,sendingFacility,unmappedCodes,meta"
 
 fetch() {
   local status_filter="$1"
@@ -43,6 +43,33 @@ render_table() {
   jq -r '
     def trunc($n): if . == null then "" else gsub("[\r\n]+"; " ") | .[0:$n] end;
     def sender($r): ($r.sendingApplication // "") + "/" + ($r.sendingFacility // "");
+    # Collapse a raw error message into a short, human summary.
+    # Handles: plain text, "HTTP N: {OperationOutcome json}", and the
+    # "Sending failed (attempt x/y): ..." retry prefix.
+    def summarize_error:
+      if . == null then ""
+      else
+        gsub("[\r\n]+"; " ")
+        | sub("^Sending failed \\(attempt [0-9]+/[0-9]+\\): "; "")
+        | . as $e
+        | ((capture("^HTTP (?<s>[0-9]+): (?<b>\\{.*\\})$")? // null)) as $m
+        | if $m == null then $e
+          else
+            ($m.b | fromjson?) as $oo
+            | if $oo == null then $e
+              else
+                ($oo.issue[0] // {}) as $i
+                | ([ $i.details.coding[]? | select(.system? | test("operation-outcome-type")) | .code ][0] // $i.code // "error") as $kind
+                | ([ $i.details.coding[]? | select(.system? | test("schema-id")) | .code ][0] // "") as $schema
+                | ($i.expression[0] // "") as $expr
+                | ($i.diagnostics // "") as $diag
+                | ("HTTP " + $m.s + " " + $kind
+                   + (if $schema != "" then " [" + $schema + "]" else "" end)
+                   + (if $expr    != "" then " " + $expr else "" end)
+                   + (if $diag    != "" then " — " + $diag else "" end))
+              end
+          end
+      end;
     if (.entry // []) | length == 0 then
       empty
     else
@@ -52,7 +79,15 @@ render_table() {
         | to_entries[]
         | .key as $i
         | .value.resource as $r
-        | "| \($i + 1) | \($r.status // "") | \($r.type // "") | \(sender($r)) | \($r.error | trunc(80)) | \($r.id) |"
+        | (if $r.status == "code_mapping_error" and (($r.unmappedCodes // []) | length) > 0 then
+             ($r.unmappedCodes
+               | map("\(.localCode)\(if .localDisplay then " (" + .localDisplay + ")" else "" end)")
+               | join(", ")
+               | "Unmapped codes: " + .)
+           else
+             ($r.error | summarize_error)
+           end) as $summary
+        | "| \($i + 1) | \($r.status // "") | \($r.type // "") | \(sender($r)) | \($summary | trunc(160)) | \($r.id) |"
       )
     end
   '
