@@ -145,8 +145,8 @@ const DEFAULT_SAMPLE_ID = "oru-r01-unknown-loinc";
 // ============================================================================
 
 // How long the client polls /status after ACK before giving up and showing
-// "processor catching up". 10s comfortably covers one full worker tick
-// (default POLL_INTERVAL_MS=5000ms) plus slack.
+// "processor catching up". 10s comfortably covers multiple worker ticks
+// (default POLL_INTERVAL_MS=1000ms) plus slack.
 export const STATUS_POLL_DEADLINE_MS = 10000;
 export const STATUS_POLL_INTERVAL_MS = 500;
 

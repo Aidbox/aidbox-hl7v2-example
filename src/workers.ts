@@ -7,8 +7,8 @@
  *
  * Controlled by env:
  * - `DISABLE_POLLING=1` — do not start any workers.
- * - `POLL_INTERVAL_MS` — poll interval in ms. Default 5000 (demo-friendly).
- *   Bump to 60000 for production-like local runs; the underlying service
+ * - `POLL_INTERVAL_MS` — poll interval in ms. Default 1000.
+ *   Use 60000 for production-like runs; the underlying service
  *   default of 60000 applies when individual services are run standalone.
  */
 import { createIncomingHL7v2MessageProcessorService } from "./v2-to-fhir/processor-service";
@@ -46,7 +46,7 @@ export interface StartWorkersOptions {
   };
 }
 
-const DEFAULT_DEMO_POLL_INTERVAL_MS = 5_000;
+const DEFAULT_DEMO_POLL_INTERVAL_MS = 1_000;
 
 export type WorkerStatus = "up" | "down" | "disabled";
 
