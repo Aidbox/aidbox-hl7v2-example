@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 
 let mockResults: { code: string; display: string }[] = [];
 let throwNext: Error | null = null;
@@ -20,6 +20,15 @@ describe("suggestCodes", () => {
   beforeEach(() => {
     mockResults = [];
     throwNext = null;
+  });
+
+  // `mock.module` is process-wide in Bun. Without this cleanup, the
+  // terminology-api stub above persists into later test files (e.g.
+  // test/unit/code-mapping/terminology-api.test.ts runs later
+  // alphabetically and would see the stubbed searchLoincCodes rather
+  // than the real implementation under Bun 1.3.12+).
+  afterAll(() => {
+    mock.restore();
   });
 
   it("returns empty array when display is blank", async () => {
