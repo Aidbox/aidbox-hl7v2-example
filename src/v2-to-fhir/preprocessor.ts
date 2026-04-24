@@ -20,6 +20,7 @@ import type { Hl7v2ToFhirConfig, MessageTypeConfig } from "./config";
 import { findSegment } from "./converter";
 import {
   getPreprocessor,
+  normalizeEntry,
   type PreprocessorContext,
 } from "./preprocessor-registry";
 
@@ -83,18 +84,19 @@ function applyPreprocessors(
       {continue;}
 
     // Apply preprocessors for each configured field
-    for (const [field, preprocessorIds] of Object.entries(segmentConfig)) {
-      if (!Array.isArray(preprocessorIds)) {continue;}
+    for (const [field, entries] of Object.entries(segmentConfig)) {
+      if (!Array.isArray(entries)) {continue;}
 
       // Apply each preprocessor in order (each wrapped in try-catch)
-      for (const id of preprocessorIds) {
+      for (const entry of entries) {
+        const { id, params } = normalizeEntry(entry);
         if (!shouldRunPreprocessorForField(segment, field, id)) {
           continue;
         }
 
         try {
           const preprocessor = getPreprocessor(id);
-          preprocessor(context, segment);
+          preprocessor(context, segment, params);
         } catch (error) {
           console.error(
             `Preprocessor "${id}" failed on ${segmentType}-${field}:`,

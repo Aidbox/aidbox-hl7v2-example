@@ -12,9 +12,12 @@ export interface PreprocessorContext {
   parsedMessage: HL7v2Message;
 }
 
+export type PreprocessorParams = Record<string, unknown>;
+
 type SegmentPreprocessorFn = (
   context: PreprocessorContext,
   segment: HL7v2Segment,
+  params?: PreprocessorParams,
 ) => void;
 
 export const SEGMENT_PREPROCESSORS: Record<string, SegmentPreprocessorFn> = {
@@ -25,9 +28,28 @@ export const SEGMENT_PREPROCESSORS: Record<string, SegmentPreprocessorFn> = {
   "fallback-rxa3-from-msh7": fallbackRxa3FromMsh7,
   "normalize-rxa6-dose": normalizeRxa6Dose,
   "normalize-rxa9-nip001": normalizeRxa9Nip001,
+  "swap-if-reversed": swapIfReversed,
 };
 
 export type SegmentPreprocessorId = keyof typeof SEGMENT_PREPROCESSORS;
+
+/**
+ * A preprocessor entry in config is either a bare ID string (simple preprocessor,
+ * no params) or an object `{ id, params }` (parametrized preprocessor).
+ */
+export type PreprocessorEntry =
+  | SegmentPreprocessorId
+  | { id: SegmentPreprocessorId; params?: PreprocessorParams };
+
+/** Normalize an entry to `{ id, params }` form. */
+export function normalizeEntry(
+  entry: PreprocessorEntry,
+): { id: SegmentPreprocessorId; params?: PreprocessorParams } {
+  if (typeof entry === "string") {
+    return { id: entry };
+  }
+  return entry;
+}
 
 /** @throws Error if ID is not registered */
 export function getPreprocessor(id: string): SegmentPreprocessorFn {
@@ -539,5 +561,72 @@ function injectNip001SystemIntoCwe(fieldValue: FieldValue): FieldValue | undefin
   }
 
   cweComponents[3] = "NIP001";
+  return undefined;
+}
+
+/**
+ * Generic "swap two fields when reversed" preprocessor.
+ * Params: `{ a: <fieldIndex>, b: <fieldIndex> }` — swaps `a` and `b` in the
+ * segment when both are non-empty TS-like strings and lexicographic `a > b`.
+ * Lexicographic compare works for HL7v2 TS (YYYYMMDD[HHMMSS]) and numeric IDs.
+ * Use when a sender reverses start/end dates, violating a FHIR period constraint.
+ */
+function swapIfReversed(
+  _context: PreprocessorContext,
+  segment: HL7v2Segment,
+  params?: PreprocessorParams,
+): void {
+  const a = coerceFieldIndex(params?.a);
+  const b = coerceFieldIndex(params?.b);
+  if (a === undefined || b === undefined || a === b) {
+    console.warn(`[swap-if-reversed] Invalid params: a=${String(params?.a)}, b=${String(params?.b)}`);
+    return;
+  }
+
+  const valA = extractTsString(segment.fields[a]);
+  const valB = extractTsString(segment.fields[b]);
+  if (!valA || !valB || valA <= valB) {
+    return;
+  }
+
+  const origA = segment.fields[a];
+  const origB = segment.fields[b];
+  segment.fields[a] = origB as FieldValue;
+  segment.fields[b] = origA as FieldValue;
+  console.warn(
+    `[swap-if-reversed] ${segment.segment}-${a} (${valA}) > ${segment.segment}-${b} (${valB}) — swapped. Fix at the sender.`,
+  );
+}
+
+function coerceFieldIndex(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = parseInt(value, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+/** Extract a TS-like string from an IN1 date field (string or primitive component). */
+function extractTsString(fv: FieldValue | undefined): string | undefined {
+  if (fv === undefined || fv === null) {
+    return undefined;
+  }
+  if (typeof fv === "string") {
+    const trimmed = fv.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+  if (Array.isArray(fv)) {
+    return undefined;
+  }
+  const first = (fv as Record<number, FieldValue>)[1];
+  if (typeof first === "string") {
+    const trimmed = first.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
   return undefined;
 }

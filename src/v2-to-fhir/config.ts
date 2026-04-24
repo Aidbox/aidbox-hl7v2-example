@@ -2,26 +2,26 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   SEGMENT_PREPROCESSORS,
-  type SegmentPreprocessorId,
+  type PreprocessorEntry,
 } from "./preprocessor-registry";
 import type { IdentifierPriorityRule } from "./identity-system/patient-id";
 
 export type MessageTypeConfig = {
   preprocess?: {
     PV1?: {
-      "19"?: SegmentPreprocessorId[];
+      "19"?: PreprocessorEntry[];
     };
     PID?: {
-      "2"?: SegmentPreprocessorId[];
-      "3"?: SegmentPreprocessorId[];
+      "2"?: PreprocessorEntry[];
+      "3"?: PreprocessorEntry[];
     };
     ORC?: {
-      "3"?: SegmentPreprocessorId[];
+      "3"?: PreprocessorEntry[];
     };
     RXA?: {
-      "3"?: SegmentPreprocessorId[];
-      "6"?: SegmentPreprocessorId[];
-      "9"?: SegmentPreprocessorId[];
+      "3"?: PreprocessorEntry[];
+      "6"?: PreprocessorEntry[];
+      "9"?: PreprocessorEntry[];
     };
   };
   converter?: {
@@ -225,24 +225,43 @@ function validatePreprocessorIds(config: Hl7v2ToFhirConfig): void {
     )) {
       if (!segmentConfig) {continue;}
 
-      for (const [field, preprocessorIds] of Object.entries(segmentConfig)) {
+      for (const [field, entries] of Object.entries(segmentConfig)) {
         // Skip null/undefined values (optional fields)
-        if (preprocessorIds === null || preprocessorIds === undefined) {continue;}
+        if (entries === null || entries === undefined) {continue;}
 
         // Non-array values are invalid config
-        if (!Array.isArray(preprocessorIds)) {
+        if (!Array.isArray(entries)) {
           throw new Error(
             `Invalid preprocessor config for ${messageType}.preprocess.${segment}.${field}: ` +
-              `expected array of preprocessor IDs, got ${typeof preprocessorIds}`,
+              `expected array of entries, got ${typeof entries}`,
           );
         }
 
-        for (const id of preprocessorIds) {
+        for (const entry of entries) {
+          const id = typeof entry === "string" ? entry : entry?.id;
+          if (typeof id !== "string") {
+            throw new Error(
+              `Invalid preprocessor entry in ${messageType}.preprocess.${segment}.${field}: ` +
+                `expected string or { id, params? }, got ${JSON.stringify(entry)}`,
+            );
+          }
           if (!registeredIds.includes(id)) {
             throw new Error(
               `Unknown preprocessor ID "${id}" in config for ${messageType}.preprocess.${segment}.${field}. ` +
                 `Valid IDs: ${registeredIds.join(", ")}`,
             );
+          }
+          if (typeof entry !== "string" && entry.params !== undefined) {
+            if (
+              typeof entry.params !== "object" ||
+              entry.params === null ||
+              Array.isArray(entry.params)
+            ) {
+              throw new Error(
+                `Invalid params for preprocessor "${id}" in ${messageType}.preprocess.${segment}.${field}: ` +
+                  `expected object, got ${Array.isArray(entry.params) ? "array" : typeof entry.params}`,
+              );
+            }
           }
         }
       }

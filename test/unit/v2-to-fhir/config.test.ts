@@ -446,7 +446,7 @@ describe("hl7v2ToFhirConfig", () => {
       );
 
       expect(() => hl7v2ToFhirConfig()).toThrow(
-        /Invalid preprocessor config.*expected array of preprocessor IDs, got string/,
+        /Invalid preprocessor config.*expected array of entries, got string/,
       );
     });
 
@@ -465,7 +465,7 @@ describe("hl7v2ToFhirConfig", () => {
       );
 
       expect(() => hl7v2ToFhirConfig()).toThrow(
-        /Invalid preprocessor config.*expected array of preprocessor IDs, got number/,
+        /Invalid preprocessor config.*expected array of entries, got number/,
       );
     });
 
