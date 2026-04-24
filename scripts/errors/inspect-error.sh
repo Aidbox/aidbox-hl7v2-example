@@ -168,6 +168,23 @@ if [ "$STATUS" = "conversion_error" ] && printf '%s' "$ERROR_TEXT" | grep -q 'HT
               if [ -n "$CANDIDATES" ]; then
                 echo "  HL7v2 source candidates:"
                 printf '%s\n' "$CANDIDATES" | sed 's/^/    - /'
+                # Print current values for each candidate field so the fix is obvious
+                # without another hl7v2-inspect call.
+                FIELDS_TO_SHOW=$(printf '%s\n' "$CANDIDATES" | awk '{print $1}' | sort -u)
+                if [ -n "$FIELDS_TO_SHOW" ]; then
+                  echo "  Current values:"
+                  printf '%s\n' "$FIELDS_TO_SHOW" | while IFS= read -r FLD; do
+                    [ -z "$FLD" ] && continue
+                    DOTTED=$(printf '%s' "$FLD" | tr '-' '.')
+                    VAL_LINE=$("$PROJECT_DIR/scripts/hl7v2-inspect.sh" "$TMP" --field "$DOTTED" --values 2>/dev/null \
+                      | grep -E "^\s+$FLD:" | head -1 | sed 's/^[[:space:]]*//')
+                    if [ -n "$VAL_LINE" ]; then
+                      echo "    - $VAL_LINE"
+                    else
+                      echo "    - $FLD: (empty)"
+                    fi
+                  done
+                fi
               else
                 echo "  (no matching row in IG segment CSVs for path \`$PATH_TAIL\`)"
               fi
@@ -176,5 +193,27 @@ if [ "$STATUS" = "conversion_error" ] && printf '%s' "$ERROR_TEXT" | grep -q 'HT
         done
       fi
     fi
+  fi
+fi
+
+# For code_mapping_error: when any unmapped code is observation-code-loinc,
+# dump peer OBX rows (code + value + unit + ref range) so the reviewer can
+# pick the right LOINC from neighbors without another hl7v2-inspect call.
+if [ "$STATUS" = "code_mapping_error" ] && [ "$UNMAPPED" != "[]" ]; then
+  HAS_LOINC=$(printf '%s' "$JSON" | jq -r '
+    . as $root |
+    [.unmappedCodes[]? |
+      . as $u |
+      (($u.mappingTask.reference // "") | sub("^Task/"; "")) as $tid |
+      ([$root.entries[]? | select(.resourceType=="Task" and .id==$tid)] | first) as $t |
+      ($t.code.coding[0].code // "")
+    ] | any(. == "observation-code-loinc")
+  ' 2>/dev/null || echo "false")
+  if [ "$HAS_LOINC" = "true" ]; then
+    echo
+    echo "### Peer OBX context (pick LOINC from neighbors + units)"
+    echo '```'
+    "$PROJECT_DIR/scripts/hl7v2-inspect.sh" "$TMP" --segment OBX --values 2>&1 || true
+    echo '```'
   fi
 fi

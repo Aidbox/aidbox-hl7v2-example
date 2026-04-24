@@ -27,6 +27,8 @@ scripts/errors/inspect-error.sh <id>
 
 Emits: status, type, sender, full error, unmapped codes (if present), raw HL7v2 saved to `/tmp/hl7v2-<id>.hl7`, and an `hl7v2-inspect` overview for `parsing_error`/`conversion_error`. **You do not need to curl the resource yourself.**
 
+For `HTTP 422` conversion errors the script also prints the **current values** of each candidate HL7v2 field, so you typically don't need an additional `hl7v2-inspect --field` call. For `code_mapping_error` with any `observation-code-loinc` task, peer OBX rows are dumped automatically — use them (code, unit, ref range) to pick the right LOINC.
+
 Pick the playbook below by the `Status` line from Step 2.
 
 ## Step 3: Diagnose by status
@@ -70,11 +72,21 @@ Do **not** run `hl7v2-inspect --values` unless the mapping is ambiguous. Diagnos
 
 #### Adding a preprocessor (recipe)
 
-Three files, in order:
+If the preprocessor **already exists** (check `scripts/errors/list-preprocessors.sh`), wire it in with one command — edits both config files atomically:
+
+```sh
+bun scripts/errors/wire-preprocessor.ts <msgType> <SEG> <FIELD> <preprocessorId> [paramsJson]
+
+# Example:
+bun scripts/errors/wire-preprocessor.ts ADT-A01 IN1 12 swap-if-reversed '{"a":12,"b":13}'
+```
+
+Idempotent — re-running with the same args is a no-op. The script adds the missing slot to `MessageTypeConfig.preprocess.<SEG>` in `src/v2-to-fhir/config.ts` and the JSON entry under the matching message type.
+
+If a **new** preprocessor function is needed, write it manually first:
 
 1. **`src/v2-to-fhir/preprocessor-registry.ts`** — add key + function to `SEGMENT_PREPROCESSORS`. Function receives the whole segment; the field key in config is only a trigger guard (preprocessor runs when that field is present, except `fallback-rxa3-from-msh7` which runs even when absent).
-2. **`src/v2-to-fhir/config.ts`** — add the field slot to `MessageTypeConfig.preprocess.<SEG>` (e.g. `IN1?: { "12"?: SegmentPreprocessorId[] }`).
-3. **`config/hl7v2-to-fhir.json`** — add the entry under the relevant message type. Use the `Read` tool for this file — `bun -e` and `python3` fail on JSONC comments.
+2. Then run `wire-preprocessor.ts` to wire it in.
 
 ### `code_mapping_error` — local code has no FHIR mapping
 
@@ -115,25 +127,22 @@ Inspect output lists each unmapped code with `localCode`, `localDisplay`, `local
 
 ## Step 4: After a fix
 
-1. Verify locally:
-   ```sh
-   bun scripts/check-message-support.ts /tmp/hl7v2-<id>.hl7
-   ```
-   Only proceed when verdict is `supported` or `supported with caveats`.
-2. Mark for retry (app endpoint, not Aidbox):
-   ```sh
-   curl -sf -X POST 'http://localhost:3000/mark-for-retry/<id>'
-   ```
-3. Trigger reprocessing:
-   ```sh
-   curl -sf -X POST 'http://localhost:3000/process-incoming-messages'
-   ```
-4. Re-check status:
-   ```sh
-   SECRET=$(awk -F': ' '/^[[:space:]]*BOX_ROOT_CLIENT_SECRET:/ {print $2}' docker-compose.yaml)
-   curl -sf -u "root:$SECRET" 'http://localhost:8080/fhir/IncomingHL7v2Message/<id>?_elements=id,status,error' | jq
-   ```
-5. Report result.
+One command chains verify → mark-for-retry → reprocess → status:
+
+```sh
+scripts/errors/verify-retry.sh <id>
+```
+
+Aborts if `check-message-support.ts` verdict is not `supported`. Status is printed via `scripts/errors/status.sh` (id/status/type/error/sender).
+
+Use the individual commands below only when you need a partial step (e.g. verify without retrying):
+
+```sh
+bun scripts/check-message-support.ts /tmp/hl7v2-<id>.hl7
+curl -sf -X POST 'http://localhost:3000/mark-for-retry/<id>'
+curl -sf -X POST 'http://localhost:3000/process-incoming-messages'
+scripts/errors/status.sh <id>
+```
 
 ## Rules
 
@@ -142,3 +151,14 @@ Inspect output lists each unmapped code with `localCode`, `localDisplay`, `local
 - Skip `deferred` rows in the summary unless the user asks about them.
 - Don't hand-count pipes — the inspect script already ran `hl7v2-inspect.sh`. For deeper field lookup use `scripts/hl7v2-inspect.sh --field SEG.N`.
 - Use the `hl7v2-info` skill to verify HL7v2 spec compliance when needed.
+
+## Script reference
+
+| Script | Purpose |
+|---|---|
+| `scripts/errors/list-errors.sh` | Active errors + deferred reminder (markdown table). |
+| `scripts/errors/inspect-error.sh <id>` | Full diagnosis: resource fields, saved raw file, hl7v2-inspect overview, 422 candidates w/ values, peer OBX for LOINC tasks. |
+| `scripts/errors/status.sh <id>` | Concise `{id,status,type,error,sender}` for a single message. |
+| `scripts/errors/verify-retry.sh <id>` | After a fix: verify → mark-for-retry → reprocess → status. Aborts if not supported. |
+| `scripts/errors/list-preprocessors.sh` | Available preprocessors w/ JSDoc summary. |
+| `scripts/errors/wire-preprocessor.ts` | Wire a preprocessor into `config.ts` + `hl7v2-to-fhir.json` atomically. Idempotent. |
