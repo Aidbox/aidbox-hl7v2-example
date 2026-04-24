@@ -7,7 +7,7 @@
  *     --pdf-dir "tmp/HL7_Messaging_v25_PDF" \
  *     --version 2.5
  *
- * Output: data/hl7v2-reference/v{version}/ with 5 JSON files
+ * Output: specs/hl7v2-reference/v{version}/ with 5 JSON files
  *
  * Source files must be downloaded from:
  *   https://www.hl7.org/implement/standards/product_brief.cfm?product_id=185
@@ -31,7 +31,7 @@ const { values } = parseArgs({
 const xsdDir = values["xsd-dir"];
 const pdfDir = values["pdf-dir"];
 const version = values["version"]!;
-const outputDir = values["output-dir"] || `data/hl7v2-reference/v${version}`;
+const outputDir = values["output-dir"] || `specs/hl7v2-reference/v${version}`;
 
 if (!xsdDir || !pdfDir) {
   console.error("Usage: bun scripts/generate-hl7v2-reference.ts --xsd-dir <path> --pdf-dir <path> [--version <ver>] [--output-dir <path>]");

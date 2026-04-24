@@ -55,4 +55,4 @@ When looking up multiple types/fields, make **separate Bash tool calls** in the 
 ## Related
 
 - **`hl7v2-info`** skill — HL7v2 side of the same need (segments, fields, datatypes, tables, messages).
-- **`specs/v2-to-fhir-spec/mappings/`** — authoritative HL7v2↔FHIR field mappings (CSV). This skill covers the FHIR target shape only; use the mapping CSVs to determine which HL7v2 field maps to which FHIR element.
+- **`specs/v2-to-fhir/mappings/`** — authoritative HL7v2↔FHIR field mappings (CSV). This skill covers the FHIR target shape only; use the mapping CSVs to determine which HL7v2 field maps to which FHIR element.

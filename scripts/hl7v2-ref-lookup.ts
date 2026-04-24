@@ -20,7 +20,7 @@ interface ReferenceData {
 }
 
 async function loadReferenceData(version: string): Promise<ReferenceData> {
-  const dir = resolve(PROJECT_ROOT, "data/hl7v2-reference", `v${version}`);
+  const dir = resolve(PROJECT_ROOT, "specs/hl7v2-reference", `v${version}`);
   const load = async <T>(file: string): Promise<T> => {
     const f = Bun.file(resolve(dir, file));
     if (!(await f.exists())) {

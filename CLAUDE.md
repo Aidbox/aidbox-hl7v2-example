@@ -53,7 +53,7 @@ bun run truncate-aidbox           # Delete all project-created data from dev Aid
 bun scripts/truncate-aidbox.ts --yes  # Skip confirmation prompt (use -y for short form)
 bun run regenerate-fhir           # Regenerate src/fhir/ from FHIR R4 spec
 bun run regenerate-hl7v2          # Regenerate src/hl7v2/generated/
-bun run generate-hl7v2-reference  # Generate data/hl7v2-reference/ from XSD+PDF
+bun run generate-hl7v2-reference  # Generate specs/hl7v2-reference/ from XSD+PDF
 ```
 
 Integration tests use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
@@ -120,13 +120,13 @@ Three mandatory lookups before proposing, implementing, designing, or reviewing 
 
 For segment optionality, field semantics, message structure, datatype components, or processing rules — look them up via `hl7v2-info` first.
 
-**Never read `data/hl7v2-reference/` JSON files directly** — no `cat`, `python`, `Read`, `Grep`, or any other tool. Always go through the `hl7v2-info` skill (`bun scripts/hl7v2-ref-lookup.ts`), which parses and formats the data correctly. Applies to all agents, including sub-agents spawned for review or exploration.
+**Never read `specs/hl7v2-reference/` JSON files directly** — no `cat`, `python`, `Read`, `Grep`, or any other tool. Always go through the `hl7v2-info` skill (`bun scripts/hl7v2-ref-lookup.ts`), which parses and formats the data correctly. Applies to all agents, including sub-agents spawned for review or exploration.
 
 **Spec completeness rule:** Handle ALL components/fields defined in the spec — not just those present in current sample data or example messages. Never skip a field solely because example senders don't populate it.
 
 ### 2. Check the V2-to-FHIR IG mappings
 
-For any HL7v2→FHIR conversion, consult the IG mapping CSVs in `specs/v2-to-fhir-spec/mappings/`:
+For any HL7v2→FHIR conversion, consult the IG mapping CSVs in `specs/v2-to-fhir/mappings/`:
 
 - **Message mappings** (`mappings/messages/`) — which FHIR resources each message type produces
 - **Segment mappings** (`mappings/segments/`) — field-level mappings
