@@ -1,6 +1,5 @@
 /**
- * Warm-paper app shell. Wraps page bodies in a sidebar + main column
- * that matches `ai/tickets/ui-refactoring/hl7v2-v2/project/HL7v2 Design.html`.
+ * Warm-paper app shell. Wraps page bodies in a sidebar + main column.
  *
  * `renderShell` is the replacement for the legacy `renderLayout`; during the
  * migration both coexist. `renderLegacyBody` frames a Tailwind body inside a

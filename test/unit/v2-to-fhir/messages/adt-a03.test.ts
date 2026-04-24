@@ -121,7 +121,7 @@ describe("convertADT_A03 - discharge converter", () => {
   test("smoke: ADT_A03 discharge from example message", async () => {
     const examplePath = join(
       __dirname,
-      "../../../../ai/tickets/converter-skill-tickets/adt-a03-discharge/examples/example-01.hl7",
+      "../../../../test/fixtures/hl7v2/adt-a03/example-01.hl7",
     );
     const messageText = readFileSync(examplePath, "utf-8");
 

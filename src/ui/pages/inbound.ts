@@ -1,8 +1,7 @@
 /**
  * Inbound Messages — list pane + type chips.
  *
- * Matches `InboundA` in `ai/tickets/ui-refactoring/hl7v2-v2/project/design/page-inbound.jsx`:
- * hero + type-chip row + two-pane (list card + detail card). The detail
+ * Hero + type-chip row + two-pane (list card + detail card). The detail
  * pane's 4 tabs (Structured / Raw / FHIR / Timeline) land in Task 9;
  * this task ships a minimal detail scaffold that shows message header
  * metadata and a placeholder tab area.

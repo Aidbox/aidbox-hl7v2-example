@@ -1,5 +1,4 @@
-// Warm-paper design system stylesheet. Source of truth:
-// `ai/tickets/ui-refactoring/hl7v2-v2/project/HL7v2 Design.html` (lines 10–144).
+// Warm-paper design system stylesheet.
 //
 // Two exports feed the shell head:
 //   - DESIGN_SYSTEM_CSS: plain <style> — :root palette, body/reset base, and
@@ -24,7 +23,7 @@
 // object. v4 drops the JS config entirely — configuration is CSS-first via
 // `@theme`, and safelisting is CSS-first via `@source inline(...)`. There
 // is no `tailwind.config.js` file anymore; IntelliSense reads the `@theme`
-// block. See `docs/developer-guide/adr/002-tailwind-reconciliation.md`.
+// block.
 
 export const DESIGN_SYSTEM_CSS = `
   :root {

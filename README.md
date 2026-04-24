@@ -60,7 +60,6 @@ bun run dev
 ## Documentation
 
 - **[User Guide](docs/user-guide/README.md)** — Setup, configuration, operations, troubleshooting
-- **[Developer Guide](docs/developer-guide/README.md)** — Architecture, extending the system, implementation details
 
 ## AI Agent Skills
 

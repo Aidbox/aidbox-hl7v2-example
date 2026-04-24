@@ -15,7 +15,7 @@ This file is the project memory — checked into the repo, shared across agents 
 
 Do NOT use the auto-memory file (MEMORY.md) for this project.
 
-Architecture, workflows, routes, and directory structure are **not** kept here — they go stale. Look them up live in the code or in `docs/developer-guide/`.
+Architecture, workflows, routes, and directory structure are **not** kept here — they go stale. Look them up live in the code.
 
 # Aidbox HL7 Integration
 
@@ -63,8 +63,6 @@ Integration tests use a separate test Aidbox on port 8888 via `docker-compose.te
 2. **Smoke tests are tagged by name prefix.** A test (or `describe`) whose name starts with `smoke: ` is included in `test:smoke` via `--test-name-pattern "smoke: "`. Promote by prepending the prefix; demote by removing it. Keep the smoke set small and focused on one happy-path per major flow.
 3. **Don't manually run `docker compose` for integration tests.** The test commands auto-start containers, wait for health, and run migrations.
 
-Read `docs/developer-guide/how-to/development-guide.md` for test infrastructure, writing new tests, codegen, and debugging.
-
 ## In-process polling workers
 
 `bun run dev` boots three polling services inside the web server (`src/workers.ts`): inbound HL7v2 processor, Account BAR builder, BAR message sender. Messages flow through the pipeline without manual "Process All" / "Build BAR" / "Send Pending" clicks.
@@ -89,7 +87,7 @@ The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) ar
 
 ## IncomingHL7v2Message statuses
 
-Referenced constantly when diagnosing errors. Full details: `docs/developer-guide/error-statuses.md`.
+Referenced constantly when diagnosing errors.
 
 - `received` — unprocessed
 - `processed` — converted + submitted to Aidbox successfully
@@ -104,33 +102,9 @@ Referenced constantly when diagnosing errors. Full details: `docs/developer-guid
 
 If `profileConformance.implementationGuides` enables US Core (`hl7.fhir.us.core`), PID-10/PID-22 mapping adds `us-core-race` / `us-core-ethnicity` on Patient. Aidbox must have the US Core package loaded and CodeSystem `urn:oid:2.16.840.1.113883.6.238` available (seeded in `init-bundle.json`), or Patient writes fail with terminology-binding errors.
 
-## Documentation
-
-For anything beyond this file, read `docs/developer-guide/`:
-
-| When you need                                                                            | Read |
-|------------------------------------------------------------------------------------------|------|
-| System diagrams, polling pattern, component overview                                     | `architecture.md` |
-| FHIR→HL7v2 field mappings, segment builders                                              | `bar-generation.md` |
-| HL7v2→FHIR conversion, ORU processing                                                    | `oru-processing.md` |
-| Preprocessor architecture, registry, and config                                          | `preprocessors.md` |
-| ConceptMap workflow, Task lifecycle                                                      | `code-mapping.md` |
-| Error statuses, resolution flows, sending auto-retry                                     | `error-statuses.md` |
-| MLLP protocol, ACK generation                                                            | `mllp-server.md` |
-| HL7v2 builders, field naming (`$N_fieldName`)                                            | `hl7v2-module.md` |
-| HL7 reference JSON generation (XSD+PDF → data/hl7v2-reference)                           | `how-to/hl7v2-reference-generation.md` |
-| Batch-importing HL7v2 zips and triaging errors                                           | `how-to/batch-import.md` |
-| Testing, integration infra, codegen/debug workflows                                      | `how-to/development-guide.md` |
-| UI architecture, shell composition, htmx/Alpine patterns                                 | `ui-architecture.md` |
-| Design tokens, class vocabulary, color palette                                           | `ui-design-tokens.md` |
-| End-to-end recipe for adding a new UI page                                               | `how-to/add-ui-page.md` |
-| VXU ORDER OBX hard error decision                                                        | `adr/001-unknown-order-obx-hard-error.md` |
-
 ## Code Style
 
 IMPORTANT: Read `.claude/code-style.md` before writing or modifying code.
-
-UI conventions: see `docs/developer-guide/ui-architecture.md`.
 
 Tailwind v4 gotcha: Tailwind utilities are emitted inside cascade layers, while `DESIGN_SYSTEM_CSS` is plain unlayered CSS. Broad unlayered resets override utilities even when the utility selector looks more specific; e.g. `a { color: inherit; }` breaks legacy anchor tabs using `text-white` / `text-gray-*`. Scope resets to unclassed elements (`a:not([class])`) or put them in Tailwind's base layer.
 

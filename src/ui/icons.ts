@@ -1,5 +1,4 @@
-// Icon sprite + renderer. Source of truth:
-// `ai/tickets/ui-refactoring/hl7v2-v2/project/HL7v2 Design.html` (lines 149–171).
+// Icon sprite + renderer.
 // The shell renders ICON_SPRITE_SVG once per page; individual icons reference
 // symbols by id via <use href="#i-{name}"/>.
 //

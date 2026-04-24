@@ -1,6 +1,5 @@
 /**
- * Dashboard — demo conductor. Matches `DashboardB` in
- * `ai/tickets/ui-refactoring/hl7v2-v2/project/design/page-dashboard.jsx`.
+ * Dashboard — demo conductor.
  *
  * Sections: hero → demo conductor card (4-step stepper + "Run demo now")
  * → stats strip (4 counts + worker health dots) → live ticker. No pause
