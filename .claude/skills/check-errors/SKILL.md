@@ -34,42 +34,72 @@ Pick the playbook below by the `Status` line from Step 2.
 ### `parsing_error` — sender sent malformed HL7v2
 
 1. From the inspect overview, identify what's wrong: missing MSH, invalid encoding chars (MSH-1/2), truncated segments, wrong line endings, embedded binary.
-2. **No code/config fix.** Sender must correct the message format.
-3. Offer to defer if it needs sender coordination: `POST http://localhost:3000/defer/<id>`.
-4. Only mark for retry if the sender has already fixed and will resend with the same ID.
+2. **No code/config fix.** Sender must correct the message format. Defer = resolved on our side — do it:
+   ```sh
+   curl -sf -X POST 'http://localhost:3000/defer/<id>'
+   ```
+3. Only mark for retry if the sender has already fixed and will resend with the same ID.
 
 ### `conversion_error` — parsed OK, missing/invalid data for FHIR
 
 1. Read the error field. Common cases:
+   - **`HTTP 422` prefix:** Aidbox rejected the FHIR bundle — treat as an Aidbox validation failure (see sub-case below).
    - **PV1-19 missing/empty:** check if PID-18 (account number) can be a fallback
    - **PV1 required but absent:** check config for this message type
    - **PV1-19 authority conflict:** check CX.4/9/10 values
    - **PID missing:** sender issue
    - **Unsupported message type:** check MSH-9
+
+#### Sub-case: `conversion_error` with `HTTP 422` (Aidbox FHIR validation rejection)
+
+Do **not** run `hl7v2-inspect --values` unless the mapping is ambiguous. Diagnose from the OperationOutcome alone:
+
+1. Parse `expression` → FHIR resource + field (e.g. `Coverage.period` → `per-1`).
+2. Look up the V2-to-FHIR IG mapping CSV in `specs/v2-to-fhir/mappings/segments/` → identify the HL7v2 source segment/field (e.g. `Coverage.period.start` ← IN1-12, `.end` ← IN1-13).
+3. State the fix directly from the constraint + field identity. Only run `hl7v2-inspect --values` when multiple HL7v2 fields feed the same FHIR field and the specific trigger is unclear.
+
 2. Suggest fixes in this order:
-   - Best: sender populates the missing field — explain what's needed
+   - Best: sender populates the missing field — explain what's needed; defer = park it out of active queue pending sender action:
+     ```sh
+     curl -sf -X POST 'http://localhost:3000/defer/<id>'
+     ```
    - Workaround: add a preprocessor in `src/v2-to-fhir/preprocessor-registry.ts` + `config/hl7v2-to-fhir.json`
    - Last resort: relax config (make a segment optional) — warn about the tradeoff
-3. If no clear fix (needs sender coordination, client decision, spec clarification) → offer to defer.
+3. If no clear fix (needs client decision, spec clarification) → defer as resolution (same command above).
 4. **Wait for approval before implementing.** Then verify with `bun scripts/check-message-support.ts /tmp/hl7v2-<id>.hl7` before retrying.
+
+#### Adding a preprocessor (recipe)
+
+Three files, in order:
+
+1. **`src/v2-to-fhir/preprocessor-registry.ts`** — add key + function to `SEGMENT_PREPROCESSORS`. Function receives the whole segment; the field key in config is only a trigger guard (preprocessor runs when that field is present, except `fallback-rxa3-from-msh7` which runs even when absent).
+2. **`src/v2-to-fhir/config.ts`** — add the field slot to `MessageTypeConfig.preprocess.<SEG>` (e.g. `IN1?: { "12"?: SegmentPreprocessorId[] }`).
+3. **`config/hl7v2-to-fhir.json`** — add the entry under the relevant message type. Use the `Read` tool for this file — `bun -e` and `python3` fail on JSONC comments.
 
 ### `code_mapping_error` — local code has no FHIR mapping
 
-Inspect output lists each unmapped code with `mappingType`.
+Inspect output lists each unmapped code with `localCode`, `localDisplay`, `localSystem`, `mappingType`, and `taskId`. Use the printed `taskId` for the resolve call.
 
-1. For `observation-code-loinc`, search LOINC by display text:
+1. For `observation-code-loinc`, search LOINC via Aidbox's ValueSet/$expand (the `/api/terminology/*` path does not exist):
    ```sh
    SECRET=$(awk -F': ' '/^[[:space:]]*BOX_ROOT_CLIENT_SECRET:/ {print $2}' docker-compose.yaml)
-   curl -sf -u "root:$SECRET" 'http://localhost:8080/api/terminology/loinc?q=<term>'
+   TERM=$(printf '%s' '<term>' | jq -sRr @uri)
+   curl -sf -u "root:$SECRET" "http://localhost:8080/fhir/ValueSet/\$expand?url=http://loinc.org/vs&filter=${TERM}&count=10" \
+     | jq '.expansion.contains[] | {code, display}'
    ```
+   If the LOINC package is not loaded locally, `.expansion.contains` will be empty — fall back to domain knowledge and cite the LOINC concept by name (e.g. peer OBX codes in the same message, unit of measure, and specimen type).
 2. For `patient-class`, `obr-status`, `obx-status`, etc.: look up valid target values in `src/code-mapping/mapping-types.ts`.
 3. Present suggestions with confidence: "High: `2823-3` → LOINC `2823-3` (Potassium)" vs "Needs review: `GLU` → `2345-7` (Glucose) — verify with lab".
-4. If ambiguous / needs domain expertise → offer to defer.
-5. After approval, resolve via the app API:
+4. If ambiguous / needs domain expertise → defer = park it out of active queue pending sender action:
    ```sh
-   curl -sf -X POST 'http://localhost:3000/api/mapping/tasks/<taskId>/resolve' \
-     -H 'Content-Type: application/json' \
-     -d '{"code":"<target>","display":"<target display>"}'
+   curl -sf -X POST 'http://localhost:3000/defer/<id>'
+   ```
+5. After approval, resolve via the app API. Endpoint expects **form-urlencoded** body with `resolvedCode` and `resolvedDisplay` (not JSON). A `302` redirect to `/unmapped-codes?saved=...&replayed=N` signals success:
+   ```sh
+   curl -s -X POST 'http://localhost:3000/api/mapping/tasks/<taskId>/resolve' \
+     --data-urlencode 'resolvedCode=<target>' \
+     --data-urlencode 'resolvedDisplay=<target display>' \
+     -D - -o /dev/null
    ```
    Message is auto-requeued.
 
@@ -109,7 +139,6 @@ Inspect output lists each unmapped code with `mappingType`.
 
 - Summary first, then one error at a time.
 - Never auto-fix without approval.
-- Skip `deferred` unless the user asks about them.
-- To defer: `curl -sf -X POST 'http://localhost:3000/defer/<id>'`.
+- Skip `deferred` rows in the summary unless the user asks about them.
 - Don't hand-count pipes — the inspect script already ran `hl7v2-inspect.sh`. For deeper field lookup use `scripts/hl7v2-inspect.sh --field SEG.N`.
 - Use the `hl7v2-info` skill to verify HL7v2 spec compliance when needed.

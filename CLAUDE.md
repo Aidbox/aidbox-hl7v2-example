@@ -31,7 +31,7 @@ Use `bun`/`bun install`/`bun run` instead of `node`/`npm`/`yarn`/`pnpm`. Unit te
 
 ## Testing rules
 
-1. **Run `bun test:local` after any change.** Unit tests + the smoke subset of integration tests (~10s). CI runs the full `bun test:all`; don't also run it locally unless debugging a CI-only failure.
+1. **Run `bun test:local` only before committing** — not after every change. Use `bun scripts/check-message-support.ts` or targeted `bun test <file>` to verify a specific fix. CI runs the full `bun test:all`; don't also run it locally unless debugging a CI-only failure.
 2. **Smoke tests are tagged by name prefix.** A test (or `describe`) whose name starts with `smoke: ` is included in `test:smoke` via `--test-name-pattern "smoke: "`. Promote by prepending the prefix; demote by removing it. Keep the smoke set small and focused on one happy-path per major flow.
 3. **Don't manually run `docker compose` for integration tests.** The test commands auto-start containers, wait for health, and run migrations. Integration tests use a separate test Aidbox on port 8888 via `docker-compose.test.yaml`.
 
@@ -50,6 +50,8 @@ If `profileConformance.implementationGuides` enables US Core (`hl7.fhir.us.core`
 ## Code Style
 
 IMPORTANT: Read `.claude/code-style.md` before writing or modifying code.
+
+**Prefer scripts over raw file reads:** Use project scripts for inspection and diagnosis — `scripts/errors/inspect-error.sh`, `scripts/hl7v2-inspect.sh`, `bun scripts/check-message-support.ts`, `bun scripts/hl7v2-ref-lookup.ts` — before reaching for `Read`/`Grep` on source files. Read source files only when you need the code pattern itself (e.g. to write a new function that matches existing style). When you do read multiple source files, fire them in parallel.
 
 Tailwind v4 gotcha: Tailwind utilities are emitted inside cascade layers, while `DESIGN_SYSTEM_CSS` is plain unlayered CSS. Broad unlayered resets override utilities even when the utility selector looks more specific; e.g. `a { color: inherit; }` breaks legacy anchor tabs using `text-white` / `text-gray-*`. Scope resets to unclassed elements (`a:not([class])`) or put them in Tailwind's base layer.
 

@@ -47,8 +47,12 @@ UNMAPPED=$(printf '%s' "$JSON" | jq -c '.unmappedCodes // []')
 if [ "$UNMAPPED" != "[]" ]; then
   echo "### Unmapped codes"
   printf '%s' "$JSON" | jq -r '
+    . as $root |
     .unmappedCodes[]? |
-    "- code=`\(.code // "")` system=`\(.system // "")` display=`\(.display // "")` mappingType=`\(.mappingType // "")`"
+    . as $u |
+    ($u.mappingTask.reference // "" | sub("^Task/"; "")) as $taskId |
+    ([$root.entries[]? | select(.resourceType == "Task" and .id == $taskId)] | first) as $task |
+    "- localCode=`\($u.localCode // "")` system=`\($u.localSystem // "")` display=`\($u.localDisplay // "")` mappingType=`\($task.code.coding[0].code // "")` taskId=`\($taskId)`"
   '
   echo
 fi
