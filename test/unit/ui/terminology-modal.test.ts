@@ -86,9 +86,18 @@ describe("renderModalPartial (add mode)", () => {
     expect(html).toContain("No ConceptMaps exist yet");
   });
 
-  it("form uses Alpine `:hx-post` to read picked.cmId at submit time", () => {
+  it("form rewrites hx-post path with picked.cmId via htmx:configRequest listener", () => {
+    // htmx 2.x caches hx-post in internal data at form-process time, so a
+    // reactive `:hx-post` attribute won't actually update the request URL.
+    // The modal holds a placeholder hx-post and mutates event.detail.path
+    // from an Alpine-scoped htmx:configRequest listener instead.
     const html = renderModalPartial({ mode: "add", options });
-    expect(html).toContain(":hx-post=\"'/api/concept-maps/' + encodeURIComponent(picked.cmId) + '/entries'\"");
+    expect(html).toContain('hx-post="/api/concept-maps/__pending__/entries"');
+    expect(html).toContain("addEventListener('htmx:configRequest'");
+    expect(html).toContain("e.target !== $el");
+    expect(html).toContain(
+      "e.detail.path = '/api/concept-maps/' + encodeURIComponent(picked.cmId) + '/entries'",
+    );
   });
 
   it("localSystem + localCode inputs are writable (no readonly)", () => {

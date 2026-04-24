@@ -946,9 +946,12 @@ interface ModalProps {
  * Render the Add/Edit modal.
  *
  * Contract:
- *  - Add mode: ConceptMap target picker at top, blank entry fields,
- *    `:hx-post` binding on the form element so htmx reads the
- *    Alpine-computed URL at submit time.
+ *  - Add mode: ConceptMap target picker at top, blank entry fields.
+ *    hx-post holds a placeholder URL; an `htmx:configRequest` listener
+ *    rewrites `event.detail.path` with the Alpine-chosen `picked.cmId`
+ *    at submit time. (A reactive `:hx-post` won't do — htmx 2.x caches
+ *    the path in its internal element data at form-processing time and
+ *    ignores later attribute mutations.)
  *  - Edit mode: target picker hidden; hx-post URL is known at render time.
  *  - Alpine state (`picked`) carries the chosen target + all form fields.
  *  - Submit is disabled until the required-field gate passes.
@@ -980,7 +983,8 @@ export function renderModalPartial(props: ModalProps): string {
   const gate = mode === "add" ? gateAdd : gateEdit;
 
   // Form hx-post. Edit is static (URL-safe cmId + code known at render time);
-  // Add is dynamic via Alpine `:hx-post` reading picked.cmId at submit time.
+  // Add uses a placeholder URL that's rewritten at submit time by an
+  // htmx:configRequest listener (see form below).
   const staticEditAction =
     mode === "edit" && row
       ? `/api/concept-maps/${encodeURIComponent(row.conceptMapId)}/entries/${encodeURIComponent(row.localCode)}`
@@ -1048,7 +1052,12 @@ export function renderModalPartial(props: ModalProps): string {
              would re-root \$root for Cancel/Close buttons inside to the
              form element; hitting Cancel would remove() just the form and
              leave the modal header + card shell visible. -->
-        <form ${mode === "edit" ? `hx-post="${escapeHtml(staticEditAction)}"` : `:hx-post="'/api/concept-maps/' + encodeURIComponent(picked.cmId) + '/entries'"`}
+        <form ${
+          mode === "edit"
+            ? `hx-post="${escapeHtml(staticEditAction)}"`
+            : `hx-post="/api/concept-maps/__pending__/entries"
+               x-init="$el.addEventListener('htmx:configRequest', (e) => { if (e.target !== $el) return; e.detail.path = '/api/concept-maps/' + encodeURIComponent(picked.cmId) + '/entries' })"`
+        }
               hx-target="#terminology-table"
               hx-swap="outerHTML"
               hx-include="this"
