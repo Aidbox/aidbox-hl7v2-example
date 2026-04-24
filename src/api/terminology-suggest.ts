@@ -36,10 +36,15 @@ export async function suggestCodes(
   display: string,
   _field?: string,
   limit = 3,
+  // Injectable for tests — defaults to the real searchLoincCodes.
+  // Exists because `mock.module` on terminology-api is process-wide in
+  // Bun and leaks across test files under Bun 1.3.12 on CI (see
+  // test/unit/code-mapping/terminology-api.test.ts for details).
+  searchFn: typeof searchLoincCodes = searchLoincCodes,
 ): Promise<SuggestedCode[]> {
   if (!display.trim()) return [];
   try {
-    const results = await searchLoincCodes(display);
+    const results = await searchFn(display);
     return results
       .map((r) => ({
         code: r.code,
