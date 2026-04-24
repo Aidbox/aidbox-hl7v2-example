@@ -27,7 +27,6 @@
  */
 
 import type { ConceptMap } from "../../fhir/hl7-fhir-r4-core/ConceptMap";
-import type { IncomingHL7v2Message } from "../../fhir/aidbox-hl7v2-custom";
 import { aidboxFetch, type Bundle } from "../../aidbox";
 import { escapeHtml } from "../../utils/html";
 import { renderShell } from "../shell";
@@ -1049,7 +1048,7 @@ export function renderModalPartial(props: ModalProps): string {
         </div>
 
         <!-- Form — do NOT add a nested x-data here. An empty nested scope
-             would re-root \$root for Cancel/Close buttons inside to the
+             would re-root $root for Cancel/Close buttons inside to the
              form element; hitting Cancel would remove() just the form and
              leave the modal header + card shell visible. -->
         <form ${

@@ -4,7 +4,7 @@
  */
 
 import type { XTN } from "../../hl7v2/generated/fields";
-import type { ContactPoint, Extension, Period } from "../../fhir/hl7-fhir-r4-core";
+import type { ContactPoint, Extension } from "../../fhir/hl7-fhir-r4-core";
 
 // ============================================================================
 // Telecommunication Equipment Type Mapping (HL7 Table 0202)

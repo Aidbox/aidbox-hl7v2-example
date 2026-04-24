@@ -45,7 +45,8 @@ function adaptStatusForMedicationRequest(status: string): MedicationRequestStatu
  * Build unit Quantity from a CE field (code system for units).
  * Uses code from CE.1 and display from CE.2, system from CE.3.
  */
-function buildUnitQuantity(value: number, unitCE: { $1_code?: string; $2_text?: string; $3_system?: string }): Quantity {
+type UnitCE = { $1_code?: string; $2_text?: string; $3_system?: string };
+function buildUnitQuantity(value: number, unitCE: UnitCE): Quantity {
   return {
     value,
     ...(unitCE.$1_code && { code: unitCE.$1_code, unit: unitCE.$1_code }),

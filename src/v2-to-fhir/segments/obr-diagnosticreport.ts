@@ -3,13 +3,11 @@
  * Based on: HL7 v2.5.1 OBR segment specification
  */
 
-import type { OBR, CE, EI, NDL, XCN } from "../../hl7v2/generated/fields";
+import type { OBR, CE, EI } from "../../hl7v2/generated/fields";
 import type {
   DiagnosticReport,
   CodeableConcept,
-  Reference,
 } from "../../fhir/hl7-fhir-r4-core";
-import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { normalizeSystem } from "../code-mapping/coding-systems";
 import type { MappingError } from "../../code-mapping/mapping-errors";
 import {

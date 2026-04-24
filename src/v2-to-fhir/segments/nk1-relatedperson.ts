@@ -3,7 +3,7 @@
  * Based on: HL7 Segment - FHIR R4_ NK1[RelatedPerson] - Sheet1.csv
  */
 
-import type { NK1, CE, CX, XPN, XAD, XTN } from "../../hl7v2/generated/fields";
+import type { NK1 } from "../../hl7v2/generated/fields";
 import type {
   RelatedPerson,
   RelatedPersonCommunication,

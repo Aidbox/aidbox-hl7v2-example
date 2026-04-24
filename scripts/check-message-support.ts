@@ -28,6 +28,7 @@ if (!path) {
 const rawFile = await Bun.file(path).text();
 // Strip MLLP framing bytes if present and normalize line endings.
 const raw = rawFile
+  // eslint-disable-next-line no-control-regex -- intentional: VT/FS/CR/LF are MLLP framing
   .replace(/\x0b|\x1c|\x0d\x0a|\r|\n/g, (m) => (m === "\x0b" || m === "\x1c" ? "" : "\r"));
 
 let parsed;

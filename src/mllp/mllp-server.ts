@@ -202,7 +202,7 @@ export interface MLLPServerOptions {
 /**
  * Create MLLP TCP server
  */
-export function createMLLPServer(port = 2575, options: MLLPServerOptions = {}): net.Server {
+export function createMLLPServer(_port = 2575, options: MLLPServerOptions = {}): net.Server {
   // Overriding is used for testing
   const storeFn = options.storeMessageFn ?? storeMessage;
 

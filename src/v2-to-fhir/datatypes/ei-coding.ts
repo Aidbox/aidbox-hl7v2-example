@@ -1,5 +1,5 @@
 import type { EI } from "../../hl7v2/generated/fields";
-import type { Coding, Identifier, Reference, CodeableConcept } from "../../fhir/hl7-fhir-r4-core";
+import type { Coding, Identifier, Reference } from "../../fhir/hl7-fhir-r4-core";
 
 /**
  * Converts EI (Entity Identifier) to FHIR Coding.

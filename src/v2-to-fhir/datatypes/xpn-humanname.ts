@@ -3,7 +3,7 @@
  * Based on: HL7 Data Type - FHIR R4_ XPN[HumanName]
  */
 
-import type { XPN, FN, DR } from "../../hl7v2/generated/fields";
+import type { XPN, DR } from "../../hl7v2/generated/fields";
 import type { HumanName, Period, Extension } from "../../fhir/hl7-fhir-r4-core";
 
 // ============================================================================

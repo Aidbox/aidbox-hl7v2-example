@@ -6,6 +6,7 @@ PID_FILE="$PROJECT_DIR/logs/server.pid"
 LOG_FILE="$PROJECT_DIR/logs/server.log"
 
 # Create logs directory if it doesn't exist
+rm -rf "$PROJECT_DIR/logs"
 mkdir -p "$PROJECT_DIR/logs"
 
 # Stop existing server if running

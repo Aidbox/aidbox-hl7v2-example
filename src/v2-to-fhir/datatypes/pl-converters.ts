@@ -1,6 +1,6 @@
 import type { PL, HD } from "../../hl7v2/generated/fields";
 import type { Identifier, CodeableConcept, Reference } from "../../fhir/hl7-fhir-r4-core";
-import { convertHDToIdentifiers, convertHDToOrganization } from "./hd-converters";
+import { convertHDToIdentifiers } from "./hd-converters";
 
 const LOCATION_PHYSICAL_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/location-physical-type";
 

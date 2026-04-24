@@ -7,6 +7,7 @@ import {
   getRetryCount,
 } from "./bar/account-builder-service";
 import type { IncomingHL7v2Message } from "./fhir/aidbox-hl7v2-custom";
+import type { Account } from "./fhir/hl7-fhir-r4-core/Account";
 
 // Handler Functions from UI Modules
 import { handleAccountsPage, createAccount } from "./ui/pages/accounts";
@@ -289,9 +290,8 @@ Bun.serve({
     // =========================================================================
     "/send-messages": {
       POST: async () => {
-        let sentCount = 0;
         while (await processNextMessage()) {
-          sentCount++;
+          // drain the queue
         }
         return new Response(null, {
           status: 302,
@@ -330,7 +330,7 @@ Bun.serve({
             } else {
               for (const account of errorAccounts) {
                 if (account?.id && "resourceType" in account) {
-                  const currentRetryCount = getRetryCount(account as any);
+                  const currentRetryCount = getRetryCount(account as Account);
                   const newRetryCount = currentRetryCount + 1;
 
                   if (newRetryCount >= MAX_RETRIES) {

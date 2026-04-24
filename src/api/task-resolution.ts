@@ -11,7 +11,6 @@ import {
   aidboxFetch,
   getResourceWithETag,
   NotFoundError,
-  type Bundle,
 } from "../aidbox";
 import {
   generateConceptMapId,

@@ -1,5 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { parseMessage } from "@atomic-ehr/hl7v2";
+import { tmpdir } from "node:os";
+import { writeFileSync, unlinkSync } from "node:fs";
 import { preprocessMessage } from "../../../src/v2-to-fhir/preprocessor";
 import type { Hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
 import { clearConfigCache, hl7v2ToFhirConfig } from "../../../src/v2-to-fhir/config";
@@ -317,8 +319,7 @@ describe("preprocessMessage", () => {
     });
 
     test("unknown PID preprocessor ID throws at config load time", () => {
-      const tmpDir = require("os").tmpdir();
-      const tmpPath = `${tmpDir}/hl7v2-test-unknown-pid-preproc-${Date.now()}.json`;
+      const tmpPath = `${tmpdir()}/hl7v2-test-unknown-pid-preproc-${Date.now()}.json`;
 
       const invalidConfig = {
         identitySystem: { patient: { rules: [{ assigner: "UNIPAT" }] } },
@@ -331,7 +332,7 @@ describe("preprocessMessage", () => {
         },
       };
 
-      require("fs").writeFileSync(tmpPath, JSON.stringify(invalidConfig));
+      writeFileSync(tmpPath, JSON.stringify(invalidConfig));
       process.env.HL7V2_TO_FHIR_CONFIG = tmpPath;
       clearConfigCache();
 
@@ -340,7 +341,7 @@ describe("preprocessMessage", () => {
       } finally {
         delete process.env.HL7V2_TO_FHIR_CONFIG;
         clearConfigCache();
-        require("fs").unlinkSync(tmpPath);
+        unlinkSync(tmpPath);
       }
     });
   });

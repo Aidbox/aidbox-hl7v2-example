@@ -64,14 +64,14 @@ function stripPageNoise(text: string): string {
 // 2. "OBX-1 Set ID - OBX (SI) 00569" (no section number)
 // 3. "2.12.1.1 BHS-1 Batch Field Separator (ST)" (no item number)
 // Captures: segment, position, field name, dataType, item number (optional)
-const FIELD_HEADER_RE = /^(?:\d+[A-Z]?[\.\d]*\s+)?(\w{2,3})-(\d+)\s+(.+?)\s+\((\w{2,7})\)(?:\s+(\d{5}))?\s*$/;
+const FIELD_HEADER_RE = /^(?:\d+[A-Z]?[.\d]*\s+)?(\w{2,3})-(\d+)\s+(.+?)\s+\((\w{2,7})\)(?:\s+(\d{5}))?\s*$/;
 
 // Matches field headers where the datatype is on a SUBSEQUENT line:
 // "RXV-1 Set ID"            ← bare header (no datatype)
 // "OM1-7 Other Service/..."  ← name may continue on next line(s)
 // Then a later line has "(SI) 03318" or "(CWE) 00592"
 // Captures: segment, position, field name start
-const BARE_FIELD_HEADER_RE = /^(?:\d+[A-Z]?[\.\d]*\s+)?(\w{2,3})-(\d+)\s+(.+?)\s*$/;
+const BARE_FIELD_HEADER_RE = /^(?:\d+[A-Z]?[.\d]*\s+)?(\w{2,3})-(\d+)\s+(.+?)\s*$/;
 
 // Matches a standalone "(DT) NNNNN" or "(DT)" line (datatype + optional item)
 const DEFERRED_DT_RE = /^\((\w{2,7})\)(?:\s+(\d{5}))?\s*$/;
@@ -87,7 +87,11 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
   const fields = new Map<string, PdfFieldDescription>();
 
   // First pass: find all field header positions
-  const headers: { index: number; segment: string; position: number; item: string; dataType: string; longName: string }[] = [];
+  type FieldHeader = {
+    index: number; segment: string; position: number;
+    item: string; dataType: string; longName: string;
+  };
+  const headers: FieldHeader[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     // Try complete single-line match first
@@ -155,7 +159,7 @@ function parseFieldDescriptions(text: string): Map<string, PdfFieldDescription> 
       // If it doesn't match, it might be just a wrapped name part — but only
       // if it doesn't look like a section number or another field header
       if (/^(\w{2,3})-\d+\s/.test(ahead)) {break;} // another field header
-      if (/^\d+[\.\d]*\s*$/.test(ahead)) {break;}   // bare section number (don't consume)
+      if (/^\d+[.\d]*\s*$/.test(ahead)) {break;}   // bare section number (don't consume)
     }
 
     const longName = longNameParts.join(" ").trim().replace(/\s*[-\u2013]\s*\w{2,3}\s*$/, "");
@@ -361,7 +365,7 @@ export function extractDescription(sectionLines: string[]): string | null {
 // "3.4.2 PID – Patient Identification Segment"
 // Must contain a word that looks like a segment name followed by actual description text.
 // TOC lines contain "...." dots — we exclude those.
-const SEGMENT_HEADING_RE = /^(?:\d+[\.\d]*\s+)?([A-Z][A-Z0-9]{1,2}\d?)\s*[-\u2013]\s+(.+)/;
+const SEGMENT_HEADING_RE = /^(?:\d+[.\d]*\s+)?([A-Z][A-Z0-9]{1,2}\d?)\s*[-\u2013]\s+(.+)/;
 
 // "HL7 Attribute Table" marks the end of segment description
 const ATTRIBUTE_TABLE_RE = /^HL7 Attribute Table/;
@@ -453,7 +457,7 @@ function parseAppendixTables(text: string): Map<string, PdfTable> {
     // v2.5:   "   HL7      0357        Message error condition codes                   2.15.5.3"
     // v2.8.2: "HL7           0155          Accept/Application Acknowledgment...        2.C.2.103"
     // v2.8.2 names may start with "- " prefix (e.g., "- Insurance Company Contact Reason")
-    const m = line.match(/^\s*(HL7|User)\s+(\d{4})\s+[-\u2013]?\s*(.+?)(?:\s{2,}[\d.A-Z]+[\.\d]*\s*$|\s*$)/);
+    const m = line.match(/^\s*(HL7|User)\s+(\d{4})\s+[-\u2013]?\s*(.+?)(?:\s{2,}[\d.A-Z]+[.\d]*\s*$|\s*$)/);
     if (m) {
       const name = m[3]!.trim();
       if (name && !/^Type\s+Table/.test(name)) { // skip header row
@@ -680,7 +684,9 @@ function parseAttributeTables(text: string): Map<string, PdfAttributeTableField[
   return result;
 }
 
-export async function parsePdfAttributeTables(pdfDir: string, cmd: string[]): Promise<Map<string, PdfAttributeTableField[]>> {
+export async function parsePdfAttributeTables(
+  pdfDir: string, cmd: string[],
+): Promise<Map<string, PdfAttributeTableField[]>> {
   const files = await readdir(pdfDir);
   const chapterFiles = files.filter(f => /CH\d+/i.test(f) && f.endsWith(".pdf")).sort();
 
@@ -721,7 +727,11 @@ function parseDatatypeDescriptions(text: string): {
 
   // First pass: find all datatype and component heading positions
   const dtHeaders: { index: number; name: string; longName: string }[] = [];
-  const compHeaders: { index: number; datatype: string; position: number; deprecated: boolean; longName: string }[] = [];
+  type CompHeader = {
+    index: number; datatype: string; position: number;
+    deprecated: boolean; longName: string;
+  };
+  const compHeaders: CompHeader[] = [];
 
   let currentDt: string | null = null;
   let currentCompPos = 0;
@@ -775,7 +785,10 @@ function parseDatatypeDescriptions(text: string): {
       const compMatch = trimmed.match(COMPONENT_HEADING_RE);
       if (compMatch) {
         currentCompPos++;
-        compHeaders.push({ index: i, datatype: currentDt, position: currentCompPos, deprecated: false, longName: compMatch[1]! });
+        compHeaders.push({
+          index: i, datatype: currentDt, position: currentCompPos,
+          deprecated: false, longName: compMatch[1]!,
+        });
         pendingSectionPrefix = null;
       } else if (pendingSectionPrefix?.type === "comp") {
         // v2.4 split-line component: bare "2.9.N.M" was on a previous line, now we have
@@ -799,7 +812,10 @@ function parseDatatypeDescriptions(text: string): {
         if (deprecatedMatch) {
           const pos = parseInt(deprecatedMatch[1]!, 10);
           currentCompPos = pos;
-          compHeaders.push({ index: i, datatype: currentDt, position: currentCompPos, deprecated: true, longName: deprecatedMatch[2]!.trim() });
+          compHeaders.push({
+            index: i, datatype: currentDt, position: currentCompPos,
+            deprecated: true, longName: deprecatedMatch[2]!.trim(),
+          });
         }
         pendingSectionPrefix = null;
       }
@@ -978,7 +994,9 @@ export async function parsePdfDatatypeDescriptions(pdfDir: string, cmd: string[]
   return parseDatatypeDescriptions(text);
 }
 
-export async function parsePdfComponentTables(pdfDir: string, cmd: string[]): Promise<Map<string, PdfComponentTableField[]>> {
+export async function parsePdfComponentTables(
+  pdfDir: string, cmd: string[],
+): Promise<Map<string, PdfComponentTableField[]>> {
   const pdfPath = await findCh02aFile(pdfDir);
   if (!pdfPath) {
     console.warn("Warning: CH02A PDF not found, component tables will be empty");
@@ -992,7 +1010,7 @@ export async function parsePdfComponentTables(pdfDir: string, cmd: string[]): Pr
 /** Detect descriptions that are TOC listings, overview sections, or cross-references. */
 function isLowQualitySegmentDescription(desc: string): boolean {
   // Starts with a section number like "5.3 ..." (TOC entry)
-  if (/^\d+[\.\d]*\s/.test(desc)) {return true;}
+  if (/^\d+[.\d]*\s/.test(desc)) {return true;}
   // Cross-reference: "documented in ... Chapter", "moved to Chapter"
   if (/documented in .{0,30}Chapter/i.test(desc)) {return true;}
   if (/moved to Chapter/i.test(desc)) {return true;}

@@ -27,11 +27,9 @@ import {
   fromAL1,
   fromIN1,
   type DG1,
-  type IN1,
   type AL1,
 } from "../../hl7v2/generated/fields";
 import type {
-  Patient,
   Encounter,
   RelatedPerson,
   Condition,
@@ -119,9 +117,8 @@ function generateConditionId(dg1: DG1, prefix: string): string {
 
 function generateAllergyId(al1: AL1, patientId: string | undefined): string {
   const prefix = patientId || "unknown";
-  const allergenName =
-    al1.$3_allergenCodeMnemonicDescription?.$1_code ||
-    al1.$3_allergenCodeMnemonicDescription?.$2_text!;
+  const allergen = al1.$3_allergenCodeMnemonicDescription;
+  const allergenName = allergen?.$1_code ?? allergen?.$2_text ?? "";
 
   return `${prefix}-${toKebabCase(allergenName)}`;
 }

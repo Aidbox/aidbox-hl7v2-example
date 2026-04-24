@@ -62,8 +62,12 @@ function msg(over: Record<string, unknown> = {}): unknown {
  * defaults to one placeholder entry so the parser's non-empty
  * invariant holds.
  */
+type ParsedOverrides = {
+  status?: string; id?: string; type?: string; sendingApplication?: string;
+  error?: string; entries?: unknown[]; unmappedCodes?: unknown[]; message?: string;
+};
 function parsed(
-  over: { status?: string; id?: string; type?: string; sendingApplication?: string; error?: string; entries?: unknown[]; unmappedCodes?: unknown[]; message?: string } = {},
+  over: ParsedOverrides = {},
 ): ParsedIncomingMessage {
   const wire = msg({
     ...over,

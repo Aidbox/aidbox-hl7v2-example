@@ -21,10 +21,9 @@ import type {
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertCXToIdentifier } from "../datatypes/cx-identifier";
 import { buildEncounterIdentifier } from "../identity-system/encounter-id";
-import { convertCWEToCodeableConcept, convertCWEToCoding } from "../datatypes/cwe-codeableconcept";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
 import { convertXCNToPractitioner } from "../datatypes/xcn-practitioner";
-import { convertPLToLocation, type LocationData } from "../datatypes/pl-converters";
+import { convertPLToLocation } from "../datatypes/pl-converters";
 import { convertDLDToLocationDischarge } from "../datatypes/dld-location-discharge";
 import type { MappingError } from "../../code-mapping/mapping-errors";
 import {
@@ -62,8 +61,6 @@ const PATIENT_CLASS_MAP: Record<string, { code: string; display: string }> = {
 };
 
 const PATIENT_CLASS_V2_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0004";
-
-const VALID_PATIENT_CLASSES = Object.keys(PATIENT_CLASS_MAP).join(", ");
 
 // ============================================================================
 // Patient Class Mapping with Error Support
@@ -329,19 +326,6 @@ function convertCEOrCWEToCodeableConcept(
     return { coding: [{ code: value }] };
   }
   return convertCEToCodeableConcept(value as CE);
-}
-
-/**
- * Convert CE or CWE to Coding
- */
-function convertCEOrCWEToCoding(
-  value: CE | CWE | string | undefined
-): Coding | undefined {
-  if (!value) {return undefined;}
-  if (typeof value === "string") {
-    return { code: value };
-  }
-  return convertCWEToCoding(value as CWE);
 }
 
 /**
@@ -807,8 +791,9 @@ export function extractPatientClass(pv1: PV1): string {
     return pv1.$2_class.toUpperCase();
   }
 
-  if (typeof (pv1.$2_class as any).toUpperCase === "function") {
-    return (pv1.$2_class as any).toUpperCase();
+  const maybeStringLike = pv1.$2_class as unknown as { toUpperCase?: () => string };
+  if (typeof maybeStringLike.toUpperCase === "function") {
+    return maybeStringLike.toUpperCase();
   }
 
   return "U";

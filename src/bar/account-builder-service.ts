@@ -27,7 +27,6 @@ import type { OutgoingBarMessage } from "../fhir/aidbox-hl7v2-custom";
 type AccountWithId = Account & { id: string };
 
 const POLL_INTERVAL_MS = 60_000; // 1 minute
-const MAX_RETRIES = 3;
 const PROCESSING_STATUS_URL = "http://example.org/account-processing-status";
 const RETRY_COUNT_URL = "http://example.org/account-processing-retry-count";
 const ERROR_REASON_URL = "http://example.org/account-processing-error-reason";

@@ -3,17 +3,14 @@
  * Based on: HL7 Segment - FHIR R4_ IN1[Coverage] - Sheet1.csv
  */
 
-import type { IN1, CE, CX, XON, XPN, XAD } from "../../hl7v2/generated/fields";
+import type { IN1, CE, CX, XON } from "../../hl7v2/generated/fields";
 import type {
   Coverage,
-  CodeableConcept,
   Identifier,
   Period,
   Reference,
-  Organization,
 } from "../../fhir/hl7-fhir-r4-core";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
-import { convertCXToIdentifier } from "../datatypes/cx-identifier";
 import { convertXONToOrganization } from "../datatypes/xon-organization";
 import { toKebabCase } from "../../utils/string";
 

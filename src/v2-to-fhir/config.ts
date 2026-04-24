@@ -75,6 +75,7 @@ export function hl7v2ToFhirConfig(): Hl7v2ToFhirConfig {
     const message = err instanceof Error ? err.message : "Unknown error reading file";
     throw new Error(
       `Failed to load HL7v2-to-FHIR config from ${getConfigPath()}: ${message}`,
+      { cause: err },
     );
   }
 
@@ -85,6 +86,7 @@ export function hl7v2ToFhirConfig(): Hl7v2ToFhirConfig {
     const message = err instanceof Error ? err.message : "Unknown parse error";
     throw new Error(
       `Failed to parse HL7v2-to-FHIR config as JSON: ${message}`,
+      { cause: err },
     );
   }
 

@@ -574,16 +574,6 @@ function renderListRow(p: ParsedIncomingMessage, index: number, selectedId: stri
   `;
 }
 
-function buildListUrl(filters: InboundFilters): string {
-  const params = new URLSearchParams();
-  if (filters.type) {params.set("type", filters.type);}
-  if (filters.status) {params.set("status", filters.status);}
-  if (filters.batch) {params.set("batch", filters.batch);}
-  if (filters.selected) {params.set("selected", filters.selected);}
-  const s = params.toString();
-  return `/incoming-messages/partials/list${s ? `?${s}` : ""}`;
-}
-
 export function renderListPartial(
   messages: ParsedIncomingMessage[],
   filters: InboundFilters,

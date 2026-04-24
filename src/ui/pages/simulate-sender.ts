@@ -372,7 +372,7 @@ export async function extractZipToMessages(
     messages.sort((a, b) => compareAlphanumeric(a.name, b.name));
     return messages;
   } finally {
-    await rm(workDir, { recursive: true, force: true }).catch(() => {});
+    await rm(workDir, { recursive: true, force: true }).catch(() => { /* ignore cleanup errors */ });
   }
 }
 

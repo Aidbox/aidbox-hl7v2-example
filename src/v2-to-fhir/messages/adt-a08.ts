@@ -14,7 +14,6 @@ import {
   fromPID,
 } from "../../hl7v2/generated/fields";
 import type {
-  Patient,
   Coding,
   Meta,
 } from "../../fhir/hl7-fhir-r4-core";

@@ -216,7 +216,9 @@ export function convertXCNToRelatedPerson(
 
   return {
     resourceType: "RelatedPerson",
-    patient: { reference: "" as any }, // Patient reference must be populated separately
+    // Patient reference is a placeholder — caller populates it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- caller fills the reference
+    patient: { reference: "" as any },
     ...(identifier && { identifier: [identifier] }),
     ...(name && { name: [name] }),
   };

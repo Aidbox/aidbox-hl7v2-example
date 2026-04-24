@@ -3,10 +3,9 @@
  * Based on: HL7 Segment - FHIR R4_ DG1[Condition] - Sheet1.csv
  */
 
-import type { DG1, CE, EI, XCN } from "../../hl7v2/generated/fields";
+import type { DG1, EI } from "../../hl7v2/generated/fields";
 import type {
   Condition,
-  CodeableConcept,
   Identifier,
   Extension,
   Reference,
@@ -22,7 +21,6 @@ const CONDITION_VER_STATUS_SYSTEM =
   "http://terminology.hl7.org/CodeSystem/condition-ver-status";
 const EXT_ASSERTED_DATE =
   "http://www.hl7.org/fhir/extension-condition-asserteddate";
-const EXT_DUE_TO = "http://hl7.org/fhir/StructureDefinition/condition-dueTo";
 
 // ============================================================================
 // Helper Functions

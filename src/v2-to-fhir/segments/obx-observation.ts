@@ -3,13 +3,10 @@
  * Based on: HL7 v2.5.1 OBX segment specification
  */
 
-import type { OBX, CE } from "../../hl7v2/generated/fields";
+import type { OBX } from "../../hl7v2/generated/fields";
 import type {
   Observation,
   CodeableConcept,
-  Quantity,
-  Range,
-  Ratio,
 } from "../../fhir/hl7-fhir-r4-core";
 import { normalizeSystem } from "../code-mapping/coding-systems";
 import { convertCEToCodeableConcept } from "../datatypes/ce-codeableconcept";
@@ -568,7 +565,8 @@ export async function convertOBXToObservationResolving(
     errors.push(obxResult.error);
   }
 
-  // TODO refactor: probably, it should happen inside convertOBXWithMappingSupportAsync, because it already returns an object with an error field
+  // TODO refactor: probably, it should happen inside convertOBXWithMappingSupportAsync,
+  // because it already returns an object with an error field
   let loincResolution: Awaited<ReturnType<typeof resolveToLoinc>> | undefined;
   try {
     loincResolution = await resolveToLoinc(obx.$3_observationIdentifier, senderContext);

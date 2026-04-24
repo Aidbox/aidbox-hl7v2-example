@@ -24,7 +24,6 @@
 import { aidboxFetch, putResource, type Bundle } from "../../aidbox";
 import type {
   IncomingHL7v2Message,
-  UnmappedCode,
 } from "../../fhir/aidbox-hl7v2-custom";
 import { escapeHtml } from "../../utils/html";
 import { highlightHL7WithDataTooltip } from "../hl7-display";
@@ -350,30 +349,6 @@ function highlightJson(pretty: string): string {
     '<span class="text-info-ink font-medium">$1</span>',
   );
   return html;
-}
-
-function annotateUnmappedCodings(
-  highlighted: string,
-  unmappedCodes: UnmappedCode[] | undefined,
-): string {
-  if (!unmappedCodes?.length) {return highlighted;}
-  // Applied AFTER syntax highlighting so the unmapped-code red text
-  // visually dominates the line. Look for the code value inside its
-  // already-wrapped `<span class="text-ok-soft">&quot;CODE&quot;</span>`.
-  let out = highlighted;
-  for (const u of unmappedCodes) {
-    if (!u.localCode) {continue;}
-    const needle = escapeHtml(u.localCode).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(
-      `(<span class="text-accent-ink">&quot;code&quot;</span>:\\s*<span class="text-ok">&quot;${needle}&quot;</span>)`,
-      "g",
-    );
-    out = out.replace(
-      re,
-      `$1 <span class="text-warn">// ⚠ no LOINC mapping</span>`,
-    );
-  }
-  return out;
 }
 
 export function renderFhirTab(p: ParsedIncomingMessage): string {

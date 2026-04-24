@@ -1,4 +1,5 @@
 import type { Timing, CodeableConcept } from "../../fhir/hl7-fhir-r4-core";
+import type { TimingRepeat } from "../../fhir/hl7-fhir-r4-core/Timing";
 
 /** RI (Repeat Interval) datatype */
 export interface RI {
@@ -44,9 +45,8 @@ export function convertRIToTiming(ri: RI | undefined): Timing | undefined {
     }
 
     if (timeOfDay.length > 0) {
-      timing.repeat = {
-        timeOfDay,
-      } as any;
+      const repeat: TimingRepeat = { timeOfDay };
+      timing.repeat = repeat;
     }
   }
 

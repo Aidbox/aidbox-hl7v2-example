@@ -26,7 +26,7 @@ import type { HL7v2Message } from "../../hl7v2/generated/types";
 import { findSegment, type ConversionResult } from "../converter";
 import {
   fromPID, fromORC, fromRXA, fromRXR,
-  type PID, type ORC, type RXA, type EI,
+  type PID, type ORC, type EI,
 } from "../../hl7v2/generated/fields";
 import { fromOBX, groupVXUOrders, extractPersonObservations } from "../../hl7v2/wrappers";
 import type { VXUOrderGroup } from "../../hl7v2/wrappers";

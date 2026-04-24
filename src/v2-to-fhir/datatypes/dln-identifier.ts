@@ -1,5 +1,5 @@
 import type { DLN } from "../../hl7v2/generated/fields";
-import type { Identifier, CodeableConcept, Period } from "../../fhir/hl7-fhir-r4-core";
+import type { Identifier } from "../../fhir/hl7-fhir-r4-core";
 
 const DRIVER_LICENSE_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v2-0203";
 const DRIVER_LICENSE_TYPE_CODE = "DL";

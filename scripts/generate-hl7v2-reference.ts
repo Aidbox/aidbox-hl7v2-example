@@ -102,10 +102,12 @@ console.log();
 
 // Phase 3: Merge and write
 console.log("Phase 3: Merging data and writing JSON...");
-const report = await mergeAndWrite(
-  { xsdFields, xsdSegments, xsdDatatypes, xsdMessages, pdfFields, pdfSegments, pdfTables, pdfAttributeTables, pdfDatatypeDescs, pdfComponentDescs, pdfDeprecatedComponents, pdfComponentTables },
-  outputDir,
-);
+const mergeInput = {
+  xsdFields, xsdSegments, xsdDatatypes, xsdMessages,
+  pdfFields, pdfSegments, pdfTables, pdfAttributeTables,
+  pdfDatatypeDescs, pdfComponentDescs, pdfDeprecatedComponents, pdfComponentTables,
+};
+const report = await mergeAndWrite(mergeInput, outputDir);
 console.log(`  Output written to: ${outputDir}`);
 console.log();
 

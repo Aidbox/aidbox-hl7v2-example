@@ -311,7 +311,8 @@ describe("fromOBX wrapper", () => {
       expect(wrapperResult.$5_observationValue).toEqual([">^90"]);
 
       // Generated function loses the caret structure (returns just the first component)
-      // TODO: refactor the project code to remove/shorten the wrapper when the original function starts to handle this case
+      // TODO: refactor the project code to remove/shorten the wrapper when the
+      // original function starts to handle this case
       expect(generatedResult.$5_observationValue).not.toEqual([">^90"]);
     });
 

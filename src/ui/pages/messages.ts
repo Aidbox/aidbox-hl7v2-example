@@ -11,7 +11,6 @@ import { highlightHL7WithDataTooltip } from "../hl7-display";
 import type { OutgoingBarMessage } from "../../fhir/aidbox-hl7v2-custom";
 import type { Patient } from "../../fhir/hl7-fhir-r4-core/Patient";
 import { aidboxFetch, getResources, type Bundle } from "../../aidbox";
-import { escapeHtml } from "../../utils/html";
 import { renderShell, renderLegacyBody } from "../shell";
 import { htmlResponse, redirectResponse, getNavData, type NavData } from "../shared";
 import { PAGE_SIZE } from "../pagination";

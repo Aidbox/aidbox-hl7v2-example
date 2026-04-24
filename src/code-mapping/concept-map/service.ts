@@ -20,7 +20,6 @@ import type { Coding } from "../../fhir/hl7-fhir-r4-core";
 import type { Task, TaskOutput } from "../../fhir/hl7-fhir-r4-core/Task";
 import {
   aidboxFetch,
-  putResource,
   HttpError,
   getResourceWithETag,
   updateResourceWithETag,

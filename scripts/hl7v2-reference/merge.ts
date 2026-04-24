@@ -2,7 +2,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type {
   XsdField, XsdSegment, XsdDatatype, XsdMessage,
-  PdfAttributeTableField, PdfComponentDescription, PdfComponentTableField, PdfDatatypeDescription, PdfDeprecatedComponent, PdfFieldDescription, PdfSegmentDescription, PdfTable,
+  PdfAttributeTableField, PdfComponentDescription, PdfComponentTableField,
+  PdfDatatypeDescription, PdfDeprecatedComponent, PdfFieldDescription,
+  PdfSegmentDescription, PdfTable,
   OutputField, OutputSegment, OutputDatatype, OutputDatatypeComponent, OutputTable,
 } from "./types";
 
@@ -48,7 +50,8 @@ export async function mergeAndWrite(input: MergeInput, outputDir: string): Promi
   const warnings: string[] = [];
 
   // Build length lookup from PDF attribute tables
-  const lengthLookup = new Map<string, { minLength: number | null; maxLength: number | null; confLength: string | null }>();
+  type LengthInfo = { minLength: number | null; maxLength: number | null; confLength: string | null };
+  const lengthLookup = new Map<string, LengthInfo>();
   for (const [, fields] of input.pdfAttributeTables) {
     for (const f of fields) {
       lengthLookup.set(`${f.segment}.${f.position}`, {

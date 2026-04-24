@@ -74,11 +74,10 @@ function tryMatchRule(pool: CX[], rule: MatchRule): PatientIdResult | null {
   }
 
   for (const cx of pool) {
-    let assignerId: string | null = null;
-
     if (rule.type && cx.$5_type?.trim() !== rule.type)
       {continue;}
 
+    let assignerId: string | null;
     if (rule.assigner) {
       const matchedAssigner = matchAssigner(cx, rule.assigner);
       if (!matchedAssigner)
