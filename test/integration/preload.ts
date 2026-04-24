@@ -9,8 +9,11 @@ if (!process.env.AIDBOX_LICENSE) {
   process.exit(1);
 }
 
-// Increase default timeout to 2 minutes for Aidbox startup
-setDefaultTimeout(120_000);
+// Aidbox cold-start on CI runners can be slow: container boot (~90s) +
+// init-bundle submission can exceed 2 minutes combined. Bun's
+// setDefaultTimeout covers both hooks and tests, so the beforeAll that
+// does boot+migrate has to fit inside this window.
+setDefaultTimeout(300_000);
 
 const TEST_AIDBOX_URL = "http://localhost:8888";
 const TEST_CLIENT_SECRET = "test_secret";
@@ -40,7 +43,8 @@ beforeAll(async () => {
   await $`docker compose -f docker-compose.test.yaml up -d`.quiet();
 
   let healthy = false;
-  for (let i = 0; i < 90; i++) {
+  const HEALTH_CHECK_SECONDS = 180;
+  for (let i = 0; i < HEALTH_CHECK_SECONDS; i++) {
     try {
       const response = await fetch(`${TEST_AIDBOX_URL}/health`);
       if (response.ok) {
@@ -54,7 +58,7 @@ beforeAll(async () => {
   }
 
   if (!healthy) {
-    throw new Error("Test Aidbox not reachable within 90 seconds");
+    throw new Error(`Test Aidbox not reachable within ${HEALTH_CHECK_SECONDS} seconds`);
   }
 
   console.log("Test Aidbox ready, running migrations...");
