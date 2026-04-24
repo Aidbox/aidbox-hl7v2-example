@@ -732,6 +732,18 @@ async function renderInboundBody(
           <h1 class="h1">Inbound messages</h1>
           <div class="text-ink-2 text-[13.5px] mt-1">${subBits.join(" · ")}</div>
         </div>
+        <div class="flex gap-2">
+          <form method="POST" action="/process-incoming-messages" class="inline-flex"
+                x-data="{ loading: false }" @submit="loading = true">
+            <button type="submit"
+                    class="btn btn-primary inline-flex items-center gap-1.5"
+                    :disabled="loading"
+                    :class="loading ? 'opacity-60 cursor-wait' : ''">
+              ${renderIcon("play", "sm")}
+              <span x-text="loading ? 'Processing…' : 'Process all'"></span>
+            </button>
+          </form>
+        </div>
       </div>
 
       <div class="grid gap-4 mt-4" style="grid-template-columns: minmax(560px, 1fr) 1fr; min-height: 620px">
