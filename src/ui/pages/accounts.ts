@@ -9,8 +9,8 @@ import type { Condition } from "../../fhir/hl7-fhir-r4-core/Condition";
 import type { Procedure } from "../../fhir/hl7-fhir-r4-core/Procedure";
 import { aidboxFetch, getResources, type Bundle } from "../../aidbox";
 import { parsePageParam, createPagination, PAGE_SIZE, renderPaginationControls, type PaginationData } from "../pagination";
-import { renderNav, renderLayout, type NavData } from "../shared-layout";
-import { htmlResponse, redirectResponse, getNavData } from "../shared";
+import { renderShell, renderLegacyBody } from "../shell";
+import { htmlResponse, redirectResponse, getNavData, type NavData } from "../shared";
 
 // ============================================================================
 // Types (internal)
@@ -441,5 +441,10 @@ function renderAccountsPage(
       });
     </script>`;
 
-  return renderLayout("Accounts", renderNav("accounts", navData), content);
+  return renderShell({
+    active: "accounts",
+    title: "Accounts",
+    content: renderLegacyBody(content),
+    navData,
+  });
 }

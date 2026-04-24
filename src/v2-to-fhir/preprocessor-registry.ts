@@ -25,7 +25,6 @@ export const SEGMENT_PREPROCESSORS: Record<string, SegmentPreprocessorFn> = {
   "fallback-rxa3-from-msh7": fallbackRxa3FromMsh7,
   "normalize-rxa6-dose": normalizeRxa6Dose,
   "normalize-rxa9-nip001": normalizeRxa9Nip001,
-  "normalize-in1-plan-dates": normalizeIn1PlanDates,
 };
 
 export type SegmentPreprocessorId = keyof typeof SEGMENT_PREPROCESSORS;
@@ -352,7 +351,7 @@ function fallbackRxa3FromMsh7(
   segment.fields[3] = msh7 as FieldValue;
   console.warn(
     "RXA-3 empty - using MSH-7 (message date) as fallback administration date. " +
-      "This is clinically incorrect. Fix at the sender.",
+    "This is clinically incorrect. Fix at the sender.",
   );
 }
 
@@ -543,40 +542,4 @@ function injectNip001SystemIntoCwe(fieldValue: FieldValue): FieldValue | undefin
 
   cweComponents[3] = "NIP001";
   return undefined;
-}
-
-/**
- * Swap IN1-12 (Plan Effective Date) and IN1-13 (Plan Expiration Date) if start >= end.
- * Coverage.period constraint requires start < end. Only swaps when dates are reversed.
- */
-function normalizeIn1PlanDates(
-  _context: PreprocessorContext,
-  segment: HL7v2Segment,
-): void {
-  if (segment.segment !== "IN1") {
-    return;
-  }
-
-  const in1_12 = segment.fields[12];
-  const in1_13 = segment.fields[13];
-
-  if (in1_12 === undefined || in1_13 === undefined) {
-    return;
-  }
-
-  const effective = typeof in1_12 === "string" ? in1_12.trim() : String(in1_12).trim();
-  const expiration = typeof in1_13 === "string" ? in1_13.trim() : String(in1_13).trim();
-
-  if (!effective || !expiration) {
-    return;
-  }
-
-  // Compare dates as strings (YYYYMMDD format compares correctly lexicographically)
-  if (effective >= expiration) {
-    segment.fields[12] = in1_13;
-    segment.fields[13] = in1_12;
-    console.warn(
-      `[normalize-in1-plan-dates] Swapped IN1-12/13: effective=${effective} >= expiration=${expiration}`,
-    );
-  }
 }

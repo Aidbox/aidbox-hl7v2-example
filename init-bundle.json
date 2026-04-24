@@ -108,6 +108,15 @@
               "type": [{ "code": "string" }]
             },
             {
+              "id": "IncomingHL7v2Message.messageControlId",
+              "path": "IncomingHL7v2Message.messageControlId",
+              "short": "HL7v2 MSH-10 — unique message control id from the sender",
+              "definition": "MSH-10 of the incoming HL7v2 message. Captured by the MLLP listener on receive so callers (e.g., Simulate Sender) can look up the resource by the id they sent, independent of Aidbox's assigned resource id.",
+              "min": 0,
+              "max": "1",
+              "type": [{ "code": "string" }]
+            },
+            {
               "id": "IncomingHL7v2Message.unmappedCodes",
               "path": "IncomingHL7v2Message.unmappedCodes",
               "min": 0,
@@ -606,6 +615,24 @@
         "base": ["IncomingHL7v2Message"],
         "type": "string",
         "expression": "IncomingHL7v2Message.batchTag"
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "SearchParameter/IncomingHL7v2Message-message-control-id"
+      },
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "IncomingHL7v2Message-message-control-id",
+        "url": "http://example.org/SearchParameter/IncomingHL7v2Message-message-control-id",
+        "name": "message-control-id",
+        "status": "active",
+        "description": "Search IncomingHL7v2Message by MSH-10 (messageControlId) captured at MLLP ingress",
+        "code": "message-control-id",
+        "base": ["IncomingHL7v2Message"],
+        "type": "string",
+        "expression": "IncomingHL7v2Message.messageControlId"
       }
     },
     {

@@ -33,8 +33,8 @@ function makeFakeService(): PollingService & {
 }
 
 describe("resolvePollIntervalMs", () => {
-  test("defaults to 5000 when nothing set", () => {
-    expect(resolvePollIntervalMs(undefined, {})).toBe(5_000);
+  test("defaults to 1000 when nothing set", () => {
+    expect(resolvePollIntervalMs(undefined, {})).toBe(1_000);
   });
 
   test("explicit argument wins over env", () => {
@@ -50,9 +50,9 @@ describe("resolvePollIntervalMs", () => {
   test("falls back to default for invalid env", () => {
     expect(
       resolvePollIntervalMs(undefined, { POLL_INTERVAL_MS: "not-a-number" }),
-    ).toBe(5_000);
+    ).toBe(1_000);
     expect(resolvePollIntervalMs(undefined, { POLL_INTERVAL_MS: "-1" })).toBe(
-      5_000,
+      1_000,
     );
   });
 });

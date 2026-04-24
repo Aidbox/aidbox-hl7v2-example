@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>HL7v2 Tool — Wireframes</title>
+  <meta name="viewport" content="width=1400"/>
+  <style>
+    :root {
+      --wf-accent: #d9623f;
+      --wf-accent-soft: #f6d3c6;
+    }
+    html, body { margin:0; padding:0; background:#f0eee9; font-family: -apple-system, system-ui, sans-serif; }
+    /* Sketch filter overlay — subtle noise / rough edges */
+    .sketchy { filter: url(#wf-rough); }
+  </style>
+</head>
+<body>
+  <!-- SVG filter used when "sketch mode" is on, gives a hand-drawn roughness -->
+  <svg width="0" height="0" style="position:absolute">
+    <filter id="wf-rough">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.9"/>
+    </filter>
+  </svg>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="wireframes.jsx"></script>
+  <script type="text/babel" src="screens-dashboard.jsx"></script>
+  <script type="text/babel" src="screens-inbound.jsx"></script>
+  <script type="text/babel" src="screens-simulate.jsx"></script>
+  <script type="text/babel" src="screens-unmapped.jsx"></script>
+  <script type="text/babel" src="screens-rest.jsx"></script>
+
+  <script type="text/babel">
+    // Tweakable defaults
+    const TWEAKS = /*EDITMODE-BEGIN*/{
+      "accent": "#d9623f",
+      "sketchMode": true,
+      "showBrandHeader": true
+    }/*EDITMODE-END*/;
+
+    const ACCENTS = {
+      "#d9623f": "#f6d3c6",     // terracotta (default)
+      "#3f6bd9": "#c6d5f6",     // blue
+      "#3fa86a": "#c8ecd7",     // green
+      "#8b5fbf": "#dccaf0",     // purple
+      "#b8941f": "#eadfa8",     // ochre
+    };
+
+    function applyTweaks(t) {
+      document.documentElement.style.setProperty('--wf-accent', t.accent);
+      document.documentElement.style.setProperty('--wf-accent-soft', ACCENTS[t.accent] || '#f6d3c6');
+    }
+    applyTweaks(TWEAKS);
+
+    function TweaksPanel({tweaks, onChange, visible}) {
+      if (!visible) return null;
+      return (
+        <div style={{position:'fixed', right:16, bottom:16, width:260, background:'#fdfcf9', border:'1.5px solid #1e1a17', borderRadius:8, padding:14, boxShadow:'3px 3px 0 #1e1a17', zIndex:9999, fontFamily:'"Caveat", cursive'}}>
+          <div style={{fontWeight:700, fontSize:18, marginBottom:8}}>Tweaks</div>
+          <div style={{fontSize:13, marginBottom:6, fontFamily:'system-ui', color:'#4a4239'}}>Accent</div>
+          <div style={{display:'flex', gap:6, marginBottom:12}}>
+            {Object.keys(ACCENTS).map(c => (
+              <button key={c} onClick={() => onChange({accent: c})}
+                style={{width:28, height:28, borderRadius:99, background:c, border: tweaks.accent===c? '2.5px solid #1e1a17' : '1px solid rgba(0,0,0,.2)', cursor:'pointer'}}/>
+            ))}
+          </div>
+          <label style={{display:'flex', alignItems:'center', gap:8, fontFamily:'system-ui', fontSize:13, marginBottom:6, cursor:'pointer'}}>
+            <input type="checkbox" checked={tweaks.sketchMode} onChange={e => onChange({sketchMode: e.target.checked})}/>
+            Sketch mode (rough edges)
+          </label>
+          <label style={{display:'flex', alignItems:'center', gap:8, fontFamily:'system-ui', fontSize:13, cursor:'pointer'}}>
+            <input type="checkbox" checked={tweaks.showBrandHeader} onChange={e => onChange({showBrandHeader: e.target.checked})}/>
+            Show top nav on every screen
+          </label>
+        </div>
+      );
+    }
+
+    // Pair a list of components into sections of <DCArtboard>
+    const SCREENS = [
+      {id:'dash',      title:'Dashboard',          subtitle:'Demo conductor · live state + one-click scenario', variants:[
+        {id:'dash-b', label:'Demo conductor',       w:1100, h:820, C: DashV2},
+      ]},
+      {id:'inbound',   title:'Inbound Messages',    subtitle:'List + expandable structured detail', variants:[
+        {id:'in-a', label:'List + expand · Structured tab', w:1100, h:780, C: InboundV1},
+        {id:'in-b', label:'List + expand · Raw tab',        w:1100, h:780, C: InboundV1Raw},
+        {id:'in-c', label:'List + expand · FHIR bundle',    w:1100, h:820, C: InboundV1FHIR},
+      ]},
+      {id:'simulate',  title:'Simulate Sender',     subtitle:'Editor + samples sidebar', variants:[
+        {id:'sim-a', label:'Editor · Edit tab',       w:1100, h:820, C: SimulateV1},
+        {id:'sim-b', label:'Editor · Preview tab',    w:1100, h:820, C: SimulateV1Preview},
+        {id:'sim-c', label:'Editor · Structured tab', w:1100, h:820, C: SimulateV1Structured},
+      ]},
+      {id:'unmapped',  title:'Unmapped Codes',      subtitle:'Bulk-apply table with suggestions', variants:[
+        {id:'un-b', label:'Bulk table',              w:1200, h:780, C: UnmappedV2},
+      ]},
+      {id:'terminology', title:'Terminology Map',   subtitle:'Local ↔ standard codes table', variants:[
+        {id:'tm-a', label:'Show all · sender as column', w:1200, h:820, C: TermV1NoGate},
+        {id:'tm-b', label:'Edit mapping · inline expand', w:1200, h:900, C: TermEdit},
+      ]},
+    ];
+
+    function App() {
+      const [tweaks, setTweaks] = React.useState(TWEAKS);
+      const [editMode, setEditMode] = React.useState(false);
+
+      const update = (patch) => {
+        const next = {...tweaks, ...patch};
+        setTweaks(next);
+        applyTweaks(next);
+        window.parent && window.parent.postMessage({type:'__edit_mode_set_keys', edits: patch}, '*');
+      };
+
+      React.useEffect(() => {
+        const onMsg = (e) => {
+          const d = e.data || {};
+          if (d.type === '__activate_edit_mode') setEditMode(true);
+          if (d.type === '__deactivate_edit_mode') setEditMode(false);
+        };
+        window.addEventListener('message', onMsg);
+        window.parent && window.parent.postMessage({type:'__edit_mode_available'}, '*');
+        return () => window.removeEventListener('message', onMsg);
+      }, []);
+
+      return (
+        <>
+          <div className={tweaks.sketchMode ? 'sketchy' : ''}>
+            <DesignCanvas>
+              {SCREENS.map(s => (
+                <DCSection key={s.id} id={s.id} title={s.title} subtitle={s.subtitle}>
+                  {s.variants.map(v => (
+                    <DCArtboard key={v.id} id={v.id} label={v.label} width={v.w} height={v.h}>
+                      <v.C/>
+                    </DCArtboard>
+                  ))}
+                </DCSection>
+              ))}
+            </DesignCanvas>
+          </div>
+          <TweaksPanel tweaks={tweaks} onChange={update} visible={editMode}/>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

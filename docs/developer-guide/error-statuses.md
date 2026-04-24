@@ -83,7 +83,7 @@ Message parses OK --> converter finds unmapped code --> status = code_mapping_er
 
 **Cause:** A code in the message (e.g., patient class, OBX observation code, OBR status) has no mapping to a valid FHIR value. A FHIR Task is created for each unmapped code.
 
-**Resolution:** User resolves the mapping Task via `/mapping/tasks` UI. When all Tasks for a message are resolved, the message is automatically requeued as `received` for reprocessing.
+**Resolution:** User resolves the mapping Task via `/unmapped-codes` UI. When all Tasks for a message are resolved, the message is automatically requeued as `received` for reprocessing.
 
 **Examples:**
 - Non-standard PV1-2 Patient Class code

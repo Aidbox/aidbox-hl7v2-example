@@ -136,7 +136,7 @@ const verdict = (() => {
     case "conversion_error":
       return "routed but data fails conversion — sender data issue or preprocessor/config gap (see Error line)";
     case "code_mapping_error":
-      return "routed but contains unmapped codes — resolve via /mapping/tasks";
+      return "routed but contains unmapped codes — resolve via /unmapped-codes";
     case "parsing_error":
       return "malformed — sender must fix";
     default:

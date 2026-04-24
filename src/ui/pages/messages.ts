@@ -1,20 +1,19 @@
 /**
- * Messages UI Module
+ * Outgoing Messages UI.
  *
- * Displays Outgoing and Incoming HL7v2 messages pages.
+ * Renders the legacy Outgoing Messages page body inside the warm-paper shell's
+ * gray-card frame (`renderLegacyBody`). The Inbound half of this module was
+ * removed in Task 13 — the new warm-paper inbound UI lives in `./inbound.ts`
+ * and `./inbound-detail.ts`.
  */
 
-import { highlightHL7WithDataTooltip } from "../shared-layout";
-import type {
-  OutgoingBarMessage,
-  IncomingHL7v2Message,
-  UnmappedCode,
-} from "../../fhir/aidbox-hl7v2-custom";
+import { highlightHL7WithDataTooltip } from "../hl7-display";
+import type { OutgoingBarMessage } from "../../fhir/aidbox-hl7v2-custom";
 import type { Patient } from "../../fhir/hl7-fhir-r4-core/Patient";
 import { aidboxFetch, getResources, type Bundle } from "../../aidbox";
 import { escapeHtml } from "../../utils/html";
-import { renderNav, renderLayout, type NavData } from "../shared-layout";
-import { htmlResponse, redirectResponse, getNavData } from "../shared";
+import { renderShell, renderLegacyBody } from "../shell";
+import { htmlResponse, redirectResponse, getNavData, type NavData } from "../shared";
 import { PAGE_SIZE } from "../pagination";
 
 // ============================================================================
@@ -31,10 +30,6 @@ interface MessageListItem {
   statusBadge: { text: string; class: string };
   meta: string[];
   hl7Message: string | undefined;
-  error?: string;
-  entries?: string;
-  retryUrl?: string;
-  unmappedCodes?: UnmappedCode[];
 }
 
 // ============================================================================
@@ -79,51 +74,6 @@ export async function createOutgoingMessage(req: Request): Promise<Response> {
   return redirectResponse("/outgoing-messages");
 }
 
-export async function handleIncomingMessagesPage(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const statusFilter = url.searchParams.get("status") || undefined;
-  const batchFilter = url.searchParams.get("batch") || undefined;
-
-  const [messages, batchSummary, batches, navData] = await Promise.all([
-    getIncomingMessages(statusFilter, batchFilter),
-    // When a batch is active, load *all* of it (not just the status slice)
-    // so the summary shows full counts by status.
-    batchFilter ? getIncomingMessages(undefined, batchFilter) : Promise.resolve([]),
-    getDistinctBatches(),
-    getNavData(),
-  ]);
-
-  return htmlResponse(
-    renderIncomingMessagesPage(navData, messages, batchSummary, batches, statusFilter, batchFilter),
-  );
-}
-
-// ============================================================================
-// Helper Functions (internal)
-// ============================================================================
-
-function formatError(error: string): string {
-  // Try to extract and format JSON from error message
-  const jsonMatch = error.match(/^(HTTP \d+): (.+)$/s);
-  if (jsonMatch && jsonMatch[2]) {
-    const [, prefix, jsonStr] = jsonMatch;
-    try {
-      const parsed = JSON.parse(jsonStr);
-      return `${prefix}:\n${JSON.stringify(parsed, null, 2)}`;
-    } catch {
-      return error;
-    }
-  }
-
-  // Try to parse as pure JSON
-  try {
-    const parsed = JSON.parse(error);
-    return JSON.stringify(parsed, null, 2);
-  } catch {
-    return error;
-  }
-}
-
 // ============================================================================
 // Service Functions (internal)
 // ============================================================================
@@ -143,31 +93,6 @@ const getOutgoingMessages = (status?: string) =>
     "OutgoingBarMessage",
     `_sort=-_lastUpdated${status ? `&status=${status}` : ""}`,
   );
-
-const getIncomingMessages = (status?: string, batchTag?: string) => {
-  // Batch mode can contain large imports — pull up to 1000 per page so the
-  // grouping summary is accurate. FHIR _count cap varies; Aidbox allows this.
-  const count = batchTag ? 1000 : 100;
-  const params: string[] = [`_sort=-_lastUpdated`, `_count=${count}`];
-  if (status) params.push(`status=${status}`);
-  if (batchTag) params.push(`batch-tag=${encodeURIComponent(batchTag)}`);
-  return aidboxFetch<Bundle<IncomingHL7v2Message>>(
-    `/fhir/IncomingHL7v2Message?${params.join("&")}`,
-  ).then((bundle) => bundle.entry?.map((e) => e.resource) || []);
-};
-
-async function getDistinctBatches(): Promise<string[]> {
-  // Fetch recent batch tags. Aidbox doesn't support DISTINCT natively, so we
-  // pull the most recent slice of messages and dedupe in memory.
-  const bundle = await aidboxFetch<Bundle<Pick<IncomingHL7v2Message, "batchTag">>>(
-    `/fhir/IncomingHL7v2Message?_sort=-_lastUpdated&_count=500&_elements=batchTag`,
-  );
-  const tags = new Set<string>();
-  for (const entry of bundle.entry ?? []) {
-    if (entry.resource.batchTag) tags.add(entry.resource.batchTag);
-  }
-  return [...tags].sort().reverse();
-}
 
 // ============================================================================
 // Rendering Functions (internal)
@@ -196,68 +121,7 @@ function renderMessageList(items: MessageListItem[]): string {
           </div>
         </summary>
         <div class="px-4 pb-4">
-          ${
-            item.retryUrl
-              ? `
-            <form method="POST" action="${item.retryUrl}" class="mb-3">
-              <button type="submit" class="px-3 py-1.5 bg-amber-500 text-white rounded text-sm font-medium hover:bg-amber-600 flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
-                Mark for Retry
-              </button>
-            </form>
-          `
-              : ""
-          }
-          ${
-            item.error
-              ? `
-            <details class="mb-3" open>
-              <summary class="cursor-pointer text-sm font-medium text-red-700 hover:text-red-800">Error</summary>
-              <div class="mt-2 p-3 bg-red-50 border border-red-200 rounded font-mono text-xs overflow-x-auto whitespace-pre">${escapeHtml(formatError(item.error))}</div>
-            </details>
-          `
-              : ""
-          }
-          ${
-            item.unmappedCodes?.length
-              ? `
-            <details class="mb-3" open>
-              <summary class="cursor-pointer text-sm font-medium text-yellow-700 hover:text-yellow-800">Unmapped Codes (${item.unmappedCodes.length})</summary>
-              <div class="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <ul class="space-y-1 text-sm">
-                  ${item.unmappedCodes
-                    .map(
-                      (code) => `
-                    <li class="flex items-center justify-between">
-                      <span>
-                        <code class="font-mono text-yellow-800">${escapeHtml(code.localCode)}</code>
-                        ${code.localDisplay ? `<span class="text-gray-600">(${escapeHtml(code.localDisplay)})</span>` : ""}
-                        ${code.localSystem ? `<span class="text-gray-400">- ${escapeHtml(code.localSystem)}</span>` : ""}
-                      </span>
-                      <a href="/mapping/tasks" class="text-blue-600 hover:text-blue-800 text-xs">View Tasks →</a>
-                    </li>
-                  `,
-                    )
-                    .join("")}
-                </ul>
-              </div>
-            </details>
-          `
-              : ""
-          }
           <div class="hl7-message-container p-3 bg-gray-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${highlightHL7WithDataTooltip(item.hl7Message)}</div>
-          ${
-            item.entries
-              ? `
-            <details class="mt-3">
-              <summary class="cursor-pointer text-sm text-gray-600 hover:text-gray-800">FHIR Resources</summary>
-              <div class="mt-2 p-3 bg-blue-50 rounded font-mono text-xs overflow-x-auto whitespace-pre">${escapeHtml(item.entries)}</div>
-            </details>
-          `
-              : ""
-          }
         </div>
       </details>
     </li>
@@ -382,287 +246,11 @@ function renderOutgoingMessagesPage(
     </ul>
     <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
 
-  return renderLayout(
-    "Outgoing Messages",
-    renderNav("outgoing", navData),
-    content,
-  );
+  return renderShell({
+    active: "outgoing",
+    title: "Outgoing Messages",
+    content: renderLegacyBody(content),
+    navData,
+  });
 }
 
-const INCOMING_STATUSES = [
-  "received",
-  "processed",
-  "warning",
-  "parsing_error",
-  "conversion_error",
-  "code_mapping_error",
-  "sending_error",
-  "deferred",
-] as const;
-
-const ERROR_STATUSES = new Set([
-  "parsing_error",
-  "conversion_error",
-  "code_mapping_error",
-  "sending_error",
-]);
-
-function getIncomingStatusBadgeClass(status: string | undefined): string {
-  switch (status) {
-    case "processed":
-      return "bg-green-100 text-green-800";
-    case "warning":
-      return "bg-amber-100 text-amber-800";
-    case "parsing_error":
-    case "conversion_error":
-      return "bg-red-100 text-red-800";
-    case "code_mapping_error":
-      return "bg-yellow-100 text-yellow-800";
-    case "sending_error":
-      return "bg-orange-100 text-orange-800";
-    case "deferred":
-      return "bg-gray-100 text-gray-600";
-    default:
-      return "bg-blue-100 text-blue-800";
-  }
-}
-
-function formatIncomingStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    parsing_error: "Parsing Error",
-    conversion_error: "Conversion Error",
-    code_mapping_error: "Code Mapping Error",
-    sending_error: "Sending Error",
-    deferred: "Deferred",
-  };
-  return labels[status] ?? status.charAt(0).toUpperCase() + status.slice(1);
-}
-
-function buildIncomingMessagesUrl(
-  statusFilter?: string,
-  batchFilter?: string,
-): string {
-  const params = new URLSearchParams();
-  if (batchFilter) params.set("batch", batchFilter);
-  if (statusFilter) params.set("status", statusFilter);
-  const qs = params.toString();
-  return qs ? `/incoming-messages?${qs}` : "/incoming-messages";
-}
-
-// Group errored messages by status + type for the batch summary.
-function groupErrorsForSummary(
-  messages: IncomingHL7v2Message[],
-): Array<{ status: string; type: string; count: number; sampleError?: string }> {
-  const groups = new Map<
-    string,
-    { status: string; type: string; count: number; sampleError?: string }
-  >();
-  for (const msg of messages) {
-    const status = msg.status ?? "received";
-    if (!ERROR_STATUSES.has(status)) continue;
-    const key = `${status}|${msg.type}`;
-    const existing = groups.get(key);
-    if (existing) {
-      existing.count++;
-    } else {
-      groups.set(key, {
-        status,
-        type: msg.type,
-        count: 1,
-        sampleError: msg.error,
-      });
-    }
-  }
-  return [...groups.values()].sort((a, b) => b.count - a.count);
-}
-
-function renderBatchSummary(
-  batchFilter: string,
-  batchMessages: IncomingHL7v2Message[],
-): string {
-  const countsByStatus = new Map<string, number>();
-  for (const msg of batchMessages) {
-    const status = msg.status ?? "received";
-    countsByStatus.set(status, (countsByStatus.get(status) ?? 0) + 1);
-  }
-  const total = batchMessages.length;
-  const errorGroups = groupErrorsForSummary(batchMessages);
-  const erroredTotal = errorGroups.reduce((sum, g) => sum + g.count, 0);
-
-  const statusChips = [...countsByStatus.entries()]
-    .sort()
-    .map(
-      ([status, count]) => `
-        <a href="${buildIncomingMessagesUrl(status, batchFilter)}"
-           class="px-2 py-1 rounded-full text-xs font-medium ${getIncomingStatusBadgeClass(status)} hover:opacity-80">
-          ${formatIncomingStatusLabel(status)}: ${count}
-        </a>`,
-    )
-    .join("");
-
-  const errorGroupRows = errorGroups
-    .map(
-      (g) => `
-        <tr class="border-t border-gray-200">
-          <td class="px-3 py-2">
-            <span class="px-2 py-1 rounded-full text-xs font-medium ${getIncomingStatusBadgeClass(g.status)}">
-              ${formatIncomingStatusLabel(g.status)}
-            </span>
-          </td>
-          <td class="px-3 py-2 font-mono text-sm">${escapeHtml(g.type)}</td>
-          <td class="px-3 py-2 text-sm text-gray-700">${g.count}</td>
-          <td class="px-3 py-2 text-xs text-gray-500 truncate max-w-xl" title="${escapeHtml(g.sampleError ?? "")}">
-            ${escapeHtml((g.sampleError ?? "").split("\n")[0] ?? "")}
-          </td>
-        </tr>`,
-    )
-    .join("");
-
-  const retryAllForm = erroredTotal
-    ? `
-      <form method="POST" action="/mark-batch-for-retry/${encodeURIComponent(batchFilter)}">
-        <button type="submit"
-          class="px-3 py-1.5 bg-amber-500 text-white rounded text-sm font-medium hover:bg-amber-600">
-          Retry all ${erroredTotal} errored
-        </button>
-      </form>`
-    : "";
-
-  return `
-    <div class="mb-4 p-4 bg-white rounded-lg shadow">
-      <div class="flex items-center justify-between mb-3">
-        <div>
-          <div class="text-sm text-gray-500">Active batch</div>
-          <div class="text-lg font-semibold font-mono">${escapeHtml(batchFilter)}</div>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="text-sm text-gray-500">${total} message(s)</span>
-          ${retryAllForm}
-        </div>
-      </div>
-      <div class="flex flex-wrap gap-2 mb-3">${statusChips}</div>
-      ${
-        errorGroupRows
-          ? `
-        <details open>
-          <summary class="cursor-pointer text-sm font-medium text-gray-700">
-            Error groups (${errorGroups.length})
-          </summary>
-          <div class="mt-2 overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="bg-gray-50 text-gray-600">
-                <tr>
-                  <th class="px-3 py-2 text-left">Status</th>
-                  <th class="px-3 py-2 text-left">Type</th>
-                  <th class="px-3 py-2 text-left">Count</th>
-                  <th class="px-3 py-2 text-left">Sample error</th>
-                </tr>
-              </thead>
-              <tbody>${errorGroupRows}</tbody>
-            </table>
-          </div>
-        </details>`
-          : `<p class="text-sm text-green-700">No errored messages in this batch.</p>`
-      }
-    </div>`;
-}
-
-function renderIncomingMessagesPage(
-  navData: NavData,
-  messages: IncomingHL7v2Message[],
-  batchMessages: IncomingHL7v2Message[],
-  batches: string[],
-  statusFilter?: string,
-  batchFilter?: string,
-): string {
-  const listItems: MessageListItem[] = messages.map((msg) => ({
-    id: msg.id ?? "",
-    statusBadge: {
-      text: formatIncomingStatusLabel(msg.status || "received"),
-      class: getIncomingStatusBadgeClass(msg.status),
-    },
-    meta: [
-      msg.type,
-      msg.patient?.reference?.replace("Patient/", "") || "-",
-      msg.meta?.lastUpdated
-        ? new Date(msg.meta.lastUpdated).toLocaleString()
-        : "-",
-    ],
-    hl7Message: msg.message,
-    error: msg.error,
-    entries: msg.entries?.length ? JSON.stringify(msg.entries, null, 2) : undefined,
-    retryUrl:
-      (msg.status === "parsing_error" || msg.status === "conversion_error" || msg.status === "code_mapping_error" || msg.status === "sending_error" || msg.status === "warning" || msg.status === "deferred") && msg.id
-        ? `/mark-for-retry/${msg.id}`
-        : undefined,
-    unmappedCodes: msg.status === "code_mapping_error" ? msg.unmappedCodes : undefined,
-  }));
-
-  const batchSelector = batches.length
-    ? `
-      <form method="GET" action="/incoming-messages" class="flex items-center gap-2">
-        ${statusFilter ? `<input type="hidden" name="status" value="${escapeHtml(statusFilter)}">` : ""}
-        <label class="text-sm text-gray-600">Batch:</label>
-        <select name="batch" onchange="this.form.submit()"
-          class="px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-          <option value="">(all)</option>
-          ${batches
-            .map(
-              (b) => `
-            <option value="${escapeHtml(b)}" ${b === batchFilter ? "selected" : ""}>
-              ${escapeHtml(b)}
-            </option>`,
-            )
-            .join("")}
-        </select>
-      </form>`
-    : "";
-
-  const content = `
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Inbound Messages</h1>
-
-    ${batchFilter ? renderBatchSummary(batchFilter, batchMessages) : ""}
-
-    <div class="mb-4 flex gap-2 items-center justify-between flex-wrap">
-      <div class="flex gap-2 items-center flex-wrap">
-        <a href="${buildIncomingMessagesUrl(undefined, batchFilter)}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${!statusFilter ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
-          All
-        </a>
-        ${INCOMING_STATUSES
-          .map(
-            (s) => `
-          <a href="${buildIncomingMessagesUrl(s, batchFilter)}" class="px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? "bg-gray-800 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}">
-            ${formatIncomingStatusLabel(s)}
-          </a>
-        `,
-          )
-          .join("")}
-      </div>
-      <div class="flex gap-3 items-center">
-        ${batchSelector}
-        <form method="POST" action="/process-incoming-messages" class="spinner-form">
-          <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center gap-2">
-            <svg class="w-4 h-4 btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
-            <span class="btn-text">Process All</span>
-            <svg class="w-4 h-4 spinner hidden" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <ul class="space-y-2">
-      ${renderMessageList(listItems)}
-    </ul>
-    <p class="mt-4 text-sm text-gray-500">Total: ${messages.length} messages</p>`;
-
-  return renderLayout(
-    "Inbound Messages",
-    renderNav("incoming", navData),
-    content,
-  );
-}

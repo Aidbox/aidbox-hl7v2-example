@@ -205,7 +205,7 @@ describe("Pagination Utilities", () => {
     test("preserves filter params in pagination links", () => {
       const html = renderPaginationControls({
         pagination: { currentPage: 2, total: 150, totalPages: 3 },
-        baseUrl: "/mapping/tasks",
+        baseUrl: "/unmapped-codes",
         filterParams: { status: "requested" },
       });
 

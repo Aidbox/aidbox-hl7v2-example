@@ -39,7 +39,7 @@ bun run dev                       # Start web server (logs to logs/server.log)
 bun run dev                       # Start server with hot reload
 bun run stop                      # Stop the server
 bun run logs                      # Tail server logs
-bun run mllp                      # Start MLLP server (port 2575)
+bun run mllp                      # Start MLLP server (port 2575). Separate process from `bun run dev`; no hot-reload. Restart it after changes to src/mllp/mllp-server.ts.
 bun scripts/load-test-data.ts     # Load 5 test patients with related resources
 bun scripts/import-batch.ts <zip|dir> [--tag <name>]  # Bulk-import HL7v2 messages under a batchTag
 bun run typecheck                 # TypeScript type checking
@@ -71,7 +71,8 @@ Read `docs/developer-guide/how-to/development-guide.md` for test infrastructure,
 
 Env flags:
 - `DISABLE_POLLING=1` — do not start any workers (useful for tests or when running the standalone `bun src/v2-to-fhir/processor-service.ts` scripts).
-- `POLL_INTERVAL_MS` — override poll interval. Default 5000ms (demo-friendly). The standalone scripts still use their own 60000ms default.
+- `POLL_INTERVAL_MS` — override poll interval. Default 1000ms. The standalone scripts still use their own 60000ms default.
+- `DEMO_MODE` — default-on. Controls the Dashboard's "Run demo now" endpoint (`POST /demo/run-scenario`). Unset, empty, or any non-`"off"` value enables it; only `DEMO_MODE=off` disables (returns 403).
 
 The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) are unchanged and still work — they share the same factories.
 
@@ -81,7 +82,8 @@ The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) ar
 
 Env flags:
 - `DISABLE_POLLING=1` — do not start any workers (useful for tests or when running the standalone `bun src/v2-to-fhir/processor-service.ts` scripts).
-- `POLL_INTERVAL_MS` — override poll interval. Default 5000ms (demo-friendly). The standalone scripts still use their own 60000ms default.
+- `POLL_INTERVAL_MS` — override poll interval. Default 1000ms. The standalone scripts still use their own 60000ms default.
+- `DEMO_MODE` — default-on. Controls the Dashboard's "Run demo now" endpoint (`POST /demo/run-scenario`). Unset, empty, or any non-`"off"` value enables it; only `DEMO_MODE=off` disables (returns 403).
 
 The per-service standalone entrypoints (`bun src/bar/sender-service.ts` etc.) are unchanged and still work — they share the same factories.
 
@@ -119,11 +121,18 @@ For anything beyond this file, read `docs/developer-guide/`:
 | HL7 reference JSON generation (XSD+PDF → data/hl7v2-reference)                           | `how-to/hl7v2-reference-generation.md` |
 | Batch-importing HL7v2 zips and triaging errors                                           | `how-to/batch-import.md` |
 | Testing, integration infra, codegen/debug workflows                                      | `how-to/development-guide.md` |
+| UI architecture, shell composition, htmx/Alpine patterns                                 | `ui-architecture.md` |
+| Design tokens, class vocabulary, color palette                                           | `ui-design-tokens.md` |
+| End-to-end recipe for adding a new UI page                                               | `how-to/add-ui-page.md` |
 | VXU ORDER OBX hard error decision                                                        | `adr/001-unknown-order-obx-hard-error.md` |
 
 ## Code Style
 
 IMPORTANT: Read `.claude/code-style.md` before writing or modifying code.
+
+UI conventions: see `docs/developer-guide/ui-architecture.md`.
+
+Tailwind v4 gotcha: Tailwind utilities are emitted inside cascade layers, while `DESIGN_SYSTEM_CSS` is plain unlayered CSS. Broad unlayered resets override utilities even when the utility selector looks more specific; e.g. `a { color: inherit; }` breaks legacy anchor tabs using `text-white` / `text-gray-*`. Scope resets to unclassed elements (`a:not([class])`) or put them in Tailwind's base layer.
 
 ## Bun, not Node
 

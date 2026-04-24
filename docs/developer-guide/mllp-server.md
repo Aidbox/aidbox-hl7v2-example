@@ -134,7 +134,7 @@ MLLP_PORT=3001 bun run mllp
 
 ### Testing
 
-The Web UI provides an MLLP test client at `/mllp-client`:
+The Web UI provides an MLLP test client at `/simulate-sender`:
 - Configure target host and port
 - Select sample messages (ADT^A01, ADT^A08, BAR^P01, ORM^O01)
 - Send custom HL7v2 messages

@@ -4,7 +4,12 @@
  * HTTP handlers for ConceptMap entry CRUD operations.
  * Parses requests, validates input, and delegates to service layer.
  *
- * Pattern follows api/mapping-tasks.ts - thin HTTP layer over business logic.
+ * Dual-mode response: when the caller sets `HX-Request: true`, the handler
+ * returns the refreshed terminology table HTML fragment plus an
+ * `HX-Trigger: concept-map-entry-saved` (or `-deleted`) header so the
+ * Terminology Map modal can close itself via Alpine `x-on:...window` listeners.
+ * Non-htmx callers (tests, direct form posts, legacy links) keep the original
+ * `302 → /terminology?conceptMapId=...` behavior.
  */
 
 import {
@@ -12,20 +17,91 @@ import {
   updateConceptMapEntry,
   deleteConceptMapEntry,
 } from "../code-mapping/concept-map/service";
+import {
+  parseFiltersFromFormData,
+  parseFiltersFromReferer,
+  renderTableAfterCrud,
+} from "../ui/pages/terminology";
+
+// ============================================================================
+// htmx branching
+// ============================================================================
+
+function isHtmxRequest(req: Request): boolean {
+  return req.headers.get("HX-Request") === "true";
+}
+
+/**
+ * Build the htmx response: refreshed #terminology-table fragment + HX-Trigger
+ * event so the modal can close itself. Filters come from the form data (Add/
+ * Edit forms include hidden `q`/`fhir`/`sender` via `hx-include`) and fall
+ * back to the Referer URL when absent.
+ */
+async function htmxTableResponse(
+  req: Request,
+  formData: { get(name: string): unknown },
+  triggerEvent: "concept-map-entry-saved" | "concept-map-entry-deleted",
+): Promise<Response> {
+  const formFilters = parseFiltersFromFormData(formData);
+  const hasFormFilters =
+    formFilters.q || formFilters.fhir.length || formFilters.sender.length;
+  const filters = hasFormFilters
+    ? formFilters
+    : parseFiltersFromReferer(req.headers.get("Referer"));
+  const html = await renderTableAfterCrud(filters);
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html",
+      "HX-Trigger": triggerEvent,
+    },
+  });
+}
+
+/**
+ * Build the htmx error response: re-render the table as-is but attach an
+ * HX-Trigger that carries the failure message so Alpine can surface it in
+ * the modal. Matches the non-htmx redirect-with-error semantics.
+ */
+async function htmxErrorResponse(
+  req: Request,
+  message: string,
+): Promise<Response> {
+  const filters = parseFiltersFromReferer(req.headers.get("Referer"));
+  const html = await renderTableAfterCrud(filters);
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html",
+      "HX-Trigger": JSON.stringify({ "concept-map-entry-error": { message } }),
+    },
+  });
+}
+
+function redirect(conceptMapId: string, error?: string): Response {
+  const qs = new URLSearchParams({ conceptMapId });
+  if (error) qs.set("error", error);
+  return new Response(null, {
+    status: 302,
+    headers: { Location: `/terminology?${qs.toString()}` },
+  });
+}
+
+// ============================================================================
+// Handlers
+// ============================================================================
 
 /**
  * Handle POST /api/concept-maps/:id/entries
  *
  * Adds a new entry to a ConceptMap.
- * - Parses form data: localCode, localDisplay, localSystem, targetCode, targetDisplay
- * - Validates required fields
- * - Delegates to addConceptMapEntry service function
- * - Returns redirect to /mapping/table with conceptMapId
+ * Form fields: localCode, localDisplay, localSystem, targetCode, targetDisplay.
  */
 export async function handleAddEntry(
   req: Request & { params: { id: string } },
 ): Promise<Response> {
   const conceptMapId = req.params.id;
+  const htmx = isHtmxRequest(req);
 
   const formData = await req.formData();
   const localCode = formData.get("localCode")?.toString();
@@ -35,12 +111,8 @@ export async function handleAddEntry(
   const targetDisplay = formData.get("targetDisplay")?.toString() || "";
 
   if (!localCode || !localSystem || !targetCode) {
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local code, local system, and target code are required")}`,
-      },
-    });
+    const msg = "Local code, local system, and target code are required";
+    return htmx ? htmxErrorResponse(req, msg) : redirect(conceptMapId, msg);
   }
 
   try {
@@ -54,60 +126,51 @@ export async function handleAddEntry(
     );
 
     if (!result.success) {
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent(result.error || "Failed to add mapping")}`,
-        },
-      });
+      const msg = result.error || "Failed to add mapping";
+      return htmx ? htmxErrorResponse(req, msg) : redirect(conceptMapId, msg);
     }
 
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}`,
-      },
-    });
+    return htmx
+      ? htmxTableResponse(req, formData, "concept-map-entry-saved")
+      : redirect(conceptMapId);
   } catch (error) {
     console.error("Add mapping error:", error);
     const message =
       error instanceof Error ? error.message : "Failed to add mapping";
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent(message)}`,
-      },
-    });
+    return htmx ? htmxErrorResponse(req, message) : redirect(conceptMapId, message);
   }
 }
 
 /**
  * Handle POST /api/concept-maps/:id/entries/:code
  *
- * Updates an existing entry in a ConceptMap.
- * - Parses form data: localSystem, targetCode, targetDisplay
- * - URL param :code is the localCode to update
- * - Delegates to updateConceptMapEntry service function
- * - Returns redirect to /mapping/table with conceptMapId
+ * Updates an existing entry. URL param :code is the localCode.
+ * Form fields: localSystem, targetCode, targetDisplay.
  */
 export async function handleUpdateEntry(
   req: Request & { params: { id: string; code: string } },
 ): Promise<Response> {
   const conceptMapId = req.params.id;
-  const localCode = decodeURIComponent(req.params.code);
+  const htmx = isHtmxRequest(req);
+  let localCode: string;
+  try {
+    localCode = decodeURIComponent(req.params.code);
+  } catch {
+    return new Response("Malformed URL", { status: 400 });
+  }
 
   const formData = await req.formData();
   const localSystem = formData.get("localSystem")?.toString();
   const targetCode = formData.get("targetCode")?.toString();
   const targetDisplay = formData.get("targetDisplay")?.toString() || "";
+  // localDisplay is the human-readable label for the local code (FHIR
+  // ConceptMap `element.display`). It's a legitimate part of the resource,
+  // so changes in the modal must reach the server, not be silently dropped.
+  const localDisplay = formData.get("localDisplay")?.toString() ?? "";
 
   if (!localSystem || !targetCode) {
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local system and target code are required")}`,
-      },
-    });
+    const msg = "Local system and target code are required";
+    return htmx ? htmxErrorResponse(req, msg) : redirect(conceptMapId, msg);
   }
 
   try {
@@ -117,81 +180,61 @@ export async function handleUpdateEntry(
       localSystem,
       targetCode,
       targetDisplay,
+      localDisplay,
     );
 
     if (!result.success) {
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent(result.error || "Failed to update mapping")}`,
-        },
-      });
+      const msg = result.error || "Failed to update mapping";
+      return htmx ? htmxErrorResponse(req, msg) : redirect(conceptMapId, msg);
     }
 
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}`,
-      },
-    });
+    return htmx
+      ? htmxTableResponse(req, formData, "concept-map-entry-saved")
+      : redirect(conceptMapId);
   } catch (error) {
     console.error("Update mapping error:", error);
     const message =
       error instanceof Error ? error.message : "Failed to update mapping";
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent(message)}`,
-      },
-    });
+    return htmx ? htmxErrorResponse(req, message) : redirect(conceptMapId, message);
   }
 }
 
 /**
  * Handle POST /api/concept-maps/:id/entries/:code/delete
  *
- * Deletes an entry from a ConceptMap.
- * - Parses form data: localSystem
- * - URL param :code is the localCode to delete
- * - Delegates to deleteConceptMapEntry service function
- * - Returns redirect to /mapping/table with conceptMapId
+ * Deletes an entry. URL param :code is the localCode.
+ * Form fields: localSystem (required).
  */
 export async function handleDeleteEntry(
   req: Request & { params: { id: string; code: string } },
 ): Promise<Response> {
   const conceptMapId = req.params.id;
-  const localCode = decodeURIComponent(req.params.code);
+  const htmx = isHtmxRequest(req);
+  let localCode: string;
+  try {
+    localCode = decodeURIComponent(req.params.code);
+  } catch {
+    return new Response("Malformed URL", { status: 400 });
+  }
 
   const formData = await req.formData();
   const localSystem = formData.get("localSystem")?.toString();
 
   if (!localSystem) {
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent("Local system is required")}`,
-      },
-    });
+    const msg = "Local system is required";
+    return htmx ? htmxErrorResponse(req, msg) : redirect(conceptMapId, msg);
   }
 
   try {
     await deleteConceptMapEntry(conceptMapId, localCode, localSystem);
 
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}`,
-      },
-    });
+    return htmx
+      ? htmxTableResponse(req, formData, "concept-map-entry-deleted")
+      : redirect(conceptMapId);
   } catch (error) {
     console.error("Delete mapping error:", error);
     const message =
       error instanceof Error ? error.message : "Failed to delete mapping";
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `/mapping/table?conceptMapId=${conceptMapId}&error=${encodeURIComponent(message)}`,
-      },
-    });
+    return htmx ? htmxErrorResponse(req, message) : redirect(conceptMapId, message);
   }
 }

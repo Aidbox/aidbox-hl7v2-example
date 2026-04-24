@@ -90,9 +90,9 @@ resolveToLoinc(observationIdentifier, sender)
 
 Users can resolve mappings via two UI pages:
 
-**Mapping Tasks Queue (`/mapping/tasks`)**: View pending tasks filtered by type → search or select target code → resolve. Creates ConceptMap entry and completes Task.
+**Mapping Tasks Queue (`/unmapped-codes`)**: View pending tasks filtered by type → search or select target code → resolve. Creates ConceptMap entry and completes Task.
 
-**ConceptMap Table (`/mapping/table`)**: Navigate to sender's ConceptMap → filter by mapping type → add entry directly. System finds and completes matching Tasks.
+**ConceptMap Table (`/terminology`)**: Navigate to sender's ConceptMap → filter by mapping type → add entry directly. System finds and completes matching Tasks.
 
 ### Side Effects on Resolution
 

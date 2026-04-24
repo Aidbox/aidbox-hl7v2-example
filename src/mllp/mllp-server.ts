@@ -14,12 +14,20 @@ interface IncomingHL7v2Message {
   status: string;
   sendingApplication?: string;
   sendingFacility?: string;
+  messageControlId?: string;
+}
+
+interface MSHFields {
+  messageType: string;
+  sendingApplication?: string;
+  sendingFacility?: string;
+  messageControlId?: string;
 }
 
 /**
  * Extract MSH fields from HL7v2 message
  */
-function extractMSHFields(hl7Message: string): { messageType: string; sendingApplication?: string; sendingFacility?: string } {
+function extractMSHFields(hl7Message: string): MSHFields {
   const lines = hl7Message.split(/\r?\n|\r/);
   const mshLine = lines.find((line) => line.startsWith("MSH"));
   if (!mshLine) return { messageType: "UNKNOWN" };
@@ -31,11 +39,13 @@ function extractMSHFields(hl7Message: string): { messageType: string; sendingApp
   // fields[2] = MSH-3 (Sending Application)
   // fields[3] = MSH-4 (Sending Facility)
   // fields[8] = MSH-9 (Message Type)
+  // fields[9] = MSH-10 (Message Control ID)
   const messageType = (fields[8] || "UNKNOWN").replace("^", "_"); // e.g., ADT^A01 -> ADT_A01
   const sendingApplication = fields[2] || undefined;
   const sendingFacility = fields[3] || undefined;
+  const messageControlId = fields[9] || undefined;
 
-  return { messageType, sendingApplication, sendingFacility };
+  return { messageType, sendingApplication, sendingFacility, messageControlId };
 }
 
 /**
@@ -105,7 +115,7 @@ export function wrapWithMLLP(message: string): Buffer {
  * Store incoming HL7v2 message in Aidbox
  */
 export async function storeMessage(hl7Message: string): Promise<void> {
-  const { messageType, sendingApplication, sendingFacility } = extractMSHFields(hl7Message);
+  const { messageType, sendingApplication, sendingFacility, messageControlId } = extractMSHFields(hl7Message);
 
   const resource: IncomingHL7v2Message = {
     resourceType: "IncomingHL7v2Message",
@@ -115,6 +125,7 @@ export async function storeMessage(hl7Message: string): Promise<void> {
     status: "received",
     sendingApplication,
     sendingFacility,
+    messageControlId,
   };
 
   await aidboxFetch<IncomingHL7v2Message>("/fhir/IncomingHL7v2Message", {
@@ -122,7 +133,7 @@ export async function storeMessage(hl7Message: string): Promise<void> {
     body: JSON.stringify(resource),
   });
 
-  console.log(`[MLLP] Stored message of type: ${messageType} from ${sendingApplication || "unknown"}/${sendingFacility || "unknown"}`);
+  console.log(`[MLLP] Stored message of type: ${messageType} from ${sendingApplication || "unknown"}/${sendingFacility || "unknown"} (MSH-10=${messageControlId || "<none>"})`);
 }
 
 export type StoreMessageFn = (hl7Message: string) => Promise<void>;

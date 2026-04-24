@@ -106,8 +106,10 @@ export async function removeTaskFromMessage(
 /**
  * Update all messages affected by a resolved task.
  * Removes the task reference from each message's unmappedCodes.
+ * Returns the count of messages that were re-queued for processing
+ * (status flipped from `code_mapping_error` back to `received`).
  */
-export async function updateAffectedMessages(taskId: string): Promise<void> {
+export async function updateAffectedMessages(taskId: string): Promise<number> {
   const bundle = await aidboxFetch<Bundle<IncomingHL7v2Message>>(
     `/fhir/IncomingHL7v2Message?status=code_mapping_error&unmapped-task=Task/${taskId}`,
   );
@@ -117,4 +119,5 @@ export async function updateAffectedMessages(taskId: string): Promise<void> {
   for (const message of messages) {
     await removeTaskFromMessage(message.id!, taskId);
   }
+  return messages.length;
 }

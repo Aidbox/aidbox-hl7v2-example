@@ -21,7 +21,7 @@ If you need to map additional HL7v2 fields beyond what's currently supported, se
 The simplest approach is using the Mapping Tasks and Code Mappings pages. When a message arrives with an unmapped code:
 
 1. The message gets `status=mapping_error`
-2. A task appears on the Mapping Tasks page (`/mapping/tasks`)
+2. A task appears on the Mapping Tasks page (`/unmapped-codes`)
 3. You search for the matching LOINC code and resolve it
 4. The mapping is saved and the message can be reprocessed
 
@@ -118,7 +118,7 @@ bun scripts/import-mappings.ts
 
 After import, you can verify the mappings:
 
-1. Go to the Code Mappings page (`/mapping/table`) in the web UI
+1. Go to the Code Mappings page (`/terminology`) in the web UI
 2. Select the sender from the dropdown
 3. You should see all imported mappings in the table
 

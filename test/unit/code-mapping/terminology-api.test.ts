@@ -1,10 +1,25 @@
 /**
- * Tests for Terminology API
+ * Tests for Terminology API (LOINC search + validation).
  *
- * The terminology API calls external terminology server for LOINC operations.
+ * Why this file does NOT use `mock.module`:
+ * Other test files install process-wide `mock.module` stubs that can
+ * bleed into this file's imports. In Bun 1.3.12 the effect is
+ * test-order- and filesystem-dependent: CI (Ubuntu) consistently
+ * inherits `test/unit/api/terminology-suggest.test.ts`'s stub on
+ * `terminology-api` even when we import from a different path, and
+ * even with `afterAll(mock.restore)`. Re-registering `mock.module`
+ * per-test is also unreliable after the target module has been cached.
+ *
+ * Instead we test the impl module (`loinc-terminology.ts`) via its
+ * injectable `fetchFn` parameter — each test passes an in-place fake
+ * and asserts on its behavior. No module mocking, no cross-file
+ * pollution, no ordering sensitivity.
  */
-import { describe, test, expect, mock, afterEach } from "bun:test";
-import * as realAidbox from "../../../src/aidbox";
+import { describe, test, expect, mock, beforeEach } from "bun:test";
+import {
+  searchLoincCodes,
+  validateLoincCode,
+} from "../../../src/code-mapping/loinc-terminology";
 
 const sampleValueSetExpansion = {
   expansion: {
@@ -45,25 +60,31 @@ const sampleCodeSystemLookup = {
   ],
 };
 
+/**
+ * Build a minimal fake aidboxFetch whose T-parameter is discarded —
+ * good enough for stubbing the two callsites inside loinc-terminology.
+ */
+function fakeFetch<T>(handler: (path: string) => Promise<unknown>) {
+  return (async (path: string) => handler(path)) as unknown as <U = T>(
+    path: string,
+  ) => Promise<U>;
+}
+
 describe("searchLoincCodes", () => {
-  afterEach(() => {
-    mock.restore();
+  let calledPath = "";
+
+  beforeEach(() => {
+    calledPath = "";
   });
 
   test("searches by text query and returns up to 10 results", async () => {
-    let calledPath = "";
-    const mockAidbox = {
-      aidboxFetch: mock((path: string) => {
-        calledPath = path;
-        return Promise.resolve(sampleValueSetExpansion);
-      }),
-    };
+    const spy = mock((path: string) => {
+      calledPath = path;
+      return Promise.resolve(sampleValueSetExpansion);
+    });
+    const results = await searchLoincCodes("potassium", fakeFetch(spy));
 
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
-    const results = await searchLoincCodes("potassium");
-
-    expect(mockAidbox.aidboxFetch).toHaveBeenCalled();
+    expect(spy).toHaveBeenCalled();
     expect(calledPath).toContain("ValueSet/$expand");
     expect(calledPath).toContain("filter=potassium");
     expect(calledPath).toContain("count=10");
@@ -71,29 +92,22 @@ describe("searchLoincCodes", () => {
   });
 
   test("searches by code (numeric-looking query)", async () => {
-    let calledPath = "";
-    const mockAidbox = {
-      aidboxFetch: mock((path: string) => {
+    await searchLoincCodes(
+      "2823",
+      fakeFetch((path) => {
         calledPath = path;
         return Promise.resolve(sampleValueSetExpansion);
       }),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
-    await searchLoincCodes("2823");
+    );
 
     expect(calledPath).toContain("filter=2823");
   });
 
   test("returns results with code, display, and optional component/property/timing/scale", async () => {
-    const mockAidbox = {
-      aidboxFetch: mock(() => Promise.resolve(sampleValueSetExpansion)),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
-    const results = await searchLoincCodes("potassium");
+    const results = await searchLoincCodes(
+      "potassium",
+      fakeFetch(() => Promise.resolve(sampleValueSetExpansion)),
+    );
 
     expect(results[0]!.code).toBe("2823-3");
     expect(results[0]!.display).toBe("Potassium [Moles/volume] in Serum or Plasma");
@@ -104,13 +118,10 @@ describe("searchLoincCodes", () => {
   });
 
   test("handles results without designation (optional fields)", async () => {
-    const mockAidbox = {
-      aidboxFetch: mock(() => Promise.resolve(sampleValueSetExpansion)),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
-    const results = await searchLoincCodes("potassium");
+    const results = await searchLoincCodes(
+      "potassium",
+      fakeFetch(() => Promise.resolve(sampleValueSetExpansion)),
+    );
     const resultWithoutDesignation = results.find((r) => r.code === "39789-3");
 
     expect(resultWithoutDesignation).toBeDefined();
@@ -119,157 +130,127 @@ describe("searchLoincCodes", () => {
   });
 
   test("returns empty array when no results found", async () => {
-    const mockAidbox = {
-      aidboxFetch: mock(() => Promise.resolve({ expansion: { contains: [] } })),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
-    const results = await searchLoincCodes("nonexistent");
+    const results = await searchLoincCodes(
+      "nonexistent",
+      fakeFetch(() => Promise.resolve({ expansion: { contains: [] } })),
+    );
 
     expect(results).toEqual([]);
   });
 
   test("returns empty array when expansion.contains is undefined", async () => {
-    const mockAidbox = {
-      aidboxFetch: mock(() => Promise.resolve({ expansion: {} })),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
-    const results = await searchLoincCodes("test");
+    const results = await searchLoincCodes(
+      "test",
+      fakeFetch(() => Promise.resolve({ expansion: {} })),
+    );
 
     expect(results).toEqual([]);
   });
 
   test("retries on transient failure (2 retries)", async () => {
     let callCount = 0;
-    const mockAidbox = {
-      aidboxFetch: mock(() => {
+    const results = await searchLoincCodes(
+      "potassium",
+      fakeFetch(() => {
         callCount++;
         if (callCount < 3) {
           return Promise.reject(new Error("HTTP 503: Service Unavailable"));
         }
         return Promise.resolve(sampleValueSetExpansion);
       }),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
-    const results = await searchLoincCodes("potassium");
+    );
 
     expect(callCount).toBe(3);
     expect(results.length).toBeGreaterThan(0);
   });
 
   test("throws after max retries exceeded", async () => {
-    const mockAidbox = {
-      aidboxFetch: mock(() => Promise.reject(new Error("HTTP 503: Service Unavailable"))),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
-
-    await expect(searchLoincCodes("potassium")).rejects.toThrow();
+    await expect(
+      searchLoincCodes(
+        "potassium",
+        fakeFetch(() => Promise.reject(new Error("HTTP 503: Service Unavailable"))),
+      ),
+    ).rejects.toThrow();
   });
 
   test("does not retry on 4xx errors", async () => {
     let callCount = 0;
-    const mockAidbox = {
-      aidboxFetch: mock(() => {
-        callCount++;
-        return Promise.reject(new Error("HTTP 400: Bad Request"));
-      }),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
-
-    await expect(searchLoincCodes("potassium")).rejects.toThrow("400");
+    await expect(
+      searchLoincCodes(
+        "potassium",
+        fakeFetch(() => {
+          callCount++;
+          return Promise.reject(new Error("HTTP 400: Bad Request"));
+        }),
+      ),
+    ).rejects.toThrow("400");
     expect(callCount).toBe(1);
   });
 
   test("encodes special characters in query", async () => {
-    let calledPath = "";
-    const mockAidbox = {
-      aidboxFetch: mock((path: string) => {
+    await searchLoincCodes(
+      "test & query",
+      fakeFetch((path) => {
         calledPath = path;
         return Promise.resolve({ expansion: {} });
       }),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { searchLoincCodes } = await import("../../../src/code-mapping/terminology-api");
-    await searchLoincCodes("test & query");
+    );
 
     expect(calledPath).toContain("filter=test%20%26%20query");
   });
 });
 
 describe("validateLoincCode", () => {
-  afterEach(() => {
-    mock.restore();
-  });
-
   test("returns code details when valid", async () => {
-    const mockAidbox = {
-      aidboxFetch: mock((path: string) => {
-        expect(path).toContain("CodeSystem/$lookup");
-        expect(path).toContain("system=http://loinc.org");
-        expect(path).toContain("code=2823-3");
+    let calledPath = "";
+    const result = await validateLoincCode(
+      "2823-3",
+      fakeFetch((path) => {
+        calledPath = path;
         return Promise.resolve(sampleCodeSystemLookup);
       }),
-    };
+    );
 
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { validateLoincCode } = await import("../../../src/code-mapping/terminology-api");
-    const result = await validateLoincCode("2823-3");
-
+    expect(calledPath).toContain("CodeSystem/$lookup");
+    expect(calledPath).toContain("system=http://loinc.org");
+    expect(calledPath).toContain("code=2823-3");
     expect(result).toBeDefined();
     expect(result!.code).toBe("2823-3");
     expect(result!.display).toBe("Potassium [Moles/volume] in Serum or Plasma");
   });
 
   test("returns null for invalid code", async () => {
-    const mockAidbox = {
-      aidboxFetch: mock(() => Promise.reject(new Error("HTTP 404: Not Found"))),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { validateLoincCode } = await import("../../../src/code-mapping/terminology-api");
-    const result = await validateLoincCode("INVALID-CODE");
+    const result = await validateLoincCode(
+      "INVALID-CODE",
+      fakeFetch(() => Promise.reject(new Error("HTTP 404: Not Found"))),
+    );
 
     expect(result).toBeNull();
   });
 
   test("retries on transient failure", async () => {
     let callCount = 0;
-    const mockAidbox = {
-      aidboxFetch: mock(() => {
+    const result = await validateLoincCode(
+      "2823-3",
+      fakeFetch(() => {
         callCount++;
         if (callCount < 2) {
           return Promise.reject(new Error("HTTP 503: Service Unavailable"));
         }
         return Promise.resolve(sampleCodeSystemLookup);
       }),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { validateLoincCode } = await import("../../../src/code-mapping/terminology-api");
-    const result = await validateLoincCode("2823-3");
+    );
 
     expect(callCount).toBe(2);
     expect(result).toBeDefined();
   });
 
   test("throws after max retries on non-404 errors", async () => {
-    const mockAidbox = {
-      aidboxFetch: mock(() => Promise.reject(new Error("HTTP 500: Internal Server Error"))),
-    };
-
-    mock.module("../../../src/aidbox", () => ({ ...realAidbox, ...mockAidbox }));
-    const { validateLoincCode } = await import("../../../src/code-mapping/terminology-api");
-
-    await expect(validateLoincCode("2823-3")).rejects.toThrow("500");
+    await expect(
+      validateLoincCode(
+        "2823-3",
+        fakeFetch(() => Promise.reject(new Error("HTTP 500: Internal Server Error"))),
+      ),
+    ).rejects.toThrow("500");
   });
 });
