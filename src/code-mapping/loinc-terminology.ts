@@ -77,13 +77,19 @@ function extractDesignation(
 }
 
 export async function searchLoincCodes(
-  query: string
+  query: string,
+  // Injectable for tests — defaults to the real aidboxFetch. This is
+  // NOT for general dependency-injection use; it exists specifically
+  // because `mock.module`-based stubbing of this file's aidbox import
+  // is unreliable across Bun versions / test-ordering on CI (see
+  // test/unit/code-mapping/terminology-api.test.ts for details).
+  fetchFn: typeof aidboxFetch = aidboxFetch,
 ): Promise<LoincSearchResult[]> {
   const encodedQuery = encodeURIComponent(query);
   const path = `/fhir/ValueSet/$expand?url=http://loinc.org/vs&filter=${encodedQuery}&count=10`;
 
   const response = await withRetry(() =>
-    aidboxFetch<ValueSetExpansion>(path)
+    fetchFn<ValueSetExpansion>(path)
   );
 
   const contains = response.expansion?.contains || [];
@@ -104,13 +110,14 @@ export interface LoincValidationResult {
 }
 
 export async function validateLoincCode(
-  code: string
+  code: string,
+  fetchFn: typeof aidboxFetch = aidboxFetch,
 ): Promise<LoincValidationResult | null> {
   const path = `/fhir/CodeSystem/$lookup?system=http://loinc.org&code=${encodeURIComponent(code)}`;
 
   try {
     const response = await withRetry(() =>
-      aidboxFetch<CodeSystemLookupResult>(path)
+      fetchFn<CodeSystemLookupResult>(path)
     );
 
     const displayParam = response.parameter?.find((p) => p.name === "display");

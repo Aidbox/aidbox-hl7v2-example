@@ -1,16 +1,18 @@
 /**
  * Public entry for Terminology API (LOINC search + validation).
  *
- * The real implementation lives in `./terminology-api-impl`. This file
- * is a thin re-export so tests that stub this module (via `mock.module`
- * — process-wide in Bun) don't also stub the implementation behind it:
- * `test/unit/code-mapping/terminology-api.test.ts` imports the
- * implementation directly (`./terminology-api-impl`) to sidestep that
- * stub. Everything else in the codebase imports from here.
+ * The real implementation lives in `./loinc-terminology`. Keeping the
+ * implementation under a dissimilar filename lets test code import the
+ * impl directly without colliding with any `mock.module` that stubs the
+ * public `terminology-api` path. The impl also exposes an optional
+ * `fetchFn` parameter on each function for tests that want to bypass
+ * module-level mocking entirely — see the docs in
+ * `src/code-mapping/loinc-terminology.ts` and
+ * `test/unit/code-mapping/terminology-api.test.ts`.
  */
 export {
   searchLoincCodes,
   validateLoincCode,
   type LoincSearchResult,
   type LoincValidationResult,
-} from "./terminology-api-impl";
+} from "./loinc-terminology";
