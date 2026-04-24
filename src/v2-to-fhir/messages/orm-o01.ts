@@ -292,8 +292,8 @@ function processDG1Segments(
 ): Condition[] {
   const conditions: Condition[] = [];
 
-  for (let i = 0; i < dg1Segments.length; i++) {
-    const dg1 = fromDG1(dg1Segments[i]!);
+  for (const [i, segment] of dg1Segments.entries()) {
+    const dg1 = fromDG1(segment);
     const condition = convertDG1ToCondition(dg1) as Condition;
 
     condition.subject = patientRef as Condition["subject"];
@@ -343,8 +343,7 @@ async function processORMObservations(
   const observations: Observation[] = [];
   const mappingErrors: MappingError[] = [];
 
-  for (let i = 0; i < observationGroups.length; i++) {
-    const group = observationGroups[i]!;
+  for (const [i, group] of observationGroups.entries()) {
     const obx = fromOBX(group.obx);
 
     // Default missing OBX-11 to "registered" in ORM context
@@ -404,7 +403,11 @@ async function processOBROrderGroup(
   const mappingErrors: MappingError[] = [];
 
   const orc = fromORC(group.orc);
-  const obr = fromOBR(group.orderChoice!);
+  if (!group.orderChoice) {
+    // Callers gate this function on orderChoiceType === "OBR" && orderChoice truthy.
+    return { entries: [], mappingErrors: [] };
+  }
+  const obr = fromOBR(group.orderChoice);
 
   // Resolve order number (ORC-2, fallback to OBR-2)
   const orderNumberResult = resolveOrderNumber(orc, obr.$2_placerOrderNumber);
@@ -518,7 +521,11 @@ async function processRXOOrderGroup(
   // Build MedicationRequest from RXO.
   // convertRXOToMedicationRequest adapts shared ORC status values where needed
   // (for example "revoked" -> "cancelled" for MedicationRequest).
-  const rxo = fromRXO(group.orderChoice!);
+  if (!group.orderChoice) {
+    // Callers gate this function on orderChoiceType === "RXO" && orderChoice truthy.
+    return { entries: [], mappingErrors };
+  }
+  const rxo = fromRXO(group.orderChoice);
   const medicationRequest = convertRXOToMedicationRequest(rxo, statusResult.status) as MedicationRequest;
 
   // Set ID, subject, encounter, meta

@@ -128,8 +128,7 @@ function validateIdentitySystemRules(config: Hl7v2ToFhirConfig): void {
     );
   }
 
-  for (let i = 0; i < rules.length; i++) {
-    const rule = rules[i]!;
+  for (const [i, rule] of rules.entries()) {
     if ("mpiLookup" in rule) {
       // MpiLookupRule — MPI-specific validation deferred to MPI implementation ticket.
     } else {
@@ -270,7 +269,7 @@ function stripJsonComments(input: string): string {
   let escapeNext = false;
 
   for (let i = 0; i < input.length; i++) {
-    const char = input[i]!;
+    const char = input.charAt(i);
     const nextChar = input[i + 1];
 
     if (inLineComment) {

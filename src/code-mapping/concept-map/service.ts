@@ -243,29 +243,30 @@ export function addMappingToConceptMap(
   targetDisplay: string,
   targetSystem: string,
 ): ConceptMap {
+  const groupArr: ConceptMapGroup[] = conceptMap.group ? [...conceptMap.group] : [];
   const updated: ConceptMap = {
     ...conceptMap,
-    group: conceptMap.group ? [...conceptMap.group] : [],
+    group: groupArr,
   };
 
   // Find group by both source AND target system to correctly handle
   // different target systems for the same source (e.g., address-type vs address-use)
-  let groupIndex = updated.group!.findIndex(
+  let groupIndex = groupArr.findIndex(
     (g) => g.source === localSystem && g.target === targetSystem,
   );
 
   if (groupIndex === -1) {
-    updated.group!.push({
+    groupArr.push({
       source: localSystem,
       target: targetSystem,
       element: [],
     });
-    groupIndex = updated.group!.length - 1;
+    groupIndex = groupArr.length - 1;
   }
 
-  const group = { ...updated.group![groupIndex] } as ConceptMapGroup;
+  const group = { ...groupArr[groupIndex] } as ConceptMapGroup;
   group.element = group.element ? [...group.element] : [];
-  updated.group![groupIndex] = group;
+  groupArr[groupIndex] = group;
 
   const newElement: ConceptMapGroupElement = {
     code: localCode,
@@ -413,12 +414,21 @@ export async function listConceptMaps(
       return true;
     })
     .map((cm) => {
-      const mappingType = detectMappingTypeFromConceptMap(cm)!;
+      const mappingType = detectMappingTypeFromConceptMap(cm);
+      if (!mappingType) {
+        throw new Error(`ConceptMap ${cm.id ?? "(no id)"} passed filter but has no detectable mapping type`);
+      }
+      if (!cm.id) {
+        throw new Error("ConceptMap has no id");
+      }
+      if (!cm.targetUri) {
+        throw new Error(`ConceptMap ${cm.id} has no targetUri (should have been filtered out)`);
+      }
       return {
-        id: cm.id!,
-        displayName: cm.title || cm.id!,
+        id: cm.id,
+        displayName: cm.title || cm.id,
         mappingType,
-        targetSystem: cm.targetUri!,
+        targetSystem: cm.targetUri,
       };
     });
 }

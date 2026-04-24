@@ -3,6 +3,7 @@ import {
   convertXCNToRelatedPerson,
   convertXCNArrayToRelatedPersons,
 } from "../../../../src/v2-to-fhir/datatypes/xcn-related-person";
+import type { Reference } from "../../../../src/fhir/hl7-fhir-r4-core";
 
 describe("convertXCNToRelatedPerson", () => {
   test("returns undefined for undefined input", () => {
@@ -19,7 +20,7 @@ describe("convertXCNToRelatedPerson", () => {
     });
     expect(result?.resourceType).toBe("RelatedPerson");
     expect(result?.identifier?.[0]).toEqual({ value: "REL123" });
-    expect(result?.patient).toEqual({ reference: "" } as any);
+    expect(result?.patient).toEqual({ reference: "" } as unknown as Reference<"Patient">);
   });
 
   test("converts XCN with family name only", () => {
@@ -165,7 +166,7 @@ describe("convertXCNToRelatedPerson", () => {
     });
 
     expect(result?.resourceType).toBe("RelatedPerson");
-    expect(result?.patient).toEqual({ reference: "" } as any);
+    expect(result?.patient).toEqual({ reference: "" } as unknown as Reference<"Patient">);
     expect(result?.identifier).toHaveLength(1);
     expect(result?.identifier?.[0]!.value).toBe("REL123");
     expect(result?.name).toHaveLength(1);

@@ -1,6 +1,5 @@
 import { describe, test, expect } from "bun:test";
 import { parseMessage } from "@atomic-ehr/hl7v2";
-import { fromORC, fromOBR } from "../../../../src/hl7v2/generated/fields";
 import {
   groupORMOrders,
   resolveOrderNumber,

@@ -1,5 +1,8 @@
 import { test, expect, describe } from "bun:test";
 import { convertFNToHumanName } from "../../../../src/v2-to-fhir/datatypes/fn-humanname";
+import type { HumanName, Extension } from "../../../../src/fhir/hl7-fhir-r4-core";
+
+type HumanNameWithFamilyExt = HumanName & { _family?: { extension: Extension[] } };
 
 describe("convertFNToHumanName", () => {
   test("returns undefined for undefined input", () => {
@@ -34,7 +37,7 @@ describe("convertFNToHumanName", () => {
           },
         ],
       },
-    } as any);
+    } as HumanNameWithFamilyExt);
   });
 
   test("converts family name with own surname extension", () => {
@@ -52,7 +55,7 @@ describe("convertFNToHumanName", () => {
           },
         ],
       },
-    } as any);
+    } as HumanNameWithFamilyExt);
   });
 
   test("converts family name with partner prefix extension", () => {
@@ -70,7 +73,7 @@ describe("convertFNToHumanName", () => {
           },
         ],
       },
-    } as any);
+    } as HumanNameWithFamilyExt);
   });
 
   test("converts family name with partner name extension", () => {
@@ -88,7 +91,7 @@ describe("convertFNToHumanName", () => {
           },
         ],
       },
-    } as any);
+    } as HumanNameWithFamilyExt);
   });
 
   test("converts full family name with all extensions", () => {
@@ -121,13 +124,13 @@ describe("convertFNToHumanName", () => {
           },
         ],
       },
-    } as any);
+    } as HumanNameWithFamilyExt);
   });
 
   test("does not add _family when no extensions present", () => {
     const result = convertFNToHumanName({
       $1_family: "Smith",
     });
-    expect((result as any)?._family).toBeUndefined();
+    expect((result as HumanNameWithFamilyExt | undefined)?._family).toBeUndefined();
   });
 });

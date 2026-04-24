@@ -82,10 +82,12 @@ function prepareDG1ForExtraction(segments: HL7v2Segment[]): HL7v2Segment[] {
       dg1.$3_diagnosisCodeDg1?.$2_text || dg1.$4_diagnosisDescription || "";
     const key = `${code}|${display}`;
 
-    if (!grouped.has(key)) {
-      grouped.set(key, []);
+    let bucket = grouped.get(key);
+    if (!bucket) {
+      bucket = [];
+      grouped.set(key, bucket);
     }
-    grouped.get(key)!.push({ segment, priority: validPriority });
+    bucket.push({ segment, priority: validPriority });
   }
 
   const deduplicated: HL7v2Segment[] = [];
@@ -326,8 +328,8 @@ export async function convertADT_A03(
   const relatedPersons: RelatedPerson[] = [];
   const nk1Segments = findAllSegments(parsed, "NK1");
 
-  for (let i = 0; i < nk1Segments.length; i++) {
-    const nk1 = fromNK1(nk1Segments[i]!);
+  for (const [i, segment] of nk1Segments.entries()) {
+    const nk1 = fromNK1(segment);
     const relatedPerson = convertNK1ToRelatedPerson(nk1) as RelatedPerson;
     relatedPerson.patient = {
       reference: patientRef,
@@ -344,8 +346,8 @@ export async function convertADT_A03(
   const dg1Segments = findAllSegments(parsed, "DG1");
   const deduplicatedDG1 = prepareDG1ForExtraction(dg1Segments);
 
-  for (let i = 0; i < deduplicatedDG1.length; i++) {
-    const dg1 = fromDG1(deduplicatedDG1[i]!);
+  for (const dg1Segment of deduplicatedDG1) {
+    const dg1 = fromDG1(dg1Segment);
     const condition = convertDG1ToCondition(dg1) as Condition;
     condition.subject = { reference: patientRef } as Condition["subject"];
 
@@ -367,8 +369,8 @@ export async function convertADT_A03(
   const allergies: AllergyIntolerance[] = [];
   const al1Segments = findAllSegments(parsed, "AL1");
 
-  for (let i = 0; i < al1Segments.length; i++) {
-    const al1 = fromAL1(al1Segments[i]!);
+  for (const al1Segment of al1Segments) {
+    const al1 = fromAL1(al1Segment);
 
     if (!hasValidAllergenInfo(al1)) {
       continue;
@@ -396,8 +398,8 @@ export async function convertADT_A03(
   const coverages: Coverage[] = [];
   const in1Segments = findAllSegments(parsed, "IN1");
 
-  for (let i = 0; i < in1Segments.length; i++) {
-    const in1 = fromIN1(in1Segments[i]!);
+  for (const in1Segment of in1Segments) {
+    const in1 = fromIN1(in1Segment);
 
     if (!hasValidPayorInfo(in1)) {
       continue;

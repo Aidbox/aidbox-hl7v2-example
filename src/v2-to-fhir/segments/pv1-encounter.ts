@@ -510,8 +510,13 @@ export function buildEncounterFromPV1(
     identifierError = identifierResult.error;
   } else if (identifierResult.identifier) {
     identifiers.push(...identifierResult.identifier);
-    const system = identifierResult.identifier[0]!.system!;
-    const vnValue = pv1.$19_visitNumber!.$1_value!;
+    // buildEncounterIdentifier only returns an identifier when both system and value were derived
+    // from $19_visitNumber; the assertions below reflect that contract.
+    const system = identifierResult.identifier[0]?.system;
+    const vnValue = pv1.$19_visitNumber?.$1_value;
+    if (!system || !vnValue) {
+      throw new Error("Internal error: buildEncounterIdentifier returned identifier without system or value");
+    }
     encounter.id = `${sanitizeForId(system)}-${sanitizeForId(vnValue)}`;
   }
 
@@ -866,7 +871,10 @@ export async function handleEncounter(
   }
 
   const encounter = result.encounter;
-  const encounterId = encounter.id!;
+  if (!encounter.id) {
+    throw new Error("Internal error: encounter constructed without id (identifierError path should have returned)");
+  }
+  const encounterId = encounter.id;
   const encounterRef = { reference: `Encounter/${encounterId}` } as Reference<"Encounter">;
 
   const existingEncounter = await lookupEncounter(encounterId);

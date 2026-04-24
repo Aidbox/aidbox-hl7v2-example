@@ -13,7 +13,6 @@ import {
   getAllergies,
   getCoverages,
   getRelatedPersons,
-  getMappingTasks,
   submitAndProcess,
   aidboxFetch,
 } from "../helpers";
@@ -62,7 +61,7 @@ describe("ADT_A01 E2E Integration", () => {
 
     test("tags Patient with message control ID", async () => {
       const hl7Message = await loadFixture("adt-a01/base.hl7");
-      const message = await submitAndProcessAdtA01(hl7Message);
+      await submitAndProcessAdtA01(hl7Message);
 
       const patient = await getPatient("hospital-p12345");
       const tag = patient.meta?.tag?.find(

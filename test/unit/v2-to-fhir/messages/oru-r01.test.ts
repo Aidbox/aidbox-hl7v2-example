@@ -1,7 +1,7 @@
 import { describe, test, expect, afterEach } from "bun:test";
 import { parseMessage } from "@atomic-ehr/hl7v2";
 import { convertORU_R01 } from "../../../../src/v2-to-fhir/messages/oru-r01";
-import type { Patient, Encounter } from "../../../../src/fhir/hl7-fhir-r4-core";
+import type { Encounter, DiagnosticReport } from "../../../../src/fhir/hl7-fhir-r4-core";
 import { clearConfigCache } from "../../../../src/v2-to-fhir/config";
 import { makeTestContext } from "../helpers";
 
@@ -114,7 +114,7 @@ describe("convertORU_R01 - config-driven PV1 policy", () => {
     // DiagnosticReport should not reference an Encounter
     const report = result.entries!.find(
       (r) => r.resourceType === "DiagnosticReport",
-    ) as any;
+    ) as DiagnosticReport | undefined;
     expect(report?.encounter).toBeUndefined();
   });
 });

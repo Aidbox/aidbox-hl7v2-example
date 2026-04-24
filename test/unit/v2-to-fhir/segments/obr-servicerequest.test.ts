@@ -267,7 +267,7 @@ describe("OBR-11 -> ServiceRequest.intent override", () => {
 
   test("OBR-11 'g' (lowercase) overrides intent to 'reflex-order'", () => {
     const serviceRequest = makeServiceRequest({ intent: "order" });
-    mergeOBRIntoServiceRequest(makeOBR({ $11_specimenActionCode: "g" as any }), serviceRequest, makeORC());
+    mergeOBRIntoServiceRequest(makeOBR({ $11_specimenActionCode: "g" }), serviceRequest, makeORC());
     expect(serviceRequest.intent).toBe("reflex-order");
   });
 
@@ -279,7 +279,7 @@ describe("OBR-11 -> ServiceRequest.intent override", () => {
 
   test("OBR-11 other value keeps existing intent", () => {
     const serviceRequest = makeServiceRequest({ intent: "order" });
-    mergeOBRIntoServiceRequest(makeOBR({ $11_specimenActionCode: "L" as any }), serviceRequest, makeORC());
+    mergeOBRIntoServiceRequest(makeOBR({ $11_specimenActionCode: "L" }), serviceRequest, makeORC());
     expect(serviceRequest.intent).toBe("order");
   });
 

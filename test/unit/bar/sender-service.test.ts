@@ -13,7 +13,7 @@ const testOutgoingMessage = {
 
 describe("pollPendingMessage", () => {
   const mockAidbox = {
-    aidboxFetch: mock(() => Promise.resolve({ total: 0, entry: [] as any[] })),
+    aidboxFetch: mock(() => Promise.resolve({ total: 0, entry: [] as unknown[] })),
     putResource: mock(() => Promise.resolve({})),
   };
 
@@ -130,7 +130,7 @@ describe("processNextMessage", () => {
   test("processes message and returns true", async () => {
     let callCount = 0;
     const mockAidbox = {
-      aidboxFetch: mock((path: string) => {
+      aidboxFetch: mock((_path: string) => {
         callCount++;
         if (callCount === 1) {
           // Poll returns message

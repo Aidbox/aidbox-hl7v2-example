@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
-import type { PdfAttributeTableField, PdfComponentDescription, PdfComponentTableField, PdfDatatypeDescription, PdfDeprecatedComponent, PdfFieldDescription, PdfSegmentDescription, PdfTable, PdfTableValue } from "./types";
+import type { PdfAttributeTableField, PdfComponentDescription, PdfComponentTableField, PdfDatatypeDescription, PdfDeprecatedComponent, PdfFieldDescription, PdfSegmentDescription, PdfTable } from "./types";
 
 function shellEscape(s: string): string {
   return "'" + s.replace(/'/g, "'\\''") + "'";

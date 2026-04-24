@@ -73,8 +73,7 @@ function applyPreprocessors(
     parsedMessage: parsed,
   };
 
-  for (let i = 0; i < parsed.length; i++) {
-    const segment = parsed[i];
+  for (const segment of parsed) {
     if (!segment) {continue;}
 
     const segmentType = segment.segment;

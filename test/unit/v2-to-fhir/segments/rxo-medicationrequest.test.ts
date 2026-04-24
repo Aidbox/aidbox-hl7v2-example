@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import type { RXO } from "../../../../src/hl7v2/generated/fields";
+import type { DosageDoseAndRate } from "../../../../src/fhir/hl7-fhir-r4-core/Dosage";
 import { convertRXOToMedicationRequest } from "../../../../src/v2-to-fhir/segments/rxo-medicationrequest";
 
 function makeRXO(overrides: Partial<RXO> = {}): RXO {
@@ -137,15 +138,15 @@ describe("RXO-2/3/4 -> dosageInstruction doseRange", () => {
 
     expect(result.dosageInstruction).toBeDefined();
     expect(result.dosageInstruction).toHaveLength(1);
-    const doseAndRate = result.dosageInstruction![0]!.doseAndRate as any[];
+    const doseAndRate = result.dosageInstruction![0]!.doseAndRate as DosageDoseAndRate[];
     expect(doseAndRate).toHaveLength(1);
-    const doseRange = doseAndRate[0].doseRange;
-    expect(doseRange.low.value).toBe(500);
-    expect(doseRange.low.code).toBe("mg");
-    expect(doseRange.low.system).toBe("http://unitsofmeasure.org");
-    expect(doseRange.high.value).toBe(1000);
-    expect(doseRange.high.code).toBe("mg");
-    expect(doseRange.high.system).toBe("http://unitsofmeasure.org");
+    const doseRange = doseAndRate[0]?.doseRange;
+    expect(doseRange?.low?.value).toBe(500);
+    expect(doseRange?.low?.code).toBe("mg");
+    expect(doseRange?.low?.system).toBe("http://unitsofmeasure.org");
+    expect(doseRange?.high?.value).toBe(1000);
+    expect(doseRange?.high?.code).toBe("mg");
+    expect(doseRange?.high?.system).toBe("http://unitsofmeasure.org");
   });
 
   test("RXO-2 only (no max) -> doseRange.low only", () => {
@@ -157,11 +158,11 @@ describe("RXO-2/3/4 -> dosageInstruction doseRange", () => {
 
     const result = convertRXOToMedicationRequest(rxo, "active");
 
-    const doseAndRate = result.dosageInstruction![0]!.doseAndRate as any[];
-    const doseRange = doseAndRate[0].doseRange;
-    expect(doseRange.low.value).toBe(250);
-    expect(doseRange.low.code).toBe("mg");
-    expect(doseRange.high).toBeUndefined();
+    const doseAndRate = result.dosageInstruction![0]!.doseAndRate as DosageDoseAndRate[];
+    const doseRange = doseAndRate[0]?.doseRange;
+    expect(doseRange?.low?.value).toBe(250);
+    expect(doseRange?.low?.code).toBe("mg");
+    expect(doseRange?.high).toBeUndefined();
   });
 
   test("RXO-2 without units -> doseRange with value only", () => {
@@ -173,12 +174,12 @@ describe("RXO-2/3/4 -> dosageInstruction doseRange", () => {
 
     const result = convertRXOToMedicationRequest(rxo, "active");
 
-    const doseAndRate = result.dosageInstruction![0]!.doseAndRate as any[];
-    const doseRange = doseAndRate[0].doseRange;
-    expect(doseRange.low.value).toBe(10);
-    expect(doseRange.low.code).toBeUndefined();
-    expect(doseRange.high.value).toBe(20);
-    expect(doseRange.high.code).toBeUndefined();
+    const doseAndRate = result.dosageInstruction![0]!.doseAndRate as DosageDoseAndRate[];
+    const doseRange = doseAndRate[0]?.doseRange;
+    expect(doseRange?.low?.value).toBe(10);
+    expect(doseRange?.low?.code).toBeUndefined();
+    expect(doseRange?.high?.value).toBe(20);
+    expect(doseRange?.high?.code).toBeUndefined();
   });
 
   test("no RXO-2 -> no dosageInstruction", () => {

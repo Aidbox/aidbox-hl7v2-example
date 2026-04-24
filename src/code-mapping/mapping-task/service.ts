@@ -117,7 +117,8 @@ export async function updateAffectedMessages(taskId: string): Promise<number> {
   const messages = bundle.entry?.map((e) => e.resource) || [];
 
   for (const message of messages) {
-    await removeTaskFromMessage(message.id!, taskId);
+    if (!message.id) {continue;}
+    await removeTaskFromMessage(message.id, taskId);
   }
   return messages.length;
 }

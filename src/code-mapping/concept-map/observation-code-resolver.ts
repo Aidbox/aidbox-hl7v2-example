@@ -136,7 +136,7 @@ async function resolveFromConceptMap(
       "OBX-3 has no code value",
       undefined,
       localDisplay,
-      localSystemNormalized!,
+      localSystemNormalized,
       sender.sendingApplication,
       sender.sendingFacility,
     );

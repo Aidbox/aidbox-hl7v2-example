@@ -316,17 +316,14 @@ function getRaceOmbCategories(codings: Coding[]): Coding[] {
   const seenCodes = new Set<string>();
 
   for (const coding of codings) {
-    if (!isRaceOmbCategoryCode(coding.code)) {
-      continue;
-    }
-
-    const code = coding.code!;
-    if (seenCodes.has(code)) {
-      continue;
-    }
+    const code = coding.code;
+    if (!code) {continue;}
+    const ombCategory = US_CORE_RACE_OMB_MAP[code];
+    if (!ombCategory) {continue;}
+    if (seenCodes.has(code)) {continue;}
 
     seenCodes.add(code);
-    categories.push(US_CORE_RACE_OMB_MAP[code]!);
+    categories.push(ombCategory);
   }
 
   return categories;

@@ -87,9 +87,13 @@ function truncate(s: string, max: number): string {
 
 function detailSubtitle(p: ParsedIncomingMessage): string {
   switch (p.kind) {
-    case "code_mapping_error":
+    case "code_mapping_error": {
       // p.unmappedCodes is non-empty by the parser's invariant.
-      return `Code <span class="font-mono text-accent-ink font-semibold bg-accent-soft px-1.5 py-0.5 rounded">${escapeHtml(p.unmappedCodes[0]!.localCode)}</span> has no mapping — routed to triage.`;
+      const first = p.unmappedCodes[0];
+      if (!first) {return "";}
+      const chipCls = "font-mono text-accent-ink font-semibold bg-accent-soft px-1.5 py-0.5 rounded";
+      return `Code <span class="${chipCls}">${escapeHtml(first.localCode)}</span> has no mapping — routed to triage.`;
+    }
     case "warning":
       return `<span class="text-warn">${escapeHtml(truncate(p.error, 200))}</span>`;
     case "parsing_error":
@@ -138,10 +142,11 @@ export function renderDetailHeader(p: ParsedIncomingMessage): string {
   // The "Map code" button is now structurally gated: it only exists when
   // the variant is `code_mapping_error`, so `unmappedCode` is guaranteed
   // non-null with a `.localCode` string. No more tone-triangulation.
-  const mapCodeHref =
-    p.kind === "code_mapping_error"
-      ? `/unmapped-codes?code=${encodeURIComponent(p.unmappedCodes[0]!.localCode)}&sender=${encodeURIComponent(p.sendingApplication)}`
-      : "";
+  const firstUnmapped = p.kind === "code_mapping_error" ? p.unmappedCodes[0] : undefined;
+  const mapCodeHref = firstUnmapped
+    ? `/unmapped-codes?code=${encodeURIComponent(firstUnmapped.localCode)}` +
+      `&sender=${encodeURIComponent(p.sendingApplication)}`
+    : "";
   const senderToReceiver = [p.sendingApplication, p.sendingFacility]
     .filter(Boolean)
     .join(" → ");
@@ -253,7 +258,7 @@ export function renderStructuredTab(p: ParsedIncomingMessage): string {
   // highlight against; every other variant has `problemCode = undefined`
   // by construction, so no runtime ?. chains required.
   const problemCode =
-    p.kind === "code_mapping_error" ? p.unmappedCodes[0]!.localCode : undefined;
+    p.kind === "code_mapping_error" ? p.unmappedCodes[0]?.localCode : undefined;
 
   return `
     <div class="p-5 flex flex-col gap-2">
@@ -276,7 +281,7 @@ export function renderStructuredTab(p: ParsedIncomingMessage): string {
             <div class="border ${border} rounded px-3 py-2 flex items-center gap-3 flex-wrap">
               <span class="chip font-semibold">${escapeHtml(name ?? "—")}</span>
               <div class="flex items-center gap-2 flex-wrap min-w-0">${fieldsText}</div>
-              ${hasProblem ? `<span class="chip chip-warn ml-auto text-[10.5px]">contains ${escapeHtml(problemCode!)}</span>` : ""}
+              ${hasProblem && problemCode ? `<span class="chip chip-warn ml-auto text-[10.5px]">contains ${escapeHtml(problemCode)}</span>` : ""}
             </div>
           `;
         })

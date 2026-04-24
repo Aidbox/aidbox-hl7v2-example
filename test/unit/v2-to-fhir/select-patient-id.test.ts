@@ -1,11 +1,10 @@
 import { describe, test, expect } from "bun:test";
 import {
   selectPatientId,
-  type MatchRule,
   type MpiLookupRule,
   type IdentifierPriorityRule,
 } from "../../../src/v2-to-fhir/identity-system/patient-id";
-import type { MpiClient, MpiResult } from "../../../src/v2-to-fhir/identity-system/mpi-lookup";
+import type { MpiClient } from "../../../src/v2-to-fhir/identity-system/mpi-lookup";
 import { StubMpiClient } from "../../../src/v2-to-fhir/identity-system/mpi-lookup";
 import type { CX } from "../../../src/hl7v2/generated/fields";
 

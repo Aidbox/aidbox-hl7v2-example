@@ -40,13 +40,21 @@ export default tseslint.config(
     },
   },
   {
-    files: ["test/**/*.ts", "scripts/**/*.ts"],
+    files: ["test/**/*.ts"],
     rules: {
       "max-lines-per-function": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
       "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-non-null-assertion": "warn",
       "@typescript-eslint/no-empty-function": "off",
       "@typescript-eslint/no-unused-vars": "warn",
+    },
+  },
+  {
+    files: ["scripts/**/*.ts"],
+    rules: {
+      "max-lines-per-function": "off",
+      "@typescript-eslint/no-empty-function": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
 );

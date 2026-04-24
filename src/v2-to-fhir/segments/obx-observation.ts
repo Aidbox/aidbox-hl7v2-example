@@ -78,7 +78,8 @@ export type OBXStatusResult =
 export function mapOBXStatusToFHIRWithResult(
   status: string | undefined,
 ): OBXStatusResult {
-  if (!status || !(status.toUpperCase() in OBX11_STATUS_MAP)) {
+  const mapped = status ? OBX11_STATUS_MAP[status.toUpperCase()] : undefined;
+  if (!mapped) {
     return {
       error: {
         localCode: status || "undefined",
@@ -88,7 +89,7 @@ export function mapOBXStatusToFHIRWithResult(
       },
     };
   }
-  return { status: OBX11_STATUS_MAP[status.toUpperCase()]! };
+  return { status: mapped };
 }
 
 // ============================================================================
@@ -304,8 +305,11 @@ async function resolveOBXStatus(
   const normalizedStatus = status?.trim() || undefined;
 
   // First try hardcoded mappings for standard codes
-  if (normalizedStatus !== undefined && normalizedStatus.toUpperCase() in OBX11_STATUS_MAP) {
-    return { status: OBX11_STATUS_MAP[normalizedStatus.toUpperCase()]! };
+  if (normalizedStatus !== undefined) {
+    const mapped = OBX11_STATUS_MAP[normalizedStatus.toUpperCase()];
+    if (mapped) {
+      return { status: mapped };
+    }
   }
 
   // If status is undefined/empty, return error immediately (no ConceptMap lookup for missing status)
@@ -587,8 +591,14 @@ export async function convertOBXToObservationResolving(
     return { errors };
   }
 
-  const observation = obxResult.observation!;
-  observation.code = buildCodeableConcept(loincResolution!);
+  if (!obxResult.observation) {
+    throw new Error("convertOBXWithMappingSupportAsync returned no observation and no error");
+  }
+  if (!loincResolution) {
+    throw new Error("resolveToLoinc returned no resolution and no thrown error");
+  }
+  const observation = obxResult.observation;
+  observation.code = buildCodeableConcept(loincResolution);
 
   return { observation };
 }

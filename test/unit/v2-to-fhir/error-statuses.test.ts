@@ -7,12 +7,9 @@
  * - sending_error:      submitBundle() fails (tested via parseSendingAttempt helper)
  */
 import { describe, test, expect, afterEach } from "bun:test";
-import { readFileSync } from "fs";
-import { join } from "path";
 import { parseMessage } from "@atomic-ehr/hl7v2";
 import { convertMessage, parseSendingAttempt } from "../../../src/v2-to-fhir/processor-service";
 import { convertADT_A01 } from "../../../src/v2-to-fhir/messages/adt-a01";
-import { convertORU_R01 } from "../../../src/v2-to-fhir/messages/oru-r01";
 import { buildMappingErrorResult } from "../../../src/code-mapping/mapping-errors";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom/IncomingHl7v2message";
 import { clearConfigCache } from "../../../src/v2-to-fhir/config";

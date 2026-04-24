@@ -170,8 +170,7 @@ function injectAuthorityFromMsh(
   if (pid3 === undefined || pid3 === null) {return;}
 
   if (Array.isArray(pid3)) {
-    for (let i = 0; i < pid3.length; i++) {
-      const cx = pid3[i]!;
+    for (const [i, cx] of pid3.entries()) {
       const replaced = injectAuthorityIntoCx(cx, namespace);
       if (replaced) {pid3[i] = replaced;}
     }
@@ -487,8 +486,8 @@ function normalizeRxa9Nip001(
   }
 
   if (Array.isArray(rxa9)) {
-    for (let i = 0; i < rxa9.length; i++) {
-      const replaced = injectNip001SystemIntoCwe(rxa9[i]!);
+    for (const [i, cwe] of rxa9.entries()) {
+      const replaced = injectNip001SystemIntoCwe(cwe);
       if (replaced) {
         rxa9[i] = replaced;
       }

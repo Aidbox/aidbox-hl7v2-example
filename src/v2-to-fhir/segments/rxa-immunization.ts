@@ -327,16 +327,18 @@ function buildPerformers(
   const performers: ImmunizationPerformer[] = [];
   const performerResources: DomainResource[] = [];
 
-  if (rxa.$10_administeringProvider?.length) {
-    const adminResult = createAdministeringPerformer(rxa.$10_administeringProvider[0]!);
+  const admin = rxa.$10_administeringProvider?.[0];
+  if (admin) {
+    const adminResult = createAdministeringPerformer(admin);
     if (adminResult) {
       performers.push(adminResult.performer);
       performerResources.push(adminResult.practitioner);
     }
   }
 
-  if (orc?.$12_orderingProvider?.length) {
-    const orderResult = createOrderingPerformer(orc.$12_orderingProvider[0]!);
+  const ordering = orc?.$12_orderingProvider?.[0];
+  if (ordering) {
+    const orderResult = createOrderingPerformer(ordering);
     if (orderResult) {
       performers.push(orderResult.performer);
       performerResources.push(orderResult.practitionerRole);

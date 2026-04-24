@@ -149,9 +149,9 @@ export async function resolveOrderStatus(
  * Uses inline display reference for consistency with existing converters.
  */
 export function buildRequesterReference(xcns: XCN[] | undefined): Reference<"Practitioner"> | undefined {
-  if (!xcns || xcns.length === 0) {return undefined;}
+  const xcn = xcns?.[0];
+  if (!xcn) {return undefined;}
 
-  const xcn = xcns[0]!;
   const practitioner = convertXCNToPractitioner(xcn);
   if (!practitioner) {return undefined;}
 

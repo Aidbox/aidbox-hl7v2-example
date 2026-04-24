@@ -336,11 +336,13 @@ function summarize(p: ParsedIncomingMessage): string {
     case "warning":
     case "deferred":
       return "";
-    case "code_mapping_error":
+    case "code_mapping_error": {
       // p.unmappedCodes is non-empty by construction: the parser returns
       // a MalformedWireRecord if a code_mapping_error wire record has
       // no codes, so this arm never runs on that invalid shape.
-      return `${p.unmappedCodes[0]!.localCode} — no mapping`;
+      const first = p.unmappedCodes[0];
+      return first ? `${first.localCode} — no mapping` : "no mapping";
+    }
     case "parsing_error":
       return `parse failed — ${truncate(p.error, 60)}`;
     case "conversion_error":

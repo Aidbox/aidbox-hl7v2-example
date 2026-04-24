@@ -29,7 +29,11 @@ export type PatientIdResolver = (identifiers: CX[]) => Promise<PatientIdResult>;
 /** Creates a PatientIdResolver from the given config and StubMpiClient. */
 export function defaultPatientIdResolver(config: Hl7v2ToFhirConfig): PatientIdResolver {
   const mpiClient = new StubMpiClient();
-  return (ids) => selectPatientId(ids, config.identitySystem!.patient!.rules, mpiClient);
+  const rules = config.identitySystem?.patient?.rules;
+  if (!rules) {
+    throw new Error("Config.identitySystem.patient.rules is required (validated at load time)");
+  }
+  return (ids) => selectPatientId(ids, rules, mpiClient);
 }
 
 import { sanitizeForId } from "./utils";
@@ -91,7 +95,9 @@ function tryMatchRule(pool: CX[], rule: MatchRule): PatientIdResult | null {
     if (!assignerId)
       {continue;}
 
-    return buildPatientId(assignerId, cx.$1_value!.trim());
+    const value = cx.$1_value?.trim();
+    if (!value) {continue;}
+    return buildPatientId(assignerId, value);
   }
 
   return null;
@@ -101,7 +107,9 @@ function tryAnyRule(pool: CX[]): PatientIdResult | null {
   for (const cx of pool) {
     const assignerId = getAnyAssignerId(cx);
     if (assignerId) {
-      return buildPatientId(assignerId, cx.$1_value!.trim());
+      const value = cx.$1_value?.trim();
+      if (!value) {continue;}
+      return buildPatientId(assignerId, value);
     }
   }
   return null;

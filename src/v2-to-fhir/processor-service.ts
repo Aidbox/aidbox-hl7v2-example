@@ -92,7 +92,8 @@ export async function convertMessage(
 export function parseSendingAttempt(error: string | undefined): number {
   if (!error?.startsWith(SENDING_ATTEMPT_PREFIX)) {return 0;}
   const match = error.match(/^Sending failed \(attempt (\d+)\//);
-  return match ? parseInt(match[1]!, 10) : 0;
+  const attempt = match?.[1];
+  return attempt ? parseInt(attempt, 10) : 0;
 }
 
 // ============================================================================
@@ -172,9 +173,12 @@ async function applyMessageUpdate(
     delete updated.error;
   }
 
+  if (!message.id) {
+    throw new Error("Cannot update IncomingHL7v2Message without id");
+  }
   await putResource<IncomingHL7v2Message>(
     "IncomingHL7v2Message",
-    message.id!,
+    message.id,
     updated,
   );
 }

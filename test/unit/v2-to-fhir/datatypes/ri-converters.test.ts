@@ -1,6 +1,6 @@
 import { test, expect, describe } from "bun:test";
 import { convertRIToTiming } from "../../../../src/v2-to-fhir/datatypes/ri-converters";
-import type { TimingRepeat } from "../../../../src/fhir/hl7-fhir-r4-core/Timing";
+import type { Timing, TimingRepeat } from "../../../../src/fhir/hl7-fhir-r4-core/Timing";
 
 describe("convertRIToTiming", () => {
   test("returns undefined for undefined input", () => {
@@ -30,7 +30,7 @@ describe("convertRIToTiming", () => {
       repeat: {
         timeOfDay: ["08:00:00"],
       },
-    } as any);
+    } as Timing);
   });
 
   test("returns Timing with multiple times of day", () => {
@@ -41,7 +41,7 @@ describe("convertRIToTiming", () => {
       repeat: {
         timeOfDay: ["08:00:00", "12:00:00", "18:00:00"],
       },
-    } as any);
+    } as Timing);
   });
 
   test("returns Timing with both code and times", () => {

@@ -191,9 +191,12 @@ export async function buildBarFromAccount(account: AccountWithId): Promise<strin
 
 export async function createOutgoingBarMessage(account: AccountWithId, hl7v2: string): Promise<OutgoingBarMessage> {
   const patientRef = account.subject?.[0]?.reference;
+  if (!patientRef) {
+    throw new Error(`Account ${account.id} has no subject[0].reference`);
+  }
   const newMessage: OutgoingBarMessage = {
     resourceType: "OutgoingBarMessage",
-    patient: { reference: patientRef! as `Patient/${string}` },
+    patient: { reference: patientRef as `Patient/${string}` },
     account: { reference: `Account/${account.id}` },
     status: "pending",
     hl7v2,

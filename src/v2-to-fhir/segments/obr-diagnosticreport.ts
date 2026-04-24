@@ -65,7 +65,8 @@ export type OBRStatusResult =
 export function mapOBRStatusToFHIRWithResult(
   status: string | undefined
 ): OBRStatusResult {
-  if (status === undefined || !(status.toUpperCase() in OBR25_STATUS_MAP)) {
+  const mapped = status === undefined ? undefined : OBR25_STATUS_MAP[status.toUpperCase()];
+  if (!mapped) {
     return {
       error: {
         localCode: status || "undefined",
@@ -75,7 +76,7 @@ export function mapOBRStatusToFHIRWithResult(
       },
     };
   }
-  return { status: OBR25_STATUS_MAP[status.toUpperCase()]! };
+  return { status: mapped };
 }
 
 // ============================================================================
@@ -209,8 +210,11 @@ async function resolveOBRStatus(
   const normalizedStatus = status?.trim() || undefined;
 
   // First try hardcoded mappings for standard codes
-  if (normalizedStatus !== undefined && normalizedStatus.toUpperCase() in OBR25_STATUS_MAP) {
-    return { status: OBR25_STATUS_MAP[normalizedStatus.toUpperCase()]! };
+  if (normalizedStatus !== undefined) {
+    const mapped = OBR25_STATUS_MAP[normalizedStatus.toUpperCase()];
+    if (mapped) {
+      return { status: mapped };
+    }
   }
 
   // If status is undefined/empty, return error immediately (no ConceptMap lookup for missing status)

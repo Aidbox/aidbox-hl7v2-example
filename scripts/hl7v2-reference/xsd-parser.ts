@@ -15,9 +15,11 @@ function parseXml(text: string) {
   return parser.parse(text);
 }
 
-function getFixedAttr(attrs: any[], attrName: string): string | null {
-  const attr = attrs.find((a: any) => a["@_name"] === attrName);
-  return attr?.["@_fixed"] ?? null;
+type XmlNode = Record<string, unknown>;
+
+function getFixedAttr(attrs: XmlNode[], attrName: string): string | null {
+  const attr = attrs.find((a) => a["@_name"] === attrName);
+  return (attr?.["@_fixed"] as string | undefined) ?? null;
 }
 
 function parseCardinality(value: string): number | "unbounded" {
@@ -192,7 +194,7 @@ export async function parseXsdMessages(xsdDir: string): Promise<Map<string, XsdM
     if (complexTypes.length === 0) {continue;}
 
     // Build a map of all group definitions: name -> elements
-    const groupDefs = new Map<string, any[]>();
+    const groupDefs = new Map<string, XmlNode[]>();
     let rootName: string | null = null;
 
     for (const ct of complexTypes) {
@@ -224,14 +226,14 @@ export async function parseXsdMessages(xsdDir: string): Promise<Map<string, XsdM
     }
     if (!rootName) {continue;}
 
-    const buildElements = (rawElements: any[], visited = new Set<string>()): XsdMessageElement[] => {
+    const buildElements = (rawElements: XmlNode[], visited = new Set<string>()): XsdMessageElement[] => {
       const result: XsdMessageElement[] = [];
       for (const el of rawElements) {
-        const ref: string | undefined = el["@_ref"];
+        const ref = el["@_ref"] as string | undefined;
         if (!ref) {continue;}
 
-        const minOccurs = parseInt(el["@_minOccurs"] || "0", 10);
-        const maxOccurs = parseCardinality(el["@_maxOccurs"] || "1");
+        const minOccurs = parseInt((el["@_minOccurs"] as string | undefined) || "0", 10);
+        const maxOccurs = parseCardinality((el["@_maxOccurs"] as string | undefined) || "1");
 
         // Groups are message-prefixed (e.g., "BAR_P01.VISIT"), segments are plain (e.g., "PID")
         const isGroup = groupDefs.has(ref) && ref !== rootName && !visited.has(ref);

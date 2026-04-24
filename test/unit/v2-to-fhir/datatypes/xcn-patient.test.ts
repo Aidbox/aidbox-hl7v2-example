@@ -68,7 +68,7 @@ describe("XCN[Patient] Converter", () => {
       // For Patient: XCN.5->suffix[0], XCN.7->suffix[1], XCN.21->suffix[2]
       expect(result!.name![0]!.suffix).toEqual(["Jr", "MD", "FACP"]);
       // Patient should NOT have qualification property
-      expect((result as any)?.qualification).toBeUndefined();
+      expect((result as { qualification?: unknown } | undefined)?.qualification).toBeUndefined();
     });
 
     test("converts XCN with identifier system and type", () => {

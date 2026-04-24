@@ -443,14 +443,20 @@ function renderSimulateBody(): string {
   const groupsPayload = MESSAGE_GROUPS.map((group) => ({
     type: group.type,
     label: group.label,
-    messages: group.messages.map((sample) => ({
-      id: sample.id,
-      name: sample.name,
-      tone: sample.tone,
-      desc: sample.desc,
-      // Pre-rendered template — Alpine just swaps it into the textarea.
-      template: SAMPLE_BUILDERS[sample.id]!(ctx),
-    })),
+    messages: group.messages.map((sample) => {
+      const builder = SAMPLE_BUILDERS[sample.id];
+      if (!builder) {
+        throw new Error(`No SAMPLE_BUILDERS entry for sample id "${sample.id}"`);
+      }
+      return {
+        id: sample.id,
+        name: sample.name,
+        tone: sample.tone,
+        desc: sample.desc,
+        // Pre-rendered template — Alpine just swaps it into the textarea.
+        template: builder(ctx),
+      };
+    }),
   }));
   const groupsJson = escapeHtml(JSON.stringify(groupsPayload));
   const defaultId = escapeHtml(DEFAULT_SAMPLE_ID);

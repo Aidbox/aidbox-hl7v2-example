@@ -4,8 +4,8 @@ import {
   deriveImmunizationStatus,
   type RXAConversionResult,
 } from "../../../../src/v2-to-fhir/segments/rxa-immunization";
-import type { RXA, RXR, ORC } from "../../../../src/hl7v2/generated/fields";
-import type { Reference } from "../../../../src/fhir/hl7-fhir-r4-core";
+import type { RXA, RXR, ORC, XCN } from "../../../../src/hl7v2/generated/fields";
+import type { Practitioner, PractitionerRole, Reference } from "../../../../src/fhir/hl7-fhir-r4-core";
 
 const patientReference: Reference<"Patient"> = { reference: "Patient/test-patient-id" };
 
@@ -158,7 +158,7 @@ describe("convertRXAToImmunization", () => {
     });
 
     test("returns error when RXA-5 is missing", () => {
-      const rxa = makeBaseRXA({ $5_administeredCode: {} as any });
+      const rxa = makeBaseRXA({ $5_administeredCode: {} });
 
       const result = convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference);
 
@@ -423,7 +423,7 @@ describe("convertRXAToImmunization", () => {
 
     test("omits reasonCode when RXA-19 has empty CE entries", () => {
       const rxa = makeBaseRXA({
-        $19_indication: [{}] as any,
+        $19_indication: [{}],
       });
 
       const { immunization } = expectImmunization(
@@ -547,7 +547,7 @@ describe("convertRXAToImmunization", () => {
     test("omits route when RXR-1 is empty, preserves site from RXR-2", () => {
       const rxa = makeBaseRXA();
       const rxr: RXR = {
-        $1_route: {} as any,
+        $1_route: {},
         $2_administrationSite: { $1_code: "LA", $2_text: "LEFT ARM", $3_system: "HL70163" },
       };
 
@@ -680,7 +680,8 @@ describe("convertRXAToImmunization", () => {
       // Practitioner resource created
       const practitioner = performerResources.find(
         (r) => r.resourceType === "Practitioner",
-      ) as any;
+      ) as Practitioner | undefined;
+      if (!practitioner) {throw new Error("Practitioner not found");}
       expect(practitioner).toBeDefined();
       expect(practitioner.name?.[0]?.family).toBe("SMITH");
       expect(practitioner.id).toBe("npi-1234567890");
@@ -710,9 +711,9 @@ describe("convertRXAToImmunization", () => {
       // PractitionerRole resource created
       const role = performerResources.find(
         (r) => r.resourceType === "PractitionerRole",
-      ) as any;
+      ) as PractitionerRole | undefined;
       expect(role).toBeDefined();
-      expect(role.id).toBe("role-npi-9876543210");
+      expect(role?.id).toBe("role-npi-9876543210");
     });
 
     test("both RXA-10 and ORC-12 create two performers and two bundle entries", () => {
@@ -775,8 +776,8 @@ describe("convertRXAToImmunization", () => {
     });
 
     test("no performer when RXA-10 XCN has no identifier or name", () => {
-      const emptyXCN = {};
-      const rxa = makeBaseRXA({ $10_administeringProvider: [emptyXCN as any] });
+      const emptyXCN: XCN = {};
+      const rxa = makeBaseRXA({ $10_administeringProvider: [emptyXCN] });
 
       const { immunization, performerResources } = expectImmunization(
         convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
@@ -796,8 +797,8 @@ describe("convertRXAToImmunization", () => {
         convertRXAToImmunization(rxa, undefined, undefined, "test-id", patientReference),
       );
 
-      const id1 = (result1.performerResources[0]! as any).id;
-      const id2 = (result2.performerResources[0]! as any).id;
+      const id1 = result1.performerResources[0]?.id;
+      const id2 = result2.performerResources[0]?.id;
       expect(id1).toBe(id2);
       expect(id1).toBe("npi-1234567890");
     });

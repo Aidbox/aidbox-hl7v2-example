@@ -71,8 +71,8 @@ describe("MLLPParser", () => {
     const framedMessage = wrapWithMLLP(sampleADT);
 
     let messages: string[] = [];
-    for (let i = 0; i < framedMessage.length; i++) {
-      const result = parser.processData(Buffer.from([framedMessage[i] ?? 0]));
+    for (const byte of framedMessage) {
+      const result = parser.processData(Buffer.from([byte]));
       messages = messages.concat(result);
     }
 

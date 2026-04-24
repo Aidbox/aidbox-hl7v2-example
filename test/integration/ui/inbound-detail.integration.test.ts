@@ -14,8 +14,8 @@
  *   4. `handleInboundDetailTabPartial` with `tab=timeline` returns only the
  *      tab body (no outer `#detail` wrapper) including "Received by MLLP".
  */
-import { describe, test, expect, beforeEach } from "bun:test";
-import { aidboxFetch, cleanupTestResources } from "../helpers";
+import { describe, test, expect } from "bun:test";
+import { aidboxFetch } from "../helpers";
 import type { IncomingHL7v2Message } from "../../../src/fhir/aidbox-hl7v2-custom";
 import { getHistoryVersions } from "../../../src/ui/pages/inbound-detail";
 import {
