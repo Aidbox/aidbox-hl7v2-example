@@ -471,6 +471,8 @@ function renderSimulateBody(): string {
        x-on:dragleave.window.prevent.stop="onDragLeave($event)"
        x-on:drop.window.prevent.stop="onDrop($event)">
     ${renderHero()}
+    ${renderDropBar()}
+    ${renderQueueCard()}
     <div class="grid grid-cols-[minmax(0,1fr)_360px] gap-[22px] items-start">
       ${renderEditorCard()}
       <div class="flex flex-col gap-4">
@@ -478,7 +480,6 @@ function renderSimulateBody(): string {
         ${renderSendCard()}
       </div>
     </div>
-    ${renderQueueCard()}
     ${renderDropOverlay()}
   </div>
   ${renderSimulateScript()}
@@ -517,7 +518,7 @@ function renderDropOverlay(): string {
  */
 function renderQueueCard(): string {
   return `
-  <div x-show="queue.length > 0" x-cloak class="mt-5">
+  <div x-show="queue.length > 0" x-cloak class="mb-[22px]">
     <div class="card flex flex-col overflow-hidden">
       <div class="flex items-center gap-3 py-3 px-[18px] border-b border-line bg-paper-2">
         <span class="font-mono text-[11.5px] text-ink-2 font-medium">queue.batch</span>
@@ -556,13 +557,14 @@ function renderQueueCard(): string {
                    x-text="item.name"></div>
               <div class="font-mono text-[11px] text-ink-3 truncate" x-text="item.preview"></div>
             </div>
-            <!-- Live-progression chip: distinct tones per lifecycle state so the
-                 user can watch each message traverse sending → waiting → verdict. -->
+            <!-- Mirrors Inbound Messages chips: chip-ok/processed,
+                 chip-warn/needs mapping, chip-err/error. In-flight states use
+                 the plain chip + spinner — same treatment Inbound gives the
+                 'processing' state for received-but-unprocessed messages. -->
             <span class="chip text-[10.5px] shrink-0 flex items-center gap-1"
                   :class="{
-                    'chip-accent': item.status === 'sending' || item.status === 'waiting',
                     'chip-ok': item.status === 'sent',
-                    'chip-warn': item.status === 'held' || item.status === 'pending-verdict',
+                    'chip-warn': item.status === 'held',
                     'chip-err': item.status === 'error',
                   }">
               <template x-if="item.status === 'sending' || item.status === 'waiting'">
@@ -588,66 +590,71 @@ function renderQueueCard(): string {
 
 function renderHero(): string {
   return `
-  <div>
+  <div class="mb-[22px]">
     <div class="text-[11px] tracking-[0.1em] uppercase text-ink-3 font-medium">Compose &amp; send · MLLP</div>
-    <div class="flex items-end gap-4 mt-1.5">
-      <div class="flex-1">
-        <h1 class="h1">Simulate Sender</h1>
-        <div class="mt-1.5 text-[13.5px] text-ink-2">Pick a message type, tweak the text, fire it at the listener. Pairs with Inbound to show the whole loop.</div>
-      </div>
-      <!-- Drop-zone affordance. Purely discovery — the actual drop works
-           anywhere on the page (outer x-data listens for dragover/drop),
-           but a visible "you can drop things" chip keeps the feature from
-           being invisible. Click opens the native file picker for keyboard
-           / accessibility paths. The tone flips to accent while dragging. -->
-      <label class="shrink-0 mb-[6px] cursor-pointer select-none rounded-[7px] border border-dashed px-3.5 py-2.5 flex items-center gap-2.5 transition-colors"
-             :class="dragDepth > 0 ? 'border-accent bg-accent-soft' : 'border-line hover:border-ink-3 bg-paper-2'">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
-             class="shrink-0"
-             :class="dragDepth > 0 ? 'text-accent-ink' : 'text-ink-3'">
-          <path d="M12 3v12"/>
-          <path d="m7 8 5-5 5 5"/>
-          <path d="M5 21h14"/>
-        </svg>
-        <div class="leading-[1.35]">
-          <div class="text-[12.5px] font-medium" :class="dragDepth > 0 ? 'text-accent-ink' : 'text-ink'">
-            <span x-show="dragDepth === 0">Drop files, folders, or .zip</span>
-            <span x-show="dragDepth > 0" x-cloak>Release to queue</span>
-          </div>
-          <div class="text-[10.5px]" :class="dragDepth > 0 ? 'text-accent-ink' : 'text-ink-3'">
-            <span x-show="dragDepth === 0">send many at once</span>
-            <span x-show="dragDepth > 0" x-cloak>…queuing</span>
-          </div>
-        </div>
-        <input type="file" multiple accept=".hl7,.txt,.zip,application/zip"
-               class="sr-only"
-               x-on:change="onFilePicker($event)"/>
-      </label>
-    </div>
-    <div class="mb-[22px]"></div>
+    <h1 class="h1 mt-1.5">Simulate Sender</h1>
+    <div class="mt-1.5 text-[13.5px] text-ink-2">Pick a message type, tweak the text, fire it at the listener. Pairs with Inbound to show the whole loop.</div>
   </div>
   `;
 }
 
+/**
+ * Slim full-width upload affordance. Sits between the hero and the
+ * editor/queue: things that act on a *batch* (this drop bar, the queue card)
+ * stack above the editor; the right column stays focused on single-message
+ * tooling (sample picker, send button). Discovery only — the actual drop
+ * works anywhere on the page; clicking the bar opens the native file picker
+ * for keyboard/a11y paths. Tone flips to accent while a drag is active.
+ */
+function renderDropBar(): string {
+  return `
+  <label class="cursor-pointer select-none rounded-[7px] border border-dashed px-4 py-2.5 mb-[22px] flex items-center gap-3 transition-colors"
+         :class="dragDepth > 0 ? 'border-accent bg-accent-soft' : 'border-line hover:border-ink-3 bg-paper-2'">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+         class="shrink-0"
+         :class="dragDepth > 0 ? 'text-accent-ink' : 'text-ink-3'">
+      <path d="M12 3v12"/>
+      <path d="m7 8 5-5 5 5"/>
+      <path d="M5 21h14"/>
+    </svg>
+    <div class="flex-1 leading-[1.35] min-w-0">
+      <div class="text-[12.5px] font-medium" :class="dragDepth > 0 ? 'text-accent-ink' : 'text-ink'">
+        <span x-show="dragDepth === 0">Drop files, folders, or .zip — send many at once</span>
+        <span x-show="dragDepth > 0" x-cloak>Release to queue</span>
+      </div>
+      <div class="text-[10.5px]" :class="dragDepth > 0 ? 'text-accent-ink' : 'text-ink-3'">
+        <span x-show="dragDepth === 0">or click to browse</span>
+        <span x-show="dragDepth > 0" x-cloak>…queuing</span>
+      </div>
+    </div>
+    <input type="file" multiple accept=".hl7,.txt,.zip,application/zip"
+           class="sr-only"
+           x-on:change="onFilePicker($event)"/>
+  </label>
+  `;
+}
+
 function renderEditorCard(): string {
+  // Textarea goes read-only whenever a batch is queued. Edits made in queue
+  // mode never sync back to the queue row, so allowing them silently loses
+  // the user's changes — readonly makes the constraint explicit.
   return `
   <div class="card flex flex-col overflow-hidden">
     <div class="flex items-center gap-2.5 py-3 px-[18px] border-b border-line bg-paper-2">
       <span class="font-mono text-[11.5px] text-ink-2 font-medium truncate" x-text="activeFileName" :title="activeFileName"></span>
       <span class="chip text-[10.5px] shrink-0" x-show="hl7Version" x-cloak>HL7v2 · <span x-text="hl7Version"></span></span>
       <span class="chip text-[10.5px] shrink-0" x-text="segmentCount + ' segments'"></span>
+      <span class="chip text-[10.5px] shrink-0" x-show="queue.length > 0" x-cloak>read-only · queued</span>
     </div>
     <textarea
-      class="font-mono clean-scroll px-[22px] py-5 text-[13px] leading-[1.7] border-none outline-none bg-surface text-ink min-h-[360px] resize-y w-full"
+      class="font-mono clean-scroll px-[22px] py-5 text-[13px] leading-[1.7] border-none outline-none min-h-[360px] resize-y w-full"
+      :class="queue.length > 0 ? 'bg-paper-2 text-ink-2 cursor-default' : 'bg-surface text-ink'"
       x-ref="editor"
       x-model="raw"
+      :readonly="queue.length > 0"
       spellcheck="false"
     ></textarea>
-    <div class="flex items-center gap-3.5 py-2.5 px-[18px] border-t border-line bg-paper-2 text-[11.5px] text-ink-3 font-mono">
-      <span>pipe-delimited · CR or LF endings ok</span>
-      <span class="ml-auto"><span x-text="raw.length"></span> chars · <span x-text="segmentCount"></span> segments</span>
-    </div>
   </div>
   `;
 }
@@ -1078,16 +1085,18 @@ function renderSimulateScript(): string {
       },
 
       queueChipLabel(item) {
-        // Queue rows surface the full live send lifecycle so the user
-        // can watch each message progress through MLLP → processor verdict.
-        // Matches the Send card's steps but condensed into a chip label.
+        // Vocabulary mirrors the Inbound Messages list so a queued row's
+        // verdict reads identically to what the user will see on /incoming-messages:
+        // processed / needs mapping / error. In-flight states use a plain
+        // 'processing' chip + spinner — same treatment Inbound gives the
+        // received-but-unprocessed window.
         if (item.status === 'sending') return 'sending…';
-        if (item.status === 'waiting') return 'waiting for processor…';
-        if (item.status === 'pending-verdict') return 'MLLP sent · no verdict';
-        if (item.status === 'sent') return 'sent';
-        if (item.status === 'held') return 'held for mapping';
+        if (item.status === 'waiting') return 'processing';
+        if (item.status === 'pending-verdict') return 'no verdict yet';
+        if (item.status === 'sent') return 'processed';
+        if (item.status === 'held') return 'needs mapping';
         if (item.status === 'error') return 'error';
-        return 'pending';
+        return 'queued';
       },
 
       get queueProgress() {
