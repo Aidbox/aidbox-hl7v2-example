@@ -51,14 +51,18 @@ Three horizontal bands wrap a left-to-right data flow.
 ```sh
 bun install
 docker compose up -d              # Aidbox + PostgreSQL
-# Open http://localhost:8080, log in at aidbox.app to activate license (first run only)
+```
+
+**Activate Aidbox (required, first run only).** Open http://localhost:8080 — instance will redirect to the activation screen. Click **Continue with Aidbox account**, sign up at [aidbox.app](https://aidbox.app/) (free), and issue a development license for this instance. See the [official activation guide](https://www.health-samurai.io/docs/aidbox/getting-started/run-aidbox-locally#4-activate-your-aidbox-instance). The instance won't accept API requests until activated — `bun run migrate` and `bun run dev` will fail with auth errors otherwise.
+
+```sh
 bun run migrate                   # Install custom resources (IncomingHL7v2Message, OutgoingBarMessage)
 bun run dev                       # Start web server + in-process polling workers
 ```
 
 Access points:
 - **Web UI:** http://localhost:3000
-- **Aidbox Console:** http://localhost:8080 — login as `admin` with `BOX_ADMIN_PASSWORD` from `docker-compose.yaml`
+- **Aidbox Console:** http://localhost:8080 — log in with the Aidbox account you used to activate the instance
 - **MLLP Server:** localhost:2575
 
 Optional: `bun scripts/load-test-data.ts` loads 5 patients with encounters, conditions, procedures, coverages.
