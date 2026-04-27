@@ -606,12 +606,13 @@ function formatRelativeDate(iso: string | undefined): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
-export function renderDetailPartial(row: TerminologyRow): string {
+export function renderDetailPartial(row: TerminologyRow, oob = false): string {
   const editUrl = `/terminology/partials/modal?mode=edit&conceptMapId=${encodeURIComponent(row.conceptMapId)}&code=${encodeURIComponent(row.localCode)}&localSystem=${encodeURIComponent(row.localSystem)}`;
   const deleteAction = `/api/concept-maps/${encodeURIComponent(row.conceptMapId)}/entries/${encodeURIComponent(row.localCode)}/delete`;
+  const oobAttr = oob ? ' hx-swap-oob="true"' : "";
 
   return `
-    <div id="terminology-detail" class="card" style="position:sticky; top:16px">
+    <div id="terminology-detail"${oobAttr} class="card" style="position:sticky; top:16px">
       <!-- FHIR target -->
       <div class="border-b border-line" style="padding: 18px 22px 14px; background: linear-gradient(180deg, var(--paper-2), transparent)">
         <div class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium mb-1.5">FHIR target</div>
@@ -693,7 +694,7 @@ export function renderDetailPartial(row: TerminologyRow): string {
            in-page modal instead of window.confirm — a browser prompt feels
            out of place in a designed tool and can't carry context. -->
       <div class="border-t border-line flex gap-2" style="padding: 14px 22px"
-           x-data="{ confirmDelete: false }">
+           x-data="{ confirmDelete: false, deleting: false }">
         <button type="button"
                 class="btn btn-ghost flex-1 justify-center"
                 x-on:click="confirmDelete = true">Delete</button>
@@ -711,8 +712,8 @@ export function renderDetailPartial(row: TerminologyRow): string {
              x-cloak
              class="fixed inset-0 z-[500] grid place-items-center"
              style="background: rgba(15, 18, 25, 0.45)"
-             x-on:mousedown.self="confirmDelete = false"
-             x-on:keyup.escape.window="confirmDelete = false">
+             x-on:mousedown.self="!deleting && (confirmDelete = false)"
+             x-on:keyup.escape.window="!deleting && (confirmDelete = false)">
           <div class="bg-surface rounded-[8px] shadow-xl border border-line max-w-[420px] w-[90%]"
                style="padding: 20px 22px">
             <div class="text-[15px] font-semibold text-ink mb-1.5">Delete mapping?</div>
@@ -724,16 +725,26 @@ export function renderDetailPartial(row: TerminologyRow): string {
             <div class="flex gap-2 justify-end">
               <button type="button"
                       class="btn btn-ghost px-3 py-1.5 text-[12.5px]"
+                      x-bind:disabled="deleting"
+                      x-bind:class="deleting ? 'opacity-50 cursor-not-allowed' : ''"
                       x-on:click="confirmDelete = false">Cancel</button>
               <button type="button"
-                      class="btn btn-primary px-3 py-1.5 text-[12.5px]"
+                      class="btn btn-primary px-3 py-1.5 text-[12.5px] flex items-center gap-1.5"
                       style="background: var(--err); border-color: var(--err)"
                       hx-post="${escapeHtml(deleteAction)}"
                       hx-target="#terminology-table"
                       hx-swap="outerHTML"
                       hx-include="[name='q'],[name='fhir'],[name='sender']"
                       hx-vals="${escapeHtml(JSON.stringify({ localSystem: row.localSystem }))}"
-                      x-on:htmx:after-request="confirmDelete = false">Delete</button>
+                      x-bind:disabled="deleting"
+                      x-bind:class="deleting ? 'opacity-50 cursor-not-allowed' : ''"
+                      x-on:htmx:before-request="deleting = true"
+                      x-on:htmx:after-request="deleting = false; confirmDelete = false">
+                <span x-show="deleting" x-cloak class="inline-flex">
+                  <span class="spinner" style="width:12px; height:12px; border-width:1.5px"></span>
+                </span>
+                <span x-text="deleting ? 'Deleting…' : 'Delete'"></span>
+              </button>
             </div>
           </div>
         </div>
@@ -742,9 +753,10 @@ export function renderDetailPartial(row: TerminologyRow): string {
   `;
 }
 
-export function renderEmptyDetail(): string {
+export function renderEmptyDetail(oob = false): string {
+  const oobAttr = oob ? ' hx-swap-oob="true"' : "";
   return `
-    <div id="terminology-detail" class="card" style="position:sticky; top:16px; min-height:360px">
+    <div id="terminology-detail"${oobAttr} class="card" style="position:sticky; top:16px; min-height:360px">
       <div class="grid place-items-center text-ink-3 text-[13px] text-center" style="padding: 80px 32px">
         Pick a mapping from the table to see its FHIR target, source, and lineage.
       </div>
@@ -976,6 +988,7 @@ export function renderModalPartial(props: ModalProps): string {
       ? `Bound to <span class="font-mono text-accent-ink">${escapeHtml(row?.fhirField ?? "")}</span> — target is locked`
       : "One local code → one FHIR element, then every future message routes through it.";
   const submitLabel = mode === "edit" ? "Save changes" : "Create mapping";
+  const submittingLabel = mode === "edit" ? "Saving…" : "Creating…";
   const gateAdd =
     "picked.cmId && picked.localSystem.trim() && picked.localCode.trim() && picked.targetCode.trim()";
   const gateEdit = "picked.targetCode.trim()";
@@ -1024,7 +1037,7 @@ export function renderModalPartial(props: ModalProps): string {
     <div id="terminology-modal"
          class="fixed inset-0 z-[200] grid place-items-center"
          style="background: rgba(20,16,12,0.45); backdrop-filter: blur(3px); padding: 20px"
-         x-data='{ picked: ${initialJson}, errorMessage: "" }'
+         x-data='{ picked: ${initialJson}, errorMessage: "", submitting: false }'
          x-on:keyup.escape.window="$root.remove()"
          x-on:mousedown.self="$root.remove()"
          x-on:concept-map-entry-saved.window="$root.remove()"
@@ -1057,6 +1070,8 @@ export function renderModalPartial(props: ModalProps): string {
             : `hx-post="/api/concept-maps/__pending__/entries"
                x-init="$el.addEventListener('htmx:configRequest', (e) => { if (e.target !== $el) return; e.detail.path = '/api/concept-maps/' + encodeURIComponent(picked.cmId) + '/entries' })"`
         }
+              x-on:htmx:before-request.self="submitting = true"
+              x-on:htmx:after-request.self="submitting = false"
               hx-target="#terminology-table"
               hx-swap="outerHTML"
               hx-include="this"
@@ -1168,9 +1183,13 @@ export function renderModalPartial(props: ModalProps): string {
             <button type="submit"
                     x-on:click="errorMessage = ''"
                     class="btn btn-primary py-1.5 px-3 text-[12px] flex items-center gap-1.5"
-                    x-bind:disabled="!(${gate})"
-                    x-bind:class="(${gate}) ? '' : 'opacity-50 cursor-not-allowed'">
-              ${renderIcon("check", "sm")} ${escapeHtml(submitLabel)}
+                    x-bind:disabled="!(${gate}) || submitting"
+                    x-bind:class="(${gate}) && !submitting ? '' : 'opacity-50 cursor-not-allowed'">
+              <span x-show="submitting" x-cloak class="inline-flex">
+                <span class="spinner" style="width:12px; height:12px; border-width:1.5px"></span>
+              </span>
+              <span x-show="!submitting" class="inline-flex">${renderIcon("check", "sm")}</span>
+              <span x-text="submitting ? ${escapeHtml(JSON.stringify(submittingLabel))} : ${escapeHtml(JSON.stringify(submitLabel))}"></span>
             </button>
           </div>
         </form>
@@ -1235,6 +1254,44 @@ export async function renderTableAfterCrud(
   const rows = await loadAllTerminologyRows();
   const filtered = applyFilters(rows, filtersFromFormOrReferer);
   return renderTablePartial(filtered, rows.length, filtersFromFormOrReferer, null);
+}
+
+/**
+ * Like {@link renderTableAfterCrud} but also includes an OOB-swap fragment for
+ * `#terminology-detail`. Used by the Edit/Delete handlers so the right-hand
+ * panel reflects the just-completed action: refreshed row data after edit, or
+ * the empty-state placeholder after delete.
+ *
+ * `detailRowKey` identifies which row to re-render in the detail pane after
+ * the freshly-loaded rows arrive. Pass `null` to force the empty-state (used
+ * for Delete, where the row no longer exists).
+ */
+export async function renderTableAndDetailAfterCrud(
+  filtersFromFormOrReferer: Filters,
+  detailRowKey: { conceptMapId: string; localCode: string; localSystem: string } | null,
+): Promise<string> {
+  const rows = await loadAllTerminologyRows();
+  const filtered = applyFilters(rows, filtersFromFormOrReferer);
+  const tableHtml = renderTablePartial(filtered, rows.length, filtersFromFormOrReferer, null);
+  let detailHtml: string;
+  if (detailRowKey) {
+    const updated = rows.find(
+      (r) =>
+        r.conceptMapId === detailRowKey.conceptMapId &&
+        r.localCode === detailRowKey.localCode &&
+        r.localSystem === detailRowKey.localSystem,
+    );
+    detailHtml = updated ? renderDetailPartial(updated, true) : renderEmptyDetail(true);
+  } else {
+    detailHtml = renderEmptyDetail(true);
+  }
+  return tableHtml + detailHtml;
+}
+
+/** Build a `/terminology` URL preserving filters but dropping any selection. */
+export function buildFiltersOnlyTerminologyUrl(filters: Filters): string {
+  const qs = buildTerminologyQs(filters);
+  return qs ? `/terminology?${qs}` : "/terminology";
 }
 
 // Use a structural type to dodge the `FormData` conflict between

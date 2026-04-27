@@ -465,7 +465,9 @@ describe("renderDetailPartial", () => {
     expect(html).toContain(`hx-target="#terminology-table"`);
     // Browser prompt is gone; an Alpine-driven modal replaces it.
     expect(html).not.toContain(`hx-confirm="`);
-    expect(html).toContain(`x-data="{ confirmDelete: false }"`);
+    // `deleting` joins the scope so the Delete button can show a spinner +
+    // disable while the htmx POST is in flight.
+    expect(html).toContain(`x-data="{ confirmDelete: false, deleting: false }"`);
     expect(html).toContain(`x-on:click="confirmDelete = true"`);
     // hx-vals is double-quoted with HTML-escaped JSON (XSS-safe against
     // single-quote injection in localSystem values).

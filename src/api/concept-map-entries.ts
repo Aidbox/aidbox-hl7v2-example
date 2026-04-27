@@ -18,9 +18,11 @@ import {
   deleteConceptMapEntry,
 } from "../code-mapping/concept-map/service";
 import {
+  buildFiltersOnlyTerminologyUrl,
   parseFiltersFromFormData,
   parseFiltersFromReferer,
   renderTableAfterCrud,
+  renderTableAndDetailAfterCrud,
 } from "../ui/pages/terminology";
 
 // ============================================================================
@@ -53,9 +55,50 @@ async function htmxTableResponse(
     status: 200,
     headers: {
       "Content-Type": "text/html",
-      "HX-Trigger": triggerEvent,
+      "HX-Trigger-After-Swap": triggerEvent,
     },
   });
+}
+
+/**
+ * Like {@link htmxTableResponse} but also OOB-swaps the right-hand
+ * `#terminology-detail` panel. Use for Edit (refreshes the panel with the
+ * updated row data) and Delete (replaces the panel with the empty-state and
+ * pushes a selection-less URL so a refresh doesn't restore the deleted entry).
+ *
+ * Pass `detailRowKey` for Edit; pass `null` for Delete. `pushFiltersOnlyUrl`
+ * triggers an HX-Push-Url that strips `selectedMap/Code/Sys` from the address
+ * bar — only meaningful for Delete.
+ */
+async function htmxTableAndDetailResponse(
+  req: Request,
+  formData: { get(name: string): unknown },
+  triggerEvent: "concept-map-entry-saved" | "concept-map-entry-deleted",
+  detailRowKey: { conceptMapId: string; localCode: string; localSystem: string } | null,
+  pushFiltersOnlyUrl: boolean,
+): Promise<Response> {
+  const formFilters = parseFiltersFromFormData(formData);
+  const hasFormFilters =
+    formFilters.q || formFilters.fhir.length || formFilters.sender.length;
+  const filters = hasFormFilters
+    ? formFilters
+    : parseFiltersFromReferer(req.headers.get("Referer"));
+  const html = await renderTableAndDetailAfterCrud(filters, detailRowKey);
+  const headers: Record<string, string> = {
+    "Content-Type": "text/html",
+    // HX-Trigger-After-Swap (not HX-Trigger) — the regular HX-Trigger fires
+    // events BEFORE the swap, which causes the modal's
+    // `concept-map-entry-saved.window` listener to remove $root before htmx
+    // does the OOB swap on `#terminology-detail`. Once the form is detached,
+    // htmx's contextElement-rooted lookup for the OOB target fails with
+    // oobErrorNoTarget. -After-Swap defers the event until after the swap +
+    // OOB completes, keeping the form attached during target resolution.
+    "HX-Trigger-After-Swap": triggerEvent,
+  };
+  if (pushFiltersOnlyUrl) {
+    headers["HX-Push-Url"] = buildFiltersOnlyTerminologyUrl(filters);
+  }
+  return new Response(html, { status: 200, headers });
 }
 
 /**
@@ -189,7 +232,13 @@ export async function handleUpdateEntry(
     }
 
     return htmx
-      ? htmxTableResponse(req, formData, "concept-map-entry-saved")
+      ? htmxTableAndDetailResponse(
+          req,
+          formData,
+          "concept-map-entry-saved",
+          { conceptMapId, localCode, localSystem },
+          false,
+        )
       : redirect(conceptMapId);
   } catch (error) {
     console.error("Update mapping error:", error);
@@ -229,7 +278,13 @@ export async function handleDeleteEntry(
     await deleteConceptMapEntry(conceptMapId, localCode, localSystem);
 
     return htmx
-      ? htmxTableResponse(req, formData, "concept-map-entry-deleted")
+      ? htmxTableAndDetailResponse(
+          req,
+          formData,
+          "concept-map-entry-deleted",
+          null,
+          true,
+        )
       : redirect(conceptMapId);
   } catch (error) {
     console.error("Delete mapping error:", error);

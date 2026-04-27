@@ -44,10 +44,25 @@ mock.module("../../../src/code-mapping/concept-map/service", () => ({
 // terminology.ts is imported by concept-map-entries.ts for the htmx re-render
 // helpers. We stub its CRUD output so tests assert the PLUMBING (HX-Trigger
 // headers, 302 vs 200 branch), not the rendered HTML.
+// Captured args from the new combined helper so tests can assert that Edit
+// passes a row key (table + OOB-refreshed detail) and Delete passes null
+// (table + empty-state detail) along with the push-URL flag.
+let renderTableAndDetailCalls: Array<{
+  detailRowKey: unknown;
+}> = [];
+
 mock.module("../../../src/ui/pages/terminology", () => ({
   parseFiltersFromFormData: () => ({ q: "", fhir: [], sender: [] }),
   parseFiltersFromReferer: () => ({ q: "", fhir: [], sender: [] }),
   renderTableAfterCrud: async () => `<div id="terminology-table">STUB</div>`,
+  renderTableAndDetailAfterCrud: async (
+    _filters: unknown,
+    detailRowKey: unknown,
+  ) => {
+    renderTableAndDetailCalls.push({ detailRowKey });
+    return `<div id="terminology-table">STUB</div><div id="terminology-detail" hx-swap-oob="true">DETAIL</div>`;
+  },
+  buildFiltersOnlyTerminologyUrl: () => "/terminology",
 }));
 
 const {
@@ -103,7 +118,7 @@ describe("handleAddEntry", () => {
     expect(addCalls).toHaveLength(1);
   });
 
-  it("htmx: returns 200 + text/html + HX-Trigger=concept-map-entry-saved on success", async () => {
+  it("htmx: returns 200 + text/html + HX-Trigger-After-Swap=concept-map-entry-saved on success", async () => {
     const res = await handleAddEntry(
       buildReq({
         params: { id: "cm-a" },
@@ -113,7 +128,11 @@ describe("handleAddEntry", () => {
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
-    expect(res.headers.get("HX-Trigger")).toBe("concept-map-entry-saved");
+    // -After-Swap (not the bare HX-Trigger): plain HX-Trigger fires *before*
+    // the swap, which removes the modal hosting the form before htmx can
+    // resolve the OOB target — see comment in htmxTableAndDetailResponse.
+    expect(res.headers.get("HX-Trigger-After-Swap")).toBe("concept-map-entry-saved");
+    expect(res.headers.get("HX-Trigger")).toBeNull();
     const body = await res.text();
     expect(body).toContain("terminology-table");
   });
@@ -166,6 +185,7 @@ describe("handleUpdateEntry", () => {
   beforeEach(() => {
     updateCalls = [];
     updateResult = { success: true };
+    renderTableAndDetailCalls = [];
   });
 
   it("legacy: returns 302 to /terminology on success", async () => {
@@ -179,7 +199,7 @@ describe("handleUpdateEntry", () => {
     expect(updateCalls).toHaveLength(1);
   });
 
-  it("htmx: returns 200 + HX-Trigger=concept-map-entry-saved", async () => {
+  it("htmx: returns 200 + HX-Trigger-After-Swap=concept-map-entry-saved + OOB detail body", async () => {
     const res = await handleUpdateEntry(
       buildReq({
         params: { id: "cm-a", code: "GLUC" },
@@ -188,7 +208,23 @@ describe("handleUpdateEntry", () => {
       }),
     );
     expect(res.status).toBe(200);
-    expect(res.headers.get("HX-Trigger")).toBe("concept-map-entry-saved");
+    // -After-Swap so the modal closes AFTER the OOB swap on
+    // #terminology-detail completes; otherwise htmx loses its rootNode.
+    expect(res.headers.get("HX-Trigger-After-Swap")).toBe("concept-map-entry-saved");
+    expect(res.headers.get("HX-Trigger")).toBeNull();
+    // No URL push on update — the row identity is unchanged.
+    expect(res.headers.get("HX-Push-Url")).toBeNull();
+    const body = await res.text();
+    expect(body).toContain("terminology-detail");
+    expect(body).toContain('hx-swap-oob="true"');
+    // Update routes the post-CRUD render through the table+detail helper with
+    // a row key so the right-hand panel re-renders the just-edited row.
+    expect(renderTableAndDetailCalls).toHaveLength(1);
+    expect(renderTableAndDetailCalls[0]?.detailRowKey).toEqual({
+      conceptMapId: "cm-a",
+      localCode: "GLUC",
+      localSystem: "L",
+    });
   });
 
   it("decodes ^-containing localCode from params", async () => {
@@ -224,6 +260,7 @@ describe("handleDeleteEntry", () => {
   beforeEach(() => {
     deleteCalls = [];
     deleteFn = async () => undefined;
+    renderTableAndDetailCalls = [];
   });
 
   it("legacy: returns 302 on success", async () => {
@@ -237,7 +274,7 @@ describe("handleDeleteEntry", () => {
     expect(deleteCalls).toHaveLength(1);
   });
 
-  it("htmx: returns 200 + text/html + HX-Trigger=concept-map-entry-deleted", async () => {
+  it("htmx: returns 200 + text/html + HX-Trigger-After-Swap=concept-map-entry-deleted + OOB empty-state + HX-Push-Url", async () => {
     const res = await handleDeleteEntry(
       buildReq({
         params: { id: "cm-a", code: "GLUC" },
@@ -247,9 +284,19 @@ describe("handleDeleteEntry", () => {
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/html");
-    expect(res.headers.get("HX-Trigger")).toBe("concept-map-entry-deleted");
+    // -After-Swap: same reason as update — the delete confirm modal hosts
+    // the requesting button, so the close listener must fire post-OOB.
+    expect(res.headers.get("HX-Trigger-After-Swap")).toBe("concept-map-entry-deleted");
+    expect(res.headers.get("HX-Trigger")).toBeNull();
+    // Drop selectedMap/Code/Sys from the address bar so a refresh after
+    // delete doesn't try to restore the now-gone selection.
+    expect(res.headers.get("HX-Push-Url")).toBe("/terminology");
     const body = await res.text();
     expect(body).toContain("terminology-table");
+    expect(body).toContain("terminology-detail");
+    // null detailRowKey forces the empty-state placeholder.
+    expect(renderTableAndDetailCalls).toHaveLength(1);
+    expect(renderTableAndDetailCalls[0]?.detailRowKey).toBeNull();
   });
 
   it("htmx + missing localSystem: returns 200 with concept-map-entry-error trigger", async () => {
