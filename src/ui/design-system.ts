@@ -84,7 +84,7 @@ export const DESIGN_SYSTEM_CSS = `
   .app { display: grid; grid-template-columns: 252px 1fr; min-height: 100vh; }
   .sidebar { background: var(--paper-2); border-right: 1px solid var(--line); padding: 22px 14px 16px; display:flex; flex-direction:column; gap: 18px; position: sticky; top:0; height: 100vh; }
   .brand { display:flex; align-items:center; gap:10px; padding: 2px 8px 4px; }
-  .brand-mark { width: 28px; height: 28px; border-radius: 6px; background: var(--ink); color: var(--paper); display:grid; place-items:center; font-weight: 600; font-size: 12px; letter-spacing: 0.02em; text-transform: uppercase; }
+  .brand-mark { width: 28px; height: 28px; border-radius: 6px; background: var(--ink); color: var(--paper); display:grid; place-items:center; font-weight: 600; font-size: 11px; letter-spacing: -0.01em; text-transform: uppercase; }
   .brand-name { font-weight: 600; font-size: 14px; letter-spacing: -0.005em; color: var(--ink); }
   .brand-sub { font-size: 11px; color: var(--ink-3); margin-top: -2px; letter-spacing: 0.02em; }
   .nav { display:flex; flex-direction:column; gap:1px; }

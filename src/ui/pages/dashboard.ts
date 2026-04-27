@@ -215,8 +215,8 @@ function renderDemoStep(step: DemoStep, index: number): string {
 function renderHero(): string {
   return `
     <div>
-      <div class="text-ink-3 text-[12.5px] font-medium uppercase tracking-[0.05em] mb-1.5">Staging · scripted demo</div>
-      <h1 class="h1">Demo control</h1>
+      <div class="text-ink-3 text-[12.5px] font-medium uppercase tracking-[0.05em] mb-1.5">Pipeline · live</div>
+      <h1 class="h1">Overview</h1>
     </div>
   `;
 }
