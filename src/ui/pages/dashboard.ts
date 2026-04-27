@@ -32,7 +32,9 @@ interface TickerRow {
   time: string;
   type: string;
   note: string;
-  status: "ok" | "warn" | "err" | "pend";
+  // `held` = manually deferred. Terminal status — distinct from `pend`
+  // (worker hasn't picked up yet) so the chip doesn't read as "pending".
+  status: "ok" | "warn" | "err" | "pend" | "held";
 }
 
 const HARD_ERROR_STATUSES = [
@@ -121,6 +123,7 @@ function toTickerStatus(
   if (!status) {return "pend";}
   if (status === "processed" || status === "warning") {return "ok";}
   if (status === "code_mapping_error") {return "warn";}
+  if (status === "deferred") {return "held";}
   if (status.endsWith("_error")) {return "err";}
   return "pend";
 }
@@ -385,6 +388,7 @@ function statusChip(status: TickerRow["status"]): string {
   if (status === "ok") {return `<span class="chip chip-ok">processed</span>`;}
   if (status === "warn") {return `<span class="chip chip-warn">needs mapping</span>`;}
   if (status === "err") {return `<span class="chip chip-err">error</span>`;}
+  if (status === "held") {return `<span class="chip">deferred</span>`;}
   return `<span class="chip">pending</span>`;
 }
 

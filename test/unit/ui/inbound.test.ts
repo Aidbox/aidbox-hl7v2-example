@@ -126,9 +126,11 @@ describe("statusToTone", () => {
     expect(statusToTone(parsed({ status: "conversion_error", error: "x" }))).toBe("err");
     expect(statusToTone(parsed({ status: "sending_error", error: "x" }))).toBe("err");
   });
-  test("maps received/deferred to pend", () => {
+  test("maps received to pend, deferred to held", () => {
+    // Distinct tones: `received` is animated (worker hasn't picked up yet);
+    // `held` is static (operator deferred — terminal until POST /mark-for-retry).
     expect(statusToTone(parsed({ status: "received" }))).toBe("pend");
-    expect(statusToTone(parsed({ status: "deferred" }))).toBe("pend");
+    expect(statusToTone(parsed({ status: "deferred" }))).toBe("held");
   });
 });
 

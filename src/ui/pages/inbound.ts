@@ -53,7 +53,11 @@ interface TypeChipCount {
   tone?: "accent" | "err";
 }
 
-export type MessageTone = "ok" | "warn" | "err" | "pend";
+// `held` = manually deferred via POST /defer/:id. Distinct from `pend`
+// (received, worker hasn't processed yet — animated, terminal-bound) so the
+// chip doesn't show a misleading "processing" spinner on a status that won't
+// move on its own. Operator must POST /mark-for-retry/:id to resume.
+export type MessageTone = "ok" | "warn" | "err" | "pend" | "held";
 
 // The 4 hard-error statuses the design's "errors" pseudo-chip aggregates.
 // Matches CLAUDE.md's IncomingHL7v2Message status vocabulary.
@@ -216,8 +220,9 @@ export function statusToTone(p: ParsedIncomingMessage): MessageTone {
     case "conversion_error":
     case "sending_error":
       return "err";
-    case "received":
     case "deferred":
+      return "held";
+    case "received":
       return "pend";
     default:
       return assertNever(p);
@@ -235,6 +240,7 @@ export function statusStringToTone(s: string | undefined): MessageTone {
   if (!s) {return "pend";}
   if (s === "processed" || s === "warning") {return "ok";}
   if (s === "code_mapping_error") {return "warn";}
+  if (s === "deferred") {return "held";}
   if (s.endsWith("_error")) {return "err";}
   return "pend";
 }
@@ -243,6 +249,10 @@ function toneDot(tone: MessageTone): string {
   if (tone === "ok") {return "dot ok";}
   if (tone === "warn") {return "dot warn";}
   if (tone === "err") {return "dot err";}
+  // `held` (manually deferred): static neutral dot — terminal state, no
+  // background work in progress. Distinct from `pend` so the row doesn't
+  // pulse like an in-flight message.
+  if (tone === "held") {return "dot";}
   // `pend` (received / queued-for-worker): animated pulse so the user
   // sees the message is actively being worked on, not stuck. The
   // in-process worker polls every ~5s so the flip to "processed" is
@@ -254,6 +264,8 @@ function toneChip(tone: MessageTone): string {
   if (tone === "ok") {return `<span class="chip chip-ok">processed</span>`;}
   if (tone === "warn") {return `<span class="chip chip-warn">needs mapping</span>`;}
   if (tone === "err") {return `<span class="chip chip-err">error</span>`;}
+  // Held = neutral static chip. Terminal — no spinner, no auto-refresh.
+  if (tone === "held") {return `<span class="chip">deferred</span>`;}
   // Active-state chip: inline spinner + "processing" text so the user
   // sees activity rather than a static "pending" label. Per-row polling
   // (see renderRowStatusCell) swaps this into its settled form when the

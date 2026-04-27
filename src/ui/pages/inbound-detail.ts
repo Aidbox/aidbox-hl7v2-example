@@ -67,6 +67,7 @@ function toneChip(tone: MessageTone): string {
   if (tone === "ok") {return `<span class="chip chip-ok">processed</span>`;}
   if (tone === "warn") {return `<span class="chip chip-warn">needs mapping</span>`;}
   if (tone === "err") {return `<span class="chip chip-err">error</span>`;}
+  if (tone === "held") {return `<span class="chip">deferred</span>`;}
   return `<span class="chip">pending</span>`;
 }
 
