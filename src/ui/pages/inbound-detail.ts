@@ -184,7 +184,7 @@ function renderDetailHeader(p: ParsedIncomingMessage): string {
                and disables the button so the user doesn't click it again
                and has visible feedback that something IS happening. -->
           <button type="button"
-                  class="btn btn-ghost py-1 px-2.5 text-[11.5px] inline-flex items-center gap-1.5"
+                  class="btn py-1 px-2.5 text-[11.5px] inline-flex items-center gap-1.5"
                   x-data="{ loading: false }"
                   x-on:htmx:before-request="loading = true"
                   x-on:htmx:after-request="loading = false"
