@@ -222,32 +222,28 @@ function renderHero(): string {
 }
 
 function renderDemoConductor(demoEnabled: boolean): string {
+  if (!demoEnabled) {return "";}
+
   const steps = DEMO_STEPS.map((s, i) => {
     const arrow = i < DEMO_STEPS.length - 1 ? `<div class="flex-[0_1_24px]">${arrowSvg()}</div>` : "";
     return renderDemoStep(s, i) + arrow;
   }).join("");
 
-  const button = demoEnabled
-    ? `
-      <button
-        type="button"
-        class="btn btn-primary text-[15px] py-3 px-5 justify-center"
-        :disabled="running"
-        x-on:click="run()"
-      >
-        <template x-if="!running">
-          <span class="inline-flex items-center gap-1.5">${renderIcon("play", "sm")}<span x-text="done ? 'Demo sent ✓' : 'Run demo now'"></span></span>
-        </template>
-        <template x-if="running">
-          <span class="inline-flex items-center gap-1.5"><span class="spinner"></span><span>Firing step <span x-text="Math.min(currentIndex + 1, ${DEMO_STEPS.length})"></span>/${DEMO_STEPS.length}…</span></span>
-        </template>
-      </button>
-    `
-    : `
-      <button type="button" class="btn btn-primary text-[15px] py-3 px-5 justify-center opacity-60 cursor-not-allowed" disabled>
-        ${renderIcon("play", "sm")} Disabled (DEMO_MODE=off)
-      </button>
-    `;
+  const button = `
+    <button
+      type="button"
+      class="btn btn-primary text-[15px] py-3 px-5 justify-center"
+      :disabled="running"
+      x-on:click="run()"
+    >
+      <template x-if="!running">
+        <span class="inline-flex items-center gap-1.5">${renderIcon("play", "sm")}<span x-text="done ? 'Demo sent ✓' : 'Run demo now'"></span></span>
+      </template>
+      <template x-if="running">
+        <span class="inline-flex items-center gap-1.5"><span class="spinner"></span><span>Firing step <span x-text="Math.min(currentIndex + 1, ${DEMO_STEPS.length})"></span>/${DEMO_STEPS.length}…</span></span>
+      </template>
+    </button>
+  `;
 
   // Alpine state: `currentIndex` drives both the stepper's active-state
   // highlight and the button's "Firing step N/4" label. Server fires

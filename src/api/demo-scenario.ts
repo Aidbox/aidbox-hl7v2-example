@@ -160,10 +160,10 @@ export async function runDemoScenario(
 export function isDemoEnabled(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  // Default-on: unset, empty, or any non-"off" value enables the endpoint.
-  // Only DEMO_MODE=off disables. Matches the plan's env-flag semantics so
-  // the demo ships as part of the default-dev experience.
-  return env.DEMO_MODE !== "off";
+  // Default-off: the scripted-demo card is hidden unless DEMO_MODE=on.
+  // The endpoint is gated on the same flag so a hidden card can't be
+  // poked by hand-crafted POSTs.
+  return env.DEMO_MODE === "on";
 }
 
 export async function handleRunDemoScenario(): Promise<Response> {

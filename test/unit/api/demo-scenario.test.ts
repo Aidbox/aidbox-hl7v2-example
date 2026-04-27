@@ -220,33 +220,34 @@ describe("runDemoScenario", () => {
 });
 
 describe("isDemoEnabled", () => {
-  test("default-on when env var is unset", () => {
-    expect(isDemoEnabled({})).toBe(true);
+  test("default-off when env var is unset", () => {
+    expect(isDemoEnabled({})).toBe(false);
   });
 
-  test("enabled for empty string", () => {
-    expect(isDemoEnabled({ DEMO_MODE: "" })).toBe(true);
+  test("disabled for empty string", () => {
+    expect(isDemoEnabled({ DEMO_MODE: "" })).toBe(false);
   });
 
-  test("enabled for any non-'off' value", () => {
+  test("enabled only for literal 'on'", () => {
     expect(isDemoEnabled({ DEMO_MODE: "on" })).toBe(true);
-    expect(isDemoEnabled({ DEMO_MODE: "1" })).toBe(true);
-    expect(isDemoEnabled({ DEMO_MODE: "staging" })).toBe(true);
   });
 
-  test("disabled only for literal 'off'", () => {
+  test("disabled for other truthy-looking values", () => {
+    expect(isDemoEnabled({ DEMO_MODE: "1" })).toBe(false);
+    expect(isDemoEnabled({ DEMO_MODE: "true" })).toBe(false);
     expect(isDemoEnabled({ DEMO_MODE: "off" })).toBe(false);
   });
 
-  test("case-sensitive — 'OFF' is NOT treated as off", () => {
+  test("case-sensitive — 'ON' is NOT treated as on", () => {
     // Documented tradeoff: matches the `DISABLE_POLLING=1` exact-string
     // convention elsewhere. If we ever want case-insensitive, normalize here.
-    expect(isDemoEnabled({ DEMO_MODE: "OFF" })).toBe(true);
+    expect(isDemoEnabled({ DEMO_MODE: "ON" })).toBe(false);
   });
 });
 
 describe("handleRunDemoScenario", () => {
-  test("returns 202 and fires the scenario when enabled", async () => {
+  test("returns 202 and fires the scenario when DEMO_MODE=on", async () => {
+    process.env.DEMO_MODE = "on";
     const res = await handleRunDemoScenario();
     expect(res.status).toBe(202);
     // Fire-and-forget — we can't easily await the scenario, but at least one
@@ -255,8 +256,7 @@ describe("handleRunDemoScenario", () => {
     expect(sendCalls.length).toBeGreaterThanOrEqual(1);
   });
 
-  test("returns 403 when DEMO_MODE=off", async () => {
-    process.env.DEMO_MODE = "off";
+  test("returns 403 when DEMO_MODE is unset", async () => {
     const res = await handleRunDemoScenario();
     expect(res.status).toBe(403);
     expect(await res.text()).toContain("disabled");

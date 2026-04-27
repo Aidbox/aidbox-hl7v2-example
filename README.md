@@ -94,7 +94,7 @@ Most deployments only need a `.env` file. Defaults work for local demo.
 | `BILLING_APP` / `BILLING_FAC` | — | Receiving app/facility (MSH-5/6) in outbound BAR |
 | `DISABLE_POLLING` | unset | Set to `1` to disable all workers |
 | `POLL_INTERVAL_MS` | `1000` | Worker poll interval |
-| `DEMO_MODE` | on | Set to `off` to disable `/demo/run-scenario` |
+| `DEMO_MODE` | unset | Set to `on` to show the Dashboard's "Run scripted demo" card and enable `/demo/run-scenario` |
 
 **Production checklist:**
 - Change `AIDBOX_CLIENT_SECRET` + `BOX_ADMIN_PASSWORD` in `docker-compose.yaml`.

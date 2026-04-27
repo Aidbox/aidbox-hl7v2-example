@@ -45,7 +45,7 @@ Use `bun run dev` alone to (re)start. It already stops any running instance firs
 
 - `DISABLE_POLLING=1` — disable all workers (useful for tests or when running standalone service scripts).
 - `POLL_INTERVAL_MS` — override poll interval. Default 1000ms. Standalone scripts still use their own 60000ms default.
-- `DEMO_MODE` — default-on. Controls the Dashboard's "Run demo now" endpoint (`POST /demo/run-scenario`). Only `DEMO_MODE=off` disables (returns 403).
+- `DEMO_MODE` — default-off. Set to `on` to render the Dashboard's "Run scripted demo" card and enable `POST /demo/run-scenario`. Anything else (unset, empty, `off`, `1`, `true`) hides the card and returns 403 from the endpoint.
 
 ## US Core demographic extension runtime note
 
