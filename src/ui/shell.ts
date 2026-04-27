@@ -191,8 +191,8 @@ function renderSidebar(active: NavKey, navData: NavData): string {
     <div class="brand">
       <div class="brand-mark">h7</div>
       <div>
-        <div class="brand-name">Inbound</div>
-        <div class="brand-sub">HL7v2 · FHIR bridge</div>
+        <div class="brand-name">Aidbox HL7</div>
+        <div class="brand-sub">HL7v2 ↔ FHIR demo</div>
       </div>
     </div>
     <div class="nav">${nav}</div>
