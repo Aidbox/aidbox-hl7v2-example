@@ -189,7 +189,7 @@ function renderSidebar(active: NavKey, navData: NavData): string {
   return `
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-mark">h7</div>
+      <div class="brand-mark">hl7</div>
       <div>
         <div class="brand-name">Aidbox HL7</div>
         <div class="brand-sub">HL7v2 ↔ FHIR demo</div>
