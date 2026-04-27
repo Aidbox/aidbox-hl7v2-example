@@ -53,7 +53,7 @@ bun install
 docker compose up -d              # Aidbox + PostgreSQL
 ```
 
-**Activate Aidbox (required, first run only).** Open http://localhost:8080 — instance will redirect to the activation screen. Click **Continue with Aidbox account**, sign up at [aidbox.app](https://aidbox.app/) (free), and issue a development license for this instance. See the [official activation guide](https://www.health-samurai.io/docs/aidbox/getting-started/run-aidbox-locally#4-activate-your-aidbox-instance). The instance won't accept API requests until activated — `bun run migrate` and `bun run dev` will fail with auth errors otherwise.
+**Activate Aidbox (required, first run only).** Open http://localhost:8080 — instance will redirect to the activation screen. Click **Continue with Aidbox account** and sign up at [aidbox.app](https://aidbox.app/) (free). License is provisioned automatically on login. See the [official activation guide](https://www.health-samurai.io/docs/aidbox/getting-started/run-aidbox-locally#4-activate-your-aidbox-instance). The instance won't accept API requests until activated — `bun run migrate` and `bun run dev` will fail with auth errors otherwise.
 
 ```sh
 bun run migrate                   # Install custom resources (IncomingHL7v2Message, OutgoingBarMessage)
