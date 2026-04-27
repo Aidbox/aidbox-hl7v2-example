@@ -5,6 +5,45 @@ Demo for bidirectional HL7v2 ↔ FHIR conversion, built on [Aidbox](https://www.
 - **HL7v2 → FHIR:** ADT (admissions), ORU (lab results), ORM (orders), VXU (immunization), MDM (documents) → Patient, Encounter, DiagnosticReport, Observation, etc.
 - **FHIR → HL7v2:** Invoice/Account + related resources → BAR^P01/P05/P06 (billing).
 
+## Motivation
+
+Healthcare integration is stuck between two standards. Most clinical systems — labs, ADT feeds, billing — still speak HL7v2, a pipe-delimited format from the 1980s. New apps, analytics, and patient-facing tools want FHIR (modern JSON resources). Teams end up writing custom translation code for every interface, with no shared queue, no retry, no error visibility.
+
+Traditional HL7v2 integration projects are expensive, slow, and brittle. Vendor interface engines cost six figures per year, every new sender variant needs hand-tuned mapping by a specialist, and the underlying tooling — interface engines, mapping DSLs, ops dashboards — is decades old. A single ORU feed from a new lab can take months and a dedicated integration analyst.
+
+**AI-first by design.** This project is built to be driven by AI agents, not just edited by humans. Every layer — converters, fixtures, error queues, code-mapping tasks, FHIR/HL7v2 spec lookups — is exposed through skills (`hl7v2-info`, `fhir-info`, `message-lookup`, `check-errors`, `hl7v2-to-fhir-pipeline`) so an agent can add a new message type, debug a stuck message, or resolve unmapped codes end-to-end. CLAUDE.md captures the rules; `.claude/skills/` captures the workflows. The aim: collapse months of integration work into a guided agent loop.
+
+This shows how we at Health Samurai solve that:
+
+- **Durable message queue.** Every inbound message is persisted as a custom `IncomingHL7v2Message` resource with status (`received` → `processed` / error). Retries, deferrals, and reprocessing are first-class — not lost in memory.
+- **Local code → LOINC mapping.** Labs send their own codes (`K_SERUM`, `GLU_FAST`). The system tracks unmapped codes per-sender (`MSH-3`/`MSH-4`), surfaces them as Tasks, and saves resolutions to a per-sender ConceptMap. Mapping grows incrementally instead of being a blocking up-front project.
+- **Visible failures.** Parsing errors, conversion errors, code-mapping gaps, and send failures each have their own status. UI pages show the queue; operators see exactly where a message stopped and why.
+- **Custom resources via Aidbox FHIR Schema.** `IncomingHL7v2Message` and `OutgoingBarMessage` are project-specific resource types — no separate database, same auth, same search, same audit as core FHIR data.
+
+The goal isn't to be a production HL7v2 engine. It's a working reference: how to model HL7v2 traffic on top of FHIR, where to put the seams (parse / convert / submit / send), and what the operator UI looks like when things go wrong.
+
+## Architecture Overview
+
+![Architecture overview](docs/images/architecture.png)
+
+Three horizontal bands wrap a left-to-right data flow.
+
+**Data flow (middle row):**
+
+1. **EHR sources** — Meditech, Cerner, Epic and similar systems push HL7v2 over MLLP.
+2. **Work queue** — every message lands as `IncomingHL7v2Message` with a status (`received`, `error`, `mapping_error`, ...). Queue is a FHIR resource in Aidbox, not a separate broker.
+3. **Processing pipeline** — five stages, each isolated and independently testable:
+   1. **Preprocessors** — normalize wrappers, fix encoding, split batches.
+   2. **Identity** — resolve Patient/Encounter from `PID-3` / `PV1-19`.
+   3. **Code mapping** — translate local lab codes to LOINC via per-sender ConceptMaps; unmapped codes raise Tasks.
+   4. **Converter** — message-type-specific HL7v2 → FHIR (ADT, ORU, ORM, VXU, MDM).
+   5. **Ingestion engine** — atomic transaction submit to Aidbox.
+4. **Aidbox** — FHIR resources land here: Patient, Encounter, Observation, DiagnosticReport, ...
+
+**Operations UI (top band):** message queue browser, mapping-task workspace, error recovery (defer, retry, reprocess). Operators don't read logs — they work the queue.
+
+**Developer Workspace (bottom band):** mappings as code (TypeScript, not a DSL), type-safe SDKs generated from FHIR + HL7v2 specs, AI-agent skills, HL7v2 spec lookup tool. Everything an engineer or agent needs to add a new sender or message type without leaving the repo.
+
 ## Quick Start
 
 **Prerequisites:** [Bun](https://bun.sh) v1.2+, [Docker](https://docker.com).
