@@ -12,7 +12,7 @@
  *
  * Actions:
  *   Save   → POST /api/mapping/tasks/:id/resolve (existing htmx-unaware endpoint)
- *   Skip   → client-only Alpine — advances Alpine selectedIndex, no server call
+ *   Skip   → client-only Alpine — looks up the current row in the queue and navigates to +1
  */
 
 import type { Task } from "../../fhir/hl7-fhir-r4-core/Task";
@@ -178,8 +178,29 @@ export function renderQueuePartial(
 // ============================================================================
 // Editor loading skeleton — swapped into `#unmapped-editor` on queue-link
 // click so the user sees a structural placeholder during the ~0.8s Aidbox
-// `$expand` call, not a frozen stale editor.
+// `$expand` call, not a frozen stale editor. Also used on the initial page
+// render via `renderEditorPlaceholder` so suggestion fetch happens after
+// first paint instead of blocking TTFB.
 // ============================================================================
+
+/**
+ * Initial-paint variant: same skeleton, plus htmx attrs that fetch the
+ * real editor partial for `entry` on `load`. Lets the page handler skip
+ * the synchronous `suggestCodes()` call (~0.8s) and defer it past TTFB.
+ */
+function renderEditorPlaceholder(entry: QueueEntry): string {
+  const editorUrl =
+    `/unmapped-codes/${encodeURIComponent(entry.localCode)}/partials/editor` +
+    `?sender=${encodeURIComponent(entry.sender)}`;
+  // The skeleton already carries `id="unmapped-editor"`. Wrapping it would
+  // double the id, so we splice the htmx attrs into the outer element by
+  // returning a wrapper-less variant.
+  const skeleton = renderEditorSkeleton();
+  return skeleton.replace(
+    `<div id="unmapped-editor"`,
+    `<div id="unmapped-editor" hx-get="${escapeHtml(editorUrl)}" hx-trigger="load" hx-swap="outerHTML"`,
+  );
+}
 
 function renderEditorSkeleton(): string {
   const barCls = "bg-line/70 rounded animate-pulse";
@@ -287,7 +308,15 @@ function renderSuggestionRow(s: SuggestedCode): string {
 export async function renderEditorPartial(
   entry: QueueEntry,
   suggestions: SuggestedCode[],
+  isLast: boolean = false,
 ): Promise<string> {
+  // When this is the last queue entry, the form action carries ?clear=1.
+  // The resolve handler propagates it to the success redirect so the user
+  // lands on the empty 'Select a code' state instead of auto-advancing
+  // (which has nothing to advance to). Mirrors Skip-on-last behavior.
+  const formAction =
+    `/api/mapping/tasks/${encodeURIComponent(entry.taskId)}/resolve` +
+    (isLast ? "?clear=1" : "");
   const suggestionsHtml =
     suggestions.length > 0
       ? suggestions.map((s) => renderSuggestionRow(s)).join("")
@@ -353,7 +382,7 @@ export async function renderEditorPartial(
       <!-- Suggestions -->
       <form id="resolve-form-${escapeHtml(entry.taskId)}"
             method="POST"
-            action="/api/mapping/tasks/${encodeURIComponent(entry.taskId)}/resolve"
+            action="${formAction}"
             class="contents"
             x-data="{ saving: false }"
             x-on:submit="saving = true">
@@ -418,7 +447,7 @@ export async function renderEditorPartial(
           <!-- Skip: navigates to the next queue entry (client-only, no server call). -->
           <button type="button"
                   class="btn btn-ghost py-1.5 px-3 text-[12px]"
-                  x-on:click="selectedIndex = Math.min(selectedIndex + 1, queue.length - 1); if (queue[selectedIndex]) window.location.href = '/unmapped-codes?code=' + queue[selectedIndex].code + '&sender=' + queue[selectedIndex].sender">Skip</button>
+                  x-on:click="skipNext()">Skip</button>
           <button type="submit"
                   class="btn btn-primary py-1.5 px-3 text-[12px] flex items-center gap-1.5"
                   :disabled="!picked.code || saving"
@@ -454,37 +483,31 @@ function renderEmptyEditor(): string {
 // Page body
 // ============================================================================
 
-async function renderUnmappedBody(
+function renderUnmappedBody(
   entries: QueueEntry[],
   selected: QueueEntry | undefined,
-  suggestions: SuggestedCode[],
   selectedCode: string | undefined,
   selectedSender: string | undefined,
   errorMessage: string | undefined,
-): Promise<string> {
+): string {
   const totalMessages = entries.reduce((s, e) => s + e.count, 0);
   const eyebrow = entries.length
     ? `Triage · ${entries.length} code${entries.length !== 1 ? "s" : ""} holding ${totalMessages} message${totalMessages !== 1 ? "s" : ""}`
     : "Triage · all clear";
 
   const editor = selected
-    ? await renderEditorPartial(selected, suggestions)
+    ? renderEditorPlaceholder(selected)
     : renderEmptyEditor();
 
-  // Alpine state for the queue — selectedIndex tracks which entry is active
-  // for the Skip button. The queue list links still use href for navigation,
-  // so Alpine is only responsible for the Skip advancement UX.
+  // Alpine state for the queue. `selectedCode + selectedSender` is the
+  // single source of truth for which row is active; Skip looks up the
+  // current row in `queue` and advances by 1. We don't track an index —
+  // it would go stale after queue-link clicks (which only update
+  // selectedCode/selectedSender) and after the every-15s queue refresh
+  // if order changes.
   const queueJson = JSON.stringify(
-    entries.map((e) => ({
-      code: encodeURIComponent(e.localCode),
-      sender: encodeURIComponent(e.sender),
-    })),
+    entries.map((e) => ({ code: e.localCode, sender: e.sender })),
   );
-  const selectedIdx = selected
-    ? entries.findIndex(
-        (e) => e.localCode === selectedCode && e.sender === selectedSender,
-      )
-    : -1;
 
   // Escape JSON literals so `"` inside them don't break the surrounding
   // double-quoted x-data attribute.
@@ -494,10 +517,19 @@ async function renderUnmappedBody(
   return `
     <div x-data="{
       queue: ${escapeHtml(queueJson)},
-      selectedIndex: ${selectedIdx},
       selectedCode: ${selectedCodeInit},
       selectedSender: ${selectedSenderInit},
-      get next() { return this.queue[this.selectedIndex + 1]; }
+      skipNext() {
+        const i = this.queue.findIndex(e => e.code === this.selectedCode && e.sender === this.selectedSender);
+        const next = this.queue[i + 1];
+        // Past the tail → land on the empty editor ('Select a code'). The
+        // ?clear=1 sentinel suppresses the default-select-first behavior on
+        // the server side; without it /unmapped-codes would just auto-pick
+        // entries[0] again and Skip would feel like it looped.
+        window.location.href = next
+          ? '/unmapped-codes?code=' + encodeURIComponent(next.code) + '&sender=' + encodeURIComponent(next.sender)
+          : '/unmapped-codes?clear=1';
+      }
     }">
       ${
         errorMessage
@@ -542,31 +574,41 @@ async function renderUnmappedBody(
 
 export async function handleUnmappedCodesPage(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  const selectedCode = url.searchParams.get("code") ?? undefined;
-  const selectedSender = url.searchParams.get("sender") ?? undefined;
+  const urlCode = url.searchParams.get("code") ?? undefined;
+  const urlSender = url.searchParams.get("sender") ?? undefined;
   const errorMessage = url.searchParams.get("error") ?? undefined;
+  // `?clear=1` is set by Skip-on-last to land on the empty 'Select a code'
+  // state. Without it, the no-?code= URL would auto-select entries[0] and
+  // Skip would feel like it looped to the top.
+  const clearSelection = url.searchParams.has("clear");
 
   const [navData, entries] = await Promise.all([
     getNavData(),
     getQueueEntries(),
   ]);
 
-  const selected = selectedCode
+  // Auto-select the first entry when the URL doesn't carry a selection.
+  // Covers two cases at once:
+  //   - First page load → user lands directly in the editor for entry 0.
+  //   - After Save → /resolve redirects to /unmapped-codes (no ?code=),
+  //     and entries[0] is now the next-up code (the saved one is gone).
+  const explicit = urlCode
     ? entries.find(
         (e) =>
-          e.localCode === selectedCode &&
-          (!selectedSender || e.sender === selectedSender),
+          e.localCode === urlCode && (!urlSender || e.sender === urlSender),
       )
     : undefined;
+  const selected = clearSelection ? undefined : (explicit ?? entries[0]);
+  const selectedCode = selected?.localCode ?? urlCode;
+  const selectedSender = selected?.sender ?? urlSender;
 
-  const suggestions = selected
-    ? await suggestCodes(selected.display, selected.field)
-    : [];
-
-  const content = await renderUnmappedBody(
+  // suggestCodes() blocks on Aidbox `ValueSet/$expand` (~0.8s) and was the
+  // dominant TTFB cost. Defer it past first paint: the editor renders as a
+  // skeleton wired to `hx-trigger="load"`, and the editor partial fetches
+  // suggestions on its own.
+  const content = renderUnmappedBody(
     entries,
     selected,
-    suggestions,
     selectedCode,
     selectedSender,
     errorMessage,
@@ -629,16 +671,18 @@ export async function handleUnmappedEditorPartial(
   }
 
   const entries = await getQueueEntries();
-  const entry = entries.find(
+  const idx = entries.findIndex(
     (e) => e.localCode === localCode && (!sender || e.sender === sender),
   );
+  const entry = idx >= 0 ? entries[idx] : undefined;
   if (!entry)
     {return new Response(renderEmptyEditor(), {
       headers: { "Content-Type": "text/html" },
     });}
 
   const suggestions = await suggestCodes(entry.display, entry.field);
-  const html = await renderEditorPartial(entry, suggestions);
+  const isLast = idx === entries.length - 1;
+  const html = await renderEditorPartial(entry, suggestions, isLast);
   return new Response(html, { headers: { "Content-Type": "text/html" } });
 }
 

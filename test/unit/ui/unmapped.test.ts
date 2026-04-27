@@ -287,17 +287,15 @@ describe("renderEditorPartial", () => {
     expect(html).not.toContain("· 2 waiting");
   });
 
-  it("Skip button has x-on:click with navigation and NO hx-* attributes", async () => {
+  it("Skip button delegates to parent-scope skipNext() and has NO hx-* attributes", async () => {
     const html = await renderEditorPartial(entry, suggestions);
     const skipButtonMatch = html.match(/<button[^>]*>Skip<\/button>/s);
     expect(skipButtonMatch).not.toBeNull();
     const skipButton = skipButtonMatch![0];
-    // Alpine click handler present
-    expect(skipButton).toContain("x-on:click");
-    expect(skipButton).toContain("selectedIndex");
-    // Actually navigates (fixes the dead-state bug)
-    expect(skipButton).toContain("window.location.href");
-    expect(skipButton).toContain("/unmapped-codes?code=");
+    // Alpine click handler invokes the parent x-data's skipNext() method —
+    // navigation logic lives on the wrapping renderUnmappedBody scope so
+    // there's a single source of truth (selectedCode + selectedSender).
+    expect(skipButton).toContain('x-on:click="skipNext()"');
     // No htmx attributes on the Skip button
     expect(skipButton).not.toContain("hx-get");
     expect(skipButton).not.toContain("hx-post");

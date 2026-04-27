@@ -24,9 +24,15 @@ function buildRedirect(
   localSender: string | undefined,
   savedCode?: string,
   replayedCount?: number,
+  clearOnSuccess?: boolean,
 ): Response {
   if (!error) {
     const params = new URLSearchParams();
+    // `clear=1` suppresses default-select-first on the landing page so the
+    // user sees the empty 'Select a code' state. Set when the saved entry
+    // was the last in the queue at form-render time (the editor partial
+    // appends ?clear=1 to the form action in that case).
+    if (clearOnSuccess) {params.set("clear", "1");}
     if (savedCode) {params.set("saved", savedCode);}
     if (typeof replayedCount === "number") {
       params.set("replayed", String(replayedCount));
@@ -72,6 +78,10 @@ export async function handleTaskResolution(
   const resolvedDisplay = formData.get("resolvedDisplay")?.toString() || "";
   const localCode = formData.get("localCode")?.toString() || undefined;
   const localSender = formData.get("localSender")?.toString() || undefined;
+  // The editor partial appends ?clear=1 to the form action when the user
+  // is on the last queue entry — propagated to the success redirect so
+  // they land on the empty 'Select a code' state instead of auto-advancing.
+  const clearOnSuccess = new URL(req.url).searchParams.has("clear");
 
   if (!resolvedCode) {
     return buildRedirect("Pick a LOINC code from the suggestions or type one in the search box.", localCode, localSender);
@@ -118,6 +128,7 @@ export async function handleTaskResolution(
       undefined,
       resolvedCode,
       replayedCount,
+      clearOnSuccess,
     );
   } catch (error) {
     console.error("Task resolution error:", error);
