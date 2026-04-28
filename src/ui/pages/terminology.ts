@@ -1007,18 +1007,15 @@ export function renderModalPartial(props: ModalProps): string {
       ? `
           <label class="flex flex-col gap-1.5">
             <span class="text-[10px] tracking-[0.1em] uppercase text-ink-3 font-medium">FHIR target (ConceptMap)</span>
-            <div class="relative">
-              <select x-model="picked.cmId" class="inp w-full appearance-none pr-8 cursor-pointer">
-                <option value="">Select a target ConceptMap…</option>
-                ${options
-                  .map(
-                    (o) =>
-                      `<option value="${escapeHtml(o.conceptMapId)}">${escapeHtml(o.label)}</option>`,
-                  )
-                  .join("")}
-              </select>
-              ${renderIcon("chev-down", "sm")}
-            </div>
+            <select x-model="picked.cmId" class="inp">
+              <option value="">Select a target ConceptMap…</option>
+              ${options
+                .map(
+                  (o) =>
+                    `<option value="${escapeHtml(o.conceptMapId)}">${escapeHtml(o.label)}</option>`,
+                )
+                .join("")}
+            </select>
             ${
               options.length === 0
                 ? `<span class="text-[11.5px] text-warn mt-1">No ConceptMaps exist yet. Seed one via the init bundle first.</span>`
