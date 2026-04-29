@@ -53,40 +53,47 @@ const RESOURCE_TYPES = [
 
 const PROJECT_CONCEPTMAP_PREFIX = "hl7v2-";
 
+interface PsqlResultSet {
+  type: string;
+  data?: Array<Record<string, unknown>>;
+}
+
 interface PsqlResponse {
-  result?: Array<Record<string, unknown>>;
+  result?: PsqlResultSet[];
   error?: string;
   status: "success" | "error";
   query: string;
   duration?: number;
 }
 
+function rows(res: PsqlResponse): Array<Record<string, unknown>> {
+  return res.result?.[0]?.data ?? [];
+}
+
 async function psql(query: string): Promise<PsqlResponse> {
-  const response = await aidboxFetch<PsqlResponse[]>("/$psql", {
+  const response = await aidboxFetch<PsqlResponse>("/$psql", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query }),
   });
-  const first = response[0];
-  if (!first) {throw new Error(`Empty response from $psql: ${query}`);}
   // Aidbox reports `status: "success"` with an `error` field when a
   // non-SELECT statement produced no rows — treat that as OK.
-  if (first.status !== "success") {
-    throw new Error(`$psql failed: ${first.error ?? "unknown"} — ${query}`);
+  if (response.status !== "success") {
+    throw new Error(`$psql failed: ${response.error ?? "unknown"} — ${query}`);
   }
-  return first;
+  return response;
 }
 
 async function tableExists(table: string): Promise<boolean> {
   const res = await psql(
     `SELECT 1 FROM pg_tables WHERE tablename = '${table}' LIMIT 1`,
   );
-  return (res.result?.length ?? 0) > 0;
+  return rows(res).length > 0;
 }
 
 async function countRows(table: string): Promise<number> {
   const res = await psql(`SELECT count(*)::int AS n FROM "${table}"`);
-  return (res.result?.[0]?.n as number | undefined) ?? 0;
+  return (rows(res)[0]?.n as number | undefined) ?? 0;
 }
 
 async function confirm(): Promise<boolean> {
@@ -126,7 +133,7 @@ async function schemaTableExists(
   const res = await psql(
     `SELECT 1 FROM pg_tables WHERE schemaname = '${schema}' AND tablename = '${table}' LIMIT 1`,
   );
-  return (res.result?.length ?? 0) > 0;
+  return rows(res).length > 0;
 }
 
 async function truncateProjectConceptMaps(): Promise<number> {
@@ -139,11 +146,10 @@ async function truncateProjectConceptMaps(): Promise<number> {
   let deleted = 0;
 
   if (await schemaTableExists("far", "conceptmap")) {
-    const n = (
-      await psql(
-        `SELECT count(*)::int AS n FROM far.conceptmap WHERE id LIKE ${idPattern}`,
-      )
-    ).result?.[0]?.n as number | undefined;
+    const res = await psql(
+      `SELECT count(*)::int AS n FROM far.conceptmap WHERE id LIKE ${idPattern}`,
+    );
+    const n = rows(res)[0]?.n as number | undefined;
     deleted += n ?? 0;
 
     if (await schemaTableExists("far", "conceptmapelement")) {
